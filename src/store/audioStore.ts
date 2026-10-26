@@ -1,34 +1,34 @@
 import { create } from "zustand";
+import {
+  playTTS as playHybridTTS,
+  setActiveAudio,
+  stopAllAudio,
+  VoiceOption,
+} from "@/lib/audio";
 
 interface AudioState {
   activeAudio: HTMLAudioElement | null;
   playingLineId: number | null;
   playAudio: (url: string, lineId: number, rate: number) => Promise<void>;
-  playTTS: (text: string, lineId: number, rate: number) => Promise<void>;
+  playTTS: (
+    text: string,
+    lineId: number,
+    rate: number,
+    voice?: VoiceOption
+  ) => Promise<void>;
   stop: () => void;
 }
 
-// Beklemede kalan promise'i sonlandırmak için global değişken
 let currentResolve: (() => void) | null = null;
 
-export const useAudioStore = create<AudioState>((set, get) => ({
+export const useAudioStore = create<AudioState>((set) => ({
   activeAudio: null,
   playingLineId: null,
 
   stop: () => {
-    const { activeAudio } = get();
-    if (activeAudio) {
-      activeAudio.pause();
-      activeAudio.currentTime = 0;
-      activeAudio.src = ""; 
-      activeAudio.onended = null; // Olay dinleyicisini temizle
-    }
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
+    stopAllAudio();
     set({ activeAudio: null, playingLineId: null });
 
-    // Eğer askıda bekleyen bir ses döngüsü varsa onu serbest bırak
     if (currentResolve) {
       currentResolve();
       currentResolve = null;
@@ -36,55 +36,81 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   },
 
   playAudio: async (url, lineId, rate) => {
-    get().stop(); 
-    set({ playingLineId: lineId });
-    
-    const audio = new Audio(url);
-    audio.playbackRate = rate;
-    set({ activeAudio: audio });
+    stopAllAudio();
+    if (currentResolve) {
+      currentResolve();
+      currentResolve = null;
+    }
 
-    return new Promise((resolve, reject) => {
-      currentResolve = resolve; // Bu promise'i kaydet
+    const tryPlayUrl = (targetUrl: string) =>
+      new Promise<void>((resolve, reject) => {
+        currentResolve = resolve;
+        const audio = new Audio(targetUrl);
+        audio.preload = "auto";
+        audio.defaultPlaybackRate = rate;
+        audio.playbackRate = rate;
+        setActiveAudio(audio);
+        set({ playingLineId: lineId, activeAudio: audio });
 
-      audio.onended = () => {
-        set({ playingLineId: null, activeAudio: null });
-        if (currentResolve === resolve) currentResolve = null;
-        resolve();
-      };
-      audio.onerror = () => {
-        set({ playingLineId: null, activeAudio: null });
-        if (currentResolve === resolve) currentResolve = null;
-        reject(new Error("Audio error"));
-      };
-      audio.play().catch(reject);
-    });
+        audio.onloadedmetadata = () => {
+          audio.playbackRate = rate;
+        };
+
+        audio.onended = () => {
+          setActiveAudio(null);
+          set({ playingLineId: null, activeAudio: null });
+          if (currentResolve === resolve) currentResolve = null;
+          resolve();
+        };
+
+        audio.onerror = () => {
+          setActiveAudio(null);
+          set({ playingLineId: null, activeAudio: null });
+          if (currentResolve === resolve) currentResolve = null;
+          reject(new Error(`Failed to load audio: ${targetUrl}`));
+        };
+
+        audio.play().catch((err) => {
+          setActiveAudio(null);
+          set({ playingLineId: null, activeAudio: null });
+          if (currentResolve === resolve) currentResolve = null;
+          reject(err);
+        });
+      });
+
+    try {
+      await tryPlayUrl(url);
+    } catch (err) {
+      if (url.startsWith("/audio/dialogues/")) {
+        const altUrl = url.replace("/audio/dialogues/", "/mp3/");
+        await tryPlayUrl(altUrl);
+        return;
+      }
+      throw err;
+    }
   },
 
-  playTTS: (text, lineId, rate) => {
-    get().stop();
+  playTTS: async (text, lineId, rate, voice = "male") => {
+    stopAllAudio();
+    if (currentResolve) {
+      currentResolve();
+      currentResolve = null;
+    }
     set({ playingLineId: lineId });
-    
-    return new Promise((resolve) => {
-      if (!("speechSynthesis" in window)) return resolve();
-      
-      currentResolve = resolve;
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "ar-SA";
-      utterance.rate = rate;
-      
-      utterance.onend = () => {
-        set({ playingLineId: null });
-        if (currentResolve === resolve) currentResolve = null;
-        resolve();
-      };
-      utterance.onerror = () => {
-        set({ playingLineId: null });
-        if (currentResolve === resolve) currentResolve = null;
-        resolve();
-      };
-      
-      window.speechSynthesis.speak(utterance);
+    return new Promise<void>((resolve) => {
+      currentResolve = resolve;
+      playHybridTTS(text, rate, voice)
+        .then(() => {
+          set({ playingLineId: null, activeAudio: null });
+          if (currentResolve === resolve) currentResolve = null;
+          resolve();
+        })
+        .catch(() => {
+          set({ playingLineId: null, activeAudio: null });
+          if (currentResolve === resolve) currentResolve = null;
+          resolve();
+        });
     });
   },
 }));

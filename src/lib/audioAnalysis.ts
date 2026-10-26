@@ -1,37 +1,75 @@
 // src/lib/audioAnalysis.ts
+// Web Audio API (16kHz Kayıt, Canlı RMS, VAD, Çift Dalga Formu Ritim Korelasyonu ve 16-bit PCM .wav Üretimi)
+
+export interface RecordingSession16kHz {
+  stop: () => Promise<{
+    samples16kHz: Float32Array;
+    trimmedSamples: Float32Array;
+    wavBlob: Blob;
+    wavUrl: string;
+    duration: number;
+    rmsHistory: number[];
+    envelopeBars: number[];
+  }>;
+  getLiveRms: () => number;
+}
 
 /**
- * Verilen AudioBuffer'dan RMS (Kök Ortalama Kare) tabanlı zarf çıkarır.
- * Python'daki extract_audio_envelope fonksiyonunun JS karşılığıdır.
+ * Verilen Float32Array örnek dizisinden (mono) normalize edilmiş RMS zarfı çıkarır.
  */
-export function extractAudioEnvelope(audioBuffer: AudioBuffer, numBars: number = 48): { bars: number[], duration: number } {
-  const channelData = audioBuffer.getChannelData(0); // Mono kanal
-  const samplesPerBar = Math.floor(channelData.length / numBars);
+export function extractFloat32Envelope(
+  samples: Float32Array,
+  sampleRate: number = 16000,
+  numBars: number = 48
+): { bars: number[]; duration: number } {
+  if (!samples || samples.length === 0) {
+    return { bars: Array(numBars).fill(0.05), duration: 0 };
+  }
+  const samplesPerBar = Math.max(1, Math.floor(samples.length / numBars));
   const bars: number[] = [];
 
   for (let i = 0; i < numBars; i++) {
     const start = i * samplesPerBar;
-    const end = Math.min(start + samplesPerBar, channelData.length);
+    const end = Math.min(start + samplesPerBar, samples.length);
+    if (end <= start) {
+      bars.push(0.05);
+      continue;
+    }
     let sumSquares = 0;
     for (let j = start; j < end; j++) {
-      sumSquares += channelData[j] * channelData[j];
+      sumSquares += samples[j] * samples[j];
     }
     const rms = Math.sqrt(sumSquares / (end - start));
     bars.push(rms);
   }
 
-  // 0-1 aralığına normalize et
   const maxVal = Math.max(...bars, 0.0001);
-  const normalizedBars = bars.map(b => b / maxVal);
+  const normalizedBars = bars.map((b) => Math.max(0.04, b / maxVal));
 
-  return { bars: normalizedBars, duration: audioBuffer.duration };
+  return {
+    bars: normalizedBars,
+    duration: samples.length / sampleRate,
+  };
 }
 
 /**
- * İki zarf dizisi arasındaki Kosinüs Benzerliği (Ritim Korelasyonu).
- * Python: np.dot(ref, usr) / (np.linalg.norm(ref) * np.linalg.norm(usr))
+ * Verilen AudioBuffer'dan RMS (Kök Ortalama Kare) tabanlı zarf çıkarır.
  */
-export function calculateRhythmMatch(refBars: number[], userBars: number[]): number {
+export function extractAudioEnvelope(
+  audioBuffer: AudioBuffer,
+  numBars: number = 48
+): { bars: number[]; duration: number } {
+  const channelData = audioBuffer.getChannelData(0);
+  return extractFloat32Envelope(channelData, audioBuffer.sampleRate, numBars);
+}
+
+/**
+ * İki zarf dizisi arasındaki Kosinüs Benzerliği (Ritim Korelasyonu: 0 - 100).
+ */
+export function calculateRhythmMatch(
+  refBars: number[],
+  userBars: number[]
+): number {
   if (refBars.length !== userBars.length || refBars.length === 0) return 0;
 
   let dotProduct = 0;
@@ -54,7 +92,10 @@ export function calculateRhythmMatch(refBars: number[], userBars: number[]): num
 /**
  * Referans ve kullanıcı süreleri arasındaki tempo uyumu.
  */
-export function calculateTempoScore(refDuration: number, userDuration: number): number {
+export function calculateTempoScore(
+  refDuration: number,
+  userDuration: number
+): number {
   if (refDuration <= 0 || userDuration <= 0) return 0;
   const diff = Math.abs(refDuration - userDuration);
   const ratio = diff / Math.max(refDuration, 1);
@@ -65,17 +106,22 @@ export function calculateTempoScore(refDuration: number, userDuration: number): 
 /**
  * Nihai Akıcılık Puanı (Telaffuz %65 + Ritim %35)
  */
-export function calculateOverallFluency(pronunciationScore: number, rhythmScore: number): number {
-  return Math.round((pronunciationScore * 0.65) + (rhythmScore * 0.35));
+export function calculateOverallFluency(
+  pronunciationScore: number,
+  rhythmScore: number
+): number {
+  return Math.round(pronunciationScore * 0.65 + rhythmScore * 0.35);
 }
 
 /**
- * AudioBuffer'ı standart 16-bit PCM .wav Blob'una dönüştürür.
+ * Float32Array (16kHz Mono) ses verisini standart 44-byte RIFF/WAVE başlıklı 16-bit PCM .wav Blob'una dönüştürür.
  */
-export function audioBufferToWav(audioBuffer: AudioBuffer): Blob {
-  const numChannels = audioBuffer.numberOfChannels;
-  const sampleRate = audioBuffer.sampleRate;
-  const length = audioBuffer.length;
+export function float32ToWavBlob(
+  samples: Float32Array,
+  sampleRate: number = 16000
+): Blob {
+  const numChannels = 1;
+  const length = samples.length;
   const bytesPerSample = 2;
   const blockAlign = numChannels * bytesPerSample;
   const byteRate = sampleRate * blockAlign;
@@ -86,68 +132,228 @@ export function audioBufferToWav(audioBuffer: AudioBuffer): Blob {
   const view = new DataView(arrayBuffer);
 
   const writeString = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
   };
 
-  writeString(0, 'RIFF');
+  writeString(0, "RIFF");
   view.setUint32(4, bufferSize - 8, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true); // PCM chunk size
+  view.setUint16(20, 1, true); // PCM format = 1
   view.setUint16(22, numChannels, true);
   view.setUint32(24, sampleRate, true);
   view.setUint32(28, byteRate, true);
   view.setUint16(32, blockAlign, true);
-  view.setUint16(34, 16, true);
-  writeString(36, 'data');
+  view.setUint16(34, 16, true); // 16-bit
+  writeString(36, "data");
   view.setUint32(40, dataSize, true);
 
-  const channelData = audioBuffer.getChannelData(0);
   let offset = 44;
   for (let i = 0; i < length; i++) {
-    const sample = Math.max(-1, Math.min(1, channelData[i]));
-    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+    const sample = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(
+      offset,
+      sample < 0 ? sample * 0x8000 : sample * 0x7fff,
+      true
+    );
     offset += 2;
   }
 
-  return new Blob([arrayBuffer], { type: 'audio/wav' });
+  return new Blob([arrayBuffer], { type: "audio/wav" });
+}
+
+/**
+ * AudioBuffer'ı standart 16-bit PCM .wav Blob'una dönüştürür.
+ */
+export function audioBufferToWav(audioBuffer: AudioBuffer): Blob {
+  return float32ToWavBlob(audioBuffer.getChannelData(0), audioBuffer.sampleRate);
 }
 
 /**
  * Herhangi bir AudioBuffer'ı Whisper'ın beklediği 16.000 Hz Mono Float32'ye çevirir.
  */
-export async function resampleTo16kHz(audioBuffer: AudioBuffer): Promise<Float32Array> {
+export async function resampleTo16kHz(
+  audioBuffer: AudioBuffer
+): Promise<Float32Array> {
   const targetSampleRate = 16000;
   if (audioBuffer.sampleRate === targetSampleRate) {
-    return audioBuffer.getChannelData(0);
+    return new Float32Array(audioBuffer.getChannelData(0));
   }
 
-  const offlineCtx = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * targetSampleRate), targetSampleRate);
+  const offlineCtx = new OfflineAudioContext(
+    1,
+    Math.max(1, Math.ceil(audioBuffer.duration * targetSampleRate)),
+    targetSampleRate
+  );
   const source = offlineCtx.createBufferSource();
   source.buffer = audioBuffer;
   source.connect(offlineCtx.destination);
   source.start(0);
 
   const resampled = await offlineCtx.startRendering();
-  return resampled.getChannelData(0);
+  return new Float32Array(resampled.getChannelData(0));
 }
 
 /**
- * Sesteki baş ve sondaki sessizlik kısımlarını kırpar (VAD).
+ * Sesteki baş ve sondaki sessizlik kısımlarını kırpar (VAD - Voice Activity Detection).
  */
-export function trimSilence(float32Data: Float32Array, threshold: number = 0.01): Float32Array {
+export function trimSilence(
+  float32Data: Float32Array,
+  threshold: number = 0.012
+): Float32Array {
   let start = 0;
   let end = float32Data.length - 1;
 
   for (let i = 0; i < float32Data.length; i++) {
-    if (Math.abs(float32Data[i]) > threshold) { start = i; break; }
+    if (Math.abs(float32Data[i]) > threshold) {
+      start = Math.max(0, i - 800); // 50ms ön pay
+      break;
+    }
   }
   for (let i = float32Data.length - 1; i >= 0; i--) {
-    if (Math.abs(float32Data[i]) > threshold) { end = i; break; }
+    if (Math.abs(float32Data[i]) > threshold) {
+      end = Math.min(float32Data.length - 1, i + 1200); // 75ms arka pay
+      break;
+    }
   }
 
-  // En az 0.1 saniyelik bir kesit olsun
-  if (end - start < 1600) return float32Data;
+  // En az 0.15 saniyelik (2400 örnek) bir kesit olsun
+  if (end - start < 2400) return float32Data;
   return float32Data.slice(start, end + 1);
+}
+
+/**
+ * Doğrudan AudioContext({ sampleRate: 16000 }) üzerinden 16kHz Mono Float32Array ses kaydı,
+ * canlı RMS zarfı (rmsHistory) ve otomatik sessizlik algılama (autoStopOnSilence) başlatır.
+ */
+export async function start16kHzRecorder(options?: {
+  onLiveRms?: (rms: number, rmsHistory: number[]) => void;
+  onAutoSilenceStop?: () => void;
+}): Promise<RecordingSession16kHz> {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      channelCount: 1,
+      sampleRate: 16000,
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+  });
+
+  const AudioCtx =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext })
+      .webkitAudioContext;
+  let audioCtx: AudioContext;
+  try {
+    audioCtx = new AudioCtx({ sampleRate: 16000 });
+  } catch {
+    audioCtx = new AudioCtx();
+  }
+  const source = audioCtx.createMediaStreamSource(stream);
+  const processor = audioCtx.createScriptProcessor(2048, 1, 1);
+
+  const chunks: Float32Array[] = [];
+  const rmsHistory: number[] = [];
+  let currentRms = 0;
+  let hasSpoken = false;
+  let silentBuffers = 0;
+  let stopped = false;
+  const startedAt = Date.now();
+
+  processor.onaudioprocess = (event: AudioProcessingEvent) => {
+    // Çıkış kanalını sessizlikle (0) doldur ki hiçbir tarayıcıda yankı/uğultu oluşmasın
+    const output = event.outputBuffer.getChannelData(0);
+    for (let i = 0; i < output.length; i++) {
+      output[i] = 0;
+    }
+
+    if (stopped) return;
+    const input = event.inputBuffer.getChannelData(0);
+    const copy = new Float32Array(input.length);
+    copy.set(input);
+    chunks.push(copy);
+
+    let sumSq = 0;
+    for (let i = 0; i < copy.length; i++) {
+      sumSq += copy[i] * copy[i];
+    }
+    const rms = Math.sqrt(sumSq / copy.length);
+    currentRms = Math.min(1, rms * 4.5);
+    rmsHistory.push(currentRms);
+
+    options?.onLiveRms?.(currentRms, rmsHistory.slice(-48));
+
+    // VAD: Konuşma başladıktan sonra ~1.8 sn sessizlik olursa otomatik durdur
+    if (rms > 0.02) {
+      hasSpoken = true;
+      silentBuffers = 0;
+    } else if (hasSpoken) {
+      silentBuffers += 1;
+      if (silentBuffers > 16) {
+        options?.onAutoSilenceStop?.();
+      }
+    } else if (Date.now() - startedAt > 12000) {
+      options?.onAutoSilenceStop?.();
+    }
+  };
+
+  source.connect(processor);
+  processor.connect(audioCtx.destination);
+
+  return {
+    getLiveRms: () => currentRms,
+    stop: async () => {
+      if (!stopped) {
+        stopped = true;
+        try {
+          processor.disconnect();
+          source.disconnect();
+        } catch {
+          // ignore
+        }
+        stream.getTracks().forEach((t) => t.stop());
+      }
+
+      const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
+      const merged = new Float32Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        merged.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      // Cihaz 16000 Hz desteklemediyse (ör. 48000 Hz açtıysa) 16000 Hz'e resample et
+      let samples16kHz: Float32Array = merged;
+      if (audioCtx.sampleRate !== 16000 && merged.length > 0) {
+        const tempBuf = audioCtx.createBuffer(
+          1,
+          merged.length,
+          audioCtx.sampleRate
+        );
+        tempBuf.getChannelData(0).set(merged);
+        samples16kHz = await resampleTo16kHz(tempBuf);
+      }
+
+      await audioCtx.close().catch(() => {});
+
+      const trimmedSamples = trimSilence(samples16kHz, 0.012);
+      const wavBlob = float32ToWavBlob(trimmedSamples, 16000);
+      const wavUrl = URL.createObjectURL(wavBlob);
+      const env = extractFloat32Envelope(trimmedSamples, 16000, 48);
+
+      return {
+        samples16kHz,
+        trimmedSamples,
+        wavBlob,
+        wavUrl,
+        duration: trimmedSamples.length / 16000,
+        rmsHistory,
+        envelopeBars: env.bars,
+      };
+    },
+  };
 }

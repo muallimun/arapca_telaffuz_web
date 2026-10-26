@@ -1,102 +1,346 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { DictionaryItem } from "@/types/data";
-import { RotateCcw, ChevronLeft, ChevronRight, CheckCircle2, Heart } from "lucide-react";
+import {
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  Heart,
+  Volume2,
+  Mic,
+} from "lucide-react";
 import { useUserStore } from "@/store/userStore";
+import { useSettings } from "@/store/settings";
 import { playFlip, playClick } from "@/lib/sfxManager";
+import { speakHybrid } from "@/lib/audio";
+import { shuffleArray } from "@/lib/quiz";
+import ShadowingModal from "@/components/ui/ShadowingModal";
 
 interface Props {
   vocabulary: DictionaryItem[];
+  questionCount?: number;
 }
 
-export default function Flashcard({ vocabulary }: Props) {
+export default function Flashcard({ vocabulary, questionCount = 20 }: Props) {
+  const deck = useMemo(
+    () => shuffleArray(vocabulary).slice(0, questionCount),
+    [vocabulary, questionCount]
+  );
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  
-  const { toggleFavoriteWord, isWordFavorite, toggleLearnedWord, isWordLearned } = useUserStore();
+  const [coachOpen, setCoachOpen] = useState(false);
 
-  if (vocabulary.length === 0) return <p className="text-center text-[var(--muted)]">Bu diyalogda kelime bulunamadı.</p>;
+  const {
+    toggleFavoriteWord,
+    isWordFavorite,
+    toggleLearnedWord,
+    isWordLearned,
+  } = useUserStore();
+  const { speechRate, showHareke } = useSettings();
 
-  const currentWord = vocabulary[currentIndex];
+  const nextCard = useCallback(() => {
+    if (deck.length === 0) return;
+    playClick();
+    setIsFlipped(false);
+    setTimeout(
+      () => setCurrentIndex((prev) => (prev + 1) % deck.length),
+      120
+    );
+  }, [deck.length]);
+
+  const prevCard = useCallback(() => {
+    if (deck.length === 0) return;
+    playClick();
+    setIsFlipped(false);
+    setTimeout(
+      () => setCurrentIndex((prev) => (prev - 1 + deck.length) % deck.length),
+      120
+    );
+  }, [deck.length]);
+
+  // Klavye Kısayolları: Space (Çevir), ArrowRight (Sonraki), ArrowLeft (Önceki)
+  useEffect(() => {
+    if (coachOpen || deck.length === 0) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        setIsFlipped((f) => !f);
+        playFlip();
+      } else if (e.code === "ArrowRight") {
+        e.preventDefault();
+        nextCard();
+      } else if (e.code === "ArrowLeft") {
+        e.preventDefault();
+        prevCard();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [coachOpen, deck.length, nextCard, prevCard]);
+
+  if (deck.length === 0) {
+    return (
+      <p className="text-center text-sm font-bold text-[var(--muted)] py-10">
+        Seçilen aralıkta kelime bulunamadı.
+      </p>
+    );
+  }
+
+  const currentWord = deck[currentIndex % deck.length];
   const isFav = isWordFavorite(currentWord.id);
   const isLearned = isWordLearned(currentWord.id);
+  const primaryArabic = currentWord.mufret || currentWord.mazi || "";
+  const cleanArabic = primaryArabic.split("/")[0].trim();
+  const removeTashkeel = (t: string) => t.replace(/[\u064B-\u0652]/g, "");
+  const formatAr = (t: string) => (showHareke ? t : removeTashkeel(t));
+  const displayArabic = formatAr(primaryArabic);
 
-  const nextCard = () => {
+  const handleSpeak = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     playClick();
-    setIsFlipped(false);
-    setTimeout(() => setCurrentIndex((prev) => (prev + 1) % vocabulary.length), 150);
+    speakHybrid({
+      text: cleanArabic,
+      wordId: currentWord.id,
+      rate: speechRate,
+    });
   };
 
-  const prevCard = () => {
-    playClick();
-    setIsFlipped(false);
-    setTimeout(() => setCurrentIndex((prev) => (prev - 1 + vocabulary.length) % vocabulary.length), 150);
+  const prepareWordForms = (word: DictionaryItem) => {
+    const forms: { label: string; arabic: string }[] = [];
+    if (word.tur === "isim") {
+      if (word.mufret)
+        forms.push({
+          label: "Müfret (Tekil)",
+          arabic: word.mufret.split("/")[0].trim(),
+        });
+      if (word.cemi && word.cemi !== "-")
+        forms.push({
+          label: "Cemî (Çoğul)",
+          arabic: word.cemi.split("/")[0].trim(),
+        });
+    } else if (word.tur === "fiil") {
+      if (word.mazi)
+        forms.push({
+          label: "Mâzî (Geçmiş)",
+          arabic: word.mazi.split("/")[0].trim(),
+        });
+      if (word.muzari)
+        forms.push({
+          label: "Muzâri (Şimdiki)",
+          arabic: word.muzari.split("/")[0].trim(),
+        });
+      if (word.masdar)
+        forms.push({
+          label: "Masdar (İsim)",
+          arabic: word.masdar.split("/")[0].trim(),
+        });
+    }
+    return forms.length > 0 ? forms : undefined;
   };
+
+  const wordForms = prepareWordForms(currentWord);
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-6 w-full max-w-md mx-auto py-4">
-      
-      {/* KART ALANI */}
-      <div 
-        className="relative w-full h-72 cursor-pointer [perspective:1000px]"
-        onClick={() => { setIsFlipped(!isFlipped); playFlip(); }}
+    <div className="flex flex-col items-center justify-center space-y-5 w-full max-w-lg mx-auto py-2">
+      {coachOpen && (
+        <ShadowingModal
+          text={wordForms?.[0]?.arabic || cleanArabic}
+          forms={wordForms}
+          onClose={() => setCoachOpen(false)}
+        />
+      )}
+
+      {/* ÜST İLERLEME SATIRI */}
+      <div className="w-full bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-2.5 flex items-center justify-between text-xs font-extrabold">
+        <span className="text-[var(--muted)]">
+          Kart{" "}
+          <strong className="text-[var(--foreground)] tabular-nums">
+            {currentIndex + 1} / {deck.length}
+          </strong>
+        </span>
+        <span className="uppercase text-[#087F5B]">
+          {currentWord.tur} · Kök: {currentWord.kok}
+        </span>
+      </div>
+
+      {/* 3B DÖNEN KART ALANI */}
+      <div
+        className="relative w-full h-76 sm:h-80 cursor-pointer [perspective:1000px]"
+        onClick={() => {
+          setIsFlipped(!isFlipped);
+          playFlip();
+        }}
       >
-        <div className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? "[transform:rotateY(180deg)]" : ""}`}>
-          
+        <div
+          className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${
+            isFlipped ? "[transform:rotateY(180deg)]" : ""
+          }`}
+        >
           {/* ÖN YÜZ (Arapça) */}
-          <div className={`absolute inset-0 [backface-visibility:hidden] rounded-3xl bg-[var(--surface)] border-2 shadow-xl flex flex-col items-center justify-center p-6 bg-gradient-to-br from-brand-50 to-white dark:from-slate-800 dark:to-slate-900 ${isLearned ? 'border-green-500' : 'border-brand-500'}`}>
-            
-            {/* Köşe İkonları */}
-            <div className="absolute top-4 left-4 right-4 flex justify-between">
-              <button 
-                onClick={(e) => { e.stopPropagation(); toggleFavoriteWord(currentWord); playClick(); }}
-                className={`p-2 rounded-full transition-colors ${isFav ? "text-red-500 bg-red-50" : "text-[var(--muted)] hover:bg-white/50"}`}
+          <div
+            className={`absolute inset-0 [backface-visibility:hidden] rounded-2xl border-2 border-b-4 flex flex-col items-center justify-between p-5 sm:p-6 ${
+              isLearned
+                ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9]"
+                : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
+            }`}
+          >
+            {/* Üst Köşe Kontrolleri */}
+            <div className="w-full flex flex-wrap items-center justify-between gap-1.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-3">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFavoriteWord(currentWord);
+                  playClick();
+                }}
+                className={`h-9 px-2.5 rounded-xl border-2 border-b-3 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                  isFav
+                    ? "bg-red-50 border-red-300 text-red-600"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)]"
+                }`}
               >
-                <Heart size={20} fill={isFav ? "currentColor" : "none"} />
+                <Heart size={14} fill={isFav ? "currentColor" : "none"} />
+                <span>{isFav ? "Kayıtlı" : "Kaydet"}</span>
               </button>
-              
-              <button 
-                onClick={(e) => { e.stopPropagation(); toggleLearnedWord(currentWord.id); playClick(); }}
-                className={`p-2 rounded-full transition-colors ${isLearned ? "text-green-600 bg-green-100" : "text-[var(--muted)] hover:bg-white/50"}`}
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleSpeak}
+                  className="h-9 px-3 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] text-xs font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <Volume2 size={14} />
+                  <span>Dinle</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    playClick();
+                    setCoachOpen(true);
+                  }}
+                  className="h-9 px-2.5 rounded-xl bg-[#F3F0FF] border-2 border-[#6741D9] border-b-3 text-xs font-extrabold text-[#6741D9] flex items-center gap-1 cursor-pointer"
+                >
+                  <Mic size={13} />
+                  <span>Telaffuz</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleLearnedWord(currentWord.id);
+                  playClick();
+                }}
+                className={`h-9 px-2.5 rounded-xl border-2 border-b-3 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                  isLearned
+                    ? "bg-[#6741D9] border-[#5230B5] text-white"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)]"
+                }`}
               >
-                <CheckCircle2 size={20} fill={isLearned ? "currentColor" : "none"} />
+                <CheckCircle2 size={14} />
+                <span>{isLearned ? "Öğrendim" : "Öğren"}</span>
               </button>
             </div>
 
-            <span className="arabic text-6xl font-bold text-brand-700 dark:text-brand-500 mb-4">{currentWord.mufret || currentWord.mazi}</span>
-            <span className="text-sm text-[var(--muted)] animate-pulse">Çevirmek için tıkla</span>
-          </div>
+            {/* Orta Arapça Kelime */}
+            <div className="my-auto text-center space-y-2">
+              <span
+                dir="rtl"
+                className="arabic text-5xl sm:text-6xl font-bold text-[#087F5B] dark:text-[#20c997] block leading-relaxed"
+              >
+                {displayArabic}
+              </span>
+              {currentWord.cemi && currentWord.cemi !== "-" && (
+                <span className="text-xs font-bold text-[var(--muted)] block">
+                  Çoğul:{" "}
+                  <strong className="arabic text-base text-[var(--foreground)]">
+                    {formatAr(currentWord.cemi)}
+                  </strong>
+                </span>
+              )}
+              {currentWord.muzari && (
+                <span className="text-xs font-bold text-[var(--muted)] block">
+                  Muzâri:{" "}
+                  <strong className="arabic text-base text-[var(--foreground)]">
+                    {formatAr(currentWord.muzari)}
+                  </strong>
+                </span>
+              )}
+            </div>
 
-          {/* ARKA YÜZ (Türkçe) */}
-          <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-3xl bg-brand-700 border-2 border-brand-700 shadow-xl flex flex-col items-center justify-center p-6 text-white text-center">
-            <span className="text-3xl font-bold mb-4">{currentWord.anlam_tr}</span>
-            <div className="text-sm opacity-80 space-y-1">
-              <p>Tür: {currentWord.tur}</p>
-              <p className="arabic text-lg mt-2">Kök: {currentWord.kok}</p>
+            <div className="w-full pt-2.5 border-t border-dashed border-[#E2D3B8] text-center text-xs font-bold text-[var(--muted)] flex items-center justify-center gap-1.5">
+              <RotateCcw size={13} />
+              <span>Türkçe anlamını görmek için tıklayın veya Boşluk tuşuna basın</span>
             </div>
           </div>
 
+          {/* ARKA YÜZ (Türkçe Anlamı) */}
+          <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-4 flex flex-col items-center justify-between p-6 text-center">
+            <div className="w-full flex items-center justify-between border-b border-dashed border-[#6741D9]/30 pb-2.5 text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff]">
+              <span>TÜRKÇE ANLAMI</span>
+              <span className="arabic text-lg">{displayArabic}</span>
+            </div>
+
+            <div className="my-auto space-y-3">
+              <p className="text-xl sm:text-2xl font-extrabold text-[var(--foreground)] leading-snug">
+                {currentWord.anlam_tr}
+              </p>
+              <p className="text-xs font-bold text-[var(--muted)]">
+                Tür: {currentWord.tur.toUpperCase()} · Kök:{" "}
+                <span className="arabic text-base font-bold text-[#6741D9]">
+                  {currentWord.kok}
+                </span>
+              </p>
+            </div>
+
+            <div className="w-full pt-2.5 border-t border-dashed border-[#6741D9]/30 text-xs font-bold text-[#6741D9] flex items-center justify-center gap-1.5">
+              <RotateCcw size={13} />
+              <span>Arapça yüzüne dönmek için tıklayın (Boşluk / ← →)</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* KONTROLLER */}
-      <div className="flex items-center justify-between w-full px-4">
-        <button onClick={prevCard} className="p-3 rounded-full bg-[var(--surface)] border border-[var(--border)] hover:bg-brand-50 transition-colors shadow-sm">
-          <ChevronLeft className="w-6 h-6 text-brand-700" />
+      {/* ALT GEZİNME BUTONLARI */}
+      <div className="flex items-center justify-between gap-3 w-full">
+        <button
+          type="button"
+          onClick={prevCard}
+          className="flex-1 py-3 px-4 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] active:border-b-2 active:translate-y-0.5 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <ChevronLeft size={18} />
+          <span>Önceki Kart</span>
         </button>
-        
-        <span className="text-sm font-bold text-[var(--muted)] tracking-widest">
-          {currentIndex + 1} / {vocabulary.length}
-        </span>
 
-        <button onClick={nextCard} className="p-3 rounded-full bg-[var(--surface)] border border-[var(--border)] hover:bg-brand-50 transition-colors shadow-sm">
-          <ChevronRight className="w-6 h-6 text-brand-700" />
+        <button
+          type="button"
+          onClick={() => {
+            setIsFlipped(!isFlipped);
+            playFlip();
+          }}
+          className="py-3 px-4 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 text-xs font-extrabold text-[#6741D9] flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <RotateCcw size={15} />
+          <span>Çevir</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={nextCard}
+          className="flex-1 py-3 px-4 rounded-2xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <span>Sonraki Kart</span>
+          <ChevronRight size={18} />
         </button>
       </div>
-      <button onClick={() => { setIsFlipped(!isFlipped); playFlip(); }} className="flex items-center gap-2 text-sm font-medium text-brand-600 hover:text-brand-800 mt-2">
-        <RotateCcw size={16} /> Kartı Çevir
-      </button>
     </div>
   );
 }

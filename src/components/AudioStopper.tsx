@@ -3,19 +3,21 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { stopAllAudio } from "@/lib/audio";
+import { useAudioStore } from "@/store/audioStore";
 
 export default function AudioStopper() {
   const pathname = usePathname();
+  const stopStoreAudio = useAudioStore((state) => state.stop);
 
   useEffect(() => {
-    // Sayfa değiştiği an (veya ilk yüklendiğinde) çalışır ve tüm sesleri keser
+    stopStoreAudio();
     stopAllAudio();
 
-    // Sayfa kapanırken (unmount) de sesi kes (çifte güvence)
     return () => {
+      stopStoreAudio();
       stopAllAudio();
     };
-  }, [pathname]);
+  }, [pathname, stopStoreAudio]);
 
   return null;
 }

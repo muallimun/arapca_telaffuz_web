@@ -1,82 +1,141 @@
 @import "tailwindcss";
 
-/* %100 ÇALIŞAN FONT TANIMI */
 @font-face {
-  font-family: 'ArakomFont';
-  src: url('/fonts/Arakom.ttf') format('truetype');
+  font-family: "ArakomFont";
+  src: url("/fonts/Arakom.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 @theme {
-  /* Renk Paleti */
   --color-brand-50: #fdfbf7;
-  --color-brand-100: #f4ebd9;
-  --color-brand-500: #8b7355;
-  --color-brand-600: #6b5a45;
-  --color-brand-700: #4a5d23;
-  
-  --color-level-a1: #7c9082;
-  --color-level-a2: #a3b18a;
-  --color-level-b1: #d4af37;
-  --color-level-b2: #bc6c25;
+  --color-brand-100: #f7efe1;
+  --color-brand-500: #0ca678;
+  --color-brand-600: #099268;
+  --color-brand-700: #087f5b;
+
+  --color-tactile-bg: #fdfbf7;
+  --color-tactile-card: #f7efe1;
+  --color-tactile-border: #e6d7be;
+  --color-tactile-dashed: #e2d3b8;
+  --color-tactile-active-bg: #f3f0ff;
+  --color-tactile-active-border: #6741d9;
+  --color-tactile-emerald: #0ca678;
+  --color-tactile-emerald-hover: #099268;
+  --color-tactile-emerald-dark: #087f5b;
+
+  --color-level-a1: #0ca678;
+  --color-level-a2: #2b8a3e;
+  --color-level-b1: #d97706;
+  --color-level-b2: #6741d9;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #fdfbf7;
-  --foreground: #2c2c2c;
-  --surface: #ffffff;
-  --border: #e5e0d8;
-  --muted: #8a857d;
+  --foreground: #2b241d;
+  --surface: #f7efe1;
+  --surface-white: #ffffff;
+  --border: #e6d7be;
+  --border-dashed: #e2d3b8;
+  --muted: #756857;
+  --emerald: #0ca678;
+  --emerald-hover: #099268;
+  --emerald-border: #087f5b;
+  --lavender-bg: #f3f0ff;
+  --purple-accent: #6741d9;
+
+  --speaker-1: #087f5b;
+  --speaker-2: #6741d9;
+  --speaker-3: #b45309;
+  --speaker-4: #1d4ed8;
+  --speaker-5: #be123c;
+  --speaker-6: #4338ca;
 }
 
-/* KARANLIK MOD RENK DÜZELTMELERİ */
 .dark {
-  --background: #1a1a1a;
-  --foreground: #f4ebd9;
-  --surface: #242424;
-  --border: #333333;
-  --muted: #a3a3a3;
-  
-  /* Karanlık modda marka renklerini daha açık tonlara çekiyoruz */
-  --color-brand-50: #2a2a2a;
-  --color-brand-100: #3a3a3a;
-  --color-brand-500: #b5c99a; /* Açık zeytin yeşili */
-  --color-brand-600: #9cb380; 
-  --color-brand-700: #a3b18a; /* Eski koyu yeşil yerine parlak yeşil */
-  
-  /* Seviye renkleri de karanlıkta biraz daha parlasın */
-  --color-level-a1: #90a898;
-  --color-level-a2: #b5c99a;
-  --color-level-b1: #e6c25b;
-  --color-level-b2: #d48a45;
+  --background: #191714;
+  --foreground: #f7efe1;
+  --surface: #25211c;
+  --surface-white: #1f1c18;
+  --border: #3d362d;
+  --border-dashed: #453d33;
+  --muted: #b0a392;
+  --emerald: #0ca678;
+  --emerald-hover: #12b886;
+  --emerald-border: #087f5b;
+  --lavender-bg: #261f3d;
+  --purple-accent: #845ef7;
+
+  --color-brand-50: #25211c;
+  --color-brand-100: #332d26;
+  --color-brand-500: #12b886;
+  --color-brand-600: #0ca678;
+  --color-brand-700: #20c997;
+
+  --speaker-1: #20c997;
+  --speaker-2: #b197fc;
+  --speaker-3: #fcc419;
+  --speaker-4: #74c0fc;
+  --speaker-5: #ffa8a8;
+  --speaker-6: #91a7ff;
 }
 
-html, body {
-  background: var(--background);
+html,
+body {
+  background-color: var(--background);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
-/* ARAPÇA METİNLER İÇİN ZORUNLU FONT */
+/* Arapça Metinler İçin Zorunlu Arakom Fontu */
 .arabic {
-  font-family: 'ArakomFont', "Amiri", "Noto Naskh Arabic", sans-serif !important;
+  font-family: "ArakomFont", "Amiri", "Noto Naskh Arabic", serif !important;
   direction: rtl;
-  line-height: 2.1;
+  line-height: 2.05;
   letter-spacing: 0;
   font-feature-settings: "liga" 1, "calt" 1;
 }
 
-/* Konuşmacı renk paleti */
-:root {
-  --speaker-1: #4a5d23; --speaker-2: #bc6c25; --speaker-3: #7c9082;
-  --speaker-4: #8b7355; --speaker-5: #9c89b8; --speaker-6: #5f6c7b;
+/* 3B Dokunsal Kart & Buton Yardımcı Sınıfları */
+.tactile-card {
+  background-color: var(--surface);
+  border-radius: 1rem;
+  border: 2px solid var(--border);
+  border-bottom-width: 4px;
 }
 
-.dark {
-  --speaker-1: #a3b18a; --speaker-2: #d48a45; --speaker-3: #90a898;
-  --speaker-4: #b5a38a; --speaker-5: #b8a9cf; --speaker-6: #8c99a8;
+.tactile-card-active {
+  background-color: var(--lavender-bg);
+  border-radius: 1rem;
+  border: 2px solid var(--purple-accent);
+  border-bottom-width: 4px;
+}
+
+.tactile-dashed-row {
+  border-bottom: 1px dashed var(--border-dashed);
+}
+
+.tactile-pill-box {
+  background-color: var(--surface-white);
+  border-radius: 0.75rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+}
+
+/* Özel kaydırma çubuğu */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
 }

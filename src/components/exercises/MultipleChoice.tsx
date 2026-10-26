@@ -1,55 +1,107 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { playSuccess, playError, playFanfare } from "@/lib/sfxManager";
+import {
+  playSuccess,
+  playError,
+  playFanfare,
+  playClick,
+} from "@/lib/sfxManager";
 import { DictionaryItem } from "@/types/data";
 import { generateMultipleChoiceOptions, shuffleArray } from "@/lib/quiz";
-import { CheckCircle2, XCircle, RefreshCcw, Trophy, Timer, AlertCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  RefreshCcw,
+  Trophy,
+  Timer,
+  AlertCircle,
+  Volume2,
+  ArrowRight,
+} from "lucide-react";
 import { useCountdown } from "@/lib/useTimer";
+import { speakHybrid } from "@/lib/audio";
+import { useSettings } from "@/store/settings";
+import { useUserStore } from "@/store/userStore";
 
 interface Props {
   vocabulary: DictionaryItem[];
   timeLimit: number | null;
+  questionCount?: number;
 }
 
-export default function MultipleChoice({ vocabulary, timeLimit }: Props) {
+export default function MultipleChoice({
+  vocabulary,
+  timeLimit,
+  questionCount = 10,
+}: Props) {
   const fanfarePlayedRef = useRef(false);
-  const questions = useMemo(() => shuffleArray(vocabulary).slice(0, 10), [vocabulary]);
+  const [roundSeed, setRoundSeed] = useState(0);
+  const { speechRate, showHareke } = useSettings();
+  const { addStudyMinutes } = useUserStore();
+
+  const questions = useMemo(
+    () => shuffleArray(vocabulary).slice(0, questionCount),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [vocabulary, questionCount, roundSeed]
+  );
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [options, setOptions] = useState<{ text: string; isCorrect: boolean }[]>([]);
+  const [options, setOptions] = useState<{ text: string; isCorrect: boolean }[]>(
+    []
+  );
   const [selected, setSelected] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [isTimeUp, setIsTimeUp] = useState(false);
 
   const handleTimeout = () => setIsTimeUp(true);
-  const timeLeft = useCountdown(timeLimit, handleTimeout, !isFinished && !isTimeUp);
+  const timeLeft = useCountdown(
+    timeLimit,
+    handleTimeout,
+    !isFinished && !isTimeUp
+  );
 
   useEffect(() => {
     if (questions[currentIndex]) {
-      setOptions(generateMultipleChoiceOptions(questions[currentIndex], vocabulary));
+      setOptions(
+        generateMultipleChoiceOptions(questions[currentIndex], vocabulary)
+      );
       setSelected(null);
     }
   }, [currentIndex, questions, vocabulary]);
 
-  if (questions.length < 4) return <p className="text-center p-10">Yetersiz kelime.</p>;
-	  useEffect(() => {
+  useEffect(() => {
     if (isFinished && !fanfarePlayedRef.current) {
       fanfarePlayedRef.current = true;
+      addStudyMinutes(3);
       playFanfare();
     } else if (isTimeUp && !fanfarePlayedRef.current) {
       fanfarePlayedRef.current = true;
       playError();
     }
-  }, [isFinished, isTimeUp]);
-  const currentWord = questions[currentIndex];
+  }, [isFinished, isTimeUp, addStudyMinutes]);
 
-    const handleSelect = (text: string, isCorrect: boolean) => {
+  if (questions.length < 4) {
+    return (
+      <p className="text-center p-8 text-sm font-bold text-[var(--muted)]">
+        Test oluşturmak için en az 4 kelime gerekiyor.
+      </p>
+    );
+  }
+
+  const currentWord = questions[currentIndex];
+  const primaryArabic = currentWord.mufret || currentWord.mazi || "";
+  const removeTashkeel = (t: string) => t.replace(/[\u064B-\u0652]/g, "");
+  const displayArabic = showHareke
+    ? primaryArabic
+    : removeTashkeel(primaryArabic);
+
+  const handleSelect = (text: string, isCorrect: boolean) => {
     if (selected || isTimeUp) return;
     setSelected(text);
     if (isCorrect) {
-      setScore(s => s + 1);
+      setScore((s) => s + 1);
       playSuccess();
     } else {
       playError();
@@ -57,15 +109,18 @@ export default function MultipleChoice({ vocabulary, timeLimit }: Props) {
   };
 
   const nextQuestion = () => {
+    playClick();
     if (currentIndex < questions.length - 1) {
-      setCurrentIndex(prev => prev + 1);
+      setCurrentIndex((prev) => prev + 1);
     } else {
       setIsFinished(true);
     }
   };
 
-    const restart = () => {
+  const restart = () => {
+    playClick();
     fanfarePlayedRef.current = false;
+    setRoundSeed((s) => s + 1);
     setCurrentIndex(0);
     setScore(0);
     setIsFinished(false);
@@ -75,65 +130,151 @@ export default function MultipleChoice({ vocabulary, timeLimit }: Props) {
 
   if (isFinished || isTimeUp) {
     return (
-      <div className="text-center py-16 space-y-6 animate-in zoom-in-95">
-        <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 ${isFinished ? 'bg-brand-100 text-brand-700' : 'bg-red-100 text-red-600'}`}>
-          {isFinished ? <Trophy size={48} /> : <AlertCircle size={48} />}
+      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-8 text-center space-y-5 max-w-lg mx-auto">
+        <div
+          className={`w-20 h-20 rounded-2xl border-2 border-b-4 flex items-center justify-center mx-auto ${
+            isFinished
+              ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
+              : "bg-red-50 border-red-300 text-red-600"
+          }`}
+        >
+          {isFinished ? <Trophy size={40} /> : <AlertCircle size={40} />}
         </div>
-        <h3 className="text-3xl font-black text-[var(--foreground)]">{isFinished ? "Test Bitti!" : "Süre Doldu!"}</h3>
-        <p className="text-5xl font-black text-brand-600">{score} / {questions.length}</p>
-        <button onClick={restart} className="bg-brand-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg mx-auto mt-8 flex items-center gap-2">
-          <RefreshCcw size={18} /> Tekrar Dene
+
+        <div className="space-y-1 border-b border-dashed border-[#E2D3B8] pb-4">
+          <h3 className="text-2xl font-extrabold text-[var(--foreground)]">
+            {isFinished ? "Çoktan Seçmeli Test Tamamlandı!" : "Süre Doldu!"}
+          </h3>
+          <p className="text-xs font-semibold text-[var(--muted)]">
+            Toplam {questions.length} sorudan {score} doğru yanıt verdiniz
+          </p>
+        </div>
+
+        <div className="text-4xl font-black tabular-nums text-[#087F5B]">
+          {score} / {questions.length}
+        </div>
+
+        <button
+          type="button"
+          onClick={restart}
+          className="w-full py-3.5 px-6 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <RefreshCcw size={17} />
+          <span>Yeni Test Başlat</span>
         </button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-4 space-y-8">
-      <div className="flex justify-between items-center bg-[var(--background)] p-4 rounded-2xl border border-[var(--border)]">
-        <span className="font-bold text-[var(--muted)]">Soru {currentIndex + 1} / {questions.length}</span>
+    <div className="max-w-2xl mx-auto space-y-5">
+      {/* ÜST DURUM VE SÜRE ÇUBUĞU */}
+      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-3 flex items-center justify-between gap-2">
+        <span className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] tabular-nums">
+          Soru {currentIndex + 1} / {questions.length}
+        </span>
+
         {timeLeft !== null && (
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-black text-lg ${timeLeft <= 5 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-amber-100 text-amber-700'}`}>
-            <Timer size={18} /> {timeLeft} sn
+          <div
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs sm:text-sm font-black tabular-nums ${
+              timeLeft <= 5
+                ? "bg-red-100 border-red-300 text-red-700 animate-pulse"
+                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-amber-700"
+            }`}
+          >
+            <Timer size={16} />
+            <span>{timeLeft} sn</span>
           </div>
         )}
-        <span className="font-bold text-brand-700 bg-brand-100 px-3 py-1 rounded-lg">Doğru: {score}</span>
+
+        <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-3 py-1 rounded-xl tabular-nums">
+          Doğru: {score}
+        </span>
       </div>
 
-      <div className="text-center bg-gradient-to-b from-[var(--surface)] to-[var(--background)] p-10 rounded-3xl border border-[var(--border)]">
-        <h3 className="arabic text-6xl font-bold text-brand-700 dark:text-brand-500">{currentWord.mufret || currentWord.mazi}</h3>
+      {/* SORU KARTI */}
+      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-6 sm:p-8 text-center space-y-3">
+        <div className="flex items-center justify-between text-xs font-bold text-[var(--muted)] border-b border-dashed border-[#E2D3B8] pb-2.5">
+          <span>Aşağıdaki Arapça kelimenin Türkçe karşılığı nedir?</span>
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              speakHybrid({
+                text: primaryArabic.split("/")[0].trim(),
+                wordId: currentWord.id,
+                rate: speechRate,
+              });
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0CA678] text-white font-bold border-b-2 border-[#087F5B] cursor-pointer"
+          >
+            <Volume2 size={14} />
+            <span>Sesli Dinle</span>
+          </button>
+        </div>
+
+        <h3
+          dir="rtl"
+          className="arabic text-5xl sm:text-6xl font-bold text-[#087F5B] dark:text-[#20c997] py-2"
+        >
+          {displayArabic}
+        </h3>
+
+        <p className="text-xs font-bold text-[var(--muted)]">
+          Tür: {currentWord.tur.toUpperCase()} · Kök:{" "}
+          <span className="arabic text-sm font-bold text-[var(--foreground)]">
+            {currentWord.kok}
+          </span>
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* ŞIKLAR */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         {options.map((opt, idx) => {
-          const showCorrect = selected && opt.isCorrect;
+          const showCorrect = Boolean(selected) && opt.isCorrect;
           const showWrong = selected === opt.text && !opt.isCorrect;
+
           return (
             <button
               key={idx}
+              type="button"
               onClick={() => handleSelect(opt.text, opt.isCorrect)}
-              disabled={!!selected || isTimeUp}
-              className={`p-5 rounded-2xl border-2 text-left font-bold text-lg transition-all duration-300 flex justify-between
-                ${!selected ? "border-[var(--border)] bg-[var(--surface)] hover:border-brand-500" : ""}
-                ${showCorrect ? "border-green-500 bg-green-50 text-green-700" : ""}
-                ${showWrong ? "border-red-500 bg-red-50 text-red-700" : ""}
-                ${selected && !opt.isCorrect && !showWrong ? "opacity-40" : ""}
-              `}
+              disabled={Boolean(selected) || isTimeUp}
+              className={`p-4 rounded-2xl border-2 border-b-4 text-left font-extrabold text-sm sm:text-base transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                !selected
+                  ? "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#6741D9] text-[var(--foreground)]"
+                  : showCorrect
+                  ? "bg-emerald-50 border-[#0CA678] text-[#087F5B]"
+                  : showWrong
+                  ? "bg-rose-50 border-rose-400 text-rose-800"
+                  : "bg-[#F7EFE1]/50 border-[#E6D7BE] text-[var(--muted)] opacity-60"
+              }`}
             >
               <span>{opt.text}</span>
-              {showCorrect && <CheckCircle2 className="text-green-500" />}
-              {showWrong && <XCircle className="text-red-500" />}
+              {showCorrect && (
+                <CheckCircle2 size={20} className="text-[#0CA678] shrink-0" />
+              )}
+              {showWrong && (
+                <XCircle size={20} className="text-rose-600 shrink-0" />
+              )}
             </button>
           );
         })}
       </div>
 
       {selected && (
-        <div className="text-center pt-4 animate-in fade-in">
-          <button onClick={nextQuestion} className="bg-brand-700 text-white px-10 py-4 rounded-xl font-bold shadow-xl text-lg hover:bg-brand-600">
-            {currentIndex === questions.length - 1 ? "Testi Bitir" : "Sonraki Soru →"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={nextQuestion}
+          className="w-full py-3.5 px-6 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-base rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <span>
+            {currentIndex === questions.length - 1
+              ? "Sonuçları Gör"
+              : "Sonraki Soruya Geç"}
+          </span>
+          <ArrowRight size={18} />
+        </button>
       )}
     </div>
   );

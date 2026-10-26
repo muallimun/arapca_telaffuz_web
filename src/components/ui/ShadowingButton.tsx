@@ -1,70 +1,83 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Mic, Square, Play, RotateCcw } from "lucide-react";
+import { Mic, Square, Play, RotateCcw, Sparkles } from "lucide-react";
+import {
+  playRecordStart,
+  playRecordStop,
+  playClick,
+} from "@/lib/sfxManager";
+import {
+  start16kHzRecorder,
+  RecordingSession16kHz,
+} from "@/lib/audioAnalysis";
 
 interface Props {
   text: string;
+  onOpenCoach?: () => void;
 }
 
-export default function ShadowingButton({ text }: Props) {
+export default function ShadowingButton({ onOpenCoach }: Props) {
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+
+  const sessionRef = useRef<RecordingSession16kHz | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
-  // Bileşen ekrandan kalkarken kaynakları temizle
+  useEffect(() => {
+    return () => {
+      if (sessionRef.current) {
+        sessionRef.current.stop().catch(() => {});
+        sessionRef.current = null;
+      }
+      if (audioPlayerRef.current) audioPlayerRef.current.pause();
+    };
+  }, []);
+
   useEffect(() => {
     return () => {
       if (audioUrl) URL.revokeObjectURL(audioUrl);
-      if (audioPlayerRef.current) audioPlayerRef.current.pause();
     };
   }, [audioUrl]);
 
   const startRecording = async () => {
     setErrorMsg(null);
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
-    audioChunksRef.current = [];
+    playRecordStart();
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const url = URL.createObjectURL(audioBlob);
-        setAudioUrl(url);
-        // Kayıt bittikten sonra mikrofonu serbest bırak
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
+      const session = await start16kHzRecorder({
+        onAutoSilenceStop: () => {
+          stopRecording();
+        },
+      });
+      sessionRef.current = session;
       setIsRecording(true);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Mikrofon erişimi reddedildi veya bulunamadı.");
+    } catch {
+      setErrorMsg("Mikrofon izni gerekli");
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+  const stopRecording = async () => {
+    if (sessionRef.current) {
+      const activeSession = sessionRef.current;
+      sessionRef.current = null;
+      playRecordStop();
       setIsRecording(false);
+      try {
+        const res = await activeSession.stop();
+        setAudioUrl(res.wavUrl);
+      } catch {
+        setErrorMsg("Kayıt tamamlanamadı");
+      }
     }
   };
 
   const playRecording = () => {
+    playClick();
     if (audioUrl && audioPlayerRef.current) {
       if (isPlaying) {
         audioPlayerRef.current.pause();
@@ -78,6 +91,7 @@ export default function ShadowingButton({ text }: Props) {
   };
 
   const resetRecording = () => {
+    playClick();
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
     setIsPlaying(false);
@@ -85,57 +99,89 @@ export default function ShadowingButton({ text }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1">
-        {!isRecording && !audioUrl && (
-          <button 
-            onClick={startRecording}
-            className="flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
-            title="Kendi Sesini Kaydet (Gölgeleme)"
-          >
-            <Mic size={14} />
-          </button>
-        )}
+    <div className="inline-flex items-center gap-1.5">
+      {/* Hızlı 16kHz WAV Ses Kaydı Butonu */}
+      {!isRecording && !audioUrl && (
+        <button
+          type="button"
+          onClick={startRecording}
+          className="h-9 px-2.5 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] active:border-b-1 active:translate-y-0.5 transition-all inline-flex items-center gap-1.5 cursor-pointer"
+          title="16kHz Ses Kaydı Al ve Dinle (.wav)"
+        >
+          <Mic size={14} className="text-[#0CA678]" />
+          <span className="hidden sm:inline">Kaydet</span>
+        </button>
+      )}
 
-        {isRecording && (
-          <button 
-            onClick={stopRecording}
-            className="flex items-center justify-center w-7 h-7 rounded-full bg-red-100 text-red-600 animate-pulse transition-colors"
-            title="Kaydı Durdur"
-          >
-            <Square size={12} fill="currentColor" />
-          </button>
-        )}
+      {isRecording && (
+        <button
+          type="button"
+          onClick={stopRecording}
+          className="h-9 px-3 rounded-xl bg-red-600 text-white border-b-3 border-red-800 text-xs font-extrabold animate-pulse inline-flex items-center gap-1.5 cursor-pointer"
+          title="Kaydı Durdur"
+        >
+          <Square size={12} fill="currentColor" />
+          <span>Durdur</span>
+        </button>
+      )}
 
-        {audioUrl && !isRecording && (
-          <>
-            <button 
-              onClick={playRecording}
-              className={`flex items-center justify-center w-7 h-7 rounded-full transition-colors ${isPlaying ? "bg-brand-100 text-brand-700" : "bg-green-100 text-green-700"}`}
-              title={isPlaying ? "Durdur" : "Kaydı Dinle"}
-            >
-              {isPlaying ? <Square size={12} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-            </button>
-            <button 
-              onClick={resetRecording}
-              className="flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition-colors"
-              title="Yeniden Kaydet"
-            >
-              <RotateCcw size={14} />
-            </button>
-          </>
-        )}
-      </div>
-      
-      {errorMsg && <span className="text-[10px] text-red-500 font-medium">{errorMsg}</span>}
-      
-      {/* Gizli ses oynatıcı */}
+      {audioUrl && !isRecording && (
+        <div className="inline-flex items-center gap-1">
+          <button
+            type="button"
+            onClick={playRecording}
+            className={`h-9 px-2.5 rounded-xl border-2 border-b-3 text-xs font-extrabold inline-flex items-center gap-1 transition-all cursor-pointer ${
+              isPlaying
+                ? "bg-[#0CA678] border-[#087F5B] text-white"
+                : "bg-white dark:bg-[var(--background)] border-[#0CA678] text-[#087F5B]"
+            }`}
+            title={isPlaying ? "Durdur" : "Kaydını Dinle (.wav)"}
+          >
+            {isPlaying ? (
+              <Square size={12} fill="currentColor" />
+            ) : (
+              <Play size={12} fill="currentColor" />
+            )}
+            <span>▶️ Sesim</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={resetRecording}
+            className="h-9 w-9 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+            title="Yeniden Kaydet"
+          >
+            <RotateCcw size={13} />
+          </button>
+        </div>
+      )}
+
+      {/* Yapay Zeka Telaffuz & Mahreç Koçu Modalı Butonu */}
+      {onOpenCoach && (
+        <button
+          type="button"
+          onClick={() => {
+            playClick();
+            onOpenCoach();
+          }}
+          className="h-9 px-2.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] hover:opacity-95 active:border-b-1 active:translate-y-0.5 transition-all inline-flex items-center gap-1 cursor-pointer"
+          title="Yapay Zeka Telaffuz ve Mahreç Analizi"
+        >
+          <Sparkles size={13} />
+          <span>Analiz</span>
+        </button>
+      )}
+
+      {errorMsg && (
+        <span className="text-[10px] text-red-600 font-bold">{errorMsg}</span>
+      )}
+
       {audioUrl && (
-        <audio 
-          ref={audioPlayerRef} 
-          src={audioUrl} 
-          onEnded={() => setIsPlaying(false)} 
-          className="hidden" 
+        <audio
+          ref={audioPlayerRef}
+          src={audioUrl}
+          onEnded={() => setIsPlaying(false)}
+          className="hidden"
         />
       )}
     </div>

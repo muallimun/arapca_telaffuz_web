@@ -2,20 +2,73 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DictionaryItem } from "@/types/data";
 
+function getTodayDateString(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function getYesterdayDateString(): string {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const y = yesterday.getFullYear();
+  const m = String(yesterday.getMonth() + 1).padStart(2, "0");
+  const d = String(yesterday.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function computeNextStreak(
+  currentStreak: number,
+  lastStudyDate: string
+): { streakDays: number; lastStudyDate: string } {
+  const today = getTodayDateString();
+  if (lastStudyDate === today) {
+    return {
+      streakDays: Math.max(1, currentStreak),
+      lastStudyDate: today,
+    };
+  }
+  const yesterday = getYesterdayDateString();
+  if (lastStudyDate === yesterday) {
+    return {
+      streakDays: Math.max(1, currentStreak) + 1,
+      lastStudyDate: today,
+    };
+  }
+  return {
+    streakDays: 1,
+    lastStudyDate: today,
+  };
+}
+
 interface UserState {
   favoriteDialogues: string[];
   completedDialogues: string[];
   favoriteWords: DictionaryItem[];
   learnedWords: string[];
-  weakWords: DictionaryItem[]; // YENİ: Zayıf kelimeler
-  
+  weakWords: DictionaryItem[];
+  pronunciationScores: number[];
+  studyMinutes: number;
+  streakDays: number;
+  lastStudyDate: string;
+  dailyGoalMinutes: number;
+
   toggleFavoriteDialogue: (id: string) => void;
   toggleCompletedDialogue: (id: string) => void;
   toggleFavoriteWord: (word: DictionaryItem) => void;
   toggleLearnedWord: (id: string) => void;
-  addWeakWord: (word: DictionaryItem) => void; // YENİ
-  removeWeakWord: (id: string) => void; // YENİ
-  
+  addWeakWord: (word: DictionaryItem) => void;
+  removeWeakWord: (id: string) => void;
+  recordPronunciationScore: (score: number) => void;
+  addStudyMinutes: (minutes: number) => void;
+  setDailyGoalMinutes: (minutes: number) => void;
+
+  exportProgress: () => string;
+  importProgress: (jsonData: string) => boolean;
+  resetProgress: () => void;
+
   isDialogueFavorite: (id: string) => boolean;
   isDialogueCompleted: (id: string) => boolean;
   isWordFavorite: (id: string) => boolean;
@@ -30,45 +83,196 @@ export const useUserStore = create<UserState>()(
       favoriteWords: [],
       learnedWords: [],
       weakWords: [],
+      pronunciationScores: [],
+      studyMinutes: 0,
+      streakDays: 1,
+      lastStudyDate: getTodayDateString(),
+      dailyGoalMinutes: 15,
 
-      toggleFavoriteDialogue: (id) => set((state) => ({
-        favoriteDialogues: state.favoriteDialogues.includes(id)
-          ? state.favoriteDialogues.filter((d) => d !== id)
-          : [...state.favoriteDialogues, id]
-      })),
+      toggleFavoriteDialogue: (id) =>
+        set((state) => ({
+          favoriteDialogues: state.favoriteDialogues.includes(id)
+            ? state.favoriteDialogues.filter((d) => d !== id)
+            : [...state.favoriteDialogues, id],
+        })),
 
-      toggleCompletedDialogue: (id) => set((state) => ({
-        completedDialogues: state.completedDialogues.includes(id)
-          ? state.completedDialogues.filter((d) => d !== id)
-          : [...state.completedDialogues, id]
-      })),
+      toggleCompletedDialogue: (id) =>
+        set((state) => {
+          const isCompleted = state.completedDialogues.includes(id);
+          const today = getTodayDateString();
+          const baseMinutes =
+            state.lastStudyDate === today ? state.studyMinutes : 0;
+          const streakUpdate = isCompleted
+            ? {
+                streakDays: state.streakDays,
+                lastStudyDate: state.lastStudyDate,
+              }
+            : computeNextStreak(state.streakDays, state.lastStudyDate);
+          return {
+            completedDialogues: isCompleted
+              ? state.completedDialogues.filter((d) => d !== id)
+              : [...state.completedDialogues, id],
+            studyMinutes: isCompleted ? state.studyMinutes : baseMinutes + 5,
+            ...streakUpdate,
+          };
+        }),
 
-      toggleFavoriteWord: (word) => set((state) => {
-        const exists = state.favoriteWords.find((w) => w.id === word.id);
-        return {
-          favoriteWords: exists
-            ? state.favoriteWords.filter((w) => w.id !== word.id)
-            : [...state.favoriteWords, word]
+      toggleFavoriteWord: (word) =>
+        set((state) => {
+          const exists = state.favoriteWords.find((w) => w.id === word.id);
+          return {
+            favoriteWords: exists
+              ? state.favoriteWords.filter((w) => w.id !== word.id)
+              : [...state.favoriteWords, word],
+          };
+        }),
+
+      toggleLearnedWord: (id) =>
+        set((state) => {
+          const isLearned = state.learnedWords.includes(id);
+          const today = getTodayDateString();
+          const baseMinutes =
+            state.lastStudyDate === today ? state.studyMinutes : 0;
+          const streakUpdate = isLearned
+            ? {
+                streakDays: state.streakDays,
+                lastStudyDate: state.lastStudyDate,
+              }
+            : computeNextStreak(state.streakDays, state.lastStudyDate);
+          return {
+            learnedWords: isLearned
+              ? state.learnedWords.filter((wId) => wId !== id)
+              : [...state.learnedWords, id],
+            studyMinutes: isLearned ? state.studyMinutes : baseMinutes + 1,
+            ...streakUpdate,
+          };
+        }),
+
+      addWeakWord: (word) =>
+        set((state) => {
+          const exists = state.weakWords.find((w) => w.id === word.id);
+          if (exists) return state;
+          return { weakWords: [...state.weakWords, word] };
+        }),
+
+      removeWeakWord: (id) =>
+        set((state) => ({
+          weakWords: state.weakWords.filter((w) => w.id !== id),
+        })),
+
+      recordPronunciationScore: (score) =>
+        set((state) => {
+          const today = getTodayDateString();
+          const baseMinutes =
+            state.lastStudyDate === today ? state.studyMinutes : 0;
+          const streakUpdate = computeNextStreak(
+            state.streakDays,
+            state.lastStudyDate
+          );
+          return {
+            pronunciationScores: [
+              ...state.pronunciationScores.slice(-49),
+              score,
+            ],
+            studyMinutes: baseMinutes + 1,
+            ...streakUpdate,
+          };
+        }),
+
+      addStudyMinutes: (minutes) =>
+        set((state) => {
+          const today = getTodayDateString();
+          const baseMinutes =
+            state.lastStudyDate === today ? state.studyMinutes : 0;
+          return {
+            studyMinutes: Math.max(0, baseMinutes + minutes),
+            ...computeNextStreak(state.streakDays, state.lastStudyDate),
+          };
+        }),
+
+      setDailyGoalMinutes: (minutes) =>
+        set(() => ({
+          dailyGoalMinutes: Math.max(5, Math.min(180, minutes)),
+        })),
+
+      exportProgress: () => {
+        const state = get();
+        const payload = {
+          version: 2,
+          exportedAt: new Date().toISOString(),
+          favoriteDialogues: state.favoriteDialogues,
+          completedDialogues: state.completedDialogues,
+          favoriteWords: state.favoriteWords,
+          learnedWords: state.learnedWords,
+          weakWords: state.weakWords,
+          pronunciationScores: state.pronunciationScores,
+          studyMinutes: state.studyMinutes,
+          streakDays: state.streakDays,
+          lastStudyDate: state.lastStudyDate,
+          dailyGoalMinutes: state.dailyGoalMinutes,
         };
-      }),
+        return JSON.stringify(payload, null, 2);
+      },
 
-      toggleLearnedWord: (id) => set((state) => ({
-        learnedWords: state.learnedWords.includes(id)
-          ? state.learnedWords.filter((wId) => wId !== id)
-          : [...state.learnedWords, id]
-      })),
+      importProgress: (jsonData: string) => {
+        try {
+          const parsed = JSON.parse(jsonData);
+          if (!parsed || typeof parsed !== "object") return false;
+          set((state) => ({
+            favoriteDialogues: Array.isArray(parsed.favoriteDialogues)
+              ? parsed.favoriteDialogues
+              : state.favoriteDialogues,
+            completedDialogues: Array.isArray(parsed.completedDialogues)
+              ? parsed.completedDialogues
+              : state.completedDialogues,
+            favoriteWords: Array.isArray(parsed.favoriteWords)
+              ? parsed.favoriteWords
+              : state.favoriteWords,
+            learnedWords: Array.isArray(parsed.learnedWords)
+              ? parsed.learnedWords
+              : state.learnedWords,
+            weakWords: Array.isArray(parsed.weakWords)
+              ? parsed.weakWords
+              : state.weakWords,
+            pronunciationScores: Array.isArray(parsed.pronunciationScores)
+              ? parsed.pronunciationScores
+              : state.pronunciationScores,
+            studyMinutes:
+              typeof parsed.studyMinutes === "number"
+                ? parsed.studyMinutes
+                : state.studyMinutes,
+            streakDays:
+              typeof parsed.streakDays === "number"
+                ? parsed.streakDays
+                : state.streakDays,
+            lastStudyDate:
+              typeof parsed.lastStudyDate === "string"
+                ? parsed.lastStudyDate
+                : state.lastStudyDate,
+            dailyGoalMinutes:
+              typeof parsed.dailyGoalMinutes === "number"
+                ? parsed.dailyGoalMinutes
+                : state.dailyGoalMinutes,
+          }));
+          return true;
+        } catch {
+          return false;
+        }
+      },
 
-      // YENİ: Zayıf kelime ekle (varsa tekrar ekleme)
-      addWeakWord: (word) => set((state) => {
-        const exists = state.weakWords.find(w => w.id === word.id);
-        if (exists) return state;
-        return { weakWords: [...state.weakWords, word] };
-      }),
-
-      // YENİ: Zayıf kelimeyi sil
-      removeWeakWord: (id) => set((state) => ({
-        weakWords: state.weakWords.filter(w => w.id !== id)
-      })),
+      resetProgress: () =>
+        set({
+          favoriteDialogues: [],
+          completedDialogues: [],
+          favoriteWords: [],
+          learnedWords: [],
+          weakWords: [],
+          pronunciationScores: [],
+          studyMinutes: 0,
+          streakDays: 1,
+          lastStudyDate: getTodayDateString(),
+          dailyGoalMinutes: 15,
+        }),
 
       isDialogueFavorite: (id) => get().favoriteDialogues.includes(id),
       isDialogueCompleted: (id) => get().completedDialogues.includes(id),

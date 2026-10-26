@@ -1,21 +1,40 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import WaveSurfer from "wavesurfer.js";
-import RecordPlugin from "wavesurfer.js/dist/plugins/record.esm.js";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useUserStore } from "@/store/userStore";
+import { useSettings, SpeechRate } from "@/store/settings";
 import { sozluk } from "@/lib/data";
-import { 
-  X, Play, Square, Mic, RotateCcw, Activity, Volume2, 
-  AlertTriangle, ShieldCheck, Loader2, Cpu, Info, Download, Award
+import { analyzeAndMatchWord } from "@/lib/dict";
+import { playTTS, playAudioElement, VoiceOption } from "@/lib/audio";
+import { HybridSpeechManager, SttEngineType } from "@/lib/speechManager";
+import {
+  X,
+  Play,
+  Square,
+  Mic,
+  RotateCcw,
+  Activity,
+  Volume2,
+  AlertTriangle,
+  Cpu,
+  Info,
+  Download,
+  Award,
+  CheckCircle2,
+  Gauge,
+  Target,
+  ArrowLeft,
+  TrendingUp,
 } from "lucide-react";
 
-import { 
-  buildProactiveMakhrajGuide, 
-  evaluateSentenceWords, 
-  ProactiveGuide, 
+import {
+  buildProactiveMakhrajGuide,
+  evaluateSentenceWords,
+  evaluateAdaptiveCoaching,
+  ProactiveGuide,
   SentenceEvaluationResult,
   WordEvaluationResult,
+  AdaptiveCoachingResult,
 } from "@/lib/arabicNlpEngine";
 
 import {
@@ -23,9 +42,8 @@ import {
   calculateRhythmMatch,
   calculateTempoScore,
   calculateOverallFluency,
-  audioBufferToWav,
-  resampleTo16kHz,
-  trimSilence,
+  start16kHzRecorder,
+  RecordingSession16kHz,
 } from "@/lib/audioAnalysis";
 import {
   playRecordStart,
@@ -33,9 +51,9 @@ import {
   playSuccess,
   playPartial,
   playError,
+  playClick,
 } from "@/lib/sfxManager";
 
-// YENİ: Form tipi tanımlandı
 export interface TargetForm {
   label: string;
   arabic: string;
@@ -44,562 +62,1112 @@ export interface TargetForm {
 interface Props {
   text: string;
   refAudioUrl?: string;
-  forms?: TargetForm[]; // YENİ: Sözlükten gelen formlar
+  forms?: TargetForm[];
+  voice?: VoiceOption;
+  level?: string;
   onClose: () => void;
 }
 
-export default function ShadowingModal({ text, refAudioUrl, forms, onClose }: Props) {
-  // Aktif hedef metin (form seçimine göre değişir)
+const DEFAULT_BARS = Array(48).fill(0.08);
+
+export default function ShadowingModal({
+  text,
+  refAudioUrl,
+  forms,
+  voice = "male",
+  level = "A1",
+  onClose,
+}: Props) {
   const [activeText, setActiveText] = useState<string>(text);
-  const [activeFormLabel, setActiveFormLabel] = useState<string>(forms?.[0]?.label || "");
+  const [activeFormLabel, setActiveFormLabel] = useState<string>(
+    forms?.[0]?.label || ""
+  );
+  const [isMicroDrill, setIsMicroDrill] = useState<boolean>(false);
+
+  const {
+    addWeakWord,
+    recordPronunciationScore,
+    pronunciationScores,
+  } = useUserStore();
+  const {
+    speechRate,
+    setSpeechRate,
+    sttEngine,
+    setSttEngine,
+    setPreferredLevel,
+  } = useSettings();
 
   const [isRecording, setIsRecording] = useState(false);
   const [userAudioUrl, setUserAudioUrl] = useState<string | null>(null);
+  const [userWavBlob, setUserWavBlob] = useState<Blob | null>(null);
   const [isPlayingRef, setIsPlayingRef] = useState(false);
   const [isPlayingUser, setIsPlayingUser] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [whisperStatus, setWhisperStatus] = useState<string>("");
-  const [engine, setEngine] = useState<"whisper" | "webspeech">("whisper");
-  const { addWeakWord } = useUserStore();
+  const [liveInterimText, setLiveInterimText] = useState<string>("");
+  const [usedEngineBadge, setUsedEngineBadge] = useState<SttEngineType | null>(
+    null
+  );
 
-  const [evaluation, setEvaluation] = useState<SentenceEvaluationResult | null>(null);
-  const [proactiveGuide, setProactiveGuide] = useState<ProactiveGuide | null>(null);
-  const [activeWordTip, setActiveWordTip] = useState<WordEvaluationResult | null>(null);
+  const [refBars, setRefBars] = useState<number[]>(DEFAULT_BARS);
+  const [userBars, setUserBars] = useState<number[]>(DEFAULT_BARS);
+
+  const [evaluation, setEvaluation] =
+    useState<SentenceEvaluationResult | null>(null);
+  const proactiveGuide: ProactiveGuide = useMemo(
+    () => buildProactiveMakhrajGuide(activeText),
+    [activeText]
+  );
+  const [activeWordTip, setActiveWordTip] =
+    useState<WordEvaluationResult | null>(null);
   const [rhythmScore, setRhythmScore] = useState<number | null>(null);
   const [tempoScore, setTempoScore] = useState<number | null>(null);
   const [fluencyScore, setFluencyScore] = useState<number | null>(null);
   const [refDuration, setRefDuration] = useState<number>(0);
   const [userDuration, setUserDuration] = useState<number>(0);
-  const [adaptiveMessage, setAdaptiveMessage] = useState<string | null>(null);
+  const [adaptiveResult, setAdaptiveResult] =
+    useState<AdaptiveCoachingResult | null>(null);
 
-  const refWaveformRef = useRef<HTMLDivElement>(null);
-  const userWaveformRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WaveSurfer | null>(null);
-  const wsUser = useRef<WaveSurfer | null>(null);
-  const recordPluginRef = useRef<RecordPlugin | null>(null);
-
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const hasSpokenRef = useRef<boolean>(false);
-
-  const workerRef = useRef<Worker | null>(null);
-  const recognitionRef = useRef<any>(null);
-  const transcriptRef = useRef<string>("");
-
-  const userAudioBufferRef = useRef<AudioBuffer | null>(null);
+  const speechManagerRef = useRef<HybridSpeechManager | null>(null);
+  const recordingSessionRef = useRef<RecordingSession16kHz | null>(null);
+  const userAudioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const refAudioBufferRef = useRef<AudioBuffer | null>(null);
 
-  // Kelime Telaffuzunu Dinle
-  const speakWord = (wordToSpeak: string) => {
-    if (!wordToSpeak || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(wordToSpeak);
-    utt.lang = 'ar-SA';
-    utt.rate = 0.85;
-    window.speechSynthesis.speak(utt);
+  // Unmount sırasında açık kalan mikrofon veya Web Speech kaydını KESİNLİKLE kapat
+  useEffect(() => {
+    speechManagerRef.current = new HybridSpeechManager();
+    return () => {
+      if (recordingSessionRef.current) {
+        recordingSessionRef.current.stop().catch(() => {});
+        recordingSessionRef.current = null;
+      }
+      speechManagerRef.current?.stopLiveWebSpeech();
+      speechManagerRef.current?.terminate();
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
+    };
+  }, [userAudioUrl]);
+
+  // Referans ses zarfını (48 bar) ve süresini hazırla (2 Aşamalı Fallback: 1. refAudioUrl -> 2. /api/tts -> 3. Math.sin tahmini)
+  useEffect(() => {
+    let cancelled = false;
+    const voiceGender =
+      voice === "K" || voice === "female" || voice === "ar-SA-ZariyahNeural"
+        ? "female"
+        : "male";
+    const ttsUrl = `/api/tts?text=${encodeURIComponent(
+      activeText
+    )}&voice=${voiceGender}`;
+    const shouldTryRefUrl = Boolean(
+      refAudioUrl && activeText === text && !isMicroDrill
+    );
+
+    const decodeFromUrl = async (url: string): Promise<AudioBuffer> => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Audio fetch failed: ${res.status}`);
+      const ab = await res.arrayBuffer();
+      if (ab.byteLength <= 128) throw new Error("Empty audio buffer");
+      const ctx = new AudioContext();
+      try {
+        return await ctx.decodeAudioData(ab);
+      } finally {
+        await ctx.close().catch(() => {});
+      }
+    };
+
+    (async () => {
+      let decodedBuffer: AudioBuffer | null = null;
+
+      // 1. Aşama: Varsa yerel/referans MP3 URL'sini dene
+      if (shouldTryRefUrl && refAudioUrl) {
+        try {
+          decodedBuffer = await decodeFromUrl(refAudioUrl);
+        } catch {
+          decodedBuffer = null;
+        }
+      }
+
+      // 2. Aşama: Referans MP3 yoksa veya başarısız olduysa ve çevrimiçiyse /api/tts dene
+      if (
+        !decodedBuffer &&
+        (typeof navigator === "undefined" || navigator.onLine !== false)
+      ) {
+        try {
+          decodedBuffer = await decodeFromUrl(ttsUrl);
+        } catch {
+          decodedBuffer = null;
+        }
+      }
+
+      if (cancelled) return;
+
+      if (decodedBuffer) {
+        refAudioBufferRef.current = decodedBuffer;
+        const env = extractAudioEnvelope(decodedBuffer, 48);
+        setRefBars(env.bars);
+        setRefDuration(decodedBuffer.duration);
+      } else {
+        // 3. Aşama: Çevrimdışıysa veya her iki istek de başarısızsa Math.sin tahmini
+        refAudioBufferRef.current = null;
+        const estimated = activeText.trim().split(/\s+/).length * 0.65 + 0.5;
+        setRefDuration(estimated);
+        setRefBars(
+          Array.from({ length: 48 }, (_, idx) =>
+            Math.max(0.12, Math.abs(Math.sin(idx * 0.35)) * 0.85)
+          )
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refAudioUrl, activeText, text, voice, isMicroDrill]);
+
+  // Doğal Sesle Kelimeyi Dinle
+  const speakWord = async (wordToSpeak: string) => {
+    if (!wordToSpeak) return;
+    playClick();
+    await playTTS(wordToSpeak, Math.min(1, speechRate), voice);
   };
 
-  // Form değiştirildiğinde
-  const handleFormChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedArabic = e.target.value;
-    const selectedLabel = forms?.find(f => f.arabic === selectedArabic)?.label || "";
-    setActiveText(selectedArabic);
-    setActiveFormLabel(selectedLabel);
-    // Sıfırla
+  const resetAnalysisState = () => {
     setEvaluation(null);
     setActiveWordTip(null);
     setRhythmScore(null);
     setTempoScore(null);
     setFluencyScore(null);
+    if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
     setUserAudioUrl(null);
-    setRefDuration(0);
+    setUserWavBlob(null);
+    setUserBars(DEFAULT_BARS);
+    setAdaptiveResult(null);
   };
 
-  useEffect(() => {
+  const handleFormChange = (selectedArabic: string) => {
+    playClick();
+    const selectedLabel =
+      forms?.find((f) => f.arabic === selectedArabic)?.label || "";
+    setActiveText(selectedArabic);
+    setActiveFormLabel(selectedLabel);
+    setIsMicroDrill(false);
+    resetAnalysisState();
+  };
+
+  // Odaklı Kelime Antrenmanı (Micro-Drill) Başlat / Cümleye Dön
+  const startMicroDrillOnWord = (targetWord: string) => {
+    if (!targetWord) return;
+    playClick();
+    setActiveText(targetWord);
+    setActiveFormLabel("Odaklı Kelime Antrenmanı (Micro-Drill)");
+    setIsMicroDrill(true);
+    resetAnalysisState();
+    speakWord(targetWord);
+  };
+
+  const returnToFullSentence = () => {
+    playClick();
     setActiveText(text);
-  }, [text]);
+    setActiveFormLabel(forms?.[0]?.label || "");
+    setIsMicroDrill(false);
+    resetAnalysisState();
+  };
 
-  useEffect(() => {
-    setProactiveGuide(buildProactiveMakhrajGuide(activeText));
-  }, [activeText]);
-
-  useEffect(() => {
-    if (refAudioUrl && activeText === text) {
-      (async () => {
+  const playReference = async () => {
+    playClick();
+    if (isPlayingRef) return;
+    setIsPlayingRef(true);
+    try {
+      if (refAudioUrl && activeText === text && !isMicroDrill) {
         try {
-          const res = await fetch(refAudioUrl);
-          const ab = await res.arrayBuffer();
-          const ctx = new AudioContext();
-          const buf = await ctx.decodeAudioData(ab);
-          refAudioBufferRef.current = buf;
-          setRefDuration(buf.duration);
-          ctx.close();
-        } catch (e) { console.error("Referans ses çözümlenemedi:", e); }
-      })();
-    } else {
-      const estimated = (activeText.trim().split(/\s+/).length * 0.65) + 0.5;
-      setRefDuration(estimated);
-    }
-  }, [refAudioUrl, activeText, text]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        workerRef.current = new Worker(new URL('../../lib/whisperWorker.js', import.meta.url), { type: 'module' });
-        workerRef.current.onerror = () => {
-          setWhisperStatus("");
-          setIsAnalyzing(false);
-          setEngine("webspeech");
-        };
-        workerRef.current.onmessage = (event) => {
-          const { status, data, text: recognizedText } = event.data;
-          if (status === 'progress') setWhisperStatus(`Model İndiriliyor: ${Math.round(data?.progress || 0)}%`);
-          else if (status === 'loading') setWhisperStatus("Yapay Zeka Yükleniyor...");
-          else if (status === 'transcribing') setWhisperStatus("Sesiniz Metne Dökülüyor...");
-          else if (status === 'completed') {
-            setWhisperStatus("");
-            processTranscription(recognizedText);
-          } else if (status === 'error') {
-            setWhisperStatus("");
-            setIsAnalyzing(false);
-          }
-        };
-      } catch (err) { console.error(err); }
-    }
-    return () => workerRef.current?.terminate();
-  }, [engine]);
-
-  // Referans WaveSurfer
-  useEffect(() => {
-    if (refWaveformRef.current) {
-      wsRef.current?.destroy();
-      if (refAudioUrl && activeText === text) {
-        wsRef.current = WaveSurfer.create({
-          container: refWaveformRef.current,
-          waveColor: "#93c5fd", progressColor: "#2563eb",
-          barWidth: 3, barGap: 2, barRadius: 3, height: 36, cursorWidth: 0,
-        });
-        wsRef.current.load(refAudioUrl);
-        wsRef.current.on("play", () => setIsPlayingRef(true));
-        wsRef.current.on("pause", () => setIsPlayingRef(false));
-        wsRef.current.on("finish", () => setIsPlayingRef(false));
+          await playAudioElement(refAudioUrl, speechRate);
+          return;
+        } catch {
+          // Yerel MP3 oynatılamazsa Neural TTS'e düş
+        }
       }
-    }
-  }, [refAudioUrl, activeText, text]);
-
-  useEffect(() => {
-    if (userWaveformRef.current && userAudioUrl) {
-      wsUser.current = WaveSurfer.create({
-        container: userWaveformRef.current,
-        waveColor: "#86efac", progressColor: "#16a34a",
-        barWidth: 3, barGap: 2, barRadius: 3, height: 36, cursorWidth: 0,
-      });
-      wsUser.current.load(userAudioUrl);
-      wsUser.current.on("play", () => setIsPlayingUser(true));
-      wsUser.current.on("pause", () => setIsPlayingUser(false));
-      wsUser.current.on("finish", () => setIsPlayingUser(false));
-    }
-    return () => wsUser.current?.destroy();
-  }, [userAudioUrl]);
-
-  const playReference = () => {
-    if (refAudioUrl && wsRef.current && activeText === text) wsRef.current.playPause();
-    else if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utt = new SpeechSynthesisUtterance(activeText);
-      utt.lang = 'ar-SA';
-      utt.onstart = () => setIsPlayingRef(true);
-      utt.onend = () => setIsPlayingRef(false);
-      window.speechSynthesis.speak(utt);
+      await playTTS(activeText, speechRate, voice);
+    } finally {
+      setIsPlayingRef(false);
     }
   };
 
-  const setupSilenceDetection = (stream: MediaStream) => {
-    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const analyser = audioCtx.createAnalyser();
-    const source = audioCtx.createMediaStreamSource(stream);
-    source.connect(analyser);
-    analyser.fftSize = 512;
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-    audioCtxRef.current = audioCtx;
-    hasSpokenRef.current = false;
-    let silentFrames = 0;
-    const startTime = Date.now();
-
-    const checkSilence = () => {
-      analyser.getByteFrequencyData(dataArray);
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-      if (sum / dataArray.length > 25) { 
-        hasSpokenRef.current = true; silentFrames = 0; 
-      } else if (hasSpokenRef.current) {
-        silentFrames++;
-        if (silentFrames > 120) { stopRecording(); return; }
-      } else if (Date.now() - startTime > 10000) { stopRecording(); return; }
-      animationFrameRef.current = requestAnimationFrame(checkSilence);
-    };
-    checkSilence();
+  const playUserWav = () => {
+    playClick();
+    if (!userAudioUrl || !userAudioPlayerRef.current) return;
+    if (isPlayingUser) {
+      userAudioPlayerRef.current.pause();
+      userAudioPlayerRef.current.currentTime = 0;
+      setIsPlayingUser(false);
+    } else {
+      userAudioPlayerRef.current.play();
+      setIsPlayingUser(true);
+    }
   };
 
   const startRecording = async () => {
-    if (!userWaveformRef.current) return;
-
-    // SFX: Kayıt başlangıç sesi + titreşim (mikrofona geri kaydedilmesin diye ÖNCE çal)
     playRecordStart();
-
-    setUserAudioUrl(null); setEvaluation(null); setActiveWordTip(null);
-    setWhisperStatus(""); setRhythmScore(null); setTempoScore(null);
-    setFluencyScore(null); setAdaptiveMessage(null); transcriptRef.current = "";
-
-    wsUser.current = WaveSurfer.create({
-      container: userWaveformRef.current,
-      waveColor: "#cbd5e1", progressColor: "#16a34a",
-      barWidth: 3, barGap: 2, barRadius: 3, height: 36, cursorWidth: 0,
-    });
-    const record = wsUser.current.registerPlugin(RecordPlugin.create({ scrollingWaveform: true }));
-    recordPluginRef.current = record;
-
-    record.on("record-end", async (blob) => {
-      setUserAudioUrl(URL.createObjectURL(blob));
-      setIsRecording(false);
-      setIsAnalyzing(true);
-	  // Mikrofon dinlemesini 120ms geciktir → bip sesi kayda düşmesin
-      await new Promise((resolve) => setTimeout(resolve, 120));
-    
-      try {
-        const arrayBuffer = await blob.arrayBuffer();
-        const decodeCtx = new AudioContext();
-        const audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
-        userAudioBufferRef.current = audioBuffer;
-        setUserDuration(audioBuffer.duration);
-        decodeCtx.close();
-
-        const userEnv = extractAudioEnvelope(audioBuffer);
-        if (refAudioBufferRef.current && activeText === text) {
-          const refEnv = extractAudioEnvelope(refAudioBufferRef.current);
-          setRhythmScore(calculateRhythmMatch(refEnv.bars, userEnv.bars));
-          setTempoScore(calculateTempoScore(refEnv.duration, userEnv.duration));
-        } else {
-          setTempoScore(calculateTempoScore(refDuration, userEnv.duration));
-        }
-
-        const resampled = await resampleTo16kHz(audioBuffer);
-        const trimmed = trimSilence(resampled);
-
-        if (engine === "whisper" && workerRef.current) {
-          workerRef.current.postMessage({ type: 'transcribe', audioData: trimmed, language: 'ar' });
-        } else if (engine === "webspeech") {
-          setTimeout(() => processTranscription(transcriptRef.current), 1000);
-        }
-      } catch (err) { setIsAnalyzing(false); }
-    });
+    if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
+    setUserAudioUrl(null);
+    setUserWavBlob(null);
+    setEvaluation(null);
+    setActiveWordTip(null);
+    setWhisperStatus("");
+    setLiveInterimText("");
+    setRhythmScore(null);
+    setTempoScore(null);
+    setFluencyScore(null);
+    setAdaptiveResult(null);
+    setUsedEngineBadge(null);
+    setUserBars(DEFAULT_BARS);
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
-      setupSilenceDetection(stream);
-      record.startRecording();
+      // Paralel olarak Web Speech API'yi başlat (hem hızlı motor hem de Whisper fallback için)
+      speechManagerRef.current?.startLiveWebSpeech({
+        onInterimTranscript: (interim) => {
+          setLiveInterimText(interim);
+        },
+      });
+
+      const session = await start16kHzRecorder({
+        onLiveRms: (_rms, liveHistory) => {
+          const padded = [
+            ...Array(Math.max(0, 48 - liveHistory.length)).fill(0.06),
+            ...liveHistory.slice(-48),
+          ];
+          setUserBars(padded);
+        },
+        onAutoSilenceStop: () => {
+          stopRecording();
+        },
+      });
+
+      recordingSessionRef.current = session;
       setIsRecording(true);
-
-      if (engine === "webspeech") {
-        const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (SR) {
-          const rec = new SR();
-          rec.lang = "ar-SA"; rec.continuous = true; rec.interimResults = false;
-          rec.onresult = (e: any) => {
-            let final = "";
-            for (let i = e.resultIndex; i < e.results.length; ++i) {
-              if (e.results[i].isFinal) final += e.results[i][0].transcript + " ";
-            }
-            if (final) transcriptRef.current += final;
-          };
-          rec.start(); recognitionRef.current = rec;
-        }
-      }
-    } catch (err) { alert("Mikrofon erişimi reddedildi!"); }
+    } catch {
+      setAdaptiveResult({
+        action: "keep_going",
+        message:
+          "Mikrofon izni alınamadı. Lütfen tarayıcı ayarlarından mikrofon izni verin.",
+      });
+    }
   };
 
-  const stopRecording = () => {
+  const stopRecording = async () => {
+    if (!recordingSessionRef.current) return;
+    const activeSession = recordingSessionRef.current;
+    recordingSessionRef.current = null;
+
     playRecordStop();
-    recordPluginRef.current?.stopRecording();
     setIsRecording(false);
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    if (mediaStreamRef.current) mediaStreamRef.current.getTracks().forEach(t => t.stop());
-    if (audioCtxRef.current) audioCtxRef.current.close();
-    if (recognitionRef.current) recognitionRef.current.stop();
+    setIsAnalyzing(true);
+
+    speechManagerRef.current?.stopLiveWebSpeech();
+
+    try {
+      const recorded = await activeSession.stop();
+      setUserAudioUrl(recorded.wavUrl);
+      setUserWavBlob(recorded.wavBlob);
+      setUserDuration(recorded.duration);
+      setUserBars(recorded.envelopeBars);
+
+      let computedRhythm = 0;
+      if (refAudioBufferRef.current) {
+        const refEnv = extractAudioEnvelope(refAudioBufferRef.current, 48);
+        computedRhythm = calculateRhythmMatch(
+          refEnv.bars,
+          recorded.envelopeBars
+        );
+        const computedTempo = calculateTempoScore(
+          refEnv.duration,
+          recorded.duration
+        );
+        setRhythmScore(computedRhythm);
+        setTempoScore(computedTempo);
+      } else {
+        const computedTempo = calculateTempoScore(
+          refDuration,
+          recorded.duration
+        );
+        computedRhythm = computedTempo;
+        setRhythmScore(computedTempo);
+        setTempoScore(computedTempo);
+      }
+
+      if (speechManagerRef.current) {
+        const { text: recognizedText, usedEngine } =
+          await speechManagerRef.current.transcribeHybrid(
+            sttEngine,
+            recorded.trimmedSamples,
+            {
+              onStatusChange: (st) => setWhisperStatus(st),
+            }
+          );
+        setUsedEngineBadge(usedEngine);
+        processTranscription(recognizedText, computedRhythm);
+      } else {
+        setIsAnalyzing(false);
+      }
+    } catch {
+      setIsAnalyzing(false);
+    }
   };
 
-  const processTranscription = (transcribedText: string) => {
+  const processTranscription = (
+    transcribedText: string,
+    currentRhythm: number
+  ) => {
     setIsAnalyzing(false);
-        if (!transcribedText || transcribedText.trim().length < 2) {
+    setWhisperStatus("");
+
+    if (!transcribedText || transcribedText.trim().length < 1) {
       setEvaluation({ words: [], overallScore: 0, isRootGuardTriggered: false });
       playError();
+      setAdaptiveResult({
+        action: "keep_going",
+        message:
+          "Ses algılanamadı. Lütfen mikrofona biraz daha yakın ve net bir şekilde Arapça cümleyi okuyun.",
+      });
       return;
     }
+
     const result = evaluateSentenceWords(activeText, transcribedText);
     setEvaluation(result);
-	    // SFX: Telaffuz puanına göre otomatik ses + titreşim
+    recordPronunciationScore(result.overallScore);
+
     if (result.overallScore >= 80) playSuccess();
     else if (result.overallScore >= 50) playPartial();
     else playError();
 
     const pronunciation = result.overallScore;
-    const rhythm = rhythmScore ?? tempoScore ?? 0;
-    const fluency = calculateOverallFluency(pronunciation, rhythm);
+    const fluency = calculateOverallFluency(pronunciation, currentRhythm);
     setFluencyScore(fluency);
 
-    if (fluency < 60) {
-      setAdaptiveMessage("💡 Zorlandınız. Yanlış kelimeye tıklayıp doğrusunu dinleyin, sonra yavaşça tekrar okuyun.");
-    } else if (fluency >= 85) {
-      setAdaptiveMessage("🌟 Harika gidiyorsunuz! Daha uzun ve zor cümleler denemenin tam zamanı.");
-    }
+    const firstErr = result.words.find((w) => w.status !== "correct");
+    const detectedMakhrajPair = result.words.find((w) => w.makhrajTip?.pair)
+      ?.makhrajTip?.pair;
 
-    const firstErr = result.words.find(w => w.status !== 'correct');
-	    // YENİ: Yanlış yapılan kelimeleri zayıf kelimeler listesine ekle
-    result.words.forEach(w => {
-      if (w.status === 'wrong' && w.targetWord && w.targetWord.length > 1) {
-        // Sözlükte bu kelimeyi bulmaya çalış (anlamı için)
-        const dictWord = sozluk.find(s => 
-          s.mufret?.includes(w.targetWord) || 
-          s.mazi?.includes(w.targetWord) ||
-          w.targetWord.includes(s.mufret || "___")
-        );
+    const updatedScores = [...pronunciationScores, result.overallScore];
+    const coaching = evaluateAdaptiveCoaching(
+      updatedScores,
+      level,
+      detectedMakhrajPair
+    );
+    setAdaptiveResult(coaching);
+
+    result.words.forEach((w) => {
+      if (w.status !== "correct" && w.targetWord && w.targetWord.length > 1) {
+        const morphMatch = analyzeAndMatchWord(w.targetWord);
+        const dictWord =
+          morphMatch?.item ||
+          sozluk.find(
+            (s) =>
+              s.mufret?.includes(w.targetWord) ||
+              s.mazi?.includes(w.targetWord) ||
+              w.targetWord.includes(s.mufret || "___")
+          );
         if (dictWord) {
           addWeakWord(dictWord);
         }
       }
     });
+
     if (firstErr) setActiveWordTip(firstErr);
+    else if (result.words.length > 0) setActiveWordTip(result.words[0]);
   };
 
   const downloadWav = () => {
-    if (!userAudioBufferRef.current) return;
-    const url = URL.createObjectURL(audioBufferToWav(userAudioBufferRef.current));
-    const a = document.createElement('a'); a.href = url; a.download = `telaffuz_${Date.now()}.wav`; a.click();
+    if (!userWavBlob) return;
+    playClick();
+    const url = URL.createObjectURL(userWavBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `arapca_telaffuz_16khz_${Date.now()}.wav`;
+    a.click();
   };
 
   const getWordColor = (status: string) => {
-    if (status === 'correct') return "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300";
-    if (status === 'warning') return "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300";
-    return "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/40 dark:text-red-300";
+    if (status === "correct")
+      return "bg-[#0CA678] text-white border-[#087F5B]";
+    if (status === "warning")
+      return "bg-amber-100 text-amber-900 border-amber-400";
+    return "bg-rose-100 text-rose-900 border-rose-400";
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-2 md:p-4 overflow-hidden">
-      <div className="bg-[var(--background)] w-full max-w-3xl h-[90vh] md:h-auto md:max-h-[85vh] rounded-2xl border border-[var(--border)] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-        
-        {/* HEADER */}
-        <div className="flex items-center justify-between p-3 md:p-4 border-b border-[var(--border)] bg-[var(--surface)] shrink-0">
-          <h2 className="text-base md:text-lg font-bold text-brand-700 flex items-center gap-2">
-            <Activity size={18} /> Gölgeleme & Mahreç Koçluğu
-          </h2>
-          <div className="flex items-center gap-2">
-            <div className="flex bg-[var(--border)] p-1 rounded-md text-[10px] md:text-xs font-bold">
-              <button onClick={() => setEngine("whisper")} className={`px-2 py-1 rounded ${engine === "whisper" ? "bg-white text-brand-700 shadow-sm" : "text-[var(--muted)]"}`}>Yapay Zeka</button>
-              <button onClick={() => setEngine("webspeech")} className={`px-2 py-1 rounded ${engine === "webspeech" ? "bg-white text-brand-700 shadow-sm" : "text-[var(--muted)]"}`}>Hızlı Motor</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-hidden">
+      <div className="bg-[#FDFBF7] dark:bg-[var(--background)] w-full max-w-3xl max-h-[92vh] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl flex flex-col overflow-hidden">
+        {/* ÜST BAŞLIK + ÇİFT MOTORLU STT SEÇİCİ */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3.5 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] dark:bg-[var(--surface)] shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[#0CA678] border-b-3 border-[#087F5B] text-white flex items-center justify-center shrink-0">
+              <Activity size={18} />
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors">
+            <div>
+              <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
+                Gölgeleme & 38 Çiftlik Mahreç Koçu
+              </h2>
+              <p className="text-[11px] font-medium text-[var(--muted)]">
+                16kHz DSP Dalga Formu · Kök Harf Kalkanı · Dinamik Kelime Hizalama
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Motor Seçici Yeşil Haplar */}
+            <div className="bg-white dark:bg-[var(--background)] p-1 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex text-[11px] font-bold">
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setSttEngine("whisper");
+                }}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  sttEngine === "whisper"
+                    ? "bg-[#0CA678] text-white font-semibold"
+                    : "text-[var(--muted)]"
+                }`}
+              >
+                Yapay Zeka (Whisper)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setSttEngine("webspeech");
+                }}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  sttEngine === "webspeech"
+                    ? "bg-[#0CA678] text-white font-semibold"
+                    : "text-[var(--muted)]"
+                }`}
+              >
+                Hızlı Tarayıcı Motoru
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                onClose();
+              }}
+              className="w-9 h-9 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 flex items-center justify-center text-[var(--muted)] hover:text-red-600 transition-colors cursor-pointer"
+              aria-label="Kapat"
+            >
               <X size={18} />
             </button>
           </div>
         </div>
 
-        {/* İÇERİK */}
-        <div className="p-3 md:p-5 space-y-3 overflow-y-auto overflow-x-hidden flex-1 custom-scrollbar">
-          
-          {/* FORM SEÇİCİ (Sadece sözlükten gelindiyse görünür) */}
-          {forms && forms.length > 0 && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-2 flex items-center justify-between">
-              <span className="text-xs font-bold text-blue-800 dark:text-blue-300">Hangi formu çalışacaksın?</span>
-              <select 
-                value={activeText}
-                onChange={handleFormChange}
-                className="bg-white dark:bg-black/50 border border-blue-300 dark:border-blue-700 rounded-lg px-3 py-1.5 text-sm font-bold text-brand-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {forms.map((f, i) => (
-                  <option key={i} value={f.arabic}>{f.label} ({f.arabic})</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* HEDEF METİN */}
-          <div className="text-center py-3 px-3 bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-brand-500 to-transparent opacity-50"></div>
-            {activeFormLabel && <span className="text-[10px] uppercase font-bold text-brand-500 mb-1 block">{activeFormLabel}</span>}
-            <h3 className="arabic text-2xl md:text-3xl font-bold text-brand-700 leading-[1.6]">{activeText}</h3>
-          </div>
-
-          {/* PROAKTİF REHBER ROZETLERİ */}
-          {proactiveGuide && (
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {proactiveGuide.categories.map((cat, i) => (
-                <span key={i} className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2 py-1 rounded-md shadow-sm dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300">{cat}</span>
-              ))}
-              {proactiveGuide.shaddaCount > 0 && <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold px-2 py-1 rounded-md">Şedde: {proactiveGuide.shaddaCount}</span>}
-              {proactiveGuide.medCount > 0 && <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold px-2 py-1 rounded-md">Med: {proactiveGuide.medCount}</span>}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* REFERANS SES */}
-            <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900 rounded-xl p-2.5 flex flex-col justify-between">
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-[10px] font-bold text-blue-700 uppercase flex items-center gap-1"><Volume2 size={12} /> Referans ({refDuration.toFixed(1)} sn)</span>
-              </div>
-              <button onClick={playReference} className="w-full flex items-center justify-center gap-1.5 text-xs font-bold bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-all shadow-sm">
-                {isPlayingRef ? <Square size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />} Dinle
-              </button>
-              {refAudioUrl && activeText === text ? <div ref={refWaveformRef} className="w-full mt-1.5" /> : <div className="text-[9px] text-blue-500 italic text-center py-1">TTS kullanılacak</div>}
-            </div>
-
-            {/* KULLANICI KAYIT */}
-            <div className={`rounded-xl p-2.5 flex flex-col justify-between transition-all duration-300 border ${isRecording ? 'bg-green-50/80 border-green-400 shadow-sm' : 'bg-[var(--surface)] border-[var(--border)]'}`}>
-              <div className="flex justify-between items-center mb-1.5">
-                <span className={`text-[10px] font-bold uppercase flex items-center gap-1 ${isRecording ? 'text-green-700' : 'text-[var(--muted)]'}`}>
-                  <Mic size={12} className={isRecording ? 'animate-pulse text-green-600' : ''} /> Sizin Sesiniz
+        {/* İÇERİK GÖVDESİ */}
+        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+          {/* MİKRO-DRILL (ODAKLI KELİME ANTRENMANI) GERİ DÖNÜŞ ŞERİDİ */}
+          {isMicroDrill && (
+            <div className="bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-4 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-[#4C28B5] dark:text-[#d0bfff]">
+                <Target size={16} className="text-[#6741D9] shrink-0" />
+                <span>
+                  Odaklı Kelime Antrenmanı: Seçtiğiniz kelimeyi tek başına
+                  pekiştiriyorsunuz
                 </span>
-                {userDuration > 0 && <span className="text-[9px] font-bold bg-green-100 text-green-800 px-1.5 py-0.5 rounded">{userDuration.toFixed(1)} sn</span>}
               </div>
-              <div className="relative h-[36px] flex items-center justify-center w-full mb-1.5">
-                {isRecording && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-red-500 text-white px-2 py-0.5 rounded-full text-[9px] font-bold animate-bounce shadow-md z-10 whitespace-nowrap">🎤 Konuşun...</div>}
-                <div ref={userWaveformRef} className="w-full" />
-              </div>
-              {userAudioUrl && !isRecording && (
-                <div className="flex gap-1.5">
-                  <button onClick={() => wsUser.current?.playPause()} className="flex-1 flex items-center justify-center gap-1 text-xs font-bold bg-green-600 text-white px-2 py-2 rounded-lg hover:bg-green-700 shadow-sm">
-                    {isPlayingUser ? <Square size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />} Dinle
-                  </button>
-                  <button onClick={downloadWav} className="flex items-center justify-center bg-slate-600 text-white px-2.5 py-2 rounded-lg hover:bg-slate-700 shadow-sm" title="İndir (.wav)">
-                    <Download size={12} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* WHISPER DURUMU */}
-          {whisperStatus && (
-            <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-brand-700 bg-brand-50 border border-brand-200 p-1.5 rounded-lg animate-pulse">
-              <Cpu className="animate-spin" size={12} /> {whisperStatus}
+              <button
+                type="button"
+                onClick={returnToFullSentence}
+                className="px-3 py-1.5 rounded-xl bg-[#6741D9] text-white text-xs font-extrabold border-b-3 border-[#5230B5] flex items-center gap-1 shrink-0 cursor-pointer"
+              >
+                <ArrowLeft size={14} />
+                <span>← Tüm Cümleye Dön</span>
+              </button>
             </div>
           )}
 
-          {/* ANALİZ SONUÇLARI */}
-          {evaluation && (
-            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              
-              {/* SKORLAR */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className={`rounded-xl p-2 text-center border ${evaluation.overallScore >= 80 ? 'bg-green-50 border-green-300' : evaluation.overallScore >= 60 ? 'bg-amber-50 border-amber-300' : 'bg-red-50 border-red-300'}`}>
-                  <span className="text-[9px] uppercase font-bold text-gray-600">Telaffuz</span>
-                  <div className="text-lg font-black text-[var(--foreground)]">%{evaluation.overallScore}</div>
-                </div>
-                <div className={`rounded-xl p-2 text-center border ${(rhythmScore ?? tempoScore ?? 0) >= 80 ? 'bg-blue-50 border-blue-300' : 'bg-amber-50 border-amber-300'}`}>
-                  <span className="text-[9px] uppercase font-bold text-gray-600">Ritim</span>
-                  <div className="text-lg font-black text-[var(--foreground)]">%{rhythmScore ?? tempoScore ?? 0}</div>
-                </div>
-                <div className={`rounded-xl p-2 text-center border ${(fluencyScore ?? 0) >= 80 ? 'bg-emerald-50 border-emerald-400' : (fluencyScore ?? 0) >= 60 ? 'bg-amber-50 border-amber-300' : 'bg-red-50 border-red-300'}`}>
-                  <span className="text-[9px] uppercase font-bold text-gray-600 flex items-center justify-center gap-1"><Award size={10}/> Akıcılık</span>
-                  <div className="text-lg font-black text-[var(--foreground)]">%{fluencyScore ?? 0}</div>
-                </div>
+          {/* FORM SEÇİCİ (Sözlükten gelindiyse ve micro-drill değilse) */}
+          {!isMicroDrill && forms && forms.length > 1 && (
+            <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 rounded-2xl px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="text-xs font-extrabold text-[var(--foreground)]">
+                Çalışılacak Kelime Formu:
+              </span>
+              <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] flex flex-wrap gap-1">
+                {forms.map((f, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleFormChange(f.arabic)}
+                    className={`px-3 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                      activeText === f.arabic
+                        ? "bg-[#0CA678] text-white font-semibold"
+                        : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </div>
+            </div>
+          )}
 
-              {/* ADAPTİF MESAJ */}
-              {adaptiveMessage && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2 text-xs flex items-start gap-1.5">
-                  <Info className="text-indigo-600 shrink-0 mt-0.5" size={14} />
-                  <span className="font-medium text-indigo-900">{adaptiveMessage}</span>
+          {/* HEDEF ARAPÇA METİN KARTI + PROAKTİF MAHREÇ VE HAREKE REHBERİ */}
+          <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-5 text-center space-y-3">
+            {activeFormLabel && (
+              <span className="text-[11px] uppercase font-extrabold text-[#087F5B]">
+                {activeFormLabel}
+              </span>
+            )}
+            <p
+              dir="rtl"
+              className="arabic text-3xl sm:text-4xl font-bold text-[var(--foreground)] leading-relaxed"
+            >
+              {activeText}
+            </p>
+
+            {/* Proaktif Mahreç ve Hareke Rehberi (Konuşma Öncesi) */}
+            {proactiveGuide && (
+              <div className="pt-2.5 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] space-y-2 text-left">
+                <div className="flex flex-wrap gap-1.5 justify-center">
+                  {proactiveGuide.details.map((det) => (
+                    <span
+                      key={det.id}
+                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997]"
+                    >
+                      {det.badge} ({det.lettersFound.join("، ")})
+                    </span>
+                  ))}
+                  {proactiveGuide.shaddaCount > 0 && (
+                    <span className="px-2.5 py-1 rounded-lg bg-[#F3F0FF] border border-[#6741D9]/40 text-[11px] font-extrabold text-[#6741D9]">
+                      ّ Şedde: {proactiveGuide.shaddaCount}
+                    </span>
+                  )}
+                  {proactiveGuide.medCount > 0 && (
+                    <span className="px-2.5 py-1 rounded-lg bg-white border border-[#E6D7BE] text-[11px] font-extrabold text-[var(--foreground)]">
+                      ⏳ Med Uzatması: {proactiveGuide.medCount}
+                    </span>
+                  )}
+                  {proactiveGuide.tanvinCount > 0 && (
+                    <span className="px-2.5 py-1 rounded-lg bg-white border border-[#E6D7BE] text-[11px] font-extrabold text-[var(--muted)]">
+                      ً Tenvin: {proactiveGuide.tanvinCount}
+                    </span>
+                  )}
                 </div>
-              )}
 
-              {/* KELİME ÇİPLERİ */}
-              <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-3 shadow-sm">
-                <span className="text-[10px] font-bold text-[var(--foreground)] block mb-2">Kelime Analizi (Dinlemek İçin Tıkla)</span>
-                {evaluation.isRootGuardTriggered && (
-                  <div className="mb-2 bg-red-50 border border-red-200 text-red-800 p-1.5 rounded text-[10px] font-bold flex items-center gap-1.5">
-                    <AlertTriangle size={12} /> Kök harf değişimi! Puan sınırlandırıldı.
+                {proactiveGuide.details.length > 0 && !evaluation && (
+                  <div className="bg-white/80 dark:bg-[var(--background)] rounded-xl p-2.5 border border-[#E6D7BE] space-y-1 text-[11px]">
+                    {proactiveGuide.details.map((det) => (
+                      <p
+                        key={det.id}
+                        className="text-[var(--muted)] font-semibold leading-snug"
+                      >
+                        <strong className="text-[var(--foreground)]">
+                          {det.badge}:
+                        </strong>{" "}
+                        {det.advice}
+                      </p>
+                    ))}
                   </div>
                 )}
-                <div className="flex flex-wrap gap-1.5" dir="rtl">
+              </div>
+            )}
+          </div>
+
+          {/* HIZ KONTROLÜ SATIRI (0.5x | 0.75x | 1.0x | 1.25x) */}
+          <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-extrabold text-[var(--foreground)] flex items-center gap-1.5">
+              <Gauge size={15} className="text-[#087F5B]" />
+              <span>Referans Dinleme Hızı:</span>
+            </span>
+            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] flex items-center gap-1">
+              {([0.5, 0.75, 1, 1.25] as SpeechRate[]).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setSpeechRate(r);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs tabular-nums transition-all cursor-pointer ${
+                    speechRate === r
+                      ? "bg-[#0CA678] text-white font-semibold"
+                      : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {r}x
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ÇİFT DALGA FORMU (DUAL RMS ENVELOPE): DOĞAL SES REFERANSI VE 16kHz KULLANICI KAYDI */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {/* Referans Doğal Ses */}
+            <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 rounded-2xl p-3.5 flex flex-col justify-between space-y-2.5">
+              <div className="flex items-center justify-between border-b border-dashed border-[#E2D3B8] pb-2">
+                <span className="text-xs font-extrabold text-[#087F5B] flex items-center gap-1.5">
+                  <Volume2 size={15} />
+                  <span>Doğal Referans Ses</span>
+                </span>
+                <span className="text-xs font-bold text-[var(--muted)] tabular-nums">
+                  {refDuration > 0 ? `${refDuration.toFixed(1)} sn` : "Hazır"}
+                </span>
+              </div>
+
+              {/* 48 Bar Referans Zarfı */}
+              <div className="w-full h-12 bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border border-[#E6D7BE] flex items-end justify-between gap-0.5">
+                {refBars.map((val, i) => (
+                  <div
+                    key={i}
+                    style={{ height: `${Math.max(12, Math.round(val * 100))}%` }}
+                    className={`flex-1 rounded-full transition-all ${
+                      isPlayingRef ? "bg-[#0CA678]" : "bg-[#0CA678]/65"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={playReference}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white text-xs font-bold border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {isPlayingRef ? (
+                  <Square size={13} fill="currentColor" />
+                ) : (
+                  <Play size={13} fill="currentColor" />
+                )}
+                <span>
+                  {isPlayingRef
+                    ? "Çalıyor..."
+                    : `Doğru Okunuşu Dinle (${speechRate}x)`}
+                </span>
+              </button>
+            </div>
+
+            {/* Öğrenci 16kHz Ses Kaydı */}
+            <div
+              className={`rounded-2xl border-2 border-b-4 p-3.5 flex flex-col justify-between space-y-2.5 transition-all ${
+                isRecording
+                  ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9]"
+                  : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
+              }`}
+            >
+              <div className="flex items-center justify-between border-b border-dashed border-[#E2D3B8] pb-2">
+                <span className="text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center gap-1.5">
+                  <Mic size={15} />
+                  <span>
+                    {isRecording
+                      ? "16kHz Kaydediliyor... Konuşun"
+                      : "Sizin Telaffuzunuz (16kHz WAV)"}
+                  </span>
+                </span>
+                {userDuration > 0 && (
+                  <span className="text-xs font-bold text-[var(--muted)] tabular-nums">
+                    {userDuration.toFixed(1)} sn
+                  </span>
+                )}
+              </div>
+
+              {/* 48 Bar Canlı RMS / Kullanıcı Zarfı */}
+              <div className="w-full h-12 bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border border-[#E6D7BE] flex items-end justify-between gap-0.5">
+                {userBars.map((val, i) => (
+                  <div
+                    key={i}
+                    style={{ height: `${Math.max(12, Math.round(val * 100))}%` }}
+                    className={`flex-1 rounded-full transition-all ${
+                      isRecording
+                        ? "bg-[#6741D9]"
+                        : userAudioUrl
+                        ? "bg-[#6741D9]/80"
+                        : "bg-[#E6D7BE]"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {userAudioUrl && !isRecording ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={playUserWav}
+                    className="flex-1 py-2.5 px-3 rounded-xl bg-[#6741D9] text-white text-xs font-bold border-b-3 border-[#5230B5] flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {isPlayingUser ? (
+                      <Square size={13} fill="currentColor" />
+                    ) : (
+                      <Play size={13} fill="currentColor" />
+                    )}
+                    <span>▶️ Sesim (.wav Dinle)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={downloadWav}
+                    className="py-2.5 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-[var(--foreground)] hover:border-[#0CA678] cursor-pointer"
+                    title="16-bit PCM .wav Ses Kaydını İndir"
+                  >
+                    <Download size={14} />
+                  </button>
+                  <audio
+                    ref={userAudioPlayerRef}
+                    src={userAudioUrl}
+                    onEnded={() => setIsPlayingUser(false)}
+                    className="hidden"
+                  />
+                </div>
+              ) : (
+                <div className="text-[11px] font-semibold text-center text-[var(--muted)] py-1.5 truncate">
+                  {isRecording
+                    ? liveInterimText
+                      ? `Algılanan: ${liveInterimText}`
+                      : "Cümleyi yüksek sesle okuyun..."
+                    : "Aşağıdaki 'Kayda Başla' butonuna basıp okuyun"}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ANALİZ DURUMU */}
+          {(whisperStatus || isAnalyzing) && (
+            <div className="bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] rounded-xl p-3 flex items-center justify-center gap-2 text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff]">
+              <Cpu size={16} className="animate-spin" />
+              <span>
+                {whisperStatus ||
+                  "Telaffuzunuz ve 38 mahreç çifti analiz ediliyor..."}
+              </span>
+            </div>
+          )}
+
+          {/* DEĞERLENDİRME SONUÇLARI */}
+          {evaluation && (
+            <div className="space-y-3.5">
+              {/* 3'lü Skor Özeti */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-3 text-center">
+                  <span className="text-[11px] font-bold text-[var(--muted)] block">
+                    Telaffuz Doğruluğu
+                  </span>
+                  <span className="text-xl sm:text-2xl font-black tabular-nums text-[#087F5B]">
+                    %{evaluation.overallScore}
+                  </span>
+                </div>
+
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-3 text-center">
+                  <span className="text-[11px] font-bold text-[var(--muted)] block">
+                    Ritim & Dalga Uyumu
+                  </span>
+                  <span className="text-xl sm:text-2xl font-black tabular-nums text-[#6741D9]">
+                    %{rhythmScore ?? tempoScore ?? 0}
+                  </span>
+                </div>
+
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-3 text-center">
+                  <span className="text-[11px] font-bold text-[var(--muted)] flex items-center justify-center gap-1">
+                    <Award size={12} className="text-amber-600" />
+                    Genel Akıcılık
+                  </span>
+                  <span className="text-xl sm:text-2xl font-black tabular-nums text-[var(--foreground)]">
+                    %{fluencyScore ?? evaluation.overallScore}
+                  </span>
+                </div>
+              </div>
+
+              {/* Adaptif Hız ve Seviye Koçluğu Kartı */}
+              {adaptiveResult && (
+                <div
+                  className={`border-2 border-b-4 rounded-2xl p-3.5 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
+                    adaptiveResult.action === "level_up"
+                      ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff]"
+                      : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--foreground)]"
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    {adaptiveResult.action === "level_up" ? (
+                      <TrendingUp
+                        size={18}
+                        className="text-[#6741D9] shrink-0 mt-0.5"
+                      />
+                    ) : (
+                      <Info
+                        size={16}
+                        className="text-[#0CA678] shrink-0 mt-0.5"
+                      />
+                    )}
+                    <div>
+                      <span
+                        className={`font-extrabold block mb-0.5 ${
+                          adaptiveResult.action === "level_up"
+                            ? "text-[#6741D9] dark:text-[#d0bfff]"
+                            : "text-[#087F5B]"
+                        }`}
+                      >
+                        {adaptiveResult.action === "level_up"
+                          ? `🏆 Seviye Atlama Önerisi: ${
+                              adaptiveResult.suggestedLevel || "Üst Kur"
+                            }`
+                          : "Adaptif Telaffuz Koçu"}{" "}
+                        {usedEngineBadge
+                          ? `(${
+                              usedEngineBadge === "whisper"
+                                ? "Whisper AI"
+                                : "Hızlı Motor"
+                            })`
+                          : ""}
+                      </span>
+                      <span>{adaptiveResult.message}</span>
+                    </div>
+                  </div>
+
+                  {adaptiveResult.action === "slow_down" &&
+                    adaptiveResult.suggestedSpeed &&
+                    speechRate !== adaptiveResult.suggestedSpeed && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setSpeechRate(adaptiveResult.suggestedSpeed!);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-[#0CA678] text-white font-extrabold border-b-3 border-[#087F5B] shrink-0 cursor-pointer"
+                      >
+                        Hızı {adaptiveResult.suggestedSpeed}x Yap
+                      </button>
+                    )}
+
+                  {adaptiveResult.action === "level_up" &&
+                    adaptiveResult.suggestedLevel && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          const next = adaptiveResult.suggestedLevel;
+                          if (next === "A2") setPreferredLevel("Orta");
+                          else if (next === "B1" || next === "B2" || next === "C1")
+                            setPreferredLevel("İleri");
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-[#6741D9] text-white font-extrabold border-b-3 border-[#5230B5] shrink-0 cursor-pointer"
+                      >
+                        ✨ {adaptiveResult.suggestedLevel} Kurunu Aktifleştir
+                      </button>
+                    )}
+                </div>
+              )}
+
+              {/* KELİME BAZLI RENKLENDİRME KARTI */}
+              <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-2">
+                  <span className="text-xs font-extrabold text-[var(--foreground)]">
+                    Kelime Bazlı Telaffuz Analizi (Mahreç detayı ve dinlemek için
+                    kelimeye tıklayın)
+                  </span>
+                  <div className="flex items-center gap-2 text-[10px] font-bold">
+                    <span className="text-[#087F5B]">● Doğru (≥%80)</span>
+                    <span className="text-amber-700">▲ Yakın (%60-79)</span>
+                    <span className="text-rose-700">✕ Hatalı (&lt;%60)</span>
+                  </div>
+                </div>
+
+                {evaluation.isRootGuardTriggered && (
+                  <div className="bg-rose-50 border-2 border-rose-300 text-rose-900 p-2.5 rounded-xl text-xs font-bold flex items-start gap-2">
+                    <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                    <span>
+                      {evaluation.rootGuardMessage ||
+                        "⚠️ Kök harf değişimi tespit edildi! Kelimenin anlamı değiştiği için puan sınırlandırıldı."}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2" dir="rtl">
                   {evaluation.words.map((word, idx) => (
-                    <button 
-                      key={idx} 
+                    <button
+                      key={idx}
+                      type="button"
                       onClick={() => {
                         setActiveWordTip(word);
                         if (word.targetWord) speakWord(word.targetWord);
                       }}
-                      className={`px-2 py-1 rounded-md border transition-all arabic text-lg font-bold ${getWordColor(word.status)} ${activeWordTip === word ? 'ring-2 ring-brand-500 scale-105 shadow-sm' : 'hover:scale-105'}`}
+                      className={`px-3.5 py-1.5 rounded-xl border-2 border-b-3 transition-all arabic text-xl font-bold cursor-pointer flex items-center gap-1.5 ${getWordColor(
+                        word.status
+                      )} ${
+                        activeWordTip === word
+                          ? "ring-2 ring-[#6741D9] -translate-y-0.5"
+                          : ""
+                      }`}
                     >
-                      {word.targetWord || word.spokenWord || "..."}
+                      <span>{word.targetWord || word.spokenWord || "..."}</span>
+                      <span
+                        dir="ltr"
+                        className="text-[10px] font-sans font-extrabold opacity-90"
+                      >
+                        %{word.score}
+                      </span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* MAHREÇ DETAY KARTI */}
-              {activeWordTip && activeWordTip.status !== 'correct' && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 shadow-sm text-xs">
-                  <h4 className="font-bold text-red-800 flex items-center gap-1.5 mb-2">
-                    <AlertTriangle size={14} /> Mahreç Analizi
-                  </h4>
-                  <div className="flex items-center gap-3 mb-2">
-                    <button 
-                      onClick={() => speakWord(activeWordTip.targetWord)}
-                      className="bg-white p-1.5 rounded-lg border border-red-100 flex flex-col items-center hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors cursor-pointer group"
-                      title="Doğru Telaffuzu Dinle"
+              {/* SEÇİLİ KELİME MAHREÇ, VEZİN/MED DETAYI VE MİKRO-DRILL BUTONU */}
+              {activeWordTip && (
+                <div className="bg-white dark:bg-[var(--background)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-4 space-y-2.5 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-2">
+                    <h4 className="font-extrabold text-[var(--foreground)] flex items-center gap-1.5">
+                      <AlertTriangle
+                        size={15}
+                        className={
+                          activeWordTip.status === "correct"
+                            ? "text-[#0CA678]"
+                            : "text-rose-600"
+                        }
+                      />
+                      <span>
+                        Kelime Mahreç, Kök İskeleti ve Vezin Karşılaştırması
+                      </span>
+                    </h4>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => speakWord(activeWordTip.targetWord)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0CA678] text-white font-bold border-b-2 border-[#087F5B] cursor-pointer"
+                      >
+                        <Volume2 size={12} />
+                        <span>Doğrusunu Dinle</span>
+                      </button>
+
+                      {!isMicroDrill &&
+                        activeWordTip.targetWord &&
+                        evaluation.words.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              startMicroDrillOnWord(activeWordTip.targetWord)
+                            }
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#6741D9] text-white font-bold border-b-2 border-[#5230B5] cursor-pointer"
+                          >
+                            <Target size={12} />
+                            <span>🎯 Sadece Bu Kelimeyi Çalış</span>
+                          </button>
+                        )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-center">
+                    <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] p-2.5 rounded-xl border border-[#E6D7BE]">
+                      <span className="text-[10px] font-bold text-[var(--muted)] block">
+                        Hedef Kelime
+                      </span>
+                      <span
+                        dir="rtl"
+                        className="arabic text-2xl font-bold text-[#087F5B]"
+                      >
+                        {activeWordTip.targetWord}
+                      </span>
+                    </div>
+                    <div
+                      className={`p-2.5 rounded-xl border ${
+                        activeWordTip.status === "correct"
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                          : "bg-rose-50 border-rose-200 text-rose-700"
+                      }`}
                     >
-                      <span className="text-[9px] text-gray-500 flex items-center gap-1">Hedef <Volume2 size={10} className="text-blue-500 opacity-50 group-hover:opacity-100 transition-opacity"/></span>
-                      <span className="arabic text-xl font-bold text-brand-700">{activeWordTip.targetWord}</span>
-                    </button>
-                    
-                    <span className="text-gray-400">➔</span>
-                    
-                    <div className="bg-white p-1.5 rounded-lg border border-red-100 flex flex-col items-center">
-                      <span className="text-[9px] text-gray-500">Duyulan</span>
-                      <span className="arabic text-xl font-bold text-red-600 break-all line-clamp-2 max-w-[180px] text-center" title={activeWordTip.spokenWord}>
+                      <span className="text-[10px] font-bold block">
+                        Algılanan Okunuş (%{activeWordTip.score})
+                      </span>
+                      <span dir="rtl" className="arabic text-2xl font-bold">
                         {activeWordTip.spokenWord || "Anlaşılamadı"}
                       </span>
                     </div>
                   </div>
-                  {activeWordTip.makhrajTip ? (
-                    <div className="bg-white p-2 rounded-lg border border-red-100">
-                      <p className="font-bold text-red-700 mb-0.5">{activeWordTip.makhrajTip.title}</p>
-                      <p className="text-gray-700 leading-snug">{activeWordTip.makhrajTip.pair} | {activeWordTip.makhrajTip.tip}</p>
+
+                  {activeWordTip.makhrajTip && (
+                    <div className="bg-[#F7EFE1] p-3 rounded-xl border border-[#E6D7BE]">
+                      <p className="font-extrabold text-[#087F5B] mb-0.5">
+                        🎯 {activeWordTip.makhrajTip.title} (
+                        {activeWordTip.makhrajTip.pair})
+                      </p>
+                      <p className="text-[var(--foreground)] font-medium leading-relaxed">
+                        {activeWordTip.makhrajTip.tip}
+                      </p>
                     </div>
-                  ) : activeWordTip.medVezinTip ? (
-                    <div className="bg-white p-2 rounded-lg border border-red-100">
-                      <p className="font-bold text-amber-700 mb-0.5">Vezin/Med Hatası</p>
-                      <p className="text-gray-700 leading-snug">{activeWordTip.medVezinTip}</p>
+                  )}
+
+                  {activeWordTip.rootGuardMessage && (
+                    <div className="bg-rose-50 p-3 rounded-xl border border-rose-200">
+                      <p className="font-extrabold text-rose-800 mb-0.5">
+                        🛡️ Kök Harf Kalkanı (Max %58 Sınırı)
+                      </p>
+                      <p className="text-rose-950 font-medium">
+                        {activeWordTip.rootGuardMessage}
+                      </p>
                     </div>
-                  ) : null}
+                  )}
+
+                  {activeWordTip.medVezinTip && (
+                    <div className="bg-amber-50 p-3 rounded-xl border border-amber-200">
+                      <p className="font-extrabold text-amber-800 mb-0.5">
+                        📐 Vezin / Uzatma (Med) Analizi
+                      </p>
+                      <p className="text-amber-950 font-medium">
+                        {activeWordTip.medVezinTip}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
         </div>
 
-        {/* KONTROLLER */}
-        <div className="p-3 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-center gap-2 shrink-0">
+        {/* ALT AKSİYON BAR */}
+        <div className="p-3.5 bg-[#F7EFE1] dark:bg-[var(--surface)] border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center justify-between gap-2.5 shrink-0">
           {!isRecording && !userAudioUrl && (
-            <button onClick={startRecording} className="flex items-center gap-1.5 bg-brand-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md hover:bg-brand-600 transition-all">
-              <Mic size={16} /> Kayda Başla
+            <button
+              type="button"
+              onClick={startRecording}
+              className="flex-1 py-3 px-6 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Mic size={18} />
+              <span>
+                {isMicroDrill
+                  ? "Seçili Kelimeyi Mikrofonla Kaydet (16kHz)"
+                  : "Mikrofonla Kayda Başla (16kHz)"}
+              </span>
             </button>
           )}
+
           {isRecording && (
-            <button onClick={stopRecording} className="flex items-center gap-1.5 bg-red-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md hover:bg-red-600 transition-all animate-pulse">
-              <Square size={16} fill="currentColor" /> Kaydı Bitir
+            <button
+              type="button"
+              onClick={stopRecording}
+              className="flex-1 py-3 px-6 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-2xl border-b-4 border-red-800 animate-pulse flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Square size={16} fill="currentColor" />
+              <span>Kaydı Tamamla ve Analiz Et</span>
             </button>
           )}
+
           {userAudioUrl && !isRecording && (
-            <button onClick={() => { setUserAudioUrl(null); setEvaluation(null); setActiveWordTip(null); setRhythmScore(null); setTempoScore(null); setFluencyScore(null); }} className="flex items-center gap-1.5 bg-slate-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:bg-slate-600 transition-all">
-              <RotateCcw size={16} /> Yeniden Dene
+            <button
+              type="button"
+              onClick={startRecording}
+              className="flex-1 py-3 px-5 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <RotateCcw size={16} />
+              <span>Tekrar Kaydet ve Dene</span>
             </button>
           )}
-          <button onClick={onClose} className="px-4 py-2.5 rounded-xl font-bold text-sm border border-[var(--border)] text-[var(--muted)] hover:bg-[var(--border)] transition-colors">
-            Kapat
+
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              onClose();
+            }}
+            className="py-3 px-5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-4 text-xs font-extrabold text-[var(--foreground)] hover:bg-[#FDFBF7] cursor-pointer"
+          >
+            <span className="inline-flex items-center gap-1">
+              <CheckCircle2 size={15} className="text-[#0CA678]" />
+              Tamamla
+            </span>
           </button>
         </div>
       </div>

@@ -1,0 +1,5 @@
+{
+  "name": "Arapça Telaffuz ve Diyalog Asistanı",
+  "description": "İnteraktif Arapça diyaloglar, yapay zeka destekli telaffuz & mahreç koçluğu, kelime alıştırmaları ve sesli sözlük platformu.",
+  "requestFramePermissions": ["microphone"]
+}

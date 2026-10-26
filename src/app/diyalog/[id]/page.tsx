@@ -2,461 +2,1380 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Play, Square, Volume2, ChevronLeft, ChevronRight, Settings2, Heart, CheckCircle2, BrainCircuit, Repeat, ListVideo, Mic, Infinity as InfinityIcon, SlidersHorizontal } from "lucide-react";
+import { useRouter, notFound } from "next/navigation";
+import {
+  Play,
+  Square,
+  Volume2,
+  ChevronLeft,
+  ChevronRight,
+  Heart,
+  CheckCircle2,
+  Mic,
+  BookOpen,
+  Users,
+  BookMarked,
+  Check,
+  Languages,
+  Gauge,
+  ListMusic,
+  Eye,
+  Sparkles,
+  Repeat,
+  Columns2,
+} from "lucide-react";
 import { diyaloglar, getDialogueById } from "@/lib/data";
-import { loadAudioManifest, hasMp3, getMp3Path } from "@/lib/audio";
+import {
+  loadAudioManifest,
+  hasMp3,
+  getMp3Path,
+  VoiceOption,
+  speakHybrid,
+} from "@/lib/audio";
 import { useAudioStore } from "@/store/audioStore";
-import { useSettings, ViewMode } from "@/store/settings";
+import { useSettings, SpeechRate, ViewMode } from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
+import { playClick, playSuccess } from "@/lib/sfxManager";
 import WordTooltip from "@/components/ui/WordTooltip";
+import ShadowingButton from "@/components/ui/ShadowingButton";
 import ShadowingModal from "@/components/ui/ShadowingModal";
-import { extractDialogueVocabulary } from "@/lib/dict";
-import { DialogueLine } from "@/types/data";
+import { getDialogueVocabulary, DialogueVocabularyEntry } from "@/lib/dict";
+import { DialogueLine, DictionaryItem } from "@/types/data";
 
-export default function DialogueDetailPage({ params }: { params: Promise<{ id: string }> }) {
+type StudyMode = "listen" | "shadowing" | "roleplay" | "vocabulary";
+type FlowMode = "single" | "sequential";
+
+export default function DialogueDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const resolvedParams = use(params);
+  const router = useRouter();
   const dialogue = getDialogueById(resolvedParams.id);
-  
+
   const { stop, playAudio, playTTS, playingLineId } = useAudioStore();
-  const { viewMode, setViewMode, showHareke, arabicFontSize, turkishFontSize, showShadowing } = useSettings();
-  
-  const { 
-    toggleFavoriteDialogue, isDialogueFavorite, 
-    toggleCompletedDialogue, isDialogueCompleted,
-    toggleFavoriteWord, isWordFavorite,
-    toggleLearnedWord, isWordLearned 
+  const {
+    viewMode,
+    setViewMode,
+    showHareke,
+    showShadowing,
+    arabicFontSize,
+    turkishFontSize,
+    speechRate,
+    setSpeechRate,
+  } = useSettings();
+
+  const {
+    toggleFavoriteDialogue,
+    isDialogueFavorite,
+    toggleCompletedDialogue,
+    isDialogueCompleted,
+    toggleFavoriteWord,
+    isWordFavorite,
+    toggleLearnedWord,
+    isWordLearned,
   } = useUserStore();
 
-  const [manifestLoaded, setManifestLoaded] = useState(false);
-  const [isPlayingAll, setIsPlayingAll] = useState(false);
-  const [rate, setRate] = useState(1);
-  const [imageError, setImageError] = useState(false); 
   const [mounted, setMounted] = useState(false);
-  
-  // --- YENİ TEKRAR VE AYAR PANELİ STATE'LERİ ---
-  const [lineRepeat, setLineRepeat] = useState<number | 'infinite'>(1); // Cümle tekrarı
-  const [dialogueRepeat, setDialogueRepeat] = useState<number>(1);      // Tüm diyalog tekrarı
-  const [currentDialogueLoop, setCurrentDialogueLoop] = useState<number>(1); // Kaçıncı turdayız
-  const [showSettings, setShowSettings] = useState(false); // Ayar paneli açık mı?
-  
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const [manifestLoaded, setManifestLoaded] = useState(false);
+  const [studyMode, setStudyMode] = useState<StudyMode>("listen");
+  const [clickToRevealTr, setClickToRevealTr] = useState<boolean>(false);
+  const [revealedTrLines, setRevealedTrLines] = useState<
+    Record<number, boolean>
+  >({});
+  const [revealedArLines, setRevealedArLines] = useState<
+    Record<number, boolean>
+  >({});
+  const [flowMode, setFlowMode] = useState<FlowMode>("single");
+  const [isPlayingAll, setIsPlayingAll] = useState(false);
+  const [loopingLineSira, setLoopingLineSira] = useState<number | null>(null);
+  const [autoShadowingFlow, setAutoShadowingFlow] = useState<boolean>(false);
+
+  // Rol Yapma (Roleplay) State
+  const [selectedRoleSpeaker, setSelectedRoleSpeaker] = useState<string>("");
+  const [roleplayActiveLine, setRoleplayActiveLine] = useState<number | null>(
+    null
+  );
 
   // Gölgeleme Modal State
-  const [shadowingTarget, setShadowingTarget] = useState<{ text: string, audioUrl?: string } | null>(null);
+  const [shadowingTarget, setShadowingTarget] = useState<{
+    text: string;
+    audioUrl?: string;
+    voice?: VoiceOption;
+    forms?: { label: string; arabic: string }[];
+  } | null>(null);
 
   const playToken = useRef(0);
   const lineRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   useEffect(() => {
     setMounted(true);
-    return () => stop();
+    loadAudioManifest().then(() => setManifestLoaded(true));
+    return () => {
+      playToken.current += 1;
+      stop();
+    };
   }, [stop]);
 
   useEffect(() => {
-    loadAudioManifest().then(() => setManifestLoaded(true));
-  }, []);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = (window.scrollY / totalHeight) * 100;
-      setScrollProgress(progress);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    if (dialogue && dialogue.satirlar.length > 0 && !selectedRoleSpeaker) {
+      setSelectedRoleSpeaker(dialogue.satirlar[0].konusmaci);
+    }
+  }, [dialogue, selectedRoleSpeaker]);
 
   useEffect(() => {
     if (playingLineId !== null && lineRefs.current[playingLineId]) {
-      lineRefs.current[playingLineId]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      lineRefs.current[playingLineId]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     }
   }, [playingLineId]);
 
   if (!dialogue) return notFound();
 
-  const currentIndex = diyaloglar.findIndex(d => d.id === dialogue.id);
+  const currentIndex = diyaloglar.findIndex((d) => d.id === dialogue.id);
   const prevDialogue = currentIndex > 0 ? diyaloglar[currentIndex - 1] : null;
-  const nextDialogue = currentIndex < diyaloglar.length - 1 ? diyaloglar[currentIndex + 1] : null;
+  const nextDialogue =
+    currentIndex < diyaloglar.length - 1 ? diyaloglar[currentIndex + 1] : null;
 
-  const vocabulary = extractDialogueVocabulary(dialogue.satirlar.map(s => s.arapca));
-  const speakers = Array.from(new Set(dialogue.satirlar.map((s) => s.konusmaci)));
-  const getSpeakerColor = (name: string) => `var(--speaker-${(speakers.indexOf(name) % 6) + 1})`;
-  const dialogueNumber = dialogue.id.replace("dlg_", "").padStart(3, "0");
-  const imagePath = `/gorseller/${dialogueNumber}.jpg`;
+  // 5 Kademeli Morfolojik Çözümleyici ile diyalogdaki TÜM kelimeleri (çekimli bağlamıyla) çıkar
+  const dialogueVocabEntries: DialogueVocabularyEntry[] = getDialogueVocabulary(
+    dialogue.id
+  );
 
-  const levelColors: Record<string, string> = { a1: "#7c9082", a2: "#a3b18a", b1: "#d4af37", b2: "#bc6c25" };
-  const badgeColor = levelColors[dialogue.seviye.toLowerCase()] || "#7c9082";
+  const speakers = Array.from(
+    new Set(dialogue.satirlar.map((s) => s.konusmaci))
+  );
+
+  // Konuşmacı cinsiyetine göre doğal ses seçimi (yalnızca K -> ZariyahNeural, E -> HamedNeural)
+  const getSpeakerVoice = (line: DialogueLine): VoiceOption => {
+    if (line.cinsiyet === "K") return "ar-SA-ZariyahNeural";
+    if (line.cinsiyet === "E") return "ar-SA-HamedNeural";
+    return "ar-SA-HamedNeural";
+  };
+
+  // Kapak görseli (001.jpg - 060.jpg)
+  const rawNum = parseInt(dialogue.id.replace("dlg_", ""), 10) || 1;
+  const mappedImgIndex = ((rawNum - 1) % 60) + 1;
+  const imagePath = `/gorseller/${String(mappedImgIndex).padStart(3, "0")}.jpg`;
 
   const removeTashkeel = (text: string) => text.replace(/[\u064B-\u0652]/g, "");
-  const getDisplayText = (text: string) => showHareke ? text : removeTashkeel(text);
+  const getDisplayText = (text: string) =>
+    !mounted || showHareke ? text : removeTashkeel(text);
 
-  // --- SESLENDİRME MANTIĞI ---
+  const prepareWordForms = (word: DictionaryItem) => {
+    const forms: { label: string; arabic: string }[] = [];
+    if (word.tur === "isim") {
+      if (word.mufret)
+        forms.push({
+          label: "Müfret (Tekil)",
+          arabic: word.mufret.split("/")[0].trim(),
+        });
+      if (word.cemi && word.cemi !== "-")
+        forms.push({
+          label: "Cemî (Çoğul)",
+          arabic: word.cemi.split("/")[0].trim(),
+        });
+    } else if (word.tur === "fiil") {
+      if (word.mazi)
+        forms.push({
+          label: "Mâzî (Geçmiş)",
+          arabic: word.mazi.split("/")[0].trim(),
+        });
+      if (word.muzari)
+        forms.push({
+          label: "Muzâri (Şimdiki)",
+          arabic: word.muzari.split("/")[0].trim(),
+        });
+      if (word.masdar)
+        forms.push({
+          label: "Masdar (İsim)",
+          arabic: word.masdar.split("/")[0].trim(),
+        });
+    }
+    return forms.length > 0 ? forms : undefined;
+  };
 
-  const playSentence = async (line: DialogueLine, autoAdvance = false, repeatOverride?: number) => {
+  // --- 3 KATMANLI DOĞAL SESLENDİRME + CÜMLE DÖNGÜSÜ (LOOP) + OTOMATİK GÖLGELEME ---
+  const playSentence = async (
+    line: DialogueLine,
+    autoAdvance = false,
+    isLooping = false
+  ): Promise<void> => {
     const currentToken = playToken.current;
-    const isMp3 = manifestLoaded && hasMp3(dialogue.id, line.sira);
-    
-    // Eğer sarmal döngüdeyse (repeatOverride verilmişse) onu kullan, yoksa state'i kullan
-    const effectiveRepeat = repeatOverride !== undefined ? repeatOverride : lineRepeat;
+    const isMp3 = hasMp3(dialogue.id, line.sira);
+    const lineAudioUrl = isMp3
+      ? getMp3Path(dialogue.id, line.sira)
+      : undefined;
+    const voice = getSpeakerVoice(line);
+    const rate = mounted ? speechRate : 1;
 
-    let i = 0;
-    while (true) {
-      if (playToken.current !== currentToken) return;
+    if (playToken.current !== currentToken) return;
 
-      try {
-        if (isMp3) await playAudio(getMp3Path(dialogue.id, line.sira), line.sira, rate);
-        else await playTTS(line.arapca, line.sira, rate);
-      } catch {
-        if (playToken.current !== currentToken) return;
-        await playTTS(line.arapca, line.sira, rate);
+    try {
+      if (isMp3 && lineAudioUrl) {
+        await playAudio(lineAudioUrl, line.sira, rate);
+      } else {
+        await playTTS(line.arapca, line.sira, rate, voice);
       }
-
-      i++;
-      if (effectiveRepeat !== 'infinite' && i >= effectiveRepeat) break;
-
+    } catch {
       if (playToken.current !== currentToken) return;
-      await new Promise(r => setTimeout(r, 300)); // Cümle arası es
+      await playTTS(line.arapca, line.sira, rate, voice);
     }
 
     if (playToken.current !== currentToken) return;
-    
-    if (autoAdvance) {
-      playNext(line.sira);
+
+    // 1. Eğer bu cümle için Tekrarla (Loop) aktifse 1 saniye bekleyip tekrar çal
+    if (isLooping) {
+      await new Promise((r) => setTimeout(r, 1000));
+      if (playToken.current !== currentToken) return;
+      await playSentence(line, false, true);
+      return;
     }
-  };
 
-  const playLine = (line: DialogueLine) => {
-    setShowSettings(false); // Tekli oynatmada paneli kapat
-    playToken.current += 1;
-    stop();
-    setIsPlayingAll(false); 
-    playSentence(line, false);
-  };
+    // 2. Eğer "2. Telaffuz & Mahreç Stüdyosu" modunda Otomatik Gölgeleme Akışı açıksa,
+    // cümle okunduktan hemen sonra otomatik olarak ShadowingModal'ı aç
+    if (studyMode === "shadowing" && autoShadowingFlow && !autoAdvance) {
+      stop();
+      setShadowingTarget({
+        text: line.arapca,
+        audioUrl: lineAudioUrl,
+        voice,
+      });
+      return;
+    }
 
-    const playNext = (currentSira: number) => {
-    // "if (!isPlayingAll) return;" satırını sildik. Çünkü playToken kontrolü zaten var.
-    
-    const nextLine = dialogue.satirlar.find((s) => s.sira === currentSira + 1);
-    
-    if (nextLine) {
-      playSentence(nextLine, true);
-    } else {
-      // Son cümle bitti, diyalog tekrar sayısını kontrol et
-      if (currentDialogueLoop < dialogueRepeat) {
-        setCurrentDialogueLoop(prev => prev + 1);
-        playSentence(dialogue.satirlar[0], true); // Başa dön
+    // 3. Sıralı Oynatma (Sequential) aktifse sonraki cümleye geç
+    if (autoAdvance) {
+      await new Promise((r) => setTimeout(r, 320));
+      if (playToken.current !== currentToken) return;
+      const nextLine = dialogue.satirlar.find((s) => s.sira === line.sira + 1);
+      if (nextLine) {
+        if (
+          studyMode === "roleplay" &&
+          nextLine.konusmaci === selectedRoleSpeaker
+        ) {
+          setIsPlayingAll(false);
+          setRoleplayActiveLine(nextLine.sira);
+          lineRefs.current[nextLine.sira]?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+          return;
+        }
+        await playSentence(nextLine, true, false);
       } else {
-        // Tüm turlar bitti, durdur
         setIsPlayingAll(false);
-        setCurrentDialogueLoop(1);
+        setRoleplayActiveLine(null);
         stop();
       }
     }
   };
 
-  const togglePlayAll = () => {
-    setShowSettings(false); // Oynatma başlarken paneli kapat
+  const handlePlayLine = (line: DialogueLine) => {
+    playClick();
+    playToken.current += 1;
+    stop();
+    setLoopingLineSira(null);
+    setRoleplayActiveLine(null);
+
+    if (flowMode === "sequential") {
+      setIsPlayingAll(true);
+      playSentence(line, true, false);
+    } else {
+      setIsPlayingAll(false);
+      playSentence(line, false, false);
+    }
+  };
+
+  const handleToggleLoopLine = (line: DialogueLine) => {
+    playClick();
+    playToken.current += 1;
+    stop();
+    setIsPlayingAll(false);
+    setRoleplayActiveLine(null);
+
+    if (loopingLineSira === line.sira) {
+      setLoopingLineSira(null);
+    } else {
+      setLoopingLineSira(line.sira);
+      playSentence(line, false, true);
+    }
+  };
+
+  const handleTogglePlayAll = () => {
+    playClick();
+    setLoopingLineSira(null);
     if (isPlayingAll) {
       playToken.current += 1;
       stop();
       setIsPlayingAll(false);
+      setRoleplayActiveLine(null);
     } else {
-      // Sarmal döngü başlarken eğer cümle tekrarı sonsuz ise, bunu 1 kabul et ve state'i güncelle
-      const effectiveRepeat = lineRepeat === 'infinite' ? 1 : lineRepeat;
-      if (lineRepeat === 'infinite') setLineRepeat(1);
-
+      setFlowMode("sequential");
       setIsPlayingAll(true);
-      setCurrentDialogueLoop(1);
       playToken.current += 1;
-      playSentence(dialogue.satirlar[0], true, effectiveRepeat);
+      const firstLine = dialogue.satirlar[0];
+      if (
+        studyMode === "roleplay" &&
+        firstLine.konusmaci === selectedRoleSpeaker
+      ) {
+        setIsPlayingAll(false);
+        setRoleplayActiveLine(firstLine.sira);
+      } else {
+        playSentence(firstLine, true, false);
+      }
     }
   };
 
-  // Sonsuzun kilitli olup olmadığını belirleyen durum
-  const isInfiniteDisabled = isPlayingAll || dialogueRepeat > 1;
+  const handleContinueRoleplayFromLine = (sira: number) => {
+    playClick();
+    setRoleplayActiveLine(null);
+    const nextLine = dialogue.satirlar.find((s) => s.sira === sira + 1);
+    if (!nextLine) {
+      playSuccess();
+      return;
+    }
+    if (nextLine.konusmaci === selectedRoleSpeaker) {
+      setRoleplayActiveLine(nextLine.sira);
+    } else {
+      setIsPlayingAll(true);
+      playToken.current += 1;
+      playSentence(nextLine, true, false);
+    }
+  };
+
+  const handleCompleteAndContinue = () => {
+    playClick();
+    if (!isDialogueCompleted(dialogue.id)) {
+      toggleCompletedDialogue(dialogue.id);
+      playSuccess();
+    }
+    if (nextDialogue) {
+      router.push(`/diyalog/${nextDialogue.id}`);
+    } else {
+      router.push("/kutuphane");
+    }
+  };
 
   const isFav = mounted ? isDialogueFavorite(dialogue.id) : false;
   const isCompleted = mounted ? isDialogueCompleted(dialogue.id) : false;
+  const currentViewMode: ViewMode = mounted ? viewMode : "stacked";
+  const shouldShowShadowingButton =
+    !mounted || showShadowing || studyMode === "shadowing";
+
+  const studyModes: {
+    id: StudyMode;
+    title: string;
+    subtitle: string;
+    icon: typeof BookOpen;
+  }[] = [
+    {
+      id: "listen",
+      title: "1. Dinle ve İncele",
+      subtitle: "Doğal seslendirme ve morfolojik kelime ipuçlarıyla oku",
+      icon: BookOpen,
+    },
+    {
+      id: "shadowing",
+      title: "2. Telaffuz & Mahreç Stüdyosu",
+      subtitle: "Cümleleri 16kHz kendi sesinle kaydet ve mahrecini ölç",
+      icon: Mic,
+    },
+    {
+      id: "roleplay",
+      title: "3. Karşılıklı Rol Yapma",
+      subtitle: "Konuşmacı seçerek diyalogda sırayla konuş",
+      icon: Users,
+    },
+    {
+      id: "vocabulary",
+      title: "4. Diyalog Sözlüğü",
+      subtitle: `Bu diyalogdaki tüm kelimeler (${dialogueVocabEntries.length} Kelime)`,
+      icon: BookMarked,
+    },
+  ];
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-4 pb-24 md:pb-20 relative">
-      
-      {/* GÖLGELEME MODALI */}
+    <div className="space-y-5">
+      {/* GÖLGELEME VE TELAFFUZ KOÇU MODALI */}
       {shadowingTarget && (
-        <ShadowingModal 
-          text={shadowingTarget.text} 
-          refAudioUrl={shadowingTarget.audioUrl} 
-          onClose={() => setShadowingTarget(null)} 
+        <ShadowingModal
+          text={shadowingTarget.text}
+          refAudioUrl={shadowingTarget.audioUrl}
+          voice={shadowingTarget.voice}
+          forms={shadowingTarget.forms}
+          level={dialogue.seviye}
+          onClose={() => setShadowingTarget(null)}
         />
       )}
 
-      <div className="fixed top-14 left-0 w-full h-1 bg-transparent z-50">
-        <div className="h-full bg-brand-500 transition-all duration-150 ease-out" style={{ width: `${scrollProgress}%` }} />
-      </div>
+      {/* BÖLÜM 1: DİYALOG KAPAK GÖRSELİ VE ÜST BAŞLIK KARTI */}
+      <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-stretch">
+          {/* Sol: Kapak Görseli (001.jpg - 060.jpg) */}
+          <div className="relative h-40 md:h-auto md:w-64 lg:w-72 shrink-0 bg-[#E6D7BE]">
+            <img
+              src={imagePath}
+              alt={dialogue.baslik_tr}
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent md:bg-gradient-to-r md:from-transparent md:to-black/25" />
+            <div className="absolute top-3 left-3 flex items-center gap-1.5">
+              <Link
+                href="/kutuphane"
+                onClick={() => playClick()}
+                className="h-9 px-3 rounded-xl bg-white/95 text-[#2b241d] font-extrabold text-xs border-2 border-[#E6D7BE] border-b-3 flex items-center gap-1 hover:bg-white transition-all"
+              >
+                <ChevronLeft size={16} />
+                <span>Kütüphane</span>
+              </Link>
+              <span className="h-9 px-3 rounded-xl bg-[#0CA678] text-white font-extrabold text-xs flex items-center">
+                {dialogue.seviye}
+              </span>
+            </div>
+          </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--surface)] border border-[var(--border)] hover:bg-[var(--border)] transition-colors shrink-0">
-            <ChevronLeft size={18} />
-          </Link>
-          <div>
-            <h1 className="arabic text-2xl md:text-3xl font-bold text-brand-700 dark:text-brand-500 leading-tight">{dialogue.baslik_ar}</h1>
-            <h2 className="text-sm text-[var(--muted)] font-medium">{dialogue.baslik_tr}</h2>
+          {/* Sağ: Başlık, İlerleme ve Hızlı Oynat */}
+          <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-3.5">
+              <div>
+                <span className="text-xs font-extrabold uppercase tracking-wider text-[#087F5B] dark:text-[#20c997]">
+                  Diyalog #{String(rawNum).padStart(2, "0")} ·{" "}
+                  {dialogue.satirlar.length} Cümle ·{" "}
+                  {dialogueVocabEntries.length} Kelime
+                </span>
+                <h1 className="text-xl sm:text-2xl font-extrabold text-[var(--foreground)] mt-0.5">
+                  {dialogue.baslik_tr}
+                </h1>
+              </div>
+
+              <p
+                dir="rtl"
+                className="arabic text-3xl sm:text-4xl font-bold text-[#087F5B] dark:text-[#20c997] leading-none"
+              >
+                {getDisplayText(dialogue.baslik_ar)}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleTogglePlayAll}
+                  className={`h-10 px-4 rounded-xl font-bold text-xs border-b-4 transition-all flex items-center gap-2 cursor-pointer ${
+                    isPlayingAll
+                      ? "bg-red-600 hover:bg-red-700 text-white border-red-800"
+                      : "bg-[#0CA678] hover:bg-[#099268] text-white border-[#087F5B]"
+                  }`}
+                >
+                  {isPlayingAll ? (
+                    <Square size={14} fill="currentColor" />
+                  ) : (
+                    <Play size={14} fill="currentColor" />
+                  )}
+                  <span>
+                    {isPlayingAll
+                      ? "Seslendirmeyi Durdur"
+                      : "Tüm Diyaloğu Doğal Sesle Dinle"}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    toggleFavoriteDialogue(dialogue.id);
+                  }}
+                  className={`h-10 px-3.5 rounded-xl border-2 border-b-4 text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    isFav
+                      ? "bg-red-50 border-red-300 text-red-600"
+                      : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-red-500"
+                  }`}
+                >
+                  <Heart size={15} fill={isFav ? "currentColor" : "none"} />
+                  <span>{isFav ? "Favorilerde" : "Favori"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    toggleCompletedDialogue(dialogue.id);
+                  }}
+                  className={`h-10 px-3.5 rounded-xl border-2 border-b-4 text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    isCompleted
+                      ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
+                      : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[#087F5B]"
+                  }`}
+                >
+                  <CheckCircle2 size={15} />
+                  <span>{isCompleted ? "Tamamlandı" : "Tamamla"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* BÖLÜM 2: 4'LÜ ÇALIŞMA MODU SEÇİCİ KARTLAR */}
+      <section aria-label="Diyalog Çalışma Modu">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {studyModes.map((mode) => {
+            const isSelected = studyMode === mode.id;
+            const Icon = mode.icon;
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setStudyMode(mode.id);
+                  setRoleplayActiveLine(null);
+                }}
+                className={`relative text-left p-4 rounded-2xl border-2 border-b-4 transition-all cursor-pointer ${
+                  isSelected
+                    ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] -translate-y-0.5"
+                    : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#cbb692]"
+                }`}
+              >
+                {isSelected && (
+                  <span className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#6741D9] text-white flex items-center justify-center">
+                    <Check size={14} strokeWidth={3} />
+                  </span>
+                )}
+                <div className="flex items-center gap-2.5 mb-1.5">
+                  <div
+                    className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 ${
+                      isSelected
+                        ? "bg-[#6741D9] border-[#5230B5] text-white"
+                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#087F5B]"
+                    }`}
+                  >
+                    <Icon size={16} strokeWidth={2.4} />
+                  </div>
+                  <span
+                    className={`text-sm font-extrabold pr-6 ${
+                      isSelected
+                        ? "text-[#4C28B5] dark:text-[#d0bfff]"
+                        : "text-[var(--foreground)]"
+                    }`}
+                  >
+                    {mode.title}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--muted)] leading-snug">
+                  {mode.subtitle}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* BÖLÜM 3: KESİK ÇİZGİLİ KONTROL SATIRLARI (GLOBAL AYARLARLA TAM SENKRON) */}
+      <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 sm:px-6 py-2">
+        {/* Satır 1: Görünüm ve Çeviri Modu (useSettings().viewMode + Tıkla-Gör) */}
+        <div className="py-3 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <Columns2 size={17} className="text-[#087F5B] shrink-0" />
+            <div>
+              <span className="text-sm font-extrabold text-[var(--foreground)]">
+                Diyalog Görünüm & Çeviri Modu
+              </span>
+              <span className="block text-[11px] text-[var(--muted)]">
+                Alt alta, iki sütun, sadece Arapça, sadece Türkçe (kendini sına)
+                veya tıkla-gör
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1 self-start lg:self-auto">
+            {(
+              [
+                { id: "stacked", label: "Alt Alta" },
+                { id: "columns", label: "İki Sütun" },
+                { id: "arabic-only", label: "Sadece Arapça" },
+                { id: "turkish-only", label: "Sadece Türkçe" },
+              ] as { id: ViewMode; label: string }[]
+            ).map((opt) => {
+              const active =
+                !clickToRevealTr && currentViewMode === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setClickToRevealTr(false);
+                    setViewMode(opt.id);
+                    setRevealedTrLines({});
+                    setRevealedArLines({});
+                  }}
+                  className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                    active
+                      ? "bg-[#0CA678] text-white font-semibold"
+                      : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setClickToRevealTr(true);
+                setViewMode("stacked");
+                setRevealedTrLines({});
+              }}
+              className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                clickToRevealTr
+                  ? "bg-[#0CA678] text-white font-semibold"
+                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+              }`}
+            >
+              Tıkla-Gör
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="rounded-md px-2.5 py-1 text-[10px] font-bold text-white shadow-sm" style={{ backgroundColor: badgeColor }}>
-            {dialogue.seviye}
-          </span>
-          <button onClick={() => toggleFavoriteDialogue(dialogue.id)} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isFav ? "bg-red-50 border-red-200 text-red-600" : "bg-[var(--surface)] border-[var(--border)] text-[var(--muted)] hover:border-red-200 hover:text-red-500"}`}>
-            <Heart size={14} fill={isFav ? "currentColor" : "none"} /> {isFav ? "FAVORİLERDE" : "FAVORİ"}
-          </button>
-          <button onClick={() => toggleCompletedDialogue(dialogue.id)} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isCompleted ? "bg-green-50 border-green-200 text-green-600" : "bg-[var(--surface)] border-[var(--border)] text-[var(--muted)] hover:border-green-200 hover:text-green-500"}`}>
-            <CheckCircle2 size={14} fill={isCompleted ? "currentColor" : "none"} /> {isCompleted ? "TAMAMLANDI" : "TAMAMLA"}
-          </button>
-        </div>
-      </div>
+        {/* Satır 2: Okuma Hızı */}
+        <div className="py-3 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <Gauge size={17} className="text-[#087F5B] shrink-0" />
+            <span className="text-sm font-extrabold text-[var(--foreground)]">
+              Okuma Hızı
+            </span>
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-300">
-        
-        <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-3">
-          
-          {/* ARAÇ ÇUBUĞU (SADELEŞTİRİLDİ) */}
-          <section className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-sm sticky top-16 z-40 backdrop-blur-xl">
-            <div className="flex flex-wrap items-center gap-2">
-              {/* OYNAT BUTONU */}
-              <button onClick={togglePlayAll} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold text-white shadow-sm transition-all ${isPlayingAll ? "bg-red-500 hover:bg-red-600" : "bg-brand-700 hover:bg-brand-600"}`}>
-                {isPlayingAll ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-                {isPlayingAll ? "DURDUR" : "TÜMÜNÜ OYNAT"}
+          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1 self-start sm:self-auto">
+            {(
+              [
+                { rate: 0.5, label: "Çok Yavaş (0.5x)" },
+                { rate: 0.75, label: "Yavaş (0.75x)" },
+                { rate: 1, label: "Normal (1.0x)" },
+                { rate: 1.25, label: "Hızlı (1.25x)" },
+              ] as { rate: SpeechRate; label: string }[]
+            ).map((item) => (
+              <button
+                key={item.rate}
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setSpeechRate(item.rate);
+                }}
+                className={`px-3 py-1.5 text-xs tabular-nums rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  (mounted ? speechRate : 1) === item.rate
+                    ? "bg-[#0CA678] text-white font-semibold"
+                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                }`}
+              >
+                {item.label}
               </button>
+            ))}
+          </div>
+        </div>
 
-              {/* GÖRÜNÜM SEÇİCİ */}
-              <div className="flex items-center gap-1 text-xs bg-[var(--background)] px-2 py-1.5 rounded-lg border border-[var(--border)]">
-                <Settings2 size={14} className="text-[var(--muted)]" />
-                <select value={viewMode} onChange={(e) => setViewMode(e.target.value as ViewMode)} className="bg-transparent font-semibold focus:outline-none cursor-pointer text-xs">
-                  <option value="stacked">Alt Alta</option>
-                  <option value="columns">Yan Yana</option>
-                  <option value="arabic-only">Sadece Arapça</option>
-                  <option value="turkish-only">Sadece Türkçe</option>
-                </select>
+        {/* Satır 3: Akış Modu */}
+        <div
+          className={`py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
+            studyMode === "roleplay" || studyMode === "shadowing"
+              ? "border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]"
+              : ""
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <ListMusic size={17} className="text-[#087F5B] shrink-0" />
+            <span className="text-sm font-extrabold text-[var(--foreground)]">
+              Akış Modu
+            </span>
+          </div>
+
+          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setFlowMode("single");
+                if (isPlayingAll) {
+                  playToken.current += 1;
+                  stop();
+                  setIsPlayingAll(false);
+                }
+              }}
+              className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                flowMode === "single"
+                  ? "bg-[#0CA678] text-white font-semibold"
+                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+              }`}
+            >
+              Cümle Cümle
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setFlowMode("sequential");
+                if (!isPlayingAll) handleTogglePlayAll();
+              }}
+              className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                flowMode === "sequential"
+                  ? "bg-[#0CA678] text-white font-semibold"
+                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+              }`}
+            >
+              Tüm Diyaloğu Sırayla Çal
+            </button>
+          </div>
+        </div>
+
+        {/* Satır 4A (Sadece 2. Telaffuz & Mahreç Stüdyosu Modunda): Otomatik Gölgeleme Akışı */}
+        {studyMode === "shadowing" && (
+          <div className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <Mic size={17} className="text-[#6741D9] shrink-0" />
+              <div>
+                <span className="text-sm font-extrabold text-[var(--foreground)]">
+                  🎙️ Otomatik Gölgeleme Akışı
+                </span>
+                <span className="block text-xs text-[var(--muted)]">
+                  Cümleyi doğal sesle dinledikten hemen sonra Gölgeleme &
+                  Mahreç Koçunu otomatik aç
+                </span>
               </div>
             </div>
 
-            {/* AYARLAR (HIZ & TEKRAR) POPOVER */}
-            <div className="relative">
+            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
               <button
-                onClick={() => setShowSettings(!showSettings)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${showSettings ? "bg-brand-50 border-brand-300 text-brand-700" : "bg-[var(--background)] border-[var(--border)] text-[var(--muted)] hover:text-brand-700 hover:border-brand-300"}`}
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setAutoShadowingFlow(true);
+                }}
+                className={`px-3.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                  autoShadowingFlow
+                    ? "bg-[#0CA678] text-white font-semibold"
+                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                }`}
               >
-                <SlidersHorizontal size={14} />
-                <span className="hidden sm:inline">Hız & Tekrar</span>
-                <span className="flex items-center gap-1.5 text-[10px] bg-brand-100 text-brand-700 px-1.5 py-0.5 rounded ml-1">
-                  <span>{rate}x</span>
-                  <span className="opacity-50">•</span>
-                  <span title="Cümle Tekrarı">C:{lineRepeat === 'infinite' ? '∞' : `x${lineRepeat}`}</span>
-                  <span className="opacity-50">•</span>
-                  <span title="Diyalog Tekrarı">D:x{dialogueRepeat}</span>
-                </span>
+                Açık (Otomatik Koç)
               </button>
-
-              {/* AÇILIR PANEL */}
-              {showSettings && (
-                <>
-                  {/* Dışarı tıklayınca kapatmak için görünmez arka plan */}
-                  <div className="fixed inset-0 z-[45]" onClick={() => setShowSettings(false)} />
-                  
-                  <div className="absolute right-0 top-full mt-2 w-[280px] p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl z-50 flex flex-col gap-4 animate-in fade-in zoom-in-95">
-                    {/* HIZ */}
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] font-bold text-[var(--muted)] uppercase flex items-center gap-1"><ActivityIcon /> Oynatma Hızı</span>
-                      <div className="flex items-center gap-1 bg-[var(--background)] rounded-md border border-[var(--border)] p-1">
-                        {[0.5, 0.75, 1, 1.25, 1.5].map((r) => (
-                          <button key={r} onClick={() => setRate(r)} className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${rate === r ? "bg-white shadow-sm text-brand-700" : "text-[var(--muted)] hover:bg-[var(--border)]"}`}>
-                            {r}x
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* CÜMLE TEKRARI */}
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] font-bold text-[var(--muted)] uppercase flex items-center gap-1"><ListVideo size={12} /> Cümle Tekrarı</span>
-                      <div className="flex items-center gap-1 bg-[var(--background)] rounded-md border border-[var(--border)] p-1">
-                        {[1, 2, 3, 5].map((num) => (
-                          <button key={num} onClick={() => setLineRepeat(num)} className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${lineRepeat === num ? "bg-brand-700 text-white shadow-sm" : "text-[var(--muted)] hover:bg-[var(--border)]"}`}>
-                            x{num}
-                          </button>
-                        ))}
-                        <button 
-                          disabled={isInfiniteDisabled}
-                          onClick={() => setLineRepeat('infinite')} 
-                          className={`flex-1 flex justify-center py-1.5 text-xs font-bold rounded transition-all ${lineRepeat === 'infinite' ? "bg-brand-700 text-white shadow-sm" : "text-[var(--muted)] hover:bg-[var(--border)]"} ${isInfiniteDisabled ? "opacity-30 cursor-not-allowed" : ""}`} 
-                          title={isInfiniteDisabled ? "Sarmal tekrarda sınırsız cümle kullanılamaz" : "Sınırsız Cümle Tekrarı"}
-                        >
-                          <InfinityIcon size={14} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* DİYALOG TEKRARI */}
-                    <div className={`space-y-1.5 transition-all duration-200 ${lineRepeat === 'infinite' ? 'opacity-40 pointer-events-none grayscale' : ''}`}>
-                      <span className="text-[10px] font-bold text-[var(--muted)] uppercase flex items-center gap-1">
-                        <Repeat size={12} /> Diyalog Tekrarı {lineRepeat === 'infinite' && <span className="text-[9px] text-red-500 ml-1">(Sınırsızda Pasif)</span>}
-                      </span>
-                      <div className="flex items-center gap-1 bg-[var(--background)] rounded-md border border-[var(--border)] p-1">
-                        {[1, 2, 3, 5].map((num) => (
-                          <button 
-                            key={num} 
-                            onClick={() => setDialogueRepeat(num)} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded transition-all ${dialogueRepeat === num ? "bg-amber-600 text-white shadow-sm" : "text-[var(--muted)] hover:bg-[var(--border)]"}`}
-                          >
-                            x{num}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setAutoShadowingFlow(false);
+                }}
+                className={`px-3.5 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                  !autoShadowingFlow
+                    ? "bg-[#0CA678] text-white font-semibold"
+                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                }`}
+              >
+                Manuel
+              </button>
             </div>
-          </section>
+          </div>
+        )}
 
-          {/* RTL DÜZELTMESİ: Columns modunda kapsayıcıya dir="rtl" veriyoruz ki ilk kart sağda başlasın */}
-          <div 
-            className={`space-y-1.5 ${viewMode === "columns" ? "grid grid-cols-1 md:grid-cols-2 md:gap-3 md:space-y-0" : ""}`}
-            dir={viewMode === "columns" ? "rtl" : "ltr"}
-          >
-            {dialogue.satirlar.map((line) => {
-              const isPlaying = playingLineId === line.sira;
-              const lineHasMp3 = manifestLoaded && hasMp3(dialogue.id, line.sira);
-              const lineAudioUrl = lineHasMp3 ? getMp3Path(dialogue.id, line.sira) : undefined;
+        {/* Satır 4B (Sadece Rol Yapma Modunda): Karakter Seçimi */}
+        {studyMode === "roleplay" && speakers.length > 0 && (
+          <div className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <Users size={17} className="text-[#6741D9] shrink-0" />
+              <div>
+                <span className="text-sm font-extrabold text-[var(--foreground)]">
+                  Canlandıracağınız Karakteri Seçin
+                </span>
+                <span className="block text-xs text-[var(--muted)]">
+                  Diğer karakteri uygulama doğal sesle okur, sıra size gelince
+                  bekler
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1 self-start sm:self-auto">
+              {speakers.map((sp, idx) => (
+                <button
+                  key={sp}
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setSelectedRoleSpeaker(sp);
+                    setRoleplayActiveLine(null);
+                  }}
+                  className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                    selectedRoleSpeaker === sp
+                      ? "bg-[#0CA678] text-white font-semibold"
+                      : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  Karakter {idx === 0 ? "A" : "B"}: {sp}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* BÖLÜM 4: DİYALOG SATIRLARI VEYA MORFOLOJİK DİYALOG SÖZLÜĞÜ */}
+      {studyMode === "vocabulary" ? (
+        <section className="space-y-4">
+          <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
+                Bu Diyalogdaki Tüm Kelimeler ({dialogueVocabEntries.length})
+              </h2>
+              <p className="text-xs font-medium text-[var(--muted)]">
+                Metindeki çekimli halleri, ek/zamir çözümlemesi ve sözlükteki
+                yalın kök formları
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStudyMode("listen")}
+              className="px-3.5 py-1.5 rounded-xl bg-[#0CA678] text-white text-xs font-bold border-b-3 border-[#087F5B] cursor-pointer"
+            >
+              ← Diyalog Metnine Dön
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {dialogueVocabEntries.map((entry: DialogueVocabularyEntry) => {
+              const word = entry.item;
+              const isFav = mounted && isWordFavorite(word.id);
+              const isLearned = mounted && isWordLearned(word.id);
+              const mainAr = word.mufret || word.mazi || "";
 
               return (
-                <div key={line.sira} ref={(el) => { lineRefs.current[line.sira] = el; }} className={`group rounded-lg border p-2.5 transition-all duration-200 scroll-mt-32 ${isPlaying ? "border-brand-500 bg-brand-50/60 shadow-sm ring-1 ring-brand-500/20" : "border-[var(--border)] bg-[var(--surface)] hover:border-brand-300"}`}>
-                  
-                  <div className="flex items-center justify-between mb-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: getSpeakerColor(line.konusmaci) }}>{line.konusmaci}</span>
-                      <span className="font-arabic text-[10px] opacity-40">({line.konusmaci_ar})</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      {showShadowing && (
-                        <button 
-                          onClick={() => setShadowingTarget({ text: line.arapca, audioUrl: lineAudioUrl })}
-                          className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
-                          title="Gölgeleme Antrenmanı Yap"
+                <div
+                  key={word.id}
+                  className={`rounded-2xl border-2 border-b-4 p-4 flex flex-col justify-between space-y-3 ${
+                    isLearned
+                      ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9]"
+                      : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
+                  }`}
+                >
+                  <div className="space-y-2.5">
+                    {/* Üst: Tür, Kök, Türkçe Anlam ve Yalın Arapça */}
+                    <div className="flex items-start justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-2.5">
+                      <div>
+                        <span className="text-[11px] font-bold uppercase text-[#087F5B]">
+                          {word.tur} · Kök: {word.kok}
+                        </span>
+                        <p className="text-sm font-extrabold text-[var(--foreground)] mt-1">
+                          {word.anlam_tr}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span
+                          dir="rtl"
+                          className="arabic text-3xl font-bold text-[#087F5B] dark:text-[#20c997] block leading-tight"
                         >
-                          <Mic size={12} />
-                        </button>
+                          {getDisplayText(mainAr)}
+                        </span>
+                        {entry.contextWord && (
+                          <span
+                            dir="rtl"
+                            className="arabic text-sm font-bold text-[#6741D9] block"
+                          >
+                            Metinde: {getDisplayText(entry.contextWord)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Morfolojik Çözümleme Notu */}
+                    {entry.morphologyNote && (
+                      <div className="bg-white dark:bg-[var(--background)] rounded-xl px-3 py-1.5 border border-[#E6D7BE] text-[11px] font-bold text-[#4C28B5] dark:text-[#d0bfff]">
+                        <span className="text-[10px] uppercase tracking-wider text-[#6741D9] block">
+                          Morfolojik Çözümleme (Cümle #{entry.lineNumber}):
+                        </span>
+                        <span dir="rtl" className="block text-right">
+                          {entry.morphologyNote}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Çoğul / Muzari / Masdar Bilgisi */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--muted)] border-b border-dashed border-[#E2D3B8] pb-2">
+                      {word.cemi && word.cemi !== "-" && (
+                        <span>
+                          Cemî:{" "}
+                          <strong className="arabic text-base text-[var(--foreground)]">
+                            {getDisplayText(word.cemi)}
+                          </strong>
+                        </span>
                       )}
-                      
-                      <button onClick={() => playLine(line)} className={`flex items-center justify-center w-6 h-6 rounded-full transition-all ${isPlaying ? "bg-brand-500 text-white scale-110" : "bg-[var(--background)] text-brand-600 hover:bg-brand-100"}`}>
-                        <Volume2 size={12} />
-                      </button>
+                      {word.muzari && (
+                        <span>
+                          Muzâri:{" "}
+                          <strong className="arabic text-base text-[var(--foreground)]">
+                            {getDisplayText(word.muzari)}
+                          </strong>
+                        </span>
+                      )}
+                      {word.masdar && (
+                        <span>
+                          Masdar:{" "}
+                          <strong className="arabic text-base text-[var(--foreground)]">
+                            {getDisplayText(word.masdar)}
+                          </strong>
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {viewMode !== "turkish-only" && (
-                    <p className={`arabic text-right ${isPlaying ? 'text-brand-800' : 'text-[var(--foreground)]'}`} style={{ fontSize: `${arabicFontSize}px`, lineHeight: 1.4 }}>
-                      <WordTooltip text={getDisplayText(line.arapca)} />
-                    </p>
-                  )}
-                  
-                  {/* Türkçe metinleri LTR (Soldan Sağa) ve Sola Yaslı yapıyoruz ki RTL kapsayıcı içinde bozulmasın */}
-                  {viewMode !== "arabic-only" && (
-                    <div className={`mt-1 ${viewMode === "columns" ? "pt-1" : "border-t border-[var(--border)] border-dashed pt-1.5"}`} dir="ltr">
-                      <p className="text-left text-[var(--muted)]" style={{ fontSize: `${turkishFontSize}px`, lineHeight: 1.3 }}>{line.turkce}</p>
-                    </div>
-                  )}
+                  {/* Alt Butonlar */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        speakHybrid({
+                          text: mainAr.split("/")[0].trim(),
+                          wordId: word.id,
+                          rate: speechRate,
+                        });
+                      }}
+                      className="flex-1 h-9 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Volume2 size={14} className="text-[#0CA678]" />
+                      <span>Dinle</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        const forms = prepareWordForms(word);
+                        setShadowingTarget({
+                          text:
+                            forms?.[0]?.arabic || mainAr.split("/")[0].trim(),
+                          forms,
+                        });
+                      }}
+                      className="h-9 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-xs font-extrabold text-[#6741D9] flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Mic size={14} />
+                      <span>Telaffuz</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        toggleFavoriteWord(word);
+                      }}
+                      title="Kelime Kartlarıma Ekle"
+                      className={`h-9 w-9 rounded-xl border-2 border-b-3 flex items-center justify-center cursor-pointer ${
+                        isFav
+                          ? "bg-red-50 border-red-300 text-red-600"
+                          : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)]"
+                      }`}
+                    >
+                      <Heart size={14} fill={isFav ? "currentColor" : "none"} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        toggleLearnedWord(word.id);
+                      }}
+                      title="Öğrendim Olarak İşaretle"
+                      className={`h-9 w-9 rounded-xl border-2 border-b-3 flex items-center justify-center cursor-pointer ${
+                        isLearned
+                          ? "bg-[#6741D9] border-[#5230B5] text-white"
+                          : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)]"
+                      }`}
+                    >
+                      <CheckCircle2 size={14} />
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
+        </section>
+      ) : (
+        <section className="space-y-3">
+          {dialogue.satirlar.map((line) => {
+            const isPlaying = playingLineId === line.sira;
+            const isLooping = loopingLineSira === line.sira;
+            const lineHasMp3 = hasMp3(dialogue.id, line.sira);
+            const lineAudioUrl = lineHasMp3
+              ? getMp3Path(dialogue.id, line.sira)
+              : undefined;
+            const speakerIdx = speakers.indexOf(line.konusmaci);
+            const isUserRoleTurn =
+              studyMode === "roleplay" &&
+              line.konusmaci === selectedRoleSpeaker;
+            const isWaitingUser = roleplayActiveLine === line.sira;
 
-          <div className="flex items-center justify-between mt-4">
-            {prevDialogue ? (
-              <Link href={`/diyalog/${prevDialogue.id}`} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border)] hover:border-brand-500 hover:shadow-md transition-all text-sm font-bold text-brand-700">
-                <ChevronLeft size={16} /> Önceki Diyalog
-              </Link>
-            ) : <div />}
-            {nextDialogue ? (
-              <Link href={`/diyalog/${nextDialogue.id}`} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border)] hover:border-brand-500 hover:shadow-md transition-all text-sm font-bold text-brand-700">
-                Sonraki Diyalog <ChevronRight size={16} />
-              </Link>
-            ) : <div />}
-          </div>
+            // Çeviri ve Arapça görünürlük durumları
+            const isTrRevealed =
+              (!clickToRevealTr &&
+                currentViewMode !== "arabic-only") ||
+              revealedTrLines[line.sira];
+            const isArRevealed =
+              currentViewMode !== "turkish-only" ||
+              revealedArLines[line.sira];
 
-          <div className="mt-2 p-4 bg-gradient-to-r from-brand-50 to-[var(--surface)] border border-brand-200 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-              <h3 className="text-base font-bold text-brand-700 mb-0.5">Öğrendiklerini pekiştir!</h3>
-              <p className="text-xs text-[var(--muted)]">Bu diyalogdaki kelimelerle test çöz veya kart çevir.</p>
-            </div>
-            <Link href="/alistirmalar" className="flex items-center gap-2 bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-brand-600 transition-all whitespace-nowrap">
-              <BrainCircuit size={16} /> Alıştırma Merkezi
-            </Link>
-          </div>
+            const voiceForLine = getSpeakerVoice(line);
 
-        </div>
+            return (
+              <div
+                key={line.sira}
+                ref={(el) => {
+                  lineRefs.current[line.sira] = el;
+                }}
+                className={`rounded-2xl border-2 border-b-4 p-4 sm:p-5 transition-all scroll-mt-28 ${
+                  isPlaying || isWaitingUser || isLooping
+                    ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] shadow-md"
+                    : isUserRoleTurn
+                    ? "bg-[#FDFBF7] dark:bg-[var(--background)] border-[#0CA678]"
+                    : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
+                }`}
+              >
+                {/* Üst Satır: Konuşmacı Rozeti + Seslendirme, Döngü (Loop) & Gölgeleme Butonları */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-3 py-1 rounded-xl text-xs font-extrabold border-b-2 ${
+                        speakerIdx % 2 === 0
+                          ? "bg-[#0CA678] text-white border-[#087F5B]"
+                          : "bg-[#6741D9] text-white border-[#5230B5]"
+                      }`}
+                    >
+                      {line.konusmaci}
+                    </span>
+                    <span
+                      dir="rtl"
+                      className="arabic text-base font-bold text-[var(--muted)]"
+                    >
+                      ({line.konusmaci_ar})
+                    </span>
+                    {isUserRoleTurn && (
+                      <span className="text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997]">
+                        · Sizin Rolünüz
+                      </span>
+                    )}
+                  </div>
 
-        <div className="hidden lg:block lg:col-span-4 xl:col-span-3 relative">
-          <div className="sticky top-24 space-y-3">
-            {!imageError && (
-              <div className="rounded-xl overflow-hidden border border-[var(--border)] shadow-sm bg-[var(--surface)] p-1">
-                <img src={imagePath} alt={dialogue.baslik_tr} className="w-full h-auto rounded-lg object-cover" onError={() => setImageError(true)} />
-              </div>
-            )}
+                  {/* Aksiyon Kontrolleri */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {/* Doğal Ses / MP3 Dinleme Butonu */}
+                    <button
+                      type="button"
+                      onClick={() => handlePlayLine(line)}
+                      className={`h-9 px-3 rounded-xl border-2 border-b-3 text-xs font-extrabold inline-flex items-center gap-1.5 transition-all cursor-pointer ${
+                        isPlaying && !isLooping
+                          ? "bg-[#0CA678] border-[#087F5B] text-white"
+                          : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#0CA678]"
+                      }`}
+                      title="Doğal Sesle Dinle"
+                    >
+                      <Volume2
+                        size={14}
+                        className={
+                          isPlaying && !isLooping
+                            ? "text-white"
+                            : "text-[#0CA678]"
+                        }
+                      />
+                      <span>
+                        {isPlaying && !isLooping ? "Çalıyor" : "Dinle"}
+                      </span>
+                    </button>
 
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-sm">
-              <h3 className="text-xs font-bold mb-3 flex items-center justify-between uppercase tracking-wider text-[var(--muted)] border-b border-[var(--border)] pb-2">
-                <span>Kelime Hazinesi</span>
-                <span className="bg-brand-100 text-brand-700 text-[10px] px-1.5 py-0.5 rounded">{vocabulary.length}</span>
-              </h3>
-              <div className="max-h-[350px] overflow-y-auto pr-1 space-y-2 custom-scrollbar">
-                {vocabulary.slice(0, 30).map(item => {
-                  const isWordFav = mounted ? isWordFavorite(item.id) : false;
-                  const isWordMastered = mounted ? isWordLearned(item.id) : false; 
-                  
-                  return (
-                    <div key={item.id} className="flex justify-between items-center border-b border-[var(--border)] pb-2 last:border-0 group">
-                      <div className="flex flex-col items-end text-right w-full pr-2">
-                        <span className="arabic text-xl font-bold text-brand-700 leading-none mb-1">{item.mufret || item.mazi}</span>
-                        <span className="text-[10px] text-[var(--muted)] leading-tight">{item.anlam_tr}</span>
+                    {/* 🔁 Tekrarla (Loop) Butonu */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleLoopLine(line)}
+                      className={`h-9 px-2.5 rounded-xl border-2 border-b-3 text-xs font-extrabold inline-flex items-center gap-1 transition-all cursor-pointer ${
+                        isLooping
+                          ? "bg-[#6741D9] border-[#5230B5] text-white"
+                          : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[#6741D9] hover:border-[#6741D9]"
+                      }`}
+                      title="Bu cümleyi durdurana kadar 1 sn arayla döngüde çal"
+                    >
+                      <Repeat size={13} className={isLooping ? "animate-spin" : ""} />
+                      <span className="hidden sm:inline">
+                        {isLooping ? "Döngüde" : "Tekrarla"}
+                      </span>
+                    </button>
+
+                    {/* Gölgeleme & Ses Kaydı Butonu (showShadowing ayarına bağlı) */}
+                    {shouldShowShadowingButton && (
+                      <div
+                        onClick={() => {
+                          if (currentViewMode === "turkish-only") {
+                            setRevealedArLines((prev) => ({
+                              ...prev,
+                              [line.sira]: true,
+                            }));
+                          }
+                        }}
+                      >
+                        <ShadowingButton
+                          text={line.arapca}
+                          onOpenCoach={() => {
+                            if (currentViewMode === "turkish-only") {
+                              setRevealedArLines((prev) => ({
+                                ...prev,
+                                [line.sira]: true,
+                              }));
+                            }
+                            setShadowingTarget({
+                              text: line.arapca,
+                              audioUrl: lineAudioUrl,
+                              voice: voiceForLine,
+                            });
+                          }}
+                        />
                       </div>
-                      <div className="flex flex-col gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => toggleFavoriteWord(item)} 
-                          className={`p-1 rounded-md transition-colors ${isWordFav ? "text-red-500 bg-red-50" : "text-[var(--muted)] hover:text-red-400 hover:bg-red-50"}`}
-                        >
-                          <Heart size={14} fill={isWordFav ? "currentColor" : "none"} />
-                        </button>
-                        <button 
-                          onClick={() => toggleLearnedWord(item.id)}
-                          className={`p-1 rounded-md transition-colors ${isWordMastered ? "text-green-500 bg-green-50" : "text-[var(--muted)] hover:text-green-500 hover:bg-green-50"}`}
-                        >
-                          <CheckCircle2 size={14} fill={isWordMastered ? "currentColor" : "none"} />
-                        </button>
-                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* CÜMLE İÇERİĞİ: columns (İki Sütun) vs stacked / arabic-only / turkish-only */}
+                {currentViewMode === "columns" && !clickToRevealTr ? (
+                  <div className="md:grid md:grid-cols-2 md:gap-6 items-center space-y-3 md:space-y-0">
+                    {/* Sol Sütun (Masaüstü): Türkçe Çeviri */}
+                    <div
+                      dir="ltr"
+                      className="order-2 md:order-1 bg-white/70 dark:bg-[var(--background)]/60 rounded-xl p-3 border border-[#E6D7BE] dark:border-[var(--border)]"
+                    >
+                      <p
+                        style={{ fontSize: `${turkishFontSize}px` }}
+                        className="text-[var(--muted)] font-semibold leading-snug"
+                      >
+                        {line.turkce}
+                      </p>
                     </div>
-                  );
-                })}
+
+                    {/* Sağ Sütun (Masaüstü): Harekeli Arapça */}
+                    <div
+                      dir="rtl"
+                      style={{ fontSize: `${arabicFontSize}px` }}
+                      className="order-1 md:order-2 arabic font-bold text-[var(--foreground)] text-right leading-[1.9] py-1"
+                    >
+                      <WordTooltip text={getDisplayText(line.arapca)} />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Sadece Türkçe (Kendini Sına Modu) ise Önce Türkçe Gösterilir */}
+                    {currentViewMode === "turkish-only" && (
+                      <div
+                        dir="ltr"
+                        className="mb-3 pb-2.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]"
+                      >
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#6741D9] block mb-0.5">
+                          Türkçe Anlamdan Arapçasını Hatırlayın:
+                        </span>
+                        <p
+                          style={{ fontSize: `${turkishFontSize}px` }}
+                          className="text-[var(--foreground)] font-bold leading-snug"
+                        >
+                          “{line.turkce}”
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Orta Satır: Harekeli Arapça Cümle (Arakom Fontu + Morfolojik WordTooltip) */}
+                    {isArRevealed ? (
+                      <div
+                        dir="rtl"
+                        style={{ fontSize: `${arabicFontSize}px` }}
+                        className="arabic font-bold text-[var(--foreground)] text-right leading-[1.9] py-1"
+                      >
+                        <WordTooltip text={getDisplayText(line.arapca)} />
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3 bg-white/80 dark:bg-[var(--background)] rounded-xl p-3 border border-[#E6D7BE]">
+                        <span
+                          dir="rtl"
+                          className="arabic text-2xl font-bold text-[var(--muted)] blur-xs select-none"
+                        >
+                          {getDisplayText(line.arapca)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            setRevealedArLines((prev) => ({
+                              ...prev,
+                              [line.sira]: true,
+                            }));
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs font-extrabold text-white bg-[#0CA678] hover:bg-[#099268] px-3.5 py-2 rounded-xl border-b-3 border-[#087F5B] shrink-0 cursor-pointer"
+                        >
+                          <Eye size={14} />
+                          <span>Arapçasını Göster</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Alt Satır: Türkçe Çeviri (stacked, arabic-only veya click-to-reveal) */}
+                    {currentViewMode !== "turkish-only" && (
+                      <div
+                        dir="ltr"
+                        className="mt-3 pt-2.5 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]"
+                      >
+                        {isTrRevealed ? (
+                          <p
+                            style={{ fontSize: `${turkishFontSize}px` }}
+                            className="text-[var(--muted)] font-semibold leading-snug"
+                          >
+                            {line.turkce}
+                          </p>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playClick();
+                              setRevealedTrLines((prev) => ({
+                                ...prev,
+                                [line.sira]: true,
+                              }));
+                            }}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#087F5B] bg-white dark:bg-[var(--background)] px-3 py-1.5 rounded-xl border border-[#E6D7BE] hover:border-[#0CA678] cursor-pointer"
+                          >
+                            <Eye size={13} />
+                            <span>Türkçe Çeviriyi Göster</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Telaffuz Antrenmanı Modunda Hızlı Koçluk Çubuğu */}
+                {studyMode === "shadowing" && (
+                  <div className="mt-3 pt-2.5 border-t border-dashed border-[#E2D3B8] flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-[var(--muted)]">
+                      Bu cümleyi yüksek sesle okuyup mahreç puanınızı ölçün:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        setShadowingTarget({
+                          text: line.arapca,
+                          audioUrl: lineAudioUrl,
+                          voice: voiceForLine,
+                        });
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-[#0CA678] text-white text-xs font-bold border-b-3 border-[#087F5B] inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Sparkles size={13} />
+                      <span>Mahreç Analizi Yap</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Rol Yapma Modunda Sıra Öğrencideyse Gösterilen Rehber */}
+                {isWaitingUser && (
+                  <div className="mt-3 p-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#6741D9] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <span className="text-xs font-extrabold text-[#6741D9]">
+                      🎤 Sıra Sizde ({line.konusmaci}): Cümleyi yüksek sesle
+                      okuyun veya kaydedin, ardından diyaloğu sürdürün.
+                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShadowingTarget({
+                            text: line.arapca,
+                            audioUrl: lineAudioUrl,
+                            voice: voiceForLine,
+                          })
+                        }
+                        className="px-3 py-1.5 rounded-xl bg-[#F3F0FF] border border-[#6741D9] text-xs font-extrabold text-[#6741D9] cursor-pointer"
+                      >
+                        Telaffuzumu Ölç
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleContinueRoleplayFromLine(line.sira)}
+                        className="px-3.5 py-1.5 rounded-xl bg-[#0CA678] text-white text-xs font-extrabold border-b-3 border-[#087F5B] cursor-pointer"
+                      >
+                        Okudum, Devam Et →
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
+            );
+          })}
+        </section>
+      )}
+
+      {/* BÖLÜM 5: ALT TAMAMLAMA CTA VE ÖNCEKİ/SONRAKİ DİYALOG GEÇİŞİ */}
+      <section className="space-y-3 pt-2">
+        <button
+          type="button"
+          onClick={handleCompleteAndContinue}
+          className="w-full py-4 px-6 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-base sm:text-lg rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+        >
+          <CheckCircle2 size={20} />
+          <span>
+            {isCompleted
+              ? nextDialogue
+                ? `Sonraki Diyaloğa Geç (${nextDialogue.baslik_tr})`
+                : "Diyalog Kütüphanesine Dön"
+              : nextDialogue
+              ? `Diyaloğu Tamamla ve Sonrakine Geç (${nextDialogue.baslik_tr})`
+              : "Diyaloğu Tamamlandı Olarak İşaretle"}
+          </span>
+        </button>
+
+        <div className="grid grid-cols-2 gap-3">
+          {prevDialogue ? (
+            <Link
+              href={`/diyalog/${prevDialogue.id}`}
+              onClick={() => playClick()}
+              className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center gap-2 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all"
+            >
+              <ChevronLeft size={18} className="text-[#087F5B] shrink-0" />
+              <div className="truncate">
+                <span className="block text-[10px] text-[var(--muted)] uppercase">
+                  Önceki Diyalog
+                </span>
+                <span className="truncate block">{prevDialogue.baslik_tr}</span>
+              </div>
+            </Link>
+          ) : (
+            <div />
+          )}
+
+          {nextDialogue ? (
+            <Link
+              href={`/diyalog/${nextDialogue.id}`}
+              onClick={() => playClick()}
+              className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-end gap-2 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all text-right"
+            >
+              <div className="truncate">
+                <span className="block text-[10px] text-[var(--muted)] uppercase">
+                  Sonraki Diyalog
+                </span>
+                <span className="truncate block">{nextDialogue.baslik_tr}</span>
+              </div>
+              <ChevronRight size={18} className="text-[#087F5B] shrink-0" />
+            </Link>
+          ) : (
+            <div />
+          )}
         </div>
-
-      </div>
+      </section>
     </div>
-  );
-}
-
-// Ufak bir yardımcı ikon (Hız için)
-function ActivityIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-    </svg>
   );
 }

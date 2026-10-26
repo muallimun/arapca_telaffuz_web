@@ -1,10 +1,10 @@
 import diyaloglarJson from "@/data/diyaloglar.json";
-import sozlukJson from "@/data/sozluk.json";
+import { unifiedDictionary } from "@/lib/dict";
 import { Dialogue, DictionaryItem, Level } from "@/types/data";
 
-// JSON verilerini tip güvenli hale getiriyoruz
+// JSON verilerini ve birleştirilmiş/tekilleştirilmiş sözlüğü tip güvenli hale getiriyoruz
 export const diyaloglar: Dialogue[] = diyaloglarJson as Dialogue[];
-export const sozluk: DictionaryItem[] = sozlukJson as DictionaryItem[];
+export const sozluk: DictionaryItem[] = unifiedDictionary;
 
 // Tek bir diyalog getir
 export function getDialogueById(id: string): Dialogue | undefined {
