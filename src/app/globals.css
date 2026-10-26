@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* %100 ÇALIŞAN FONT TANIMI */
+@font-face {
+  font-family: 'ArakomFont';
+  src: url('/fonts/Arakom.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  /* Renk Paleti */
+  --color-brand-50: #fdfbf7;
+  --color-brand-100: #f4ebd9;
+  --color-brand-500: #8b7355;
+  --color-brand-600: #6b5a45;
+  --color-brand-700: #4a5d23;
+  
+  --color-level-a1: #7c9082;
+  --color-level-a2: #a3b18a;
+  --color-level-b1: #d4af37;
+  --color-level-b2: #bc6c25;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #fdfbf7;
+  --foreground: #2c2c2c;
+  --surface: #ffffff;
+  --border: #e5e0d8;
+  --muted: #8a857d;
+}
+
+/* KARANLIK MOD RENK DÜZELTMELERİ */
+.dark {
+  --background: #1a1a1a;
+  --foreground: #f4ebd9;
+  --surface: #242424;
+  --border: #333333;
+  --muted: #a3a3a3;
+  
+  /* Karanlık modda marka renklerini daha açık tonlara çekiyoruz */
+  --color-brand-50: #2a2a2a;
+  --color-brand-100: #3a3a3a;
+  --color-brand-500: #b5c99a; /* Açık zeytin yeşili */
+  --color-brand-600: #9cb380; 
+  --color-brand-700: #a3b18a; /* Eski koyu yeşil yerine parlak yeşil */
+  
+  /* Seviye renkleri de karanlıkta biraz daha parlasın */
+  --color-level-a1: #90a898;
+  --color-level-a2: #b5c99a;
+  --color-level-b1: #e6c25b;
+  --color-level-b2: #d48a45;
+}
+
+html, body {
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ARAPÇA METİNLER İÇİN ZORUNLU FONT */
+.arabic {
+  font-family: 'ArakomFont', "Amiri", "Noto Naskh Arabic", sans-serif !important;
+  direction: rtl;
+  line-height: 2.1;
+  letter-spacing: 0;
+  font-feature-settings: "liga" 1, "calt" 1;
+}
+
+/* Konuşmacı renk paleti */
+:root {
+  --speaker-1: #4a5d23; --speaker-2: #bc6c25; --speaker-3: #7c9082;
+  --speaker-4: #8b7355; --speaker-5: #9c89b8; --speaker-6: #5f6c7b;
+}
+
+.dark {
+  --speaker-1: #a3b18a; --speaker-2: #d48a45; --speaker-3: #90a898;
+  --speaker-4: #b5a38a; --speaker-5: #b8a9cf; --speaker-6: #8c99a8;
+}

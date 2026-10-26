@@ -1,0 +1,30 @@
+import { MetadataRoute } from 'next'
+ 
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: 'Arapça Platformu',
+    short_name: 'Arapça',
+    description: 'Arapça konuşma ve kelime öğrenme platformu',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#fdfbf7',
+    theme_color: '#fdfbf7',
+    icons: [
+      {
+        src: '/icons/android-chrome-192x192.png',
+        sizes: '192x192',
+        type: 'image/png',
+      },
+      {
+        src: '/icons/android-chrome-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
+      },
+      {
+        src: '/icons/apple-touch-icon.png',
+        sizes: '180x180',
+        type: 'image/png',
+      }
+    ],
+  }
+}

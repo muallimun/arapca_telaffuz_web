@@ -1,0 +1,7679 @@
+[
+  {
+    "id": "kelime_001",
+    "tur": "isim",
+    "kok": "س ل م",
+    "mufret": "سَلَامَة / سَلَام",
+    "cemi": "سَلَامَات",
+    "anlam_tr": "esenlik, güvenlik, sağlık (سَلِمَتْ يَدَاكَ: eline sağlık)"
+  },
+  {
+    "id": "kelime_002",
+    "tur": "fiil",
+    "kok": "ط ي ب",
+    "mazi": "طَابَ",
+    "muzari": "يَطِيبُ",
+    "masdar": "طِيب / طِيبَة",
+    "anlam_tr": "hoş olmak, iyi olmak (طَابَ يَوْمُكَ: iyi günler)"
+  },
+  {
+    "id": "kelime_003",
+    "tur": "isim",
+    "kok": "ي و م",
+    "mufret": "يَوْم",
+    "cemi": "أَيَّام",
+    "anlam_tr": "gün"
+  },
+  {
+    "id": "kelime_004",
+    "tur": "isim",
+    "kok": "أ هـ ل",
+    "mufret": "أَهْل",
+    "cemi": "أَهَالِي",
+    "anlam_tr": "aile, halk, ehil (أَهْلًا وَسَهْلًا: hoş geldiniz)"
+  },
+  {
+    "id": "kelime_005",
+    "tur": "fiil",
+    "kok": "ش ك و",
+    "mazi": "شَكَا",
+    "muzari": "يَشْكُو",
+    "masdar": "شَكْوَى",
+    "anlam_tr": "şikâyet etmek, yakınmak"
+  },
+  {
+    "id": "kelime_006",
+    "tur": "isim",
+    "kok": "أ ن ف",
+    "mufret": "أَنْف",
+    "cemi": "آُنُوف / آَنَاف",
+    "anlam_tr": "burun"
+  },
+  {
+    "id": "kelime_007",
+    "tur": "fiil",
+    "kok": "س ي ل",
+    "mazi": "سَالَ",
+    "muzari": "يَسِيلُ",
+    "masdar": "سَيَلَان",
+    "anlam_tr": "akmak"
+  },
+  {
+    "id": "kelime_008",
+    "tur": "isim",
+    "kok": "ض ي ف",
+    "mufret": "إِضَافَة",
+    "cemi": "إِضَافَات",
+    "anlam_tr": "ekleme, ilave (إِضَافَةً إِلَى: -e ek olarak, ayrıca)"
+  },
+  {
+    "id": "kelime_009",
+    "tur": "isim",
+    "kok": "ح ل ق",
+    "mufret": "حَلْق",
+    "cemi": "حُلُوق",
+    "anlam_tr": "boğaz"
+  },
+  {
+    "id": "kelime_010",
+    "tur": "fiil",
+    "kok": "أ ل م",
+    "mazi": "أَلِمَ / أَلَّمَ",
+    "muzari": "يُؤْلِمُ",
+    "masdar": "إِيلَام / أَلَم",
+    "anlam_tr": "ağrımak, acımak, ağrı vermek"
+  },
+  {
+    "id": "kelime_011",
+    "tur": "isim",
+    "kok": "ر أ س",
+    "mufret": "رَأْس",
+    "cemi": "رُؤُوس",
+    "anlam_tr": "baş, kafa"
+  },
+  {
+    "id": "kelime_012",
+    "tur": "fiil",
+    "kok": "خ د م",
+    "mazi": "اِسْتَخْدَمَ",
+    "muzari": "يَسْتَخْدِمُ",
+    "masdar": "اِسْتِخْدَام",
+    "anlam_tr": "kullanmak, yararlanmak"
+  },
+  {
+    "id": "kelime_013",
+    "tur": "isim",
+    "kok": "د و ي",
+    "mufret": "دَوَاء",
+    "cemi": "أَدْوِيَة",
+    "anlam_tr": "ilaç"
+  },
+  {
+    "id": "kelime_014",
+    "tur": "isim",
+    "kok": "س ك ن",
+    "mufret": "مُسَكِّن",
+    "cemi": "مُسَكِّنَات",
+    "anlam_tr": "ağrı kesici, dindirici"
+  },
+  {
+    "id": "kelime_015",
+    "tur": "isim",
+    "kok": "أ ل م",
+    "mufret": "أَلَم",
+    "cemi": "آلَام",
+    "anlam_tr": "ağrı, acı, keder"
+  },
+  {
+    "id": "kelime_016",
+    "tur": "fiil",
+    "kok": "ف ي د",
+    "mazi": "فَادَ",
+    "muzari": "يَفِيدُ",
+    "masdar": "فَائِدَة / إِفَادَة",
+    "anlam_tr": "faydası olmak, yarar sağlamak"
+  },
+  {
+    "id": "kelime_017",
+    "tur": "fiil",
+    "kok": "ف ت ح",
+    "mazi": "فَتَحَ",
+    "muzari": "يَفْتَحُ",
+    "masdar": "فَتْح",
+    "anlam_tr": "açmak"
+  },
+  {
+    "id": "kelime_018",
+    "tur": "isim",
+    "kok": "ف و هـ",
+    "mufret": "فَم",
+    "cemi": "أَفْوَاه",
+    "anlam_tr": "ağız"
+  },
+  {
+    "id": "kelime_019",
+    "tur": "fiil",
+    "kok": "س م ع",
+    "mazi": "اِسْتَمَعَ",
+    "muzari": "يَسْتَمِعُ",
+    "masdar": "اِسْتِمَاع",
+    "anlam_tr": "dinlemek, kulak vermek"
+  },
+  {
+    "id": "kelime_020",
+    "tur": "isim",
+    "kok": "ص د ر",
+    "mufret": "صَدْر",
+    "cemi": "صُدُور",
+    "anlam_tr": "göğüs, sine"
+  },
+  {
+    "id": "kelime_021",
+    "tur": "fiil",
+    "kok": "ك ش ف",
+    "mazi": "كَشَفَ",
+    "muzari": "يَكْشِفُ",
+    "masdar": "كَشْف",
+    "anlam_tr": "açmak, muayene etmek, örtüyü kaldırmak"
+  },
+  {
+    "id": "kelime_022",
+    "tur": "isim",
+    "kok": "ظ هـ ر",
+    "mufret": "ظَهْر",
+    "cemi": "ظُهُور",
+    "anlam_tr": "sırt, arka"
+  },
+  {
+    "id": "kelime_023",
+    "tur": "isim",
+    "kok": "ر أ ي",
+    "mufret": "رِئَة",
+    "cemi": "رِئَات",
+    "anlam_tr": "akciğer"
+  },
+  {
+    "id": "kelime_024",
+    "tur": "fiil",
+    "kok": "ق ي س",
+    "mazi": "قَاسَ",
+    "muzari": "يَقِيسُ",
+    "masdar": "قِيَاس",
+    "anlam_tr": "ölçmek"
+  },
+  {
+    "id": "kelime_025",
+    "tur": "isim",
+    "kok": "ح ر ر",
+    "mufret": "حَرَارَة",
+    "cemi": "حَرَارَات",
+    "anlam_tr": "sıcaklık, vücut ısısı (ateş)"
+  },
+  {
+    "id": "kelime_026",
+    "tur": "fiil",
+    "kok": "ف ح ص",
+    "mazi": "فَحَصَ",
+    "muzari": "يَفْحَصُ",
+    "masdar": "فَحْص",
+    "anlam_tr": "muayene etmek, incelemek, kontrol etmek"
+  },
+  {
+    "id": "kelime_027",
+    "tur": "isim",
+    "kok": "ط ب ب",
+    "mufret": "طَبِيب",
+    "cemi": "أَطِبَّاء",
+    "anlam_tr": "doktor, hekim"
+  },
+  {
+    "id": "kelime_028",
+    "tur": "isim",
+    "kok": "م ر ض",
+    "mufret": "مَرِيض",
+    "cemi": "مَرْضَى",
+    "anlam_tr": "hasta"
+  },
+  {
+    "id": "kelime_029",
+    "tur": "fiil",
+    "kok": "ك ت ب",
+    "mazi": "كَتَبَ",
+    "muzari": "يَكْتُبُ",
+    "masdar": "كِتَابَة",
+    "anlam_tr": "yazmak, reçete yazmak"
+  },
+  {
+    "id": "kelime_030",
+    "tur": "isim",
+    "kok": "و ص ف",
+    "mufret": "وَصْفَة",
+    "cemi": "وَصَفَات",
+    "anlam_tr": "reçete, tarif"
+  },
+  {
+    "id": "kelime_031",
+    "tur": "isim",
+    "kok": "ص د ل",
+    "mufret": "صَيْدَلِيَّة",
+    "cemi": "صَيْدَلِيَّات",
+    "anlam_tr": "eczane"
+  },
+  {
+    "id": "kelime_032",
+    "tur": "isim",
+    "kok": "ص د ل",
+    "mufret": "صَيْدَلِيّ",
+    "cemi": "صَيَادِلَة",
+    "anlam_tr": "eczacı"
+  },
+  {
+    "id": "kelime_033",
+    "tur": "fiil",
+    "kok": "ش ف ي",
+    "mazi": "شَفَى",
+    "muzari": "يَشْفِي",
+    "masdar": "شِفَاء",
+    "anlam_tr": "şifa vermek, iyileştirmek"
+  },
+  {
+    "id": "kelime_034",
+    "tur": "isim",
+    "kok": "ن ص ف",
+    "mufret": "نِصْف",
+    "cemi": "أَنْصَاف",
+    "anlam_tr": "yarım, buçuk"
+  },
+  {
+    "id": "kelime_035",
+    "tur": "isim",
+    "kok": "س ع ر",
+    "mufret": "سِعْر",
+    "cemi": "أَسْعَار",
+    "anlam_tr": "fiyat, ücret"
+  },
+  {
+    "id": "kelime_036",
+    "tur": "fiil",
+    "kok": "د ف ع",
+    "mazi": "دَفَعَ",
+    "muzari": "يَدْفَعُ",
+    "masdar": "دَفْع",
+    "anlam_tr": "ödemek, itmek"
+  },
+  {
+    "id": "kelime_037",
+    "tur": "isim",
+    "kok": "ن ق د",
+    "mufret": "نَقْد",
+    "cemi": "نُقُود",
+    "anlam_tr": "nakit para"
+  },
+  {
+    "id": "kelime_038",
+    "tur": "isim",
+    "kok": "ب ط ق",
+    "mufret": "بِطَاقَة",
+    "cemi": "بِطَاقَات",
+    "anlam_tr": "kart, etiket (بِطَاقَةُ اِئْتِمَان: kredi kartı)"
+  },
+  {
+    "id": "kelime_039",
+    "tur": "fiil",
+    "kok": "أ ك ل",
+    "mazi": "أَكَلَ",
+    "muzari": "يَأْكُلُ",
+    "masdar": "أَكْل",
+    "anlam_tr": "yemek yemek"
+  },
+  {
+    "id": "kelime_040",
+    "tur": "isim",
+    "kok": "ط ع م",
+    "mufret": "طَعَام",
+    "cemi": "أَطْعِمَة",
+    "anlam_tr": "yemek, yiyecek"
+  },
+  {
+    "id": "kelime_041",
+    "tur": "fiil",
+    "kok": "ش ر ب",
+    "mazi": "شَرِبَ",
+    "muzari": "يَشْرَبُ",
+    "masdar": "شُرْب",
+    "anlam_tr": "içmek"
+  },
+  {
+    "id": "kelime_042",
+    "tur": "isim",
+    "kok": "ش ر ب",
+    "mufret": "مَشْرُوب",
+    "cemi": "مَشْرُوبَات",
+    "anlam_tr": "içecek"
+  },
+  {
+    "id": "kelime_043",
+    "tur": "isim",
+    "kok": "ط ع م",
+    "mufret": "مَطْعَم",
+    "cemi": "مَطَاعِم",
+    "anlam_tr": "restoran, lokanta"
+  },
+  {
+    "id": "kelime_044",
+    "tur": "isim",
+    "kok": "ق و م",
+    "mufret": "قَائِمَة",
+    "cemi": "قَوَائِم",
+    "anlam_tr": "liste, menü (قَائِمَةُ الطَّعَام: yemek menüsü)"
+  },
+  {
+    "id": "kelime_045",
+    "tur": "fiil",
+    "kok": "ط ل ب",
+    "mazi": "طَلَبَ",
+    "muzari": "يَطْلُبُ",
+    "masdar": "طَلَب",
+    "anlam_tr": "istemek, sipariş etmek, talep etmek"
+  },
+  {
+    "id": "kelime_046",
+    "tur": "isim",
+    "kok": "ن د ل",
+    "mufret": "نَادِل",
+    "cemi": "نُدَّال / نُدَلَاء",
+    "anlam_tr": "garson"
+  },
+  {
+    "id": "kelime_047",
+    "tur": "isim",
+    "kok": "ح س ب",
+    "mufret": "حِسَاب",
+    "cemi": "حِسَابَات",
+    "anlam_tr": "hesap, adisyon"
+  },
+  {
+    "id": "kelime_048",
+    "tur": "fiil",
+    "kok": "ح ض ر",
+    "mazi": "أَحْضَرَ",
+    "muzari": "يُحْضِرُ",
+    "masdar": "إِحْضَار",
+    "anlam_tr": "getirmek, hazırlamak"
+  },
+  {
+    "id": "kelime_049",
+    "tur": "isim",
+    "kok": "ل ح م",
+    "mufret": "لَحْم",
+    "cemi": "لُحُوم",
+    "anlam_tr": "et"
+  },
+  {
+    "id": "kelime_050",
+    "tur": "isim",
+    "kok": "د ج ج",
+    "mufret": "دَجَاج",
+    "cemi": "دَجَاجَات",
+    "anlam_tr": "tavuk"
+  },
+  {
+    "id": "kelime_051",
+    "tur": "fiil",
+    "kok": "س ف ر",
+    "mazi": "سَافَرَ",
+    "muzari": "يُسَافِرُ",
+    "masdar": "سَفَر / مُسَافَرَة",
+    "anlam_tr": "seyahat etmek, yolculuk yapmak"
+  },
+  {
+    "id": "kelime_052",
+    "tur": "isim",
+    "kok": "س ف ر",
+    "mufret": "سَفَر",
+    "cemi": "أَسْفَار",
+    "anlam_tr": "yolculuk, seyahat"
+  },
+  {
+    "id": "kelime_053",
+    "tur": "isim",
+    "kok": "ح ف ل",
+    "mufret": "حَافِلَة",
+    "cemi": "حَافِلَات",
+    "anlam_tr": "otobüs"
+  },
+  {
+    "id": "kelime_054",
+    "tur": "isim",
+    "kok": "ط ي ر",
+    "mufret": "طَائِرَة",
+    "cemi": "طَائِرَات",
+    "anlam_tr": "uçak"
+  },
+  {
+    "id": "kelime_055",
+    "tur": "isim",
+    "kok": "ق ط ر",
+    "mufret": "قِطَار",
+    "cemi": "قِطَارَات",
+    "anlam_tr": "tren"
+  },
+  {
+    "id": "kelime_056",
+    "tur": "isim",
+    "kok": "ذ ك ر",
+    "mufret": "تَذْكِرَة",
+    "cemi": "تَذَاكِر",
+    "anlam_tr": "bilet"
+  },
+  {
+    "id": "kelime_057",
+    "tur": "fiil",
+    "kok": "ح ج ز",
+    "mazi": "حَجَزَ",
+    "muzari": "يَحْجِزُ",
+    "masdar": "حَجْز",
+    "anlam_tr": "rezerve etmek, ayırtmak"
+  },
+  {
+    "id": "kelime_058",
+    "tur": "isim",
+    "kok": "ح ج ز",
+    "mufret": "حَجْز",
+    "cemi": "حُجُوزَات",
+    "anlam_tr": "rezervasyon"
+  },
+  {
+    "id": "kelime_059",
+    "tur": "isim",
+    "kok": "ف ن د ق",
+    "mufret": "فُنْدُق",
+    "cemi": "فَنَادِق",
+    "anlam_tr": "otel"
+  },
+  {
+    "id": "kelime_060",
+    "tur": "isim",
+    "kok": "غ ر ف",
+    "mufret": "غُرْفَة",
+    "cemi": "غُرَف",
+    "anlam_tr": "oda"
+  },
+  {
+    "id": "kelime_061",
+    "tur": "isim",
+    "kok": "س ر ر",
+    "mufret": "سَرِير",
+    "cemi": "أَسِرَّة",
+    "anlam_tr": "yatak"
+  },
+  {
+    "id": "kelime_062",
+    "tur": "fiil",
+    "kok": "و ص ل",
+    "mazi": "وَصَلَ",
+    "muzari": "يَصِلُ",
+    "masdar": "وُصُول",
+    "anlam_tr": "varmak, ulaşmak"
+  },
+  {
+    "id": "kelime_063",
+    "tur": "fiil",
+    "kok": "غ د ر",
+    "mazi": "غَادَرَ",
+    "muzari": "يُغَادِرُ",
+    "masdar": "مُغَادَرَة",
+    "anlam_tr": "ayrılmak, hareket etmek (kalkış)"
+  },
+  {
+    "id": "kelime_064",
+    "tur": "isim",
+    "kok": "ط ي ر",
+    "mufret": "مَطَار",
+    "cemi": "مَطَارَات",
+    "anlam_tr": "havalimanı"
+  },
+  {
+    "id": "kelime_065",
+    "tur": "isim",
+    "kok": "ح ط ط",
+    "mufret": "مَحَطَّة",
+    "cemi": "مَحَطَّات",
+    "anlam_tr": "istasyon, durak"
+  },
+  {
+    "id": "kelime_066",
+    "tur": "isim",
+    "kok": "ح ق ب",
+    "mufret": "حَقِيبَة",
+    "cemi": "حَقَائِب",
+    "anlam_tr": "çanta, valiz"
+  },
+  {
+    "id": "kelime_067",
+    "tur": "fiil",
+    "kok": "ح م ل",
+    "mazi": "حَمَلَ",
+    "muzari": "يَحْمِلُ",
+    "masdar": "حَمْل",
+    "anlam_tr": "taşımak"
+  },
+  {
+    "id": "kelime_068",
+    "tur": "isim",
+    "kok": "س و ق",
+    "mufret": "سُوق",
+    "cemi": "أَسْوَاق",
+    "anlam_tr": "çarşı, pazar, market"
+  },
+  {
+    "id": "kelime_069",
+    "tur": "fiil",
+    "kok": "ش ر ي",
+    "mazi": "اِشْتَرَى",
+    "muzari": "يَشْتَرِي",
+    "masdar": "شِرَاء",
+    "anlam_tr": "satın almak"
+  },
+  {
+    "id": "kelime_070",
+    "tur": "fiil",
+    "kok": "ب ي ع",
+    "mazi": "بَاعَ",
+    "muzari": "يَبِيعُ",
+    "masdar": "بَيْع",
+    "anlam_tr": "satmak"
+  },
+  {
+    "id": "kelime_071",
+    "tur": "isim",
+    "kok": "ب ي ع",
+    "mufret": "بَائِع",
+    "cemi": "بَائِعُونَ / بَاعَة",
+    "anlam_tr": "satıcı, tezgahtar"
+  },
+  {
+    "id": "kelime_072",
+    "tur": "isim",
+    "kok": "ز ب ن",
+    "mufret": "زَبُون",
+    "cemi": "زَبَائِن",
+    "anlam_tr": "müşteri"
+  },
+  {
+    "id": "kelime_073",
+    "tur": "isim",
+    "kok": "ق م ش",
+    "mufret": "قُمَاش",
+    "cemi": "أَقْمِشَة",
+    "anlam_tr": "kumaş"
+  },
+  {
+    "id": "kelime_074",
+    "tur": "isim",
+    "kok": "ل ب س",
+    "mufret": "مَلْبَس",
+    "cemi": "مَلَابِس",
+    "anlam_tr": "elbise, giysi"
+  },
+  {
+    "id": "kelime_075",
+    "tur": "fiil",
+    "kok": "ل ب س",
+    "mazi": "لَبِسَ",
+    "muzari": "يَلْبَسُ",
+    "masdar": "لُبْس / لِبَاس",
+    "anlam_tr": "giyinmek, giymek"
+  },
+  {
+    "id": "kelime_076",
+    "tur": "isim",
+    "kok": "ك ن ز",
+    "mufret": "كَنَزَة",
+    "cemi": "كَنَزَات",
+    "anlam_tr": "kazak, bluz"
+  },
+  {
+    "id": "kelime_077",
+    "tur": "isim",
+    "kok": "س ت ر",
+    "mufret": "سُتْرَة",
+    "cemi": "سُتَرَات",
+    "anlam_tr": "ceket, hırka, mont"
+  },
+  {
+    "id": "kelime_078",
+    "tur": "isim",
+    "kok": "ت ن ر",
+    "mufret": "تَنُّورَة",
+    "cemi": "تَنَانِير",
+    "anlam_tr": "etek"
+  },
+  {
+    "id": "kelime_079",
+    "tur": "isim",
+    "kok": "ح ذ و",
+    "mufret": "حِذَاء",
+    "cemi": "أَحْذِيَة",
+    "anlam_tr": "ayakkabı"
+  },
+  {
+    "id": "kelime_080",
+    "tur": "isim",
+    "kok": "ج و ر ب",
+    "mufret": "جَوْرَب",
+    "cemi": "جَوَارِب",
+    "anlam_tr": "çorap"
+  },
+  {
+    "id": "kelime_081",
+    "tur": "isim",
+    "kok": "ق ط ن",
+    "mufret": "قُطْن",
+    "cemi": "أَقْطَان",
+    "anlam_tr": "pamuk"
+  },
+  {
+    "id": "kelime_082",
+    "tur": "isim",
+    "kok": "ص و ف",
+    "mufret": "صُوف",
+    "cemi": "أَصْوَاف",
+    "anlam_tr": "yün"
+  },
+  {
+    "id": "kelime_083",
+    "tur": "isim",
+    "kok": "ل و ن",
+    "mufret": "لَوْن",
+    "cemi": "أَلْوَان",
+    "anlam_tr": "renk"
+  },
+  {
+    "id": "kelime_084",
+    "tur": "isim",
+    "kok": "ق ي س",
+    "mufret": "مَقَاس / قِيَاس",
+    "cemi": "مَقَاسَات",
+    "anlam_tr": "beden, ölçü, numara"
+  },
+  {
+    "id": "kelime_085",
+    "tur": "fiil",
+    "kok": "ج ر ب",
+    "mazi": "جَرَّبَ",
+    "muzari": "يُجَرِّبُ",
+    "masdar": "تَجْرِبَة / تَجْرِيب",
+    "anlam_tr": "denemek, prova etmek"
+  },
+  {
+    "id": "kelime_086",
+    "tur": "isim",
+    "kok": "خ ز ن",
+    "mufret": "خَزْنَة / خَزِينَة",
+    "cemi": "خَزَائِن",
+    "anlam_tr": "kasa, vezne"
+  },
+  {
+    "id": "kelime_087",
+    "tur": "fiil",
+    "kok": "خ ف ض",
+    "mazi": "خَفَّضَ",
+    "muzari": "يُخَفِّضُ",
+    "masdar": "تَخْفِيض",
+    "anlam_tr": "indirim yapmak, düşürmek"
+  },
+  {
+    "id": "kelime_088",
+    "tur": "isim",
+    "kok": "خ ف ض",
+    "mufret": "تَخْفِيض",
+    "cemi": "تَخْفِيضَات",
+    "anlam_tr": "indirim, iskonto"
+  },
+  {
+    "id": "kelime_089",
+    "tur": "isim",
+    "kok": "هـ د ي",
+    "mufret": "هَدِيَّة",
+    "cemi": "هَدَايَا",
+    "anlam_tr": "hediye"
+  },
+  {
+    "id": "kelime_090",
+    "tur": "fiil",
+    "kok": "هـ د ي",
+    "mazi": "أَهْدَى",
+    "muzari": "يُهْدِي",
+    "masdar": "إِهْدَاء",
+    "anlam_tr": "hediye etmek, armağan etmek"
+  },
+  {
+    "id": "kelime_091",
+    "tur": "isim",
+    "kok": "ب ي ت",
+    "mufret": "بَيْت",
+    "cemi": "بُيُوت",
+    "anlam_tr": "ev"
+  },
+  {
+    "id": "kelime_092",
+    "tur": "isim",
+    "kok": "د و ر",
+    "mufret": "طَابِق / دَوْر",
+    "cemi": "طَوَابِق / أَدْوَار",
+    "anlam_tr": "kat"
+  },
+  {
+    "id": "kelime_093",
+    "tur": "isim",
+    "kok": "ج و ر",
+    "mufret": "جَار",
+    "cemi": "جِيرَان",
+    "anlam_tr": "komşu"
+  },
+  {
+    "id": "kelime_094",
+    "tur": "fiil",
+    "kok": "ز و ر",
+    "mazi": "زَارَ",
+    "muzari": "يَزُورُ",
+    "masdar": "زِيَارَة",
+    "anlam_tr": "ziyaret etmek"
+  },
+  {
+    "id": "kelime_095",
+    "tur": "isim",
+    "kok": "ز و ر",
+    "mufret": "زِيَارَة",
+    "cemi": "زِيَارَات",
+    "anlam_tr": "ziyaret"
+  },
+  {
+    "id": "kelime_096",
+    "tur": "isim",
+    "kok": "ب و ب",
+    "mufret": "بَاب",
+    "cemi": "أَبْوَاب",
+    "anlam_tr": "kapı"
+  },
+  {
+    "id": "kelime_097",
+    "tur": "fiil",
+    "kok": "د ق ق",
+    "mazi": "دَقَّ",
+    "muzari": "يَدُقُّ",
+    "masdar": "دَقّ",
+    "anlam_tr": "çalmak (kapı), vurmak"
+  },
+  {
+    "id": "kelime_098",
+    "tur": "isim",
+    "kok": "د ق ق",
+    "mufret": "دَقِيقَة",
+    "cemi": "دَقَائِق",
+    "anlam_tr": "dakika"
+  },
+  {
+    "id": "kelime_099",
+    "tur": "fiil",
+    "kok": "د ع و",
+    "mazi": "دَعَا",
+    "muzari": "يَدْعُو",
+    "masdar": "دَعْوَة",
+    "anlam_tr": "davet etmek, çağırmak, dua etmek"
+  },
+  {
+    "id": "kelime_100",
+    "tur": "isim",
+    "kok": "د ع و",
+    "mufret": "دَعْوَة",
+    "cemi": "دَعَوَات",
+    "anlam_tr": "davet, davetiye, dua"
+  },
+  {
+    "id": "kelime_101",
+    "tur": "isim",
+    "kok": "أ ث ث",
+    "mufret": "أَثَاث",
+    "cemi": "أَثَاثَات",
+    "anlam_tr": "mobilya, ev eşyası"
+  },
+  {
+    "id": "kelime_102",
+    "tur": "isim",
+    "kok": "ك هـ ر ب",
+    "mufret": "كَهْرَبَاء",
+    "cemi": "كَهْرَبَائِيَّات",
+    "anlam_tr": "elektrik"
+  },
+  {
+    "id": "kelime_103",
+    "tur": "isim",
+    "kok": "ج هـ ز",
+    "mufret": "جِهَاز",
+    "cemi": "أَجْهِزَة",
+    "anlam_tr": "cihaz, alet"
+  },
+  {
+    "id": "kelime_104",
+    "tur": "isim",
+    "kok": "ث ل ج",
+    "mufret": "ثَلَّاجَة",
+    "cemi": "ثَلَّاجَات",
+    "anlam_tr": "buzdolabı"
+  },
+  {
+    "id": "kelime_105",
+    "tur": "isim",
+    "kok": "غ س ل",
+    "mufret": "غَسَّالَة",
+    "cemi": "غَسَّالَات",
+    "anlam_tr": "çamaşır / bulaşık makinesi"
+  },
+  {
+    "id": "kelime_106",
+    "tur": "fiil",
+    "kok": "غ س ل",
+    "mazi": "غَسَلَ",
+    "muzari": "يَغْسِلُ",
+    "masdar": "غَسْل",
+    "anlam_tr": "yıkamak"
+  },
+  {
+    "id": "kelime_107",
+    "tur": "isim",
+    "kok": "ص ح ن",
+    "mufret": "صَحْن",
+    "cemi": "صُحُون",
+    "anlam_tr": "tabak"
+  },
+  {
+    "id": "kelime_108",
+    "tur": "isim",
+    "kok": "ك و ي",
+    "mufret": "مِكْوَاة",
+    "cemi": "مَكَاوٍ / مَكَاوِي",
+    "anlam_tr": "ütü"
+  },
+  {
+    "id": "kelime_109",
+    "tur": "fiil",
+    "kok": "ك و ي",
+    "mazi": "كَوَى",
+    "muzari": "يَكْوِي",
+    "masdar": "كَيّ",
+    "anlam_tr": "ütülemek"
+  },
+  {
+    "id": "kelime_110",
+    "tur": "isim",
+    "kok": "ك ن س",
+    "mufret": "مِكْنَسَة",
+    "cemi": "مَكَانِس",
+    "anlam_tr": "süpürge"
+  },
+  {
+    "id": "kelime_111",
+    "tur": "fiil",
+    "kok": "ك ن س",
+    "mazi": "كَنَسَ",
+    "muzari": "يَكْنُسُ",
+    "masdar": "كَنْس",
+    "anlam_tr": "süpürmek"
+  },
+  {
+    "id": "kelime_112",
+    "tur": "isim",
+    "kok": "ف ر ن",
+    "mufret": "فُرْن",
+    "cemi": "أَفْرَان",
+    "anlam_tr": "fırın"
+  },
+  {
+    "id": "kelime_113",
+    "tur": "isim",
+    "kok": "ش ح ن",
+    "mufret": "شَاحِن / شَحْن",
+    "cemi": "شَوَاحِن",
+    "anlam_tr": "şarj, şarj aleti"
+  },
+  {
+    "id": "kelime_114",
+    "tur": "isim",
+    "kok": "ك ل ف",
+    "mufret": "مَصْرُوف / تَكْلِفَة",
+    "cemi": "مَصَارِيف / تَكَالِيف",
+    "anlam_tr": "masraf, gider, maliyet"
+  },
+  {
+    "id": "kelime_115",
+    "tur": "fiil",
+    "kok": "ن ف ق",
+    "mazi": "أَنْفَقَ",
+    "muzari": "يُنْفِقُ",
+    "masdar": "إِنْفَاق",
+    "anlam_tr": "harcamak, masraf yapmak"
+  },
+  {
+    "id": "kelime_116",
+    "tur": "fiil",
+    "kok": "ص ب ر",
+    "mazi": "صَبَرَ",
+    "muzari": "يَصْبِرُ",
+    "masdar": "صَبْر",
+    "anlam_tr": "sabretmek, katlanmak"
+  },
+  {
+    "id": "kelime_117",
+    "tur": "isim",
+    "kok": "ص ب ر",
+    "mufret": "صَبْر",
+    "cemi": "-",
+    "anlam_tr": "sabır"
+  },
+  {
+    "id": "kelime_118",
+    "tur": "isim",
+    "kok": "ق ع د",
+    "mufret": "مَقْعَد",
+    "cemi": "مَقَاعِد",
+    "anlam_tr": "koltuk, oturak, sıra"
+  },
+  {
+    "id": "kelime_119",
+    "tur": "fiil",
+    "kok": "ن ظ ف",
+    "mazi": "نَظَّفَ",
+    "muzari": "يُنَظِّفُ",
+    "masdar": "تَنْظِيف",
+    "anlam_tr": "temizlemek"
+  },
+  {
+    "id": "kelime_120",
+    "tur": "isim",
+    "kok": "ن ظ ف",
+    "mufret": "نَظَافَة",
+    "cemi": "-",
+    "anlam_tr": "temizlik"
+  },
+  {
+    "id": "kelime_121",
+    "tur": "isim",
+    "kok": "ز و ي",
+    "mufret": "زَاوِيَة",
+    "cemi": "زَوَايَا",
+    "anlam_tr": "köşe, açı"
+  },
+  {
+    "id": "kelime_122",
+    "tur": "fiil",
+    "kok": "س خ ن",
+    "mazi": "سَخَّنَ",
+    "muzari": "يُسَخِّنُ",
+    "masdar": "تَسْخِين",
+    "anlam_tr": "ısıtmak"
+  },
+  {
+    "id": "kelime_123",
+    "tur": "isim",
+    "kok": "س خ ن",
+    "mufret": "سَاخِن",
+    "cemi": "سَاخِنُونَ",
+    "anlam_tr": "sıcak"
+  },
+  {
+    "id": "kelime_124",
+    "tur": "isim",
+    "kok": "ح ز م",
+    "mufret": "حُزْمَة / بَاقَة",
+    "cemi": "حُزَم / بَاقَات",
+    "anlam_tr": "paket, demet, paket (düğün paketi vb.)"
+  },
+  {
+    "id": "kelime_125",
+    "tur": "isim",
+    "kok": "ع ر س",
+    "mufret": "عَرُوس / عَرِيس",
+    "cemi": "عَرَائِس / عُرُس",
+    "anlam_tr": "gelin, damat, düğün"
+  },
+  {
+    "id": "kelime_126",
+    "tur": "fiil",
+    "kok": "ت ج ر",
+    "mazi": "تَجَرَ",
+    "muzari": "يَتْجُرُ",
+    "masdar": "تِجَارَة",
+    "anlam_tr": "ticaret yapmak"
+  },
+  {
+    "id": "kelime_127",
+    "tur": "isim",
+    "kok": "ت ج ر",
+    "mufret": "تِجَارَة",
+    "cemi": "تِجَارَات",
+    "anlam_tr": "ticaret"
+  },
+  {
+    "id": "kelime_128",
+    "tur": "isim",
+    "kok": "ت ج ر",
+    "mufret": "تَاجِر",
+    "cemi": "تُجَّار",
+    "anlam_tr": "tüccar, tacir"
+  },
+  {
+    "id": "kelime_129",
+    "tur": "isim",
+    "kok": "ج م ل",
+    "mufret": "جُمْلَة",
+    "cemi": "جُمَل",
+    "anlam_tr": "cümle, toptan (بِالْجُمْلَةِ: toptan)"
+  },
+  {
+    "id": "kelime_130",
+    "tur": "isim",
+    "kok": "ش ر ك",
+    "mufret": "شَرِكَة",
+    "cemi": "شَرِكَات",
+    "anlam_tr": "şirket, firma"
+  },
+  {
+    "id": "kelime_131",
+    "tur": "isim",
+    "kok": "ش ر ك",
+    "mufret": "شَرِيك",
+    "cemi": "شُرَكَاء",
+    "anlam_tr": "ortak, partner"
+  },
+  {
+    "id": "kelime_132",
+    "tur": "fiil",
+    "kok": "و ف ر",
+    "mazi": "وَفَّرَ",
+    "muzari": "يُوَفِّرُ",
+    "masdar": "تَوْفِير",
+    "anlam_tr": "tasarruf etmek, sağlamak, biriktirmek"
+  },
+  {
+    "id": "kelime_133",
+    "tur": "isim",
+    "kok": "و ف ر",
+    "mufret": "تَوْفِير",
+    "cemi": "-",
+    "anlam_tr": "tasarruf, birikim"
+  },
+  {
+    "id": "kelime_134",
+    "tur": "isim",
+    "kok": "و ق د",
+    "mufret": "وَقُود",
+    "cemi": "-",
+    "anlam_tr": "yakıt"
+  },
+  {
+    "id": "kelime_135",
+    "tur": "fiil",
+    "kok": "و ق د",
+    "mazi": "أَوْقَدَ",
+    "muzari": "يُوقِدُ",
+    "masdar": "إِيقَاد",
+    "anlam_tr": "yakmak, tutuşturmak"
+  },
+  {
+    "id": "kelime_136",
+    "tur": "isim",
+    "kok": "ط ق ي",
+    "mufret": "طَاقَة",
+    "cemi": "طَاقَات",
+    "anlam_tr": "enerji, güç, kapasite"
+  },
+  {
+    "id": "kelime_137",
+    "tur": "isim",
+    "kok": "ص ن ع",
+    "mufret": "مَصْنَع",
+    "cemi": "مَصَانِع",
+    "anlam_tr": "fabrika, imalathane"
+  },
+  {
+    "id": "kelime_138",
+    "tur": "fiil",
+    "kok": "ص ن ع",
+    "mazi": "صَنَعَ",
+    "muzari": "يَصْنَعُ",
+    "masdar": "صُنْع / صِنَاعَة",
+    "anlam_tr": "yapmak, üretmek, imal etmek"
+  },
+  {
+    "id": "kelime_139",
+    "tur": "isim",
+    "kok": "ص ن ع",
+    "mufret": "صِنَاعَة",
+    "cemi": "صِنَاعَات",
+    "anlam_tr": "sanayi, endüstri, üretim"
+  },
+  {
+    "id": "kelime_140",
+    "tur": "fiil",
+    "kok": "د ف أ",
+    "mazi": "دَفَّأَ / أَدْفَأَ",
+    "muzari": "يُدَفِّئُ",
+    "masdar": "تَدْفِئَة",
+    "anlam_tr": "ısıtmak"
+  },
+  {
+    "id": "kelime_141",
+    "tur": "isim",
+    "kok": "د ف أ",
+    "mufret": "تَدْفِئَة",
+    "cemi": "-",
+    "anlam_tr": "ısınma, ısıtma"
+  },
+  {
+    "id": "kelime_142",
+    "tur": "isim",
+    "kok": "د ي ن",
+    "mufret": "دَيْن",
+    "cemi": "دُيُون",
+    "anlam_tr": "borç"
+  },
+  {
+    "id": "kelime_143",
+    "tur": "fiil",
+    "kok": "ق ر ض",
+    "mazi": "قَرَضَ / أَقْرَضَ",
+    "muzari": "يُقْرِضُ",
+    "masdar": "إِقْرَاض / قَرْض",
+    "anlam_tr": "borç vermek, kredi vermek"
+  },
+  {
+    "id": "kelime_144",
+    "tur": "isim",
+    "kok": "ق ر ض",
+    "mufret": "قَرْض",
+    "cemi": "قُرُوض",
+    "anlam_tr": "kredi, borç"
+  },
+  {
+    "id": "kelime_145",
+    "tur": "isim",
+    "kok": "م هـ ل",
+    "mufret": "مَهْلَة",
+    "cemi": "مُهَل",
+    "anlam_tr": "vade, süre, mühlet"
+  },
+  {
+    "id": "kelime_146",
+    "tur": "fiil",
+    "kok": "ف و ض",
+    "mazi": "تَفَاوَضَ",
+    "muzari": "يَتَفَاوَضُ",
+    "masdar": "تَفَاوُض",
+    "anlam_tr": "pazarlık etmek, görüşmek"
+  },
+  {
+    "id": "kelime_147",
+    "tur": "isim",
+    "kok": "ف و ض",
+    "mufret": "تَفَاوُض",
+    "cemi": "تَفَاوُضَات",
+    "anlam_tr": "pazarlık, müzakere"
+  },
+  {
+    "id": "kelime_148",
+    "tur": "fiil",
+    "kok": "س و م",
+    "mazi": "سَاوَمَ",
+    "muzari": "يُسَاوِمُ",
+    "masdar": "مُسَاوَمَة",
+    "anlam_tr": "pazarlık yapmak"
+  },
+  {
+    "id": "kelime_149",
+    "tur": "isim",
+    "kok": "ق س ط",
+    "mufret": "قِسْط",
+    "cemi": "أَقْسَاط",
+    "anlam_tr": "taksit"
+  },
+  {
+    "id": "kelime_150",
+    "tur": "fiil",
+    "kok": "ق س ط",
+    "mazi": "قَسَّطَ",
+    "muzari": "يُقَسِّطُ",
+    "masdar": "تَقْسِيط",
+    "anlam_tr": "taksitlendirmek"
+  },
+  {
+    "id": "kelime_151",
+    "tur": "fiil",
+    "kok": "د ر س",
+    "mazi": "دَرَسَ",
+    "muzari": "يَدْرُسُ",
+    "masdar": "دِرَاسَة",
+    "anlam_tr": "ders çalışmak, öğrenim görmek"
+  },
+  {
+    "id": "kelime_152",
+    "tur": "isim",
+    "kok": "د ر س",
+    "mufret": "مَدْرَسَة",
+    "cemi": "مَدَارِس",
+    "anlam_tr": "okul"
+  },
+  {
+    "id": "kelime_153",
+    "tur": "isim",
+    "kok": "د ر س",
+    "mufret": "دَرْس",
+    "cemi": "دُرُوس",
+    "anlam_tr": "ders"
+  },
+  {
+    "id": "kelime_154",
+    "tur": "isim",
+    "kok": "د ر س",
+    "mufret": "مُدَرِّس / أُسْتَاذ",
+    "cemi": "مُدَرِّسُونَ / أَسَاتِذَة",
+    "anlam_tr": "öğretmen, hoca, profesör"
+  },
+  {
+    "id": "kelime_155",
+    "tur": "isim",
+    "kok": "ج م ع",
+    "mufret": "جَامِعَة",
+    "cemi": "جَامِعَات",
+    "anlam_tr": "üniversite"
+  },
+  {
+    "id": "kelime_156",
+    "tur": "fiil",
+    "kok": "م ح ن",
+    "mazi": "اِمْتَحَنَ",
+    "muzari": "يَمْتَحِنُ",
+    "masdar": "اِمْتِحَان",
+    "anlam_tr": "sınav yapmak, imtihan etmek"
+  },
+  {
+    "id": "kelime_157",
+    "tur": "isim",
+    "kok": "م ح ن",
+    "mufret": "اِمْتِحَان / اِخْتِبَار",
+    "cemi": "اِمْتِحَانَات / اِخْتِبَارَات",
+    "anlam_tr": "sınav, imtihan"
+  },
+  {
+    "id": "kelime_158",
+    "tur": "isim",
+    "kok": "ن ت ج",
+    "mufret": "نَتِيجَة",
+    "cemi": "نَتَائِج",
+    "anlam_tr": "sonuç, netice"
+  },
+  {
+    "id": "kelime_159",
+    "tur": "fiil",
+    "kok": "ع ل ن",
+    "mazi": "أَعْلَنَ",
+    "muzari": "يُعْلِنُ",
+    "masdar": "إِعْلَان",
+    "anlam_tr": "açıklamak, ilan etmek"
+  },
+  {
+    "id": "kelime_160",
+    "tur": "isim",
+    "kok": "ع ل ن",
+    "mufret": "إِعْلَان",
+    "cemi": "إِعْلَانَات",
+    "anlam_tr": "ilan, duyuru, reklam"
+  },
+  {
+    "id": "kelime_161",
+    "tur": "fiil",
+    "kok": "ن ج ح",
+    "mazi": "نَجَحَ",
+    "muzari": "يَنْجَحُ",
+    "masdar": "نَجَاح",
+    "anlam_tr": "başarmak, geçmek (sınavı)"
+  },
+  {
+    "id": "kelime_162",
+    "tur": "isim",
+    "kok": "ن ج ح",
+    "mufret": "نَجَاح",
+    "cemi": "نَجَاحَات",
+    "anlam_tr": "başarı"
+  },
+  {
+    "id": "kelime_163",
+    "tur": "fiil",
+    "kok": "خ ر ج",
+    "mazi": "تَخَرَّجَ",
+    "muzari": "يَتَخَرَّجُ",
+    "masdar": "تَخَرُّج",
+    "anlam_tr": "mezun olmak"
+  },
+  {
+    "id": "kelime_164",
+    "tur": "isim",
+    "kok": "خ ر ج",
+    "mufret": "تَخَرُّج",
+    "cemi": "-",
+    "anlam_tr": "mezuniyet"
+  },
+  {
+    "id": "kelime_165",
+    "tur": "isim",
+    "kok": "ق س م",
+    "mufret": "قِسْم",
+    "cemi": "أَقْسَام",
+    "anlam_tr": "bölüm, kısım, departman"
+  },
+  {
+    "id": "kelime_166",
+    "tur": "isim",
+    "kok": "ك ل ي",
+    "mufret": "كُلِّيَّة",
+    "cemi": "كُلِّيَّات",
+    "anlam_tr": "fakülte"
+  },
+  {
+    "id": "kelime_167",
+    "tur": "isim",
+    "kok": "ع ل م",
+    "mufret": "عِلْم",
+    "cemi": "عُلُوم",
+    "anlam_tr": "ilim, bilim"
+  },
+  {
+    "id": "kelime_168",
+    "tur": "fiil",
+    "kok": "ع ل م",
+    "mazi": "تَعَلَّمَ",
+    "muzari": "يَتَعَلَّمُ",
+    "masdar": "تَعَلُّم",
+    "anlam_tr": "öğrenmek"
+  },
+  {
+    "id": "kelime_169",
+    "tur": "fiil",
+    "kok": "ع ل م",
+    "mazi": "عَلَّمَ",
+    "muzari": "يُعَلِّمُ",
+    "masdar": "تَعْلِيم",
+    "anlam_tr": "öğretmek"
+  },
+  {
+    "id": "kelime_170",
+    "tur": "isim",
+    "kok": "ع ل م",
+    "mufret": "تَعْلِيم",
+    "cemi": "تَعَالِيم",
+    "anlam_tr": "eğitim, öğretim"
+  },
+  {
+    "id": "kelime_171",
+    "tur": "fiil",
+    "kok": "ف هـ م",
+    "mazi": "فَهِمَ",
+    "muzari": "يَفْهَمُ",
+    "masdar": "فَهْم",
+    "anlam_tr": "anlamak"
+  },
+  {
+    "id": "kelime_172",
+    "tur": "isim",
+    "kok": "ف هـ م",
+    "mufret": "فَهْم",
+    "cemi": "أَفْهَام",
+    "anlam_tr": "anlayış, kavrayış"
+  },
+  {
+    "id": "kelime_173",
+    "tur": "fiil",
+    "kok": "ح ف ظ",
+    "mazi": "حَفِظَ",
+    "muzari": "يَحْفَظُ",
+    "masdar": "حِفْظ",
+    "anlam_tr": "ezberlemek, korumak"
+  },
+  {
+    "id": "kelime_174",
+    "tur": "isim",
+    "kok": "ذ ك ر",
+    "mufret": "ذَاكِرَة",
+    "cemi": "ذَوَاكِر",
+    "anlam_tr": "hafıza, bellek"
+  },
+  {
+    "id": "kelime_175",
+    "tur": "fiil",
+    "kok": "ن س ي",
+    "mazi": "نَسِيَ",
+    "muzari": "يَنْسَى",
+    "masdar": "نِسْيَان",
+    "anlam_tr": "unutmak"
+  },
+  {
+    "id": "kelime_176",
+    "tur": "fiil",
+    "kok": "ع م ل",
+    "mazi": "عَمِلَ",
+    "muzari": "يَعْمَلُ",
+    "masdar": "عَمَل",
+    "anlam_tr": "çalışmak, yapmak, iş görmek"
+  },
+  {
+    "id": "kelime_177",
+    "tur": "isim",
+    "kok": "ع م ل",
+    "mufret": "عَمَل",
+    "cemi": "أَعْمَال",
+    "anlam_tr": "iş, çalışma, eser"
+  },
+  {
+    "id": "kelime_178",
+    "tur": "isim",
+    "kok": "ع م ل",
+    "mufret": "عَامِل / مُوَظَّف",
+    "cemi": "عُمَّال / مُوَظَّفُونَ",
+    "anlam_tr": "işçi, çalışan, görevli, memur"
+  },
+  {
+    "id": "kelime_179",
+    "tur": "fiil",
+    "kok": "ش غ ل",
+    "mazi": "شَغَلَ",
+    "muzari": "يَشْغَلُ",
+    "masdar": "شُغْل",
+    "anlam_tr": "meşgul etmek, çalıştırmak"
+  },
+  {
+    "id": "kelime_180",
+    "tur": "isim",
+    "kok": "ش غ ل",
+    "mufret": "شُغْل",
+    "cemi": "أَشْغَال",
+    "anlam_tr": "iş, meşguliyet"
+  },
+  {
+    "id": "kelime_181",
+    "tur": "isim",
+    "kok": "ش غ ل",
+    "mufret": "مَشْغُول",
+    "cemi": "مَشْغُولُونَ",
+    "anlam_tr": "meşgul, yoğun"
+  },
+  {
+    "id": "kelime_182",
+    "tur": "fiil",
+    "kok": "ق ب ل",
+    "mazi": "قَبِلَ",
+    "muzari": "يَقْبَلُ",
+    "masdar": "قَبُول",
+    "anlam_tr": "kabul etmek, onaylamak"
+  },
+  {
+    "id": "kelime_183",
+    "tur": "isim",
+    "kok": "ق ب ل",
+    "mufret": "مُقَابَلَة",
+    "cemi": "مُقَابَلَات",
+    "anlam_tr": "mülakat, görüşme, karşılama"
+  },
+  {
+    "id": "kelime_184",
+    "tur": "fiil",
+    "kok": "ق ب ل",
+    "mazi": "قَابَلَ",
+    "muzari": "يُقَابِلُ",
+    "masdar": "مُقَابَلَة",
+    "anlam_tr": "karşılaşmak, görüşmek, buluşmak"
+  },
+  {
+    "id": "kelime_185",
+    "tur": "isim",
+    "kok": "و ظ ف",
+    "mufret": "وَظِيفَة",
+    "cemi": "وَظَائِف",
+    "anlam_tr": "meslek, görev, iş"
+  },
+  {
+    "id": "kelime_186",
+    "tur": "isim",
+    "kok": "م هـ ن",
+    "mufret": "مِهْنَة",
+    "cemi": "مِهَن",
+    "anlam_tr": "meslek, uzmanlık alanı"
+  },
+  {
+    "id": "kelime_187",
+    "tur": "isim",
+    "kok": "ر ت ب",
+    "mufret": "رَاتِب",
+    "cemi": "رَوَاتِب",
+    "anlam_tr": "maaş, aylık"
+  },
+  {
+    "id": "kelime_188",
+    "tur": "fiil",
+    "kok": "ر ت ب",
+    "mazi": "رَتَّبَ",
+    "muzari": "يُرَتِّبُ",
+    "masdar": "تَرْتِيب",
+    "anlam_tr": "düzenlemek, sıralamak"
+  },
+  {
+    "id": "kelime_189",
+    "tur": "isim",
+    "kok": "ر ت ب",
+    "mufret": "تَرْتِيب",
+    "cemi": "تَرْتِيبَات",
+    "anlam_tr": "düzen, tertip, sıralama"
+  },
+  {
+    "id": "kelime_190",
+    "tur": "isim",
+    "kok": "خ ب ر",
+    "mufret": "خِبْرَة",
+    "cemi": "خِبَرَات",
+    "anlam_tr": "tecrübe, deneyim"
+  },
+  {
+    "id": "kelime_191",
+    "tur": "isim",
+    "kok": "خ ب ر",
+    "mufret": "خَبِير",
+    "cemi": "خُبَرَاء",
+    "anlam_tr": "uzman, bilirkişi"
+  },
+  {
+    "id": "kelime_192",
+    "tur": "isim",
+    "kok": "خ ب ر",
+    "mufret": "خَبَر",
+    "cemi": "أَخْبَار",
+    "anlam_tr": "haber, bilgi"
+  },
+  {
+    "id": "kelime_193",
+    "tur": "fiil",
+    "kok": "خ ب ر",
+    "mazi": "أَخْبَرَ",
+    "muzari": "يُخْبِرُ",
+    "masdar": "إِخْبَار",
+    "anlam_tr": "haber vermek, bildirmek"
+  },
+  {
+    "id": "kelime_194",
+    "tur": "isim",
+    "kok": "ص ح ف",
+    "mufret": "صَحِيفَة / جَرِيدَة",
+    "cemi": "صُحُف / جَرَائِد",
+    "anlam_tr": "gazete"
+  },
+  {
+    "id": "kelime_195",
+    "tur": "isim",
+    "kok": "ص ح ف",
+    "mufret": "صَحَفِيّ",
+    "cemi": "صَحَفِيُّونَ",
+    "anlam_tr": "gazeteci, muhabir"
+  },
+  {
+    "id": "kelime_196",
+    "tur": "fiil",
+    "kok": "ب ح ث",
+    "mazi": "بَحَثَ",
+    "muzari": "يَبْحَثُ",
+    "masdar": "بَحْث",
+    "anlam_tr": "araştırmak, aramak (عَنْ ile)"
+  },
+  {
+    "id": "kelime_197",
+    "tur": "isim",
+    "kok": "ب ح ث",
+    "mufret": "بَحْث",
+    "cemi": "أَبْحَاث",
+    "anlam_tr": "araştırma, inceleme, makale"
+  },
+  {
+    "id": "kelime_198",
+    "tur": "fiil",
+    "kok": "ق د م",
+    "mazi": "قَدَّمَ",
+    "muzari": "يُقَدِّمُ",
+    "masdar": "تَقْدِيم",
+    "anlam_tr": "sunmak, takdim etmek, başvuruda bulunmak"
+  },
+  {
+    "id": "kelime_199",
+    "tur": "isim",
+    "kok": "ق د م",
+    "mufret": "تَقْدِيم / طَلَب",
+    "cemi": "تَقْدِيمَات / طَلَبَات",
+    "anlam_tr": "başvuru, sunum, talep"
+  },
+  {
+    "id": "kelime_200",
+    "tur": "fiil",
+    "kok": "ق ل ق",
+    "mazi": "قَلِقَ",
+    "muzari": "يَقْلَقُ",
+    "masdar": "قَلَق",
+    "anlam_tr": "kaygılanmak, endişelenmek"
+  },
+  {
+    "id": "kelime_201",
+    "tur": "isim",
+    "kok": "ق ل ق",
+    "mufret": "قَلَق",
+    "cemi": "-",
+    "anlam_tr": "kaygı, endişe"
+  },
+  {
+    "id": "kelime_202",
+    "tur": "isim",
+    "kok": "و هـ م",
+    "mufret": "وَهْم",
+    "cemi": "أَوْهَام",
+    "anlam_tr": "kuruntu, vehim, ilüzyon"
+  },
+  {
+    "id": "kelime_203",
+    "tur": "fiil",
+    "kok": "خ ل ص",
+    "mazi": "تَخَلَّصَ",
+    "muzari": "يَتَخَلَّصُ",
+    "masdar": "تَخَلُّص",
+    "anlam_tr": "kurtulmak, kurtuluşa ermek (مِنْ ile)"
+  },
+  {
+    "id": "kelime_204",
+    "tur": "fiil",
+    "kok": "س ع ي",
+    "mazi": "سَعَى",
+    "muzari": "يَسْعَى",
+    "masdar": "سَعْي",
+    "anlam_tr": "gayret etmek, çabalamak, koşmak"
+  },
+  {
+    "id": "kelime_205",
+    "tur": "isim",
+    "kok": "س ع ي",
+    "mufret": "سَعْي / جُهْد",
+    "cemi": "مَسَاعٍ / جُهُود",
+    "anlam_tr": "gayret, çaba"
+  },
+  {
+    "id": "kelime_206",
+    "tur": "fiil",
+    "kok": "ن ج و",
+    "mazi": "نَجَا",
+    "muzari": "يَنْجُو",
+    "masdar": "نَجَاة",
+    "anlam_tr": "kurtulmak, selamete ermek"
+  },
+  {
+    "id": "kelime_207",
+    "tur": "isim",
+    "kok": "ر و ح",
+    "mufret": "رَاحَة",
+    "cemi": "رَاحَات",
+    "anlam_tr": "huzur, rahat, dinlenme"
+  },
+  {
+    "id": "kelime_208",
+    "tur": "fiil",
+    "kok": "ر و ح",
+    "mazi": "اِسْتَرَاحَ",
+    "muzari": "يَسْتَرِيحُ",
+    "masdar": "اِسْتِرَاحَة",
+    "anlam_tr": "dinlenmek, rahatlamak"
+  },
+  {
+    "id": "kelime_209",
+    "tur": "isim",
+    "kok": "ر و ح",
+    "mufret": "اِسْتِرَاحَة",
+    "cemi": "اِسْتِرَاحَات",
+    "anlam_tr": "mola, dinlenme, ara"
+  },
+  {
+    "id": "kelime_210",
+    "tur": "isim",
+    "kok": "ح ز ن",
+    "mufret": "حُزْن",
+    "cemi": "أَحْزَان",
+    "anlam_tr": "hüzün, keder, üzüntü"
+  },
+  {
+    "id": "kelime_211",
+    "tur": "fiil",
+    "kok": "ح ز ن",
+    "mazi": "حَزِنَ",
+    "muzari": "يَحْزَنُ",
+    "masdar": "حُزْن",
+    "anlam_tr": "üzülmek, kederlenmek"
+  },
+  {
+    "id": "kelime_212",
+    "tur": "isim",
+    "kok": "ف ر ح",
+    "mufret": "فَرَح",
+    "cemi": "أَفْرَاح",
+    "anlam_tr": "sevinç, neşe, düğün"
+  },
+  {
+    "id": "kelime_213",
+    "tur": "fiil",
+    "kok": "ف ر ح",
+    "mazi": "فَرِحَ",
+    "muzari": "يَفْرَحُ",
+    "masdar": "فَرَح",
+    "anlam_tr": "sevinmek, neşelenmek"
+  },
+  {
+    "id": "kelime_214",
+    "tur": "isim",
+    "kok": "س ع د",
+    "mufret": "سَعَادَة",
+    "cemi": "-",
+    "anlam_tr": "mutluluk, saadet"
+  },
+  {
+    "id": "kelime_215",
+    "tur": "fiil",
+    "kok": "س ع د",
+    "mazi": "سَعِدَ",
+    "muzari": "يَسْعَدُ",
+    "masdar": "سَعَادَة",
+    "anlam_tr": "mutlu olmak, sevinmek"
+  },
+  {
+    "id": "kelime_216",
+    "tur": "fiil",
+    "kok": "س ع د",
+    "mazi": "سَاعَدَ",
+    "muzari": "يُسَاعِدُ",
+    "masdar": "مُسَاعَدَة",
+    "anlam_tr": "yardım etmek"
+  },
+  {
+    "id": "kelime_217",
+    "tur": "isim",
+    "kok": "س ع د",
+    "mufret": "مُسَاعَدَة",
+    "cemi": "مُسَاعَدَات",
+    "anlam_tr": "yardım, destek"
+  },
+  {
+    "id": "kelime_218",
+    "tur": "isim",
+    "kok": "ش ك ر",
+    "mufret": "شُكْر",
+    "cemi": "شُكُور",
+    "anlam_tr": "teşekkür, şükür"
+  },
+  {
+    "id": "kelime_219",
+    "tur": "fiil",
+    "kok": "ش ك ر",
+    "mazi": "شَكَرَ",
+    "muzari": "يَشْكُرُ",
+    "masdar": "شُكْر / شُكْرَان",
+    "anlam_tr": "teşekkür etmek, şükretmek"
+  },
+  {
+    "id": "kelime_220",
+    "tur": "isim",
+    "kok": "ع ف و",
+    "mufret": "عَفْو",
+    "cemi": "-",
+    "anlam_tr": "affetme, bağışlama (عَفْواً: rica ederim, affedersiniz)"
+  },
+  {
+    "id": "kelime_221",
+    "tur": "fiil",
+    "kok": "ع ف و",
+    "mazi": "عَفَا",
+    "muzari": "يَعْفُو",
+    "masdar": "عَفْو",
+    "anlam_tr": "affetmek, bağışlamak"
+  },
+  {
+    "id": "kelime_222",
+    "tur": "isim",
+    "kok": "أ ذ ن",
+    "mufret": "إِذْن",
+    "cemi": "أُذُون / أُذُونَات",
+    "anlam_tr": "izin, müsaade (عَنْ إِذْنِك: izninizle)"
+  },
+  {
+    "id": "kelime_223",
+    "tur": "fiil",
+    "kok": "أ ذ ن",
+    "mazi": "أَذِنَ",
+    "muzari": "يَأْذَنُ",
+    "masdar": "إِذْن",
+    "anlam_tr": "izin vermek, müsaade etmek"
+  },
+  {
+    "id": "kelime_224",
+    "tur": "isim",
+    "kok": "أ م ر",
+    "mufret": "أَمْر",
+    "cemi": "أُمُور / أَوَامِر",
+    "anlam_tr": "iş, durum, emir"
+  },
+  {
+    "id": "kelime_225",
+    "tur": "fiil",
+    "kok": "أ م ر",
+    "mazi": "أَمَرَ",
+    "muzari": "يَأْمُرُ",
+    "masdar": "أَمْر",
+    "anlam_tr": "emretmek, sipariş etmek"
+  },
+  {
+    "id": "kelime_226",
+    "tur": "fiil",
+    "kok": "ك و ن",
+    "mazi": "كَانَ",
+    "muzari": "يَكُونُ",
+    "masdar": "كَوْن",
+    "anlam_tr": "olmak, bulunmak"
+  },
+  {
+    "id": "kelime_227",
+    "tur": "isim",
+    "kok": "ك و ن",
+    "mufret": "مَكَان",
+    "cemi": "أَمَاكِن",
+    "anlam_tr": "yer, mekan"
+  },
+  {
+    "id": "kelime_228",
+    "tur": "fiil",
+    "kok": "ع ر ف",
+    "mazi": "عَرَفَ",
+    "muzari": "يَعْرِفُ",
+    "masdar": "مَعْرِفَة",
+    "anlam_tr": "bilmek, tanımak"
+  },
+  {
+    "id": "kelime_229",
+    "tur": "fiil",
+    "kok": "ع ر ف",
+    "mazi": "تَعَرَّفَ",
+    "muzari": "يَتَعَرَّفُ",
+    "masdar": "تَعَرُّف",
+    "anlam_tr": "tanışmak, bilgi edinmek (عَلَى ile)"
+  },
+  {
+    "id": "kelime_230",
+    "tur": "isim",
+    "kok": "ع ر ف",
+    "mufret": "مَعْلُومَة",
+    "cemi": "مَعْلُومَات",
+    "anlam_tr": "bilgi"
+  },
+  {
+    "id": "kelime_231",
+    "tur": "fiil",
+    "kok": "ف ك ر",
+    "mazi": "فَكَّرَ",
+    "muzari": "يُفَكِّرُ",
+    "masdar": "تَفْكِير",
+    "anlam_tr": "düşünmek (فِي ile)"
+  },
+  {
+    "id": "kelime_232",
+    "tur": "isim",
+    "kok": "ف ك ر",
+    "mufret": "فِكْرَة",
+    "cemi": "أَفْكَار",
+    "anlam_tr": "fikir, düşünce"
+  },
+  {
+    "id": "kelime_233",
+    "tur": "fiil",
+    "kok": "ر أ ي",
+    "mazi": "رَأَى",
+    "muzari": "يَرَى",
+    "masdar": "رُؤْيَة / رَأْي",
+    "anlam_tr": "görmek, bakmak, düşünmek"
+  },
+  {
+    "id": "kelime_234",
+    "tur": "isim",
+    "kok": "ر أ ي",
+    "mufret": "رَأْي",
+    "cemi": "آَرَاء",
+    "anlam_tr": "görüş, fikir, kanaat"
+  },
+  {
+    "id": "kelime_235",
+    "tur": "fiil",
+    "kok": "ن ظ ر",
+    "mazi": "نَظَرَ",
+    "muzari": "يَنْظُرُ",
+    "masdar": "نَظَر",
+    "anlam_tr": "bakmak, gözlemlemek (إِلَى ile)"
+  },
+  {
+    "id": "kelime_236",
+    "tur": "isim",
+    "kok": "ن ظ ر",
+    "mufret": "نَظَر",
+    "cemi": "أَنْظَار",
+    "anlam_tr": "bakış, görüş, göz"
+  },
+  {
+    "id": "kelime_237",
+    "tur": "isim",
+    "kok": "ن ظ ر",
+    "mufret": "مَنْظَر",
+    "cemi": "مَنَاظِر",
+    "anlam_tr": "manzara, görünüm"
+  },
+  {
+    "id": "kelime_238",
+    "tur": "fiil",
+    "kok": "ق ر ر",
+    "mazi": "قَرَّرَ",
+    "muzari": "يُقَرِّرُ",
+    "masdar": "تَقْرِير",
+    "anlam_tr": "karar vermek"
+  },
+  {
+    "id": "kelime_239",
+    "tur": "isim",
+    "kok": "ق ر ر",
+    "mufret": "قَرَار",
+    "cemi": "قَرَارَات",
+    "anlam_tr": "karar"
+  },
+  {
+    "id": "kelime_240",
+    "tur": "fiil",
+    "kok": "ح ك م",
+    "mazi": "حَكَمَ",
+    "muzari": "يَحْكُمُ",
+    "masdar": "حُكْم",
+    "anlam_tr": "hükmetmek, karar vermek"
+  },
+  {
+    "id": "kelime_241",
+    "tur": "isim",
+    "kok": "ح ك م",
+    "mufret": "حُكْم",
+    "cemi": "أَحْكَام",
+    "anlam_tr": "hüküm, yargı, karar"
+  },
+  {
+    "id": "kelime_242",
+    "tur": "isim",
+    "kok": "ح ك م",
+    "mufret": "حَكَم",
+    "cemi": "حُكَّام",
+    "anlam_tr": "hakem"
+  },
+  {
+    "id": "kelime_243",
+    "tur": "fiil",
+    "kok": "ق و ل",
+    "mazi": "قَالَ",
+    "muzari": "يَقُولُ",
+    "masdar": "قَوْل",
+    "anlam_tr": "söylemek, demek"
+  },
+  {
+    "id": "kelime_244",
+    "tur": "isim",
+    "kok": "ق و ل",
+    "mufret": "قَوْل",
+    "cemi": "أَقْوَال",
+    "anlam_tr": "söz, ifade, laf"
+  },
+  {
+    "id": "kelime_245",
+    "tur": "fiil",
+    "kok": "ك ل م",
+    "mazi": "تَكَلَّمَ",
+    "muzari": "يَتَكَلَّمُ",
+    "masdar": "تَكَلُّم / كَلَام",
+    "anlam_tr": "konuşmak"
+  },
+  {
+    "id": "kelime_246",
+    "tur": "isim",
+    "kok": "ك ل م",
+    "mufret": "كَلِمَة",
+    "cemi": "كَلِمَات",
+    "anlam_tr": "kelime, söz"
+  },
+  {
+    "id": "kelime_247",
+    "tur": "isim",
+    "kok": "ك ل م",
+    "mufret": "كَلَام",
+    "cemi": "-",
+    "anlam_tr": "konuşma, laf, söz"
+  },
+  {
+    "id": "kelime_248",
+    "tur": "fiil",
+    "kok": "ح د ث",
+    "mazi": "تَحَدَّثَ",
+    "muzari": "يَتَحَدَّثُ",
+    "masdar": "تَحَدُّث",
+    "anlam_tr": "konuşmak, sohbet etmek"
+  },
+  {
+    "id": "kelime_249",
+    "tur": "fiil",
+    "kok": "ح د ث",
+    "mazi": "حَدَثَ",
+    "muzari": "يَحْدُثُ",
+    "masdar": "حُدُوث",
+    "anlam_tr": "meydana gelmek, olmak, gerçekleşmek"
+  },
+  {
+    "id": "kelime_250",
+    "tur": "isim",
+    "kok": "ح د ث",
+    "mufret": "حَادِث",
+    "cemi": "حَوَادِث",
+    "anlam_tr": "kaza, olay, hadise"
+  },
+  {
+    "id": "kelime_251",
+    "tur": "fiil",
+    "kok": "ش هـ ر",
+    "mazi": "شَهَرَ",
+    "muzari": "يَشْهَرُ",
+    "masdar": "شُهْرَة",
+    "anlam_tr": "ünlü olmak, meşhur etmek"
+  },
+  {
+    "id": "kelime_252",
+    "tur": "isim",
+    "kok": "ش هـ ر",
+    "mufret": "شَهْر",
+    "cemi": "أَشْهُر / شُهُور",
+    "anlam_tr": "ay (zaman dilimi)"
+  },
+  {
+    "id": "kelime_253",
+    "tur": "isim",
+    "kok": "ش هـ ر",
+    "mufret": "مَشْهُور / شَهِير",
+    "cemi": "مَشْهُورُونَ / شُهَرَاء",
+    "anlam_tr": "üslü, meşhur, tanınmış"
+  },
+  {
+    "id": "kelime_254",
+    "tur": "isim",
+    "kok": "ش هـ ر",
+    "mufret": "شُهْرَة",
+    "cemi": "-",
+    "anlam_tr": "ün, şöhret"
+  },
+  {
+    "id": "kelime_255",
+    "tur": "fiil",
+    "kok": "ش ي خ",
+    "mazi": "شَاخَ",
+    "muzari": "يَشِيخُ",
+    "masdar": "شَيْخُوخَة",
+    "anlam_tr": "yaşlanmak, ihtiyarlamak"
+  },
+  {
+    "id": "kelime_256",
+    "tur": "isim",
+    "kok": "ش ي خ",
+    "mufret": "شَيْخ / مُسِنّ",
+    "cemi": "شُيُوخ / مُسِنُّونَ",
+    "anlam_tr": "ihtiyar, yaşlı, şeyh"
+  },
+  {
+    "id": "kelime_257",
+    "tur": "isim",
+    "kok": "ش ي خ",
+    "mufret": "شَيْخُوخَة",
+    "cemi": "-",
+    "anlam_tr": "ihtiyarlık, yaşlılık"
+  },
+  {
+    "id": "kelime_258",
+    "tur": "fiil",
+    "kok": "ض ع ف",
+    "mazi": "ضَعُفَ",
+    "muzari": "يَضْعُفُ",
+    "masdar": "ضُعْف",
+    "anlam_tr": "zayıflamak, güçsüzleşmek"
+  },
+  {
+    "id": "kelime_259",
+    "tur": "isim",
+    "kok": "ض ع ف",
+    "mufret": "ضَعِيف",
+    "cemi": "ضُعَفَاء",
+    "anlam_tr": "zayıf, güçsüz"
+  },
+  {
+    "id": "kelime_260",
+    "tur": "isim",
+    "kok": "ض ع ف",
+    "mufret": "ضُعْف",
+    "cemi": "-",
+    "anlam_tr": "zayıflık, halsizlik"
+  },
+  {
+    "id": "kelime_261",
+    "tur": "fiil",
+    "kok": "ش هـ و",
+    "mazi": "اِشْتَهَى",
+    "muzari": "يَشْتَهِي",
+    "masdar": "اِشْتِهَاء / شَهْوَة",
+    "anlam_tr": "canı çekmek, iştah duymak, arzulamak"
+  },
+  {
+    "id": "kelime_262",
+    "tur": "isim",
+    "kok": "ش هـ و",
+    "mufret": "شَهِيَّة",
+    "cemi": "شَهِيَّات",
+    "anlam_tr": "iştah"
+  },
+  {
+    "id": "kelime_263",
+    "tur": "fiil",
+    "kok": "هـ ض م",
+    "mazi": "هَضَمَ",
+    "muzari": "يَهْضِمُ",
+    "masdar": "هَضْم",
+    "anlam_tr": "sindirmek, hazmetmek"
+  },
+  {
+    "id": "kelime_264",
+    "tur": "isim",
+    "kok": "هـ ض م",
+    "mufret": "عُسْرُ الْهَضْمِ",
+    "cemi": "-",
+    "anlam_tr": "hazımsızlık"
+  },
+  {
+    "id": "kelime_265",
+    "tur": "fiil",
+    "kok": "ن ف س",
+    "mazi": "تَنَفَّسَ",
+    "muzari": "يَتَنَفَّسُ",
+    "masdar": "تَنَفُّس",
+    "anlam_tr": "nefes almak"
+  },
+  {
+    "id": "kelime_266",
+    "tur": "isim",
+    "kok": "ن ف س",
+    "mufret": "تَنَفُّس",
+    "cemi": "-",
+    "anlam_tr": "solunum, nefes alma"
+  },
+  {
+    "id": "kelime_267",
+    "tur": "isim",
+    "kok": "ن ف س",
+    "mufret": "نَفَس",
+    "cemi": "أَنْفَاس",
+    "anlam_tr": "nefes, soluk"
+  },
+  {
+    "id": "kelime_268",
+    "tur": "fiil",
+    "kok": "و ر م",
+    "mazi": "تَوَرَّمَ",
+    "muzari": "يَتَوَرَّمُ",
+    "masdar": "تَوَرُّم",
+    "anlam_tr": "şişmek, iltihaplanmak"
+  },
+  {
+    "id": "kelime_269",
+    "tur": "isim",
+    "kok": "و ر م",
+    "mufret": "تَوَرُّم / وَرَم",
+    "cemi": "أَوْرَام",
+    "anlam_tr": "şişlik, tümör, ur"
+  },
+  {
+    "id": "kelime_270",
+    "tur": "fiil",
+    "kok": "ح م ر",
+    "mazi": "اِحْمَرَّ",
+    "muzari": "يَحْمَرُّ",
+    "masdar": "اِحْمِرَار",
+    "anlam_tr": "kızarmak"
+  },
+  {
+    "id": "kelime_271",
+    "tur": "isim",
+    "kok": "ح م ر",
+    "mufret": "أَحْمَر",
+    "cemi": "حُمْر",
+    "anlam_tr": "kırmızı"
+  },
+  {
+    "id": "kelime_272",
+    "tur": "fiil",
+    "kok": "م ش ي",
+    "mazi": "مَشَى",
+    "muzari": "يَمْشِي",
+    "masdar": "مَشْي",
+    "anlam_tr": "yürümek"
+  },
+  {
+    "id": "kelime_273",
+    "tur": "isim",
+    "kok": "م ش ي",
+    "mufret": "مَشْي",
+    "cemi": "-",
+    "anlam_tr": "yürüyüş, yürüme"
+  },
+  {
+    "id": "kelime_274",
+    "tur": "fiil",
+    "kok": "غ ض ب",
+    "mazi": "غَضِبَ",
+    "muzari": "يَغْضَبُ",
+    "masdar": "غَضَب",
+    "anlam_tr": "öfkelenmek, kızmak"
+  },
+  {
+    "id": "kelime_275",
+    "tur": "isim",
+    "kok": "غ ض ب",
+    "mufret": "غَضَب",
+    "cemi": "-",
+    "anlam_tr": "öfke, kızgınlık"
+  },
+  {
+    "id": "kelime_276",
+    "tur": "fiil",
+    "kok": "ش هـ د",
+    "mazi": "شَاهَدَ",
+    "muzari": "يُشَاهِدُ",
+    "masdar": "مُشَاهَدَة",
+    "anlam_tr": "izlemek, seyretmek"
+  },
+  {
+    "id": "kelime_277",
+    "tur": "isim",
+    "kok": "ش هـ د",
+    "mufret": "مُشَاهَدَة",
+    "cemi": "مُشَاهَدَات",
+    "anlam_tr": "izleme, seyir"
+  },
+  {
+    "id": "kelime_278",
+    "tur": "isim",
+    "kok": "ش هـ د",
+    "mufret": "شَاهِد",
+    "cemi": "شُهُود",
+    "anlam_tr": "tanık, şahit"
+  },
+  {
+    "id": "kelime_279",
+    "tur": "isim",
+    "kok": "ش هـ د",
+    "mufret": "شَهِيد",
+    "cemi": "شُهَدَاء",
+    "anlam_tr": "şehit"
+  },
+  {
+    "id": "kelime_280",
+    "tur": "fiil",
+    "kok": "م ث ل",
+    "mazi": "مَثَّلَ",
+    "muzari": "يُمَثِّلُ",
+    "masdar": "تَمْثِيل",
+    "anlam_tr": "oynamak (rol), temsil etmek"
+  },
+  {
+    "id": "kelime_281",
+    "tur": "isim",
+    "kok": "م ث ل",
+    "mufret": "مُمَثِّل",
+    "cemi": "مُمَثِّلُونَ",
+    "anlam_tr": "oyuncu, aktör, temsilci"
+  },
+  {
+    "id": "kelime_282",
+    "tur": "isim",
+    "kok": "م ث ل",
+    "mufret": "مِثَال",
+    "cemi": "أَمْثِلَة",
+    "anlam_tr": "örnek, misal"
+  },
+  {
+    "id": "kelime_283",
+    "tur": "isim",
+    "kok": "ف ل م",
+    "mufret": "فِلْم",
+    "cemi": "أَفْلَام",
+    "anlam_tr": "film"
+  },
+  {
+    "id": "kelime_284",
+    "tur": "isim",
+    "kok": "س ن م",
+    "mufret": "سِينِمَا",
+    "cemi": "سِينِمَاهَات",
+    "anlam_tr": "sinema"
+  },
+  {
+    "id": "kelime_285",
+    "tur": "isim",
+    "kok": "ص ي د",
+    "mufret": "صَيْد",
+    "cemi": "أَصْيَاد",
+    "anlam_tr": "av, avlanma"
+  },
+  {
+    "id": "kelime_286",
+    "tur": "fiil",
+    "kok": "ص ي د",
+    "mazi": "صَادَ",
+    "muzari": "يَصِيدُ",
+    "masdar": "صَيْد",
+    "anlam_tr": "avlamak, yakalamak"
+  },
+  {
+    "id": "kelime_287",
+    "tur": "isim",
+    "kok": "ص ي د",
+    "mufret": "صَيَّاد",
+    "cemi": "صَيَّادُونَ",
+    "anlam_tr": "avcı, balıkçı"
+  },
+  {
+    "id": "kelime_288",
+    "tur": "isim",
+    "kok": "و س م",
+    "mufret": "مَوْسِم",
+    "cemi": "مَوَاسِم",
+    "anlam_tr": "sezon, mevsim"
+  },
+  {
+    "id": "kelime_289",
+    "tur": "fiil",
+    "kok": "د ر ب",
+    "mazi": "تَدَرَّبَ",
+    "muzari": "يَتَدَرَّبُ",
+    "masdar": "تَدَرُّب",
+    "anlam_tr": "antrenman yapmak, talim etmek, eğitilmek"
+  },
+  {
+    "id": "kelime_290",
+    "tur": "isim",
+    "kok": "د ر ب",
+    "mufret": "تَدْرِيب",
+    "cemi": "تَدْرِيبَات",
+    "anlam_tr": "antrenman, talim, eğitim"
+  },
+  {
+    "id": "kelime_291",
+    "tur": "isim",
+    "kok": "س ل ح",
+    "mufret": "سِلَاح",
+    "cemi": "أَسْلِحَة",
+    "anlam_tr": "silah"
+  },
+  {
+    "id": "kelime_292",
+    "tur": "isim",
+    "kok": "ش ر ط",
+    "mufret": "شُرْطَة",
+    "cemi": "شُرَط",
+    "anlam_tr": "polis, emniyet"
+  },
+  {
+    "id": "kelime_293",
+    "tur": "isim",
+    "kok": "ش ر ط",
+    "mufret": "شُرْطِيّ",
+    "cemi": "شُرْطَة",
+    "anlam_tr": "polis memuru"
+  },
+  {
+    "id": "kelime_294",
+    "tur": "isim",
+    "kok": "ج ر م",
+    "mufret": "جَرِيمَة",
+    "cemi": "جَرَائِم",
+    "anlam_tr": "suç, cinayet"
+  },
+  {
+    "id": "kelime_295",
+    "tur": "isim",
+    "kok": "ج ر م",
+    "mufret": "مُجْرِم",
+    "cemi": "مُجْرِمُونَ",
+    "anlam_tr": "suçlu, mücrim"
+  },
+  {
+    "id": "kelime_296",
+    "tur": "fiil",
+    "kok": "ج ر م",
+    "mazi": "أَجْرَمَ",
+    "muzari": "يُجْرِمُ",
+    "masdar": "إِجْرَام",
+    "anlam_tr": "suç işlemek"
+  },
+  {
+    "id": "kelime_297",
+    "tur": "isim",
+    "kok": "ع ر ض",
+    "mufret": "عَرْض",
+    "cemi": "عُرُوض",
+    "anlam_tr": "gösterim, seans, teklif, sunum"
+  },
+  {
+    "id": "kelime_298",
+    "tur": "fiil",
+    "kok": "ع ر ض",
+    "mazi": "عَرَضَ",
+    "muzari": "يَعْرِضُ",
+    "masdar": "عَرْض",
+    "anlam_tr": "sunmak, sergilemek, göstermek"
+  },
+  {
+    "id": "kelime_299",
+    "tur": "isim",
+    "kok": "ص ل و",
+    "mufret": "صَالَة / صَالُون",
+    "cemi": "صَالَات / صَالُونَات",
+    "anlam_tr": "salon, gösteri salonu"
+  },
+  {
+    "id": "kelime_300",
+    "tur": "isim",
+    "kok": "ذ ك ر",
+    "mufret": "تَذْكَار",
+    "cemi": "تَذَاكِير",
+    "anlam_tr": "hatıra, anı (نُصُبٌ تَذْكَارِيّ: anıt)"
+  },
+  {
+    "id": "kelime_301",
+    "tur": "fiil",
+    "kok": "ح ل و",
+    "mazi": "حَلَا",
+    "muzari": "يَحْلُو",
+    "masdar": "حَلَاوَة",
+    "anlam_tr": "tatlı olmak, güzel olmak"
+  },
+  {
+    "id": "kelime_302",
+    "tur": "isim",
+    "kok": "ح ل و",
+    "mufret": "حَلْوَى / حَلَوِيَّات",
+    "cemi": "حَلَوِيَّات",
+    "anlam_tr": "tatlı, şekerleme"
+  },
+  {
+    "id": "kelime_303",
+    "tur": "isim",
+    "kok": "ح ل و",
+    "mufret": "حُلْو",
+    "cemi": "حُلْوُونَ",
+    "anlam_tr": "tatlı, şirin, güzel"
+  },
+  {
+    "id": "kelime_304",
+    "tur": "fiil",
+    "kok": "خ ب ز",
+    "mazi": "خَبَزَ",
+    "muzari": "يَخْبِزُ",
+    "masdar": "خَبْز",
+    "anlam_tr": "ekmek pişirmek"
+  },
+  {
+    "id": "kelime_305",
+    "tur": "isim",
+    "kok": "خ ب ز",
+    "mufret": "خُبْز",
+    "cemi": "أَخْبَاز",
+    "anlam_tr": "ekmek"
+  },
+  {
+    "id": "kelime_306",
+    "tur": "isim",
+    "kok": "خ ب ز",
+    "mufret": "مَخْبَز",
+    "cemi": "مَخَابِز",
+    "anlam_tr": "fırın, unlu mamuller dükkanı"
+  },
+  {
+    "id": "kelime_307",
+    "tur": "fiil",
+    "kok": "ع ج ن",
+    "mazi": "عَجَنَ",
+    "muzari": "يَعْجِنُ",
+    "masdar": "عَجْن",
+    "anlam_tr": "yoğurmak"
+  },
+  {
+    "id": "kelime_308",
+    "tur": "isim",
+    "kok": "ع ج ن",
+    "mufret": "عَجِين / عَجِينَة",
+    "cemi": "عَجَائِن",
+    "anlam_tr": "hamur"
+  },
+  {
+    "id": "kelime_309",
+    "tur": "isim",
+    "kok": "ر ق ق",
+    "mufret": "رَقِيقَة",
+    "cemi": "رَقَائِق",
+    "anlam_tr": "yufka, ince katman"
+  },
+  {
+    "id": "kelime_310",
+    "tur": "fiil",
+    "kok": "ر ق ق",
+    "mazi": "رَقَّ / رَقَّقَ",
+    "muzari": "يُرَقِّقُ",
+    "masdar": "تَرْقِيق",
+    "anlam_tr": "inceltmek, ince açmak"
+  },
+  {
+    "id": "kelime_311",
+    "tur": "isim",
+    "kok": "ح ل ب",
+    "mufret": "حَلِيب / مُهَلَّبِيَّة",
+    "cemi": "مُهَلَّبِيَّات",
+    "anlam_tr": "süt / muhallebi"
+  },
+  {
+    "id": "kelime_312",
+    "tur": "fiil",
+    "kok": "ح ل ب",
+    "mazi": "حَلَبَ",
+    "muzari": "يَحْلُبُ",
+    "masdar": "حَلْب",
+    "anlam_tr": "sağmak (süt)"
+  },
+  {
+    "id": "kelime_313",
+    "tur": "isim",
+    "kok": "و ز ن",
+    "mufret": "وَزْن",
+    "cemi": "أَوْزَان",
+    "anlam_tr": "ağırlık, tartı, vezin"
+  },
+  {
+    "id": "kelime_314",
+    "tur": "fiil",
+    "kok": "و ز ن",
+    "mazi": "وَزَنَ",
+    "muzari": "يَزِنُ",
+    "masdar": "وَزْن",
+    "anlam_tr": "tartmak"
+  },
+  {
+    "id": "kelime_315",
+    "tur": "isim",
+    "kok": "ث ق ل",
+    "mufret": "ثَقِيل",
+    "cemi": "ثِقَال",
+    "anlam_tr": "ağır"
+  },
+  {
+    "id": "kelime_316",
+    "tur": "isim",
+    "kok": "خ ف ف",
+    "mufret": "خَفِيف",
+    "cemi": "خِفَاف",
+    "anlam_tr": "hafif"
+  },
+  {
+    "id": "kelime_317",
+    "tur": "fiil",
+    "kok": "خ ف ف",
+    "mazi": "خَفَّ / خَفَّفَ",
+    "muzari": "يُخَفِّفُ",
+    "masdar": "تَخْفِيف",
+    "anlam_tr": "hafifletmek, azaltmak"
+  },
+  {
+    "id": "kelime_318",
+    "tur": "isim",
+    "kok": "ش ر ب",
+    "mufret": "شَرْبَات / قَطْر",
+    "cemi": "-",
+    "anlam_tr": "şerbet, tatlı şurubu"
+  },
+  {
+    "id": "kelime_319",
+    "tur": "isim",
+    "kok": "س ك ر",
+    "mufret": "سُكَّر",
+    "cemi": "سُكَّرِيَّات",
+    "anlam_tr": "şeker"
+  },
+  {
+    "id": "kelime_320",
+    "tur": "isim",
+    "kok": "م ل ح",
+    "mufret": "مِلْح",
+    "cemi": "أَمْلَاح",
+    "anlam_tr": "tuz"
+  },
+  {
+    "id": "kelime_321",
+    "tur": "isim",
+    "kok": "م ل ح",
+    "mufret": "مَالِح",
+    "cemi": "مَالِحُونَ",
+    "anlam_tr": "tuzlu"
+  },
+  {
+    "id": "kelime_322",
+    "tur": "fiil",
+    "kok": "م ل ح",
+    "mazi": "مَلَّحَ",
+    "muzari": "يُمَلِّحُ",
+    "masdar": "تَمْلِيح",
+    "anlam_tr": "tuzlamak"
+  },
+  {
+    "id": "kelime_323",
+    "tur": "isim",
+    "kok": "ج ن ب",
+    "mufret": "جَانِب / جَنَاح",
+    "cemi": "جَوَانِب / أَجْنِحَة",
+    "anlam_tr": "yan, taraf, stant, kanat"
+  },
+  {
+    "id": "kelime_324",
+    "tur": "isim",
+    "kok": "ن ص ص",
+    "mufret": "مَنَصَّة / بَسْطَة",
+    "cemi": "مَنَصَّات / بَسَطَات",
+    "anlam_tr": "stant, tezgâh, platform"
+  },
+  {
+    "id": "kelime_325",
+    "tur": "isim",
+    "kok": "ط ب ق",
+    "mufret": "طَبَقَة",
+    "cemi": "طَبَقَات",
+    "anlam_tr": "kat, katman, tabaka (40 kat yufka vb.)"
+  },
+  {
+    "id": "kelime_326",
+    "tur": "fiil",
+    "kok": "ع ي ش",
+    "mazi": "عَاشَ",
+    "muzari": "يَعِيشُ",
+    "masdar": "عَيْش / حَيَاة",
+    "anlam_tr": "yaşamak"
+  },
+  {
+    "id": "kelime_327",
+    "tur": "isim",
+    "kok": "ح ي و",
+    "mufret": "حَيَاة",
+    "cemi": "حَيَوَات",
+    "anlam_tr": "hayat, yaşam"
+  },
+  {
+    "id": "kelime_328",
+    "tur": "isim",
+    "kok": "ح ي و",
+    "mufret": "حَيَوَان",
+    "cemi": "حَيَوَانَات",
+    "anlam_tr": "hayvan"
+  },
+  {
+    "id": "kelime_329",
+    "tur": "isim",
+    "kok": "ح د ق",
+    "mufret": "حَدِيقَة",
+    "cemi": "حَدَائِق",
+    "anlam_tr": "bahçe, park (حَدِيقَةُ الْحَيَوَانَات: hayvanat bahçesi)"
+  },
+  {
+    "id": "kelime_330",
+    "tur": "isim",
+    "kok": "ق ر د",
+    "mufret": "قِرْد",
+    "cemi": "قِرَدَة / قُرُود",
+    "anlam_tr": "maymun"
+  },
+  {
+    "id": "kelime_331",
+    "tur": "isim",
+    "kok": "م و ز",
+    "mufret": "مَوْز",
+    "cemi": "مَوْزَات",
+    "anlam_tr": "muz"
+  },
+  {
+    "id": "kelime_332",
+    "tur": "fiil",
+    "kok": "غ ذ و",
+    "mazi": "تَغَذَّى",
+    "muzari": "يَتَغَذَّى",
+    "masdar": "تَغَذٍّ / تَغْذِيَة",
+    "anlam_tr": "beslenmek"
+  },
+  {
+    "id": "kelime_333",
+    "tur": "isim",
+    "kok": "غ ذ و",
+    "mufret": "تَغْذِيَة / غِذَاء",
+    "cemi": "أَغْذِيَة",
+    "anlam_tr": "beslenme, gıda"
+  },
+  {
+    "id": "kelime_334",
+    "tur": "isim",
+    "kok": "ب ط ط",
+    "mufret": "بَطَّة",
+    "cemi": "بَطّ / بَطَّات",
+    "anlam_tr": "ördek"
+  },
+  {
+    "id": "kelime_335",
+    "tur": "fiil",
+    "kok": "س ب ح",
+    "mazi": "سَبَحَ",
+    "muzari": "يَسْبَحُ",
+    "masdar": "سِبَاحَة",
+    "anlam_tr": "yüzmek"
+  },
+  {
+    "id": "kelime_336",
+    "tur": "isim",
+    "kok": "س ب ح",
+    "mufret": "سِبَاحَة",
+    "cemi": "-",
+    "anlam_tr": "yüzme"
+  },
+  {
+    "id": "kelime_337",
+    "tur": "isim",
+    "kok": "س ب ح",
+    "mufret": "مَسْبَح / حَوْضُ سِبَاحَةٍ",
+    "cemi": "مَسَابِح",
+    "anlam_tr": "yüzme havuzu"
+  },
+  {
+    "id": "kelime_338",
+    "tur": "isim",
+    "kok": "س م ك",
+    "mufret": "سَمَكَة",
+    "cemi": "أَسْمَاك / سَمَك",
+    "anlam_tr": "balık"
+  },
+  {
+    "id": "kelime_339",
+    "tur": "isim",
+    "kok": "ب ح ر",
+    "mufret": "بَحْر",
+    "cemi": "بِحَار / أَبْحُر",
+    "anlam_tr": "deniz"
+  },
+  {
+    "id": "kelime_340",
+    "tur": "isim",
+    "kok": "ز ع ف",
+    "mufret": "زَعْنَفَة",
+    "cemi": "زَعَانِف",
+    "anlam_tr": "yüzgeç"
+  },
+  {
+    "id": "kelime_341",
+    "tur": "isim",
+    "kok": "ج ن ح",
+    "mufret": "جَنَاح",
+    "cemi": "أَجْنِحَة",
+    "anlam_tr": "kanat, stant, taraf"
+  },
+  {
+    "id": "kelime_342",
+    "tur": "isim",
+    "kok": "ت م س ح",
+    "mufret": "تِمْسَاح",
+    "cemi": "تَمَاسِيح",
+    "anlam_tr": "timsah"
+  },
+  {
+    "id": "kelime_343",
+    "tur": "isim",
+    "kok": "س ن ن",
+    "mufret": "سِنّ",
+    "cemi": "أَسْنَان",
+    "anlam_tr": "diş, yaş"
+  },
+  {
+    "id": "kelime_344",
+    "tur": "isim",
+    "kok": "ز ح ف",
+    "mufret": "زَاحِف / زَوَاحِف",
+    "cemi": "زَوَاحِف",
+    "anlam_tr": "sürüngen"
+  },
+  {
+    "id": "kelime_345",
+    "tur": "fiil",
+    "kok": "ز ح ف",
+    "mazi": "زَحَفَ",
+    "muzari": "يَزْحَفُ",
+    "masdar": "زَحْف",
+    "anlam_tr": "sürünmek, ilerlemek"
+  },
+  {
+    "id": "kelime_346",
+    "tur": "isim",
+    "kok": "ي ب س",
+    "mufret": "يَابِسَة",
+    "cemi": "يَابِسَات",
+    "anlam_tr": "kara, karasal bölge, kuru yer"
+  },
+  {
+    "id": "kelime_347",
+    "tur": "isim",
+    "kok": "أ س د",
+    "mufret": "أَسَد",
+    "cemi": "أُسُود / أُسْد",
+    "anlam_tr": "aslan"
+  },
+  {
+    "id": "kelime_348",
+    "tur": "isim",
+    "kok": "ق ف ص",
+    "mufret": "قَفَص",
+    "cemi": "أَقْفَاص",
+    "anlam_tr": "kafes"
+  },
+  {
+    "id": "kelime_349",
+    "tur": "fiil",
+    "kok": "ض ر ر",
+    "mazi": "ضَرَّ",
+    "muzari": "يَضُرُّ",
+    "masdar": "ضَرَر",
+    "anlam_tr": "zarar vermek, dokunmak (sağlığa vb.)"
+  },
+  {
+    "id": "kelime_350",
+    "tur": "isim",
+    "kok": "ض ر ر",
+    "mufret": "ضَرَر",
+    "cemi": "أَضْرَار",
+    "anlam_tr": "zarar, ziyan"
+  },
+  {
+    "id": "kelime_351",
+    "tur": "fiil",
+    "kok": "ش ت و",
+    "mazi": "أَشْتَى",
+    "muzari": "يُشْتِي",
+    "masdar": "إِشْتَاء",
+    "anlam_tr": "kışlamak, kışı geçirmek"
+  },
+  {
+    "id": "kelime_352",
+    "tur": "isim",
+    "kok": "ش ت و",
+    "mufret": "شِتَاء",
+    "cemi": "أَشْتِيَة",
+    "anlam_tr": "kış"
+  },
+  {
+    "id": "kelime_353",
+    "tur": "isim",
+    "kok": "ص ي ف",
+    "mufret": "صَيْف",
+    "cemi": "أَصْيَاف",
+    "anlam_tr": "yaz"
+  },
+  {
+    "id": "kelime_354",
+    "tur": "isim",
+    "kok": "خ ر ف",
+    "mufret": "خَرِيف",
+    "cemi": "أَخْرِفَة",
+    "anlam_tr": "sonbahar"
+  },
+  {
+    "id": "kelime_355",
+    "tur": "isim",
+    "kok": "ر ب ع",
+    "mufret": "رَبِيع",
+    "cemi": "أَرْبِعَة",
+    "anlam_tr": "ilkbahar"
+  },
+  {
+    "id": "kelime_356",
+    "tur": "fiil",
+    "kok": "م ط ر",
+    "mazi": "مَطَرَتْ / أَمْطَرَتْ",
+    "muzari": "تُمْطِرُ",
+    "masdar": "إِمْطَار / مَطَر",
+    "anlam_tr": "yağmur yağmak"
+  },
+  {
+    "id": "kelime_357",
+    "tur": "isim",
+    "kok": "م ط ر",
+    "mufret": "مَطَر",
+    "cemi": "أَمْطَار",
+    "anlam_tr": "yağmur"
+  },
+  {
+    "id": "kelime_358",
+    "tur": "isim",
+    "kok": "ث ل ج",
+    "mufret": "ثَلْج",
+    "cemi": "ثُلُوج",
+    "anlam_tr": "kar, buz"
+  },
+  {
+    "id": "kelime_359",
+    "tur": "isim",
+    "kok": "ب ر د",
+    "mufret": "بَرْد",
+    "cemi": "أَبْرَاد",
+    "anlam_tr": "soğuk"
+  },
+  {
+    "id": "kelime_360",
+    "tur": "isim",
+    "kok": "ب ر د",
+    "mufret": "بَارِد",
+    "cemi": "بَارِدُونَ",
+    "anlam_tr": "soğuk (hava/içecek)"
+  },
+  {
+    "id": "kelime_361",
+    "tur": "isim",
+    "kok": "ح ر ر",
+    "mufret": "حَارّ",
+    "cemi": "حَارُّونَ",
+    "anlam_tr": "sıcak (hava/yemek)"
+  },
+  {
+    "id": "kelime_362",
+    "tur": "isim",
+    "kok": "ج و و",
+    "mufret": "جَوّ / طَقْس",
+    "cemi": "أَجْوَاء / أَطْقَاس",
+    "anlam_tr": "hava, atmosfer, iklim"
+  },
+  {
+    "id": "kelime_363",
+    "tur": "isim",
+    "kok": "ع ط ل",
+    "mufret": "عُطْلَة",
+    "cemi": "عُطَل / عُطْلَات",
+    "anlam_tr": "tatil"
+  },
+  {
+    "id": "kelime_364",
+    "tur": "fiil",
+    "kok": "ع ط ل",
+    "mazi": "عَطَّلَ / تَعَطَّلَ",
+    "muzari": "يَتَعَطَّلُ",
+    "masdar": "تَعَطُّل",
+    "anlam_tr": "arızalanmak, tatile girmek"
+  },
+  {
+    "id": "kelime_365",
+    "tur": "isim",
+    "kok": "س ب ع",
+    "mufret": "أُسْبُوع",
+    "cemi": "أَسَابِيع",
+    "anlam_tr": "hafta"
+  },
+  {
+    "id": "kelime_366",
+    "tur": "isim",
+    "kok": "س ن و",
+    "mufret": "سَنَة / عَام",
+    "cemi": "سَنَوَات / أَعْوَام",
+    "anlam_tr": "yıl, sene"
+  },
+  {
+    "id": "kelime_367",
+    "tur": "isim",
+    "kok": "ز م ن",
+    "mufret": "زَمَن / وَقْت",
+    "cemi": "أَزْمَان / أَوْقَات",
+    "anlam_tr": "zaman, vakit"
+  },
+  {
+    "id": "kelime_368",
+    "tur": "isim",
+    "kok": "س و ع",
+    "mufret": "سَاعَة",
+    "cemi": "سَاعَات",
+    "anlam_tr": "saat"
+  },
+  {
+    "id": "kelime_369",
+    "tur": "isim",
+    "kok": "ل ي ل",
+    "mufret": "لَيْل / لَيْلَة",
+    "cemi": "لَيَالٍ / لَيَالِي",
+    "anlam_tr": "gece"
+  },
+  {
+    "id": "kelime_370",
+    "tur": "isim",
+    "kok": "ص ب ح",
+    "mufret": "صَبَاح",
+    "cemi": "أَصْبَاح",
+    "anlam_tr": "sabah"
+  },
+  {
+    "id": "kelime_371",
+    "tur": "isim",
+    "kok": "م س و",
+    "mufret": "مَسَاء",
+    "cemi": "أَمْسِيَة",
+    "anlam_tr": "akşam"
+  },
+  {
+    "id": "kelime_372",
+    "tur": "fiil",
+    "kok": "م س و",
+    "mazi": "أَمْسَى",
+    "muzari": "يُمْسِي",
+    "masdar": "إِمْسَاء",
+    "anlam_tr": "akşama girmek, akşamlamak"
+  },
+  {
+    "id": "kelime_373",
+    "tur": "isim",
+    "kok": "أ م س",
+    "mufret": "أَمْسِ",
+    "cemi": "-",
+    "anlam_tr": "dün"
+  },
+  {
+    "id": "kelime_374",
+    "tur": "isim",
+    "kok": "غ د و",
+    "mufret": "غَد / غَداً",
+    "cemi": "-",
+    "anlam_tr": "yarın"
+  },
+  {
+    "id": "kelime_375",
+    "tur": "isim",
+    "kok": "أ و ن",
+    "mufret": "اَلْآنَ",
+    "cemi": "-",
+    "anlam_tr": "şimdi, şu an"
+  },
+  {
+    "id": "kelime_376",
+    "tur": "isim",
+    "kok": "ق ر ب",
+    "mufret": "قَرِيب",
+    "cemi": "أَقْرِبَاء / أَقْرِبُون",
+    "anlam_tr": "yakın, akraba"
+  },
+  {
+    "id": "kelime_377",
+    "tur": "fiil",
+    "kok": "ق ر ب",
+    "mazi": "قَرُبَ / اِقْتَرَبَ",
+    "muzari": "يَقْتَرِبُ",
+    "masdar": "اِقْتِرَاب",
+    "anlam_tr": "yaklaşmak (مِنْ ile)"
+  },
+  {
+    "id": "kelime_378",
+    "tur": "isim",
+    "kok": "ب ع د",
+    "mufret": "بَعِيد",
+    "cemi": "بُعَدَاء",
+    "anlam_tr": "uzak"
+  },
+  {
+    "id": "kelime_379",
+    "tur": "fiil",
+    "kok": "ب ع د",
+    "mazi": "بَعُدَ / اِبْتَعَدَ",
+    "muzari": "يَبْتَعِدُ",
+    "masdar": "اِبْتِعَاد",
+    "anlam_tr": "uzaklaşmak (عَنْ ile)"
+  },
+  {
+    "id": "kelime_380",
+    "tur": "isim",
+    "kok": "و ج هـ",
+    "mufret": "جِهَة / طَرَف",
+    "cemi": "جِهَات / أَطْرَاف",
+    "anlam_tr": "yön, taraf, cephe"
+  },
+  {
+    "id": "kelime_381",
+    "tur": "isim",
+    "kok": "ي م ن",
+    "mufret": "يَمِين / يَمِينِيّ",
+    "cemi": "أَيْمَان",
+    "anlam_tr": "sağ, sağ taraf"
+  },
+  {
+    "id": "kelime_382",
+    "tur": "isim",
+    "kok": "ي س ر",
+    "mufret": "يَسَار / يَسَارِيّ",
+    "cemi": "أَيْسَار",
+    "anlam_tr": "sol, sol taraf"
+  },
+  {
+    "id": "kelime_383",
+    "tur": "isim",
+    "kok": "أ م م",
+    "mufret": "أَمَام",
+    "cemi": "-",
+    "anlam_tr": "ön, ön taraf"
+  },
+  {
+    "id": "kelime_384",
+    "tur": "isim",
+    "kok": "خ ل ف",
+    "mufret": "خَلْف / وَرَاء",
+    "cemi": "-",
+    "anlam_tr": "arka, arkada"
+  },
+  {
+    "id": "kelime_385",
+    "tur": "isim",
+    "kok": "ف و ق",
+    "mufret": "فَوْق",
+    "cemi": "-",
+    "anlam_tr": "üst, üstünde, yukarıda"
+  },
+  {
+    "id": "kelime_386",
+    "tur": "isim",
+    "kok": "ت ح ت",
+    "mufret": "تَحْت",
+    "cemi": "-",
+    "anlam_tr": "alt, altında, aşağıda"
+  },
+  {
+    "id": "kelime_387",
+    "tur": "isim",
+    "kok": "و س ط",
+    "mufret": "وَسَط / مَرْكَز",
+    "cemi": "أَوْسَاط / مَرَاكِز",
+    "anlam_tr": "orta, merkez"
+  },
+  {
+    "id": "kelime_388",
+    "tur": "isim",
+    "kok": "ش م ل",
+    "mufret": "شَمَال",
+    "cemi": "-",
+    "anlam_tr": "kuzey"
+  },
+  {
+    "id": "kelime_389",
+    "tur": "isim",
+    "kok": "ج ن ب",
+    "mufret": "جَنُوب",
+    "cemi": "-",
+    "anlam_tr": "güney"
+  },
+  {
+    "id": "kelime_390",
+    "tur": "isim",
+    "kok": "ش ر ق",
+    "mufret": "شَرْق",
+    "cemi": "-",
+    "anlam_tr": "doğu"
+  },
+  {
+    "id": "kelime_391",
+    "tur": "isim",
+    "kok": "غ ر ب",
+    "mufret": "غَرْب",
+    "cemi": "-",
+    "anlam_tr": "batı"
+  },
+  {
+    "id": "kelime_392",
+    "tur": "fiil",
+    "kok": "ش ر ق",
+    "mazi": "أَشْرَقَ",
+    "muzari": "يُشْرِقُ",
+    "masdar": "إِشْرَاق",
+    "anlam_tr": "doğmak (güneş), parlamak"
+  },
+  {
+    "id": "kelime_393",
+    "tur": "fiil",
+    "kok": "غ ر ب",
+    "mazi": "غَرَبَ",
+    "muzari": "يَغْرُبُ",
+    "masdar": "غُرُوب",
+    "anlam_tr": "batmak (güneş)"
+  },
+  {
+    "id": "kelime_394",
+    "tur": "isim",
+    "kok": "ش م س",
+    "mufret": "شَمْس",
+    "cemi": "شُمُوس",
+    "anlam_tr": "güneş"
+  },
+  {
+    "id": "kelime_395",
+    "tur": "isim",
+    "kok": "ق م ر",
+    "mufret": "قَمَر",
+    "cemi": "أَقْمَار",
+    "anlam_tr": "ay (gök cismi)"
+  },
+  {
+    "id": "kelime_396",
+    "tur": "isim",
+    "kok": "ن ج م",
+    "mufret": "نَجْم / نَجْمَة",
+    "cemi": "نُجُوم",
+    "anlam_tr": "yıldız"
+  },
+  {
+    "id": "kelime_397",
+    "tur": "isim",
+    "kok": "س م و",
+    "mufret": "سَمَاء",
+    "cemi": "سَمَاوَات",
+    "anlam_tr": "gök, gökyüzü"
+  },
+  {
+    "id": "kelime_398",
+    "tur": "isim",
+    "kok": "أ ر ض",
+    "mufret": "أَرْض",
+    "cemi": "أَرَاضٍ / أَرَاضِي",
+    "anlam_tr": "yer, toprak, dünya"
+  },
+  {
+    "id": "kelime_399",
+    "tur": "isim",
+    "kok": "ط ب ع",
+    "mufret": "طَبِيعَة",
+    "cemi": "طَبَائِع",
+    "anlam_tr": "doğa, tabiat, mizaç"
+  },
+  {
+    "id": "kelime_400",
+    "tur": "isim",
+    "kok": "ط ب ع",
+    "mufret": "طَبِيعِيّ",
+    "cemi": "طَبِيعِيُّونَ",
+    "anlam_tr": "doğal, tabii, normal"
+  },
+  {
+    "id": "kelime_401",
+    "tur": "fiil",
+    "kok": "ش ع ر",
+    "mazi": "شَعَرَ",
+    "muzari": "يَشْعُرُ",
+    "masdar": "شُعُور",
+    "anlam_tr": "hissetmek (بِـ ile)"
+  },
+  {
+    "id": "kelime_402",
+    "tur": "isim",
+    "kok": "ش ع ر",
+    "mufret": "شُعُور / إِحْسَاس",
+    "cemi": "مَشَاعِر / أَحَاسِيس",
+    "anlam_tr": "duygu, his"
+  },
+  {
+    "id": "kelime_403",
+    "tur": "fiil",
+    "kok": "أ ث ر",
+    "mazi": "أَثَّرَ",
+    "muzari": "يُؤَثِّرُ",
+    "masdar": "تَأْثِير",
+    "anlam_tr": "etkilemek (فِي / عَلَى ile)"
+  },
+  {
+    "id": "kelime_404",
+    "tur": "isim",
+    "kok": "أ ث ر",
+    "mufret": "مُؤَثِّر",
+    "cemi": "مُؤَثِّرُونَ",
+    "anlam_tr": "etkileyici, tesirli"
+  },
+  {
+    "id": "kelime_405",
+    "tur": "isim",
+    "kok": "أ ث ر",
+    "mufret": "أَثَر",
+    "cemi": "آثَار",
+    "anlam_tr": "eser, iz, etki, tarihi eser"
+  },
+  {
+    "id": "kelime_406",
+    "tur": "isim",
+    "kok": "ح د د",
+    "mufret": "حَدّ",
+    "cemi": "حُدُود",
+    "anlam_tr": "sınır, hudut, derece"
+  },
+  {
+    "id": "kelime_407",
+    "tur": "fiil",
+    "kok": "ح د د",
+    "mazi": "حَدَّدَ",
+    "muzari": "يُحَدِّدُ",
+    "masdar": "تَحْدِيد",
+    "anlam_tr": "belirlemek, sınırlandırmak"
+  },
+  {
+    "id": "kelime_408",
+    "tur": "isim",
+    "kok": "د و ل",
+    "mufret": "دَوْلَة",
+    "cemi": "دُوَل",
+    "anlam_tr": "devlet, ülke"
+  },
+  {
+    "id": "kelime_409",
+    "tur": "isim",
+    "kok": "د و ل",
+    "mufret": "دَوْلِيّ",
+    "cemi": "دَوْلِيُّونَ",
+    "anlam_tr": "uluslararası, devletlerarası"
+  },
+  {
+    "id": "kelime_410",
+    "tur": "isim",
+    "kok": "ب ل د",
+    "mufret": "بَلَد",
+    "cemi": "بِلَاد / بُلْدَان",
+    "anlam_tr": "memleket, ülke, belde"
+  },
+  {
+    "id": "kelime_411",
+    "tur": "isim",
+    "kok": "ب ل د",
+    "mufret": "بَلَدِيَّة",
+    "cemi": "بَلَدِيَّات",
+    "anlam_tr": "belediye"
+  },
+  {
+    "id": "kelime_412",
+    "tur": "isim",
+    "kok": "م د ن",
+    "mufret": "مَدِينَة",
+    "cemi": "مُدُن",
+    "anlam_tr": "şehir, kent"
+  },
+  {
+    "id": "kelime_413",
+    "tur": "isim",
+    "kok": "ق ر ي",
+    "mufret": "قَرْيَة",
+    "cemi": "قُرًى",
+    "anlam_tr": "köy"
+  },
+  {
+    "id": "kelime_414",
+    "tur": "fiil",
+    "kok": "ع ب ر",
+    "mazi": "عَبَرَ",
+    "muzari": "يَعْبُرُ",
+    "masdar": "عُبُور",
+    "anlam_tr": "karşıya geçmek, katetmek"
+  },
+  {
+    "id": "kelime_415",
+    "tur": "isim",
+    "kok": "ع ب ر",
+    "mufret": "عَبَّارَة",
+    "cemi": "عَبَّارَات",
+    "anlam_tr": "feribot, araba vapuru"
+  },
+  {
+    "id": "kelime_416",
+    "tur": "isim",
+    "kok": "ش ط ط",
+    "mufret": "شَاطِئ",
+    "cemi": "شَوَاطِئ",
+    "anlam_tr": "kıyı, sahili, kordon"
+  },
+  {
+    "id": "kelime_417",
+    "tur": "isim",
+    "kok": "ض ي ق",
+    "mufret": "مَضِيق",
+    "cemi": "مَضَايِق",
+    "anlam_tr": "boğaz (coğrafi)"
+  },
+  {
+    "id": "kelime_418",
+    "tur": "fiil",
+    "kok": "ض ي ق",
+    "mazi": "ضَاقَ / ضَيَّقَ",
+    "muzari": "يُضَيِّقُ",
+    "masdar": "تَضْيِيق",
+    "anlam_tr": "daraltmak, darlaşmak"
+  },
+  {
+    "id": "kelime_419",
+    "tur": "isim",
+    "kok": "ض ي ق",
+    "mufret": "ضَيِّق",
+    "cemi": "ضَيِّقُونَ",
+    "anlam_tr": "dar"
+  },
+  {
+    "id": "kelime_420",
+    "tur": "isim",
+    "kok": "و س ع",
+    "mufret": "وَاسِع",
+    "cemi": "وَاسِعُونَ",
+    "anlam_tr": "geniş, bol"
+  },
+  {
+    "id": "kelime_421",
+    "tur": "fiil",
+    "kok": "و س ع",
+    "mazi": "وَسَّعَ",
+    "muzari": "يُوَسِّعُ",
+    "masdar": "تَوْسِيع",
+    "anlam_tr": "genişletmek, bollaştırmak"
+  },
+  {
+    "id": "kelime_422",
+    "tur": "fiil",
+    "kok": "ط و ل",
+    "mazi": "طَالَ / طَوَّلَ",
+    "muzari": "يُطَوِّلُ",
+    "masdar": "تَطْوِيل",
+    "anlam_tr": "uzatmak, uzun sürmek"
+  },
+  {
+    "id": "kelime_423",
+    "tur": "isim",
+    "kok": "ط و ل",
+    "mufret": "طَوِيل",
+    "cemi": "طِوَال",
+    "anlam_tr": "uzun"
+  },
+  {
+    "id": "kelime_424",
+    "tur": "fiil",
+    "kok": "ق ص ر",
+    "mazi": "قَصُرَ / قَصَّرَ",
+    "muzari": "يُقَصِّرُ",
+    "masdar": "تَقْصِير",
+    "anlam_tr": "kısaltmak, kısa olmak"
+  },
+  {
+    "id": "kelime_425",
+    "tur": "isim",
+    "kok": "ق ص ر",
+    "mufret": "قَصِير",
+    "cemi": "قِصَار",
+    "anlam_tr": "kısa"
+  },
+  {
+    "id": "kelime_426",
+    "tur": "isim",
+    "kok": "أ ب و",
+    "mufret": "أَب",
+    "cemi": "آبَاء",
+    "anlam_tr": "baba"
+  },
+  {
+    "id": "kelime_427",
+    "tur": "isim",
+    "kok": "أ م م",
+    "mufret": "أُمّ",
+    "cemi": "أُمَّهَات",
+    "anlam_tr": "anne"
+  },
+  {
+    "id": "kelime_428",
+    "tur": "isim",
+    "kok": "أ خ و",
+    "mufret": "أَخ",
+    "cemi": "إِخْوَة / إِخْوَان",
+    "anlam_tr": "erkek kardeş"
+  },
+  {
+    "id": "kelime_429",
+    "tur": "isim",
+    "kok": "أ خ و",
+    "mufret": "أُخْت",
+    "cemi": "أَخَوَات",
+    "anlam_tr": "kız kardeş"
+  },
+  {
+    "id": "kelime_430",
+    "tur": "isim",
+    "kok": "ب ن ي",
+    "mufret": "ابْن / وَلَد",
+    "cemi": "أَبْنَاء / أَوْلَاد",
+    "anlam_tr": "oğul, erkek çocuk"
+  },
+  {
+    "id": "kelime_431",
+    "tur": "isim",
+    "kok": "ب ن ي",
+    "mufret": "بِنْت / ابْنَة",
+    "cemi": "بَنَات",
+    "anlam_tr": "kız, kız çocuk"
+  },
+  {
+    "id": "kelime_432",
+    "tur": "isim",
+    "kok": "ع م م",
+    "mufret": "عَمّ",
+    "cemi": "أَعْمَام",
+    "anlam_tr": "amca"
+  },
+  {
+    "id": "kelime_433",
+    "tur": "isim",
+    "kok": "ع م م",
+    "mufret": "عَمَّة",
+    "cemi": "عَمَّات",
+    "anlam_tr": "hala"
+  },
+  {
+    "id": "kelime_434",
+    "tur": "isim",
+    "kok": "خ و ل",
+    "mufret": "خَال",
+    "cemi": "أَخْوَال",
+    "anlam_tr": "dayı"
+  },
+  {
+    "id": "kelime_435",
+    "tur": "isim",
+    "kok": "خ و ل",
+    "mufret": "خَالَة",
+    "cemi": "خَالَات",
+    "anlam_tr": "teyze"
+  },
+  {
+    "id": "kelime_436",
+    "tur": "isim",
+    "kok": "ز و ج",
+    "mufret": "زَوْج",
+    "cemi": "أَزْوَاج",
+    "anlam_tr": "eş (koca)"
+  },
+  {
+    "id": "kelime_437",
+    "tur": "isim",
+    "kok": "ز و ج",
+    "mufret": "زَوْجَة",
+    "cemi": "زَوْجَات",
+    "anlam_tr": "eş (hanım)"
+  },
+  {
+    "id": "kelime_438",
+    "tur": "fiil",
+    "kok": "ز و ج",
+    "mazi": "تَزَوَّجَ",
+    "muzari": "يَتَزَوَّجُ",
+    "masdar": "تَزَوُّج / زَوَاج",
+    "anlam_tr": "evlenmek"
+  },
+  {
+    "id": "kelime_439",
+    "tur": "isim",
+    "kok": "ز و ج",
+    "mufret": "زَوَاج",
+    "cemi": "-",
+    "anlam_tr": "evlilik, nikah"
+  },
+  {
+    "id": "kelime_440",
+    "tur": "isim",
+    "kok": "خ ي ط",
+    "mufret": "خَيَّاط",
+    "cemi": "خَيَّاطُونَ",
+    "anlam_tr": "terzi"
+  },
+  {
+    "id": "kelime_441",
+    "tur": "fiil",
+    "kok": "خ ي ط",
+    "mazi": "خَاطَ",
+    "muzari": "يَخِيطُ",
+    "masdar": "خِيَاطَة",
+    "anlam_tr": "dikiş dikmek, dikmek"
+  },
+  {
+    "id": "kelime_442",
+    "tur": "isim",
+    "kok": "ذ و ق",
+    "mufret": "ذَوْق",
+    "cemi": "أَذْوَاق",
+    "anlam_tr": "zevk, tat, lezzet"
+  },
+  {
+    "id": "kelime_443",
+    "tur": "fiil",
+    "kok": "ذ و ق",
+    "mazi": "ذَاقَ / تَذَوَّقَ",
+    "muzari": "يَتَذَوَّقُ",
+    "masdar": "تَذَوُّق / ذَوْق",
+    "anlam_tr": "tadamak, tadına bakmak"
+  },
+  {
+    "id": "kelime_444",
+    "tur": "isim",
+    "kok": "ذ و ق",
+    "mufret": "مَذَاق / طَعْم",
+    "cemi": "أَطْعَام",
+    "anlam_tr": "tat, lezzet, çeşni"
+  },
+  {
+    "id": "kelime_445",
+    "tur": "fiil",
+    "kok": "ل ذ ذ",
+    "mazi": "لَذَّ / تَلَذَّذَ",
+    "muzari": "يَتَلَذَّذُ",
+    "masdar": "لَذَّة",
+    "anlam_tr": "lezzet almak, tadını çıkarmak"
+  },
+  {
+    "id": "kelime_446",
+    "tur": "isim",
+    "kok": "ل ذ ذ",
+    "mufret": "لَذِيذ",
+    "cemi": "لَذِيذُونَ",
+    "anlam_tr": "lezzetli, nefis"
+  },
+  {
+    "id": "kelime_447",
+    "tur": "isim",
+    "kok": "ص د ق",
+    "mufret": "صَدِيق",
+    "cemi": "أَصْدِقَاء",
+    "anlam_tr": "arkadaş, dost"
+  },
+  {
+    "id": "kelime_448",
+    "tur": "isim",
+    "kok": "ص د ق",
+    "mufret": "صَدَاقَة",
+    "cemi": "صَدَاقَات",
+    "anlam_tr": "arkadaşlık, dostluk"
+  },
+  {
+    "id": "kelime_449",
+    "tur": "fiil",
+    "kok": "ص د ق",
+    "mazi": "صَدَقَ / صَدَّقَ",
+    "muzari": "يُصَدِّقُ",
+    "masdar": "تَصْدِيق",
+    "anlam_tr": "inanmak, doğrulamak"
+  },
+  {
+    "id": "kelime_450",
+    "tur": "isim",
+    "kok": "ص د ق",
+    "mufret": "صَادِق",
+    "cemi": "صَادِقُونَ",
+    "anlam_tr": "doğru, dürüst, sadık"
+  },
+  {
+    "id": "kelime_451",
+    "tur": "fiil",
+    "kok": "ث ق ف",
+    "mazi": "ثَقُفَ / ثَقَّفَ",
+    "muzari": "يُثَقِّفُ",
+    "masdar": "تَثْقِيف",
+    "anlam_tr": "eğitmek, kültürlendirmek"
+  },
+  {
+    "id": "kelime_452",
+    "tur": "isim",
+    "kok": "ث ق ف",
+    "mufret": "ثَقَافَة",
+    "cemi": "ثَقَافَات",
+    "anlam_tr": "kültür"
+  },
+  {
+    "id": "kelime_453",
+    "tur": "isim",
+    "kok": "ث ق ف",
+    "mufret": "ثَقَافِيّ",
+    "cemi": "ثَقَافِيُّونَ",
+    "anlam_tr": "kültürel"
+  },
+  {
+    "id": "kelime_454",
+    "tur": "fiil",
+    "kok": "ح ض ر",
+    "mazi": "حَضَرَ",
+    "muzari": "يَحْضُرُ",
+    "masdar": "حُضُور",
+    "anlam_tr": "gelmek, hazır bulunmak, katılmak"
+  },
+  {
+    "id": "kelime_455",
+    "tur": "isim",
+    "kok": "ح ض ر",
+    "mufret": "حَضَارَة",
+    "cemi": "حَضَارَات",
+    "anlam_tr": "medeniyet, uygarlık"
+  },
+  {
+    "id": "kelime_456",
+    "tur": "isim",
+    "kok": "ح ض ر",
+    "mufret": "حَاضِر",
+    "cemi": "حَاضِرُونَ",
+    "anlam_tr": "hazır, mevcut, şimdiki"
+  },
+  {
+    "id": "kelime_457",
+    "tur": "fiil",
+    "kok": "ح ف ل",
+    "mazi": "اِحْتَفَلَ",
+    "muzari": "يَحْتَفِلُ",
+    "masdar": "اِحْتِفَال",
+    "anlam_tr": "kutlamak, merasim yapmak (بِـ ile)"
+  },
+  {
+    "id": "kelime_458",
+    "tur": "isim",
+    "kok": "ح ف ل",
+    "mufret": "اِحْتَفَال / حَفْلَة",
+    "cemi": "اِحْتِفَالَات / حَفَلَات",
+    "anlam_tr": "kutlama, tören, parti"
+  },
+  {
+    "id": "kelime_459",
+    "tur": "fiil",
+    "kok": "ن ش ط",
+    "mazi": "نَشِطَ",
+    "muzari": "يَنْشَطُ",
+    "masdar": "نَشَاط",
+    "anlam_tr": "canlanmak, gayretli olmak"
+  },
+  {
+    "id": "kelime_460",
+    "tur": "isim",
+    "kok": "ن ش ط",
+    "mufret": "نَشَاط",
+    "cemi": "نَشَاطَات / أَنْشِطَة",
+    "anlam_tr": "faaliyet, etkinlik, aktivite"
+  },
+  {
+    "id": "kelime_461",
+    "tur": "isim",
+    "kok": "ن ش ط",
+    "mufret": "نَشِيط",
+    "cemi": "نُشَطَاء",
+    "anlam_tr": "canlı, enerjik, çalışkan"
+  },
+  {
+    "id": "kelime_462",
+    "tur": "fiil",
+    "kok": "ر ض ي",
+    "mazi": "رَضِيَ",
+    "muzari": "يَرْضَى",
+    "masdar": "رِضاً / رِضْوَان",
+    "anlam_tr": "razı olmak, hoşnut olmak (عَنْ ile)"
+  },
+  {
+    "id": "kelime_463",
+    "tur": "isim",
+    "kok": "ر ض ي",
+    "mufret": "رِضاً",
+    "cemi": "-",
+    "anlam_tr": "rıza, memnuniyet"
+  },
+  {
+    "id": "kelime_464",
+    "tur": "fiil",
+    "kok": "هـ م م",
+    "mazi": "اِهْتَمَّ",
+    "muzari": "يَهْتَمُّ",
+    "masdar": "اِهْتِمَام",
+    "anlam_tr": "özen göstermek, ilgilenmek (بِـ ile)"
+  },
+  {
+    "id": "kelime_465",
+    "tur": "isim",
+    "kok": "هـ م م",
+    "mufret": "اِهْتِمَام",
+    "cemi": "اِهْتِمَامَات",
+    "anlam_tr": "ilgi, alaka, özen"
+  },
+  {
+    "id": "kelime_466",
+    "tur": "isim",
+    "kok": "هـ م م",
+    "mufret": "مُهِمّ",
+    "cemi": "مُهِمُّونَ",
+    "anlam_tr": "önemli"
+  },
+  {
+    "id": "kelime_467",
+    "tur": "fiil",
+    "kok": "ق د ر",
+    "mazi": "قَدَرَ / اِسْتَطَاعَ",
+    "muzari": "يَقْدِرُ / يَسْتَطِيعُ",
+    "masdar": "قُدْرَة / اِسْتِطَاعَة",
+    "anlam_tr": "gücü yetmek, -ebilmek"
+  },
+  {
+    "id": "kelime_468",
+    "tur": "isim",
+    "kok": "ق د ر",
+    "mufret": "قُدْرَة / اِسْتِطَاعَة",
+    "cemi": "قُدُرَات",
+    "anlam_tr": "güç, yetenek, kapasite"
+  },
+  {
+    "id": "kelime_469",
+    "tur": "fiil",
+    "kok": "ع ج ز",
+    "mazi": "عَجَزَ",
+    "muzari": "يَعْجِزُ",
+    "masdar": "عَجْز",
+    "anlam_tr": "gücü yetmemek, aciz kalmak (عَنْ ile)"
+  },
+  {
+    "id": "kelime_470",
+    "tur": "isim",
+    "kok": "ع ج ز",
+    "mufret": "عَاجِز",
+    "cemi": "عَاجِزُونَ / عُجَّز",
+    "anlam_tr": "aciz, yetersiz, çaresiz"
+  },
+  {
+    "id": "kelime_471",
+    "tur": "fiil",
+    "kok": "ف ش ل",
+    "mazi": "فَشِلَ",
+    "muzari": "يَفْشَلُ",
+    "masdar": "فَشَل",
+    "anlam_tr": "başarısız olmak"
+  },
+  {
+    "id": "kelime_472",
+    "tur": "isim",
+    "kok": "ف ش ل",
+    "mufret": "فَشَل",
+    "cemi": "-",
+    "anlam_tr": "başarısızlık"
+  },
+  {
+    "id": "kelime_473",
+    "tur": "fiil",
+    "kok": "ح و ل",
+    "mazi": "حَاوَلَ",
+    "muzari": "يُحَاوِلُ",
+    "masdar": "مُحَاوَلَة",
+    "anlam_tr": "çabalamak, denemek, gayret etmek"
+  },
+  {
+    "id": "kelime_474",
+    "tur": "isim",
+    "kok": "ح و ل",
+    "mufret": "مُحَاوَلَة",
+    "cemi": "مُحَاوَلَات",
+    "anlam_tr": "girişim, deneme, çaba"
+  },
+  {
+    "id": "kelime_475",
+    "tur": "fiil",
+    "kok": "م ر ر",
+    "mazi": "اِسْتَمَرَّ",
+    "muzari": "يَسْتَمِرُّ",
+    "masdar": "اِسْتِمْرَار",
+    "anlam_tr": "devam etmek, sürmek (فِي ile)"
+  },
+  {
+    "id": "kelime_476",
+    "tur": "isim",
+    "kok": "م ر ر",
+    "mufret": "اِسْتِمْرَار",
+    "cemi": "-",
+    "anlam_tr": "devamlılık, süreklilik"
+  },
+  {
+    "id": "kelime_477",
+    "tur": "fiil",
+    "kok": "ق ط ع",
+    "mazi": "قَطَعَ",
+    "muzari": "يَقْطَعُ",
+    "masdar": "قَطْع",
+    "anlam_tr": "kesmek, katetmek, bilet almak"
+  },
+  {
+    "id": "kelime_478",
+    "tur": "isim",
+    "kok": "ق ط ع",
+    "mufret": "قِطْعَة",
+    "cemi": "قِطَع",
+    "anlam_tr": "parça, tane"
+  },
+  {
+    "id": "kelime_479",
+    "tur": "fiil",
+    "kok": "ق ط ع",
+    "mazi": "اِنْقَطَعَ",
+    "muzari": "يَنْقَطِعُ",
+    "masdar": "اِنْقِطَاع",
+    "anlam_tr": "kesilmek, ara verilmek"
+  },
+  {
+    "id": "kelime_480",
+    "tur": "fiil",
+    "kok": "و ق ف",
+    "mazi": "وَقَفَ",
+    "muzari": "يَقِفُ",
+    "masdar": "وُقُوف",
+    "anlam_tr": "durmak, ayakta durmak"
+  },
+  {
+    "id": "kelime_481",
+    "tur": "isim",
+    "kok": "و ق ف",
+    "mufret": "مَوْقِف",
+    "cemi": "مَوَاقِف",
+    "anlam_tr": "durak, otopark, tutum"
+  },
+  {
+    "id": "kelime_482",
+    "tur": "fiil",
+    "kok": "و ق ف",
+    "mazi": "تَوَقَّفَ",
+    "muzari": "يَتَوَقَّفُ",
+    "masdar": "تَوَقُّف",
+    "anlam_tr": "duraklamak, mola vermek"
+  },
+  {
+    "id": "kelime_483",
+    "tur": "fiil",
+    "kok": "ع ب أ",
+    "mazi": "عَبَّأَ",
+    "muzari": "يُعَبِّئُ",
+    "masdar": "تَعْبِئَة",
+    "anlam_tr": "doldurmak (form, depo)"
+  },
+  {
+    "id": "kelime_484",
+    "tur": "isim",
+    "kok": "م و ر",
+    "mufret": "اِسْتِمَارَة",
+    "cemi": "اِسْتِمَارَات",
+    "anlam_tr": "form, anket belgesi"
+  },
+  {
+    "id": "kelime_485",
+    "tur": "fiil",
+    "kok": "م ل أ",
+    "mazi": "مَلَأَ",
+    "muzari": "يَمْلَأُ",
+    "masdar": "مَلْء",
+    "anlam_tr": "doldurmak"
+  },
+  {
+    "id": "kelime_486",
+    "tur": "fiil",
+    "kok": "ش هـ د",
+    "mazi": "شَهِدَ",
+    "muzari": "يَشْهَدُ",
+    "masdar": "شَهَادَة",
+    "anlam_tr": "şahitlik etmek, diploma/belge almak"
+  },
+  {
+    "id": "kelime_487",
+    "tur": "isim",
+    "kok": "ش هـ د",
+    "mufret": "شَهَادَة",
+    "cemi": "شَهَادَات",
+    "anlam_tr": "diploma, sertifika, şahitlik"
+  },
+  {
+    "id": "kelime_488",
+    "tur": "isim",
+    "kok": "و ث ق",
+    "mufret": "وَثِيقَة",
+    "cemi": "وَثَائِق",
+    "anlam_tr": "belge, doküman"
+  },
+  {
+    "id": "kelime_489",
+    "tur": "isim",
+    "kok": "ج و ز",
+    "mufret": "جَوَازُ سَفَرٍ",
+    "cemi": "جَوَازَاتُ سَفَرٍ",
+    "anlam_tr": "pasaport"
+  },
+  {
+    "id": "kelime_490",
+    "tur": "isim",
+    "kok": "أ ث ر",
+    "mufret": "تَأْشِيرَة",
+    "cemi": "تَأْشِيرَات",
+    "anlam_tr": "vize"
+  },
+  {
+    "id": "kelime_491",
+    "tur": "fiil",
+    "kok": "خ ت م",
+    "mazi": "خَتَمَ",
+    "muzari": "يَخْتِمُ",
+    "masdar": "خَتْم",
+    "anlam_tr": "damgalamak, mühürlemek, bitirmek"
+  },
+  {
+    "id": "kelime_492",
+    "tur": "isim",
+    "kok": "خ ت م",
+    "mufret": "خَتْم",
+    "cemi": "أَخْتَام",
+    "anlam_tr": "mühür, damga"
+  },
+  {
+    "id": "kelime_493",
+    "tur": "isim",
+    "kok": "ك ت ب",
+    "mufret": "مَكْتَب",
+    "cemi": "مَكَاتِب",
+    "anlam_tr": "ofis, büro, masa"
+  },
+  {
+    "id": "kelime_494",
+    "tur": "isim",
+    "kok": "ك ت ب",
+    "mufret": "مَكْتَبَة",
+    "cemi": "مَكْتَبَات",
+    "anlam_tr": "kütüphane, kitapçı"
+  },
+  {
+    "id": "kelime_495",
+    "tur": "isim",
+    "kok": "ك ت ب",
+    "mufret": "كِتَاب",
+    "cemi": "كُتُب",
+    "anlam_tr": "kitap"
+  },
+  {
+    "id": "kelime_496",
+    "tur": "isim",
+    "kok": "ك ت ب",
+    "mufret": "كُتَيِّب",
+    "cemi": "كُتَيِّبَات",
+    "anlam_tr": "broşür, kitapçık"
+  },
+  {
+    "id": "kelime_497",
+    "tur": "isim",
+    "kok": "د ف ت ر",
+    "mufret": "دَفْتَر",
+    "cemi": "دَفَاتِر",
+    "anlam_tr": "defter"
+  },
+  {
+    "id": "kelime_498",
+    "tur": "isim",
+    "kok": "ق ل م",
+    "mufret": "قَلَم",
+    "cemi": "أَقْلَام",
+    "anlam_tr": "kalem"
+  },
+  {
+    "id": "kelime_499",
+    "tur": "isim",
+    "kok": "و ر ق",
+    "mufret": "وَرَقَة",
+    "cemi": "أَوْرَاق",
+    "anlam_tr": "sayfa, kağıt, yaprak"
+  },
+  {
+    "id": "kelime_500",
+    "tur": "isim",
+    "kok": "غ ل ف",
+    "mufret": "غِلَاف",
+    "cemi": "غُلُف",
+    "anlam_tr": "kılıf, kapak, zarf"
+  },
+  {
+    "id": "kelime_501",
+    "tur": "fiil",
+    "kok": "و ص ل",
+    "mazi": "اِتَّصَلَ",
+    "muzari": "يَتَّصِلُ",
+    "masdar": "اِتِّصَال",
+    "anlam_tr": "telefon etmek, iletişime geçmek (بِـ ile)"
+  },
+  {
+    "id": "kelime_502",
+    "tur": "isim",
+    "kok": "هـ ت ف",
+    "mufret": "هَاتِف / اِتِّصَال",
+    "cemi": "هَوَاتِف / اِتِّصَالَات",
+    "anlam_tr": "telefon, iletişim, arama"
+  },
+  {
+    "id": "kelime_503",
+    "tur": "isim",
+    "kok": "ج و ل",
+    "mufret": "جَوَّال / هَاتِف مَحْمُول",
+    "cemi": "جَوَّالَات / هَوَاتِف مَحْمُولَة",
+    "anlam_tr": "cep telefonu, mobil cihaz"
+  },
+  {
+    "id": "kelime_504",
+    "tur": "fiil",
+    "kok": "ر س ل",
+    "mazi": "أَرْسَلَ",
+    "muzari": "يُرْسِلُ",
+    "masdar": "إِرْسَال",
+    "anlam_tr": "göndermek, yollamak"
+  },
+  {
+    "id": "kelime_505",
+    "tur": "isim",
+    "kok": "ر س ل",
+    "mufret": "رِسَالَة",
+    "cemi": "رَسَائِل",
+    "anlam_tr": "mesaj, mektup"
+  },
+  {
+    "id": "kelime_506",
+    "tur": "isim",
+    "kok": "ب ر د",
+    "mufret": "بَرِيد إِلِكْتُرُونِيّ",
+    "cemi": "رَسَائِل إِلِكْتُرُونِيَّة",
+    "anlam_tr": "e-posta, elektronik posta"
+  },
+  {
+    "id": "kelime_507",
+    "tur": "fiil",
+    "kok": "س ل م",
+    "mazi": "اِسْتَلَمَ",
+    "muzari": "يَسْتَلِمُ",
+    "masdar": "اِسْتِلَام",
+    "anlam_tr": "teslim almak, mesajı/mektubu almak"
+  },
+  {
+    "id": "kelime_508",
+    "tur": "isim",
+    "kok": "ش ب ك",
+    "mufret": "شَبَكَة",
+    "cemi": "شَبَكَات",
+    "anlam_tr": "ağ, internet, şebeke"
+  },
+  {
+    "id": "kelime_509",
+    "tur": "isim",
+    "kok": "ح س ب",
+    "mufret": "حَاسُوب",
+    "cemi": "حَوَاسِيب",
+    "anlam_tr": "bilgisayar"
+  },
+  {
+    "id": "kelime_510",
+    "tur": "isim",
+    "kok": "ش و ش",
+    "mufret": "شَاشَة",
+    "cemi": "شَاشَات",
+    "anlam_tr": "ekran"
+  },
+  {
+    "id": "kelime_511",
+    "tur": "fiil",
+    "kok": "ت ر ج م",
+    "mazi": "تَرْجَمَ",
+    "muzari": "يُتَرْجِمُ",
+    "masdar": "تَرْجَمَة",
+    "anlam_tr": "tercüme etmek, çevirmek"
+  },
+  {
+    "id": "kelime_512",
+    "tur": "isim",
+    "kok": "ت ر ج م",
+    "mufret": "تَرْجَمَة",
+    "cemi": "تَرْجَمَات",
+    "anlam_tr": "çeviri, tercüme"
+  },
+  {
+    "id": "kelime_513",
+    "tur": "isim",
+    "kok": "ت ر ج م",
+    "mufret": "مُتَرْجِم",
+    "cemi": "مُتَرْجِمُونَ",
+    "anlam_tr": "mütercim, çevirmen, tercüman"
+  },
+  {
+    "id": "kelime_514",
+    "tur": "isim",
+    "kok": "ل غ و",
+    "mufret": "لُغَة",
+    "cemi": "لُغَات",
+    "anlam_tr": "dil, lisan"
+  },
+  {
+    "id": "kelime_515",
+    "tur": "isim",
+    "kok": "ع ر ب",
+    "mufret": "عَرَبِيّ / اَلْعَرَبِيَّة",
+    "cemi": "عَرَب",
+    "anlam_tr": "Arap, Arapça"
+  },
+  {
+    "id": "kelime_516",
+    "tur": "fiil",
+    "kok": "س أ ل",
+    "mazi": "سَأَلَ",
+    "muzari": "يَسْأَلُ",
+    "masdar": "سُؤَال",
+    "anlam_tr": "sormak, istemek"
+  },
+  {
+    "id": "kelime_517",
+    "tur": "isim",
+    "kok": "س أ ل",
+    "mufret": "سُؤَال",
+    "cemi": "أَسْئِلَة",
+    "anlam_tr": "soru"
+  },
+  {
+    "id": "kelime_518",
+    "tur": "fiil",
+    "kok": "ج و ب",
+    "mazi": "أَجَابَ",
+    "muzari": "يُجِيبُ",
+    "masdar": "إِجَابَة",
+    "anlam_tr": "cevap vermek, yanıtlamak (عَنْ ile)"
+  },
+  {
+    "id": "kelime_519",
+    "tur": "isim",
+    "kok": "ج و ب",
+    "mufret": "إِجَابَة / جَوَاب",
+    "cemi": "إِجَابَات / أَجْوِبَة",
+    "anlam_tr": "cevap, yanıt"
+  },
+  {
+    "id": "kelime_520",
+    "tur": "fiil",
+    "kok": "ش ر ح",
+    "mazi": "شَرَحَ",
+    "muzari": "يَشْرَحُ",
+    "masdar": "شَرْح",
+    "anlam_tr": "açıklamak, anlatmak, izah etmek"
+  },
+  {
+    "id": "kelime_521",
+    "tur": "isim",
+    "kok": "ش ر ح",
+    "mufret": "شَرْح",
+    "cemi": "شُرُوح",
+    "anlam_tr": "açıklama, izah, şerh"
+  },
+  {
+    "id": "kelime_522",
+    "tur": "fiil",
+    "kok": "ش ك ك",
+    "mazi": "شَكَّ",
+    "muzari": "يَشُكُّ",
+    "masdar": "شَكّ",
+    "anlam_tr": "şüphelenmek, kuşkulanmak (فِي ile)"
+  },
+  {
+    "id": "kelime_523",
+    "tur": "isim",
+    "kok": "ش ك ك",
+    "mufret": "شَكّ",
+    "cemi": "شُكُوك",
+    "anlam_tr": "şüphe, kuşku"
+  },
+  {
+    "id": "kelime_524",
+    "tur": "isim",
+    "kok": "ي ق ن",
+    "mufret": "يَقِين",
+    "cemi": "-",
+    "anlam_tr": "kesin bilgi, şüphesizlik"
+  },
+  {
+    "id": "kelime_525",
+    "tur": "fiil",
+    "kok": "أ ك د",
+    "mazi": "أَكَّدَ",
+    "muzari": "يُؤَكِّدُ",
+    "masdar": "تَأْكِيد",
+    "anlam_tr": "vurgulamak, teyit etmek, onaylamak"
+  },
+  {
+    "id": "kelime_526",
+    "tur": "isim",
+    "kok": "أ ك د",
+    "mufret": "تَأْكِيد",
+    "cemi": "تَأْكِيدَات",
+    "anlam_tr": "onay, teyit, vurgu (بِالتَّأْكِيدِ: elbette, kesinlikle)"
+  },
+  {
+    "id": "kelime_527",
+    "tur": "fiil",
+    "kok": "ظ ن ن",
+    "mazi": "ظَنَّ",
+    "muzari": "يَظُنُّ",
+    "masdar": "ظَنّ",
+    "anlam_tr": "sanmak, zannetmek"
+  },
+  {
+    "id": "kelime_528",
+    "tur": "isim",
+    "kok": "ظ ن ن",
+    "mufret": "ظَنّ",
+    "cemi": "ظُنُون",
+    "anlam_tr": "zan, sanı, tahmin"
+  },
+  {
+    "id": "kelime_529",
+    "tur": "fiil",
+    "kok": "ح س ب",
+    "mazi": "حَسِبَ",
+    "muzari": "يَحْسَبُ",
+    "masdar": "حِسَاب / حُسْبَان",
+    "anlam_tr": "sanmak, hesaba katmak"
+  },
+  {
+    "id": "kelime_530",
+    "tur": "isim",
+    "kok": "ح س ب",
+    "mufret": "حِسَاب",
+    "cemi": "حِسَابَات",
+    "anlam_tr": "hesap, adisyon, fatura"
+  },
+  {
+    "id": "kelime_531",
+    "tur": "fiil",
+    "kok": "ح س ب",
+    "mazi": "حَسَبَ",
+    "muzari": "يَحْسُبُ",
+    "masdar": "حِسَاب",
+    "anlam_tr": "hesaplamak, saymak"
+  },
+  {
+    "id": "kelime_532",
+    "tur": "fiil",
+    "kok": "ع د د",
+    "mazi": "عَدَّ",
+    "muzari": "يَعُدُّ",
+    "masdar": "عَدّ",
+    "anlam_tr": "saymak, sayılmak"
+  },
+  {
+    "id": "kelime_533",
+    "tur": "isim",
+    "kok": "ع د د",
+    "mufret": "عَدَد",
+    "cemi": "أَعْدَاد",
+    "anlam_tr": "sayı, adet, sayı grubu"
+  },
+  {
+    "id": "kelime_534",
+    "tur": "fiil",
+    "kok": "ع د د",
+    "mazi": "أَعَدَّ",
+    "muzari": "يُعِدُّ",
+    "masdar": "إِعْدَاد",
+    "anlam_tr": "hazırlamak"
+  },
+  {
+    "id": "kelime_535",
+    "tur": "isim",
+    "kok": "ع د د",
+    "mufret": "إِعْدَاد / إِعْدَادِيّ",
+    "cemi": "إِعْدَادَات",
+    "anlam_tr": "hazırlık, ortaokul seviyesi"
+  },
+  {
+    "id": "kelime_536",
+    "tur": "fiil",
+    "kok": "ج هـ ز",
+    "mazi": "جَهَّزَ / أَعَدَّ",
+    "muzari": "يُجَهِّزُ",
+    "masdar": "تَجْهِيز",
+    "anlam_tr": "hazırlamak, donatmak"
+  },
+  {
+    "id": "kelime_537",
+    "tur": "fiil",
+    "kok": "ج هـ ز",
+    "mazi": "تَجَهَّزَ / اِسْتَعَدَّ",
+    "muzari": "يَتَجَهَّزُ / يَسْتَعِدُّ",
+    "masdar": "تَجَهُّز / اِسْتِعْدَاد",
+    "anlam_tr": "hazırlanmak"
+  },
+  {
+    "id": "kelime_538",
+    "tur": "isim",
+    "kok": "ج هـ ز",
+    "mufret": "جَاهِز",
+    "cemi": "جَاهِزُونَ",
+    "anlam_tr": "hazır"
+  },
+  {
+    "id": "kelime_539",
+    "tur": "fiil",
+    "kok": "ت م م",
+    "mazi": "أَتَمَّ / أَنْهَى",
+    "muzari": "يُتِمُّ / يُنْهِي",
+    "masdar": "إِتْمَام / إِنْهَاء",
+    "anlam_tr": "tamamlamak, bitirmek"
+  },
+  {
+    "id": "kelime_540",
+    "tur": "fiil",
+    "kok": "ت م م",
+    "mazi": "تَمَّ",
+    "muzari": "يَتِمُّ",
+    "masdar": "تَمَام",
+    "anlam_tr": "tamamlanmak, gerçekleşmek"
+  },
+  {
+    "id": "kelime_541",
+    "tur": "isim",
+    "kok": "ت م م",
+    "mufret": "تَمَام",
+    "cemi": "-",
+    "anlam_tr": "tamam, mükemmel (بِالتَّمَامِ: tam olarak)"
+  },
+  {
+    "id": "kelime_542",
+    "tur": "isim",
+    "kok": "ك م ل",
+    "mufret": "كَامِل",
+    "cemi": "كَامِلُونَ / كُمَّل",
+    "anlam_tr": "eksiksiz, tam, kamil"
+  },
+  {
+    "id": "kelime_543",
+    "tur": "fiil",
+    "kok": "ك م ل",
+    "mazi": "أَكْمَلَ",
+    "muzari": "يُكْمِلُ",
+    "masdar": "إِكْمَال",
+    "anlam_tr": "tamamlamak, sürdürmek"
+  },
+  {
+    "id": "kelime_544",
+    "tur": "fiil",
+    "kok": "ن هـ ي",
+    "mazi": "إِنْتَهَى",
+    "muzari": "يَنْتَهِي",
+    "masdar": "إِنْتِهَاء",
+    "anlam_tr": "bitmek, sona ermek (مِنْ ile)"
+  },
+  {
+    "id": "kelime_545",
+    "tur": "isim",
+    "kok": "ن هـ ي",
+    "mufret": "نِهَايَة",
+    "cemi": "نِهَايَات",
+    "anlam_tr": "son, nihayet"
+  },
+  {
+    "id": "kelime_546",
+    "tur": "isim",
+    "kok": "ب د أ",
+    "mufret": "بِدَايَة",
+    "cemi": "بِدَايَات",
+    "anlam_tr": "başlangıç"
+  },
+  {
+    "id": "kelime_547",
+    "tur": "fiil",
+    "kok": "ب د أ",
+    "mazi": "بَدَأَ",
+    "muzari": "يَبْدَأُ",
+    "masdar": "بَدْء / بِدَايَة",
+    "anlam_tr": "başlamak"
+  },
+  {
+    "id": "kelime_548",
+    "tur": "fiil",
+    "kok": "م ر ر",
+    "mazi": "اِسْتَمَرَّ",
+    "muzari": "يَسْتَمِرُّ",
+    "masdar": "اِسْتِمْرَار",
+    "anlam_tr": "devam etmek"
+  },
+  {
+    "id": "kelime_549",
+    "tur": "isim",
+    "kok": "د و م",
+    "mufret": "دَوَام",
+    "cemi": "-",
+    "anlam_tr": "mesai, devamlılık, çalışma saatleri"
+  },
+  {
+    "id": "kelime_550",
+    "tur": "fiil",
+    "kok": "د و م",
+    "mazi": "دَامَ",
+    "muzari": "يَدُومُ",
+    "masdar": "دَوَام",
+    "anlam_tr": "sürmek, devam etmek"
+  },
+  {
+    "id": "kelime_551",
+    "tur": "fiil",
+    "kok": "س ف ر",
+    "mazi": "سَافَرَ",
+    "muzari": "يُسَافِرُ",
+    "masdar": "سَفَر",
+    "anlam_tr": "seyahat etmek, yolculuk yapmak"
+  },
+  {
+    "id": "kelime_552",
+    "tur": "isim",
+    "kok": "س ف ر",
+    "mufret": "سَفَر",
+    "cemi": "أَسْفَار",
+    "anlam_tr": "yolculuk, seyahat"
+  },
+  {
+    "id": "kelime_553",
+    "tur": "isim",
+    "kok": "س ف ر",
+    "mufret": "مُسَافِر",
+    "cemi": "مُسَافِرُونَ",
+    "anlam_tr": "yolcu, seyyah"
+  },
+  {
+    "id": "kelime_554",
+    "tur": "fiil",
+    "kok": "و ص ل",
+    "mazi": "وَصَلَ",
+    "muzari": "يَصِلُ",
+    "masdar": "وُصُول",
+    "anlam_tr": "varmak, ulaşmak (إِلَى ile)"
+  },
+  {
+    "id": "kelime_555",
+    "tur": "isim",
+    "kok": "و ص ل",
+    "mufret": "وُصُول",
+    "cemi": "-",
+    "anlam_tr": "varış, ulaşma"
+  },
+  {
+    "id": "kelime_556",
+    "tur": "fiil",
+    "kok": "غ د ر",
+    "mazi": "غَادَرَ",
+    "muzari": "يُغَادِرُ",
+    "masdar": "مُغَادَرَة",
+    "anlam_tr": "ayrılmak, terketmek, kalkmak (uçak/otobüs)"
+  },
+  {
+    "id": "kelime_557",
+    "tur": "isim",
+    "kok": "غ د ر",
+    "mufret": "مُغَادَرَة",
+    "cemi": "مُغَادَرَات",
+    "anlam_tr": "kalkış, ayrılış"
+  },
+  {
+    "id": "kelime_558",
+    "tur": "fiil",
+    "kok": "ح ج ز",
+    "mazi": "حَجَزَ",
+    "muzari": "يَحْجِزُ",
+    "masdar": "حَجْز",
+    "anlam_tr": "rezerve etmek, yer ayırtmak"
+  },
+  {
+    "id": "kelime_559",
+    "tur": "isim",
+    "kok": "ح ج ز",
+    "mufret": "حَجْز",
+    "cemi": "حُجُوزَات",
+    "anlam_tr": "rezervasyon"
+  },
+  {
+    "id": "kelime_560",
+    "tur": "fiil",
+    "kok": "ل غ ي",
+    "mazi": "أَلْغَى",
+    "muzari": "يُلْغِي",
+    "masdar": "إِلْغَاء",
+    "anlam_tr": "iptal etmek"
+  },
+  {
+    "id": "kelime_561",
+    "tur": "isim",
+    "kok": "ل غ ي",
+    "mufret": "إِلْغَاء",
+    "cemi": "إِلْغَاءَات",
+    "anlam_tr": "iptal"
+  },
+  {
+    "id": "kelime_562",
+    "tur": "isim",
+    "kok": "ف ن د ق",
+    "mufret": "فُنْدُق",
+    "cemi": "فَنَادِق",
+    "anlam_tr": "otel"
+  },
+  {
+    "id": "kelime_563",
+    "tur": "isim",
+    "kok": "غ ر ف",
+    "mufret": "غُرْفَة",
+    "cemi": "غُرَف",
+    "anlam_tr": "oda"
+  },
+  {
+    "id": "kelime_564",
+    "tur": "isim",
+    "kok": "ف ر د",
+    "mufret": "غُرْفَةٌ مُفْرَدَةٌ",
+    "cemi": "غُرَفٌ مُفْرَدَةٌ",
+    "anlam_tr": "tek kişilik oda"
+  },
+  {
+    "id": "kelime_565",
+    "tur": "isim",
+    "kok": "ز و ج",
+    "mufret": "غُرْفَةٌ مُزْدَوِجَةٌ",
+    "cemi": "غُرَفٌ مُزْدَوِجَةٌ",
+    "anlam_tr": "çift kişilik oda"
+  },
+  {
+    "id": "kelime_566",
+    "tur": "isim",
+    "kok": "ف ت ح",
+    "mufret": "مِفْتَاح",
+    "cemi": "مَفَاتِيح",
+    "anlam_tr": "anahtar"
+  },
+  {
+    "id": "kelime_567",
+    "tur": "fiil",
+    "kok": "ف ت ح",
+    "mazi": "فَتَحَ",
+    "muzari": "يَفْتَحُ",
+    "masdar": "فَتْح",
+    "anlam_tr": "açmak"
+  },
+  {
+    "id": "kelime_568",
+    "tur": "fiil",
+    "kok": "غ ل ق",
+    "mazi": "أَغْلَقَ",
+    "muzari": "يُغْلِقُ",
+    "masdar": "إِغْلَاق",
+    "anlam_tr": "kapatmak"
+  },
+  {
+    "id": "kelime_569",
+    "tur": "isim",
+    "kok": "ق ب ل",
+    "mufret": "اِسْتِقْبَال",
+    "cemi": "-",
+    "anlam_tr": "resepsiyon, karşılama"
+  },
+  {
+    "id": "kelime_570",
+    "tur": "fiil",
+    "kok": "ق ب ل",
+    "mazi": "اِسْتَقْبَلَ",
+    "muzari": "يَسْتَقْبِلُ",
+    "masdar": "اِسْتِقْبَال",
+    "anlam_tr": "karşılamak, misafir kabul etmek"
+  },
+  {
+    "id": "kelime_571",
+    "tur": "isim",
+    "kok": "ض ي ف",
+    "mufret": "ضَيْف",
+    "cemi": "ضُيُوف",
+    "anlam_tr": "misafir, konuk"
+  },
+  {
+    "id": "kelime_572",
+    "tur": "fiil",
+    "kok": "ض ي ف",
+    "mazi": "أَضَافَ / اِسْتَضَافَ",
+    "muzari": "يَسْتَضِيفُ",
+    "masdar": "اِسْتِضَافَة",
+    "anlam_tr": "ağırlamak, konuk etmek"
+  },
+  {
+    "id": "kelime_573",
+    "tur": "isim",
+    "kok": "خ د م",
+    "mufret": "خِدْمَة",
+    "cemi": "خِدَم / خِدْمَات",
+    "anlam_tr": "hizmet, servis"
+  },
+  {
+    "id": "kelime_574",
+    "tur": "fiil",
+    "kok": "خ د م",
+    "mazi": "خَدَمَ",
+    "muzari": "يَخْدِمُ",
+    "masdar": "خِدْمَة",
+    "anlam_tr": "hizmet etmek"
+  },
+  {
+    "id": "kelime_575",
+    "tur": "isim",
+    "kok": "خ د م",
+    "mufret": "خَادِم / خَادِمَة",
+    "cemi": "خُدَّام / خَادِمَات",
+    "anlam_tr": "hizmetçi, görevli"
+  },
+  {
+    "id": "kelime_576",
+    "tur": "isim",
+    "kok": "ط ر ق",
+    "mufret": "طَرِيق",
+    "cemi": "طُرُق / طُرُقَات",
+    "anlam_tr": "yol, yöntem, cadde"
+  },
+  {
+    "id": "kelime_577",
+    "tur": "isim",
+    "kok": "ش ر ع",
+    "mufret": "شَارِع",
+    "cemi": "شَوَارِع",
+    "anlam_tr": "sokak, cadde"
+  },
+  {
+    "id": "kelime_578",
+    "tur": "isim",
+    "kok": "ز ق ق",
+    "mufret": "زُقَاق",
+    "cemi": "أَزِقَّة",
+    "anlam_tr": "dar sokak, ara sokak, pasaj"
+  },
+  {
+    "id": "kelime_579",
+    "tur": "isim",
+    "kok": "م د ن",
+    "mufret": "مَيْدَان / سَاحَة",
+    "cemi": "مَيَادِين / سَاحَات",
+    "anlam_tr": "meydan, alan, saha"
+  },
+  {
+    "id": "kelime_580",
+    "tur": "fiil",
+    "kok": "د ل ل",
+    "mazi": "دَلَّ",
+    "muzari": "يَدُلُّ",
+    "masdar": "دَلَالَة / دَلّ",
+    "anlam_tr": "göstermek, yol göstermek, işaret etmek (عَلَى ile)"
+  },
+  {
+    "id": "kelime_581",
+    "tur": "isim",
+    "kok": "د ل ل",
+    "mufret": "دَلِيل",
+    "cemi": "أَدِلَّة / دُلَلَاء",
+    "anlam_tr": "rehber, kılavuz, kanıt"
+  },
+  {
+    "id": "kelime_582",
+    "tur": "isim",
+    "kok": "خ ر ط",
+    "mufret": "خَرِيطَة",
+    "cemi": "خَرَائِط",
+    "anlam_tr": "harita"
+  },
+  {
+    "id": "kelime_583",
+    "tur": "fiil",
+    "kok": "ت و هـ",
+    "mazi": "تَاهَ / ضَلَّ",
+    "muzari": "يَتُوهُ / يَضِلُّ",
+    "masdar": "تَوْه / ضَلَال",
+    "anlam_tr": "kaybolmak, yolunu şaşırmak"
+  },
+  {
+    "id": "kelime_584",
+    "tur": "isim",
+    "kok": "ت و هـ",
+    "mufret": "تَائِه / ضَالّ",
+    "cemi": "تَائَهُونَ / ضَالُّونَ",
+    "anlam_tr": "kaybolmuş, yolunu şaşırmış kişi"
+  },
+  {
+    "id": "kelime_585",
+    "tur": "fiil",
+    "kok": "ع ب ر",
+    "mazi": "عَبَرَ",
+    "muzari": "يَعْبُرُ",
+    "masdar": "عُبُور",
+    "anlam_tr": "geçmek, karşıya geçmek (yol, cadde)"
+  },
+  {
+    "id": "kelime_586",
+    "tur": "isim",
+    "kok": "ع ب ر",
+    "mufret": "مَعْبَر / مُمَرّ",
+    "cemi": "مَعَابِر / مُمَرَّات",
+    "anlam_tr": "yaya geçidi, geçit"
+  },
+  {
+    "id": "kelime_587",
+    "tur": "isim",
+    "kok": "ش و ر",
+    "mufret": "إِشَارَةُ المُرُورِ",
+    "cemi": "إِشَارَاتُ المُرُورِ",
+    "anlam_tr": "trafik ışığı, trafik işareti"
+  },
+  {
+    "id": "kelime_588",
+    "tur": "isim",
+    "kok": "م ر ر",
+    "mufret": "مُرُور",
+    "cemi": "-",
+    "anlam_tr": "trafik, geçiş"
+  },
+  {
+    "id": "kelime_589",
+    "tur": "fiil",
+    "kok": "م ر ر",
+    "mazi": "مَرَّ",
+    "muzari": "يَمُرُّ",
+    "masdar": "مُرُور",
+    "anlam_tr": "geçmek, uğramak (بِـ ile)"
+  },
+  {
+    "id": "kelime_590",
+    "tur": "isim",
+    "kok": "ر ص ف",
+    "mufret": "رَصِيف",
+    "cemi": "أَرْصِفَة",
+    "anlam_tr": "kaldırım, peron"
+  },
+  {
+    "id": "kelime_591",
+    "tur": "isim",
+    "kok": "ج س ر",
+    "mufret": "جِسْر",
+    "cemi": "جُسُور",
+    "anlam_tr": "köprü"
+  },
+  {
+    "id": "kelime_592",
+    "tur": "isim",
+    "kok": "ن ف ق",
+    "mufret": "نَفَق",
+    "cemi": "أَنْفَاق",
+    "anlam_tr": "tünel, alt geçit"
+  },
+  {
+    "id": "kelime_593",
+    "tur": "fiil",
+    "kok": "ط ل ق",
+    "mazi": "اِنْطَلَقَ",
+    "muzari": "يَنْطَلِقُ",
+    "masdar": "اِنْطِلَاق",
+    "anlam_tr": "yola çıkmak, hareket etmek"
+  },
+  {
+    "id": "kelime_594",
+    "tur": "isim",
+    "kok": "ط ل ق",
+    "mufret": "اِنْطِلَاق",
+    "cemi": "-",
+    "anlam_tr": "yola çıkış, kalkış, başlangıç"
+  },
+  {
+    "id": "kelime_595",
+    "tur": "fiil",
+    "kok": "و ج هـ",
+    "mazi": "تَوَجَّهَ",
+    "muzari": "يَتَوَجَّهُ",
+    "masdar": "تَوَجُّه",
+    "anlam_tr": "yönelmek, gitmek (إِلَى ile)"
+  },
+  {
+    "id": "kelime_596",
+    "tur": "isim",
+    "kok": "و ج هـ",
+    "mufret": "تَوَجُّه / اتِّجَاه",
+    "cemi": "تَوَجُّهَات / اتِّجَاهَات",
+    "anlam_tr": "yönelim, doğrultu, istikamet"
+  },
+  {
+    "id": "kelime_597",
+    "tur": "isim",
+    "kok": "ب ن ي",
+    "mufret": "مَبْنَى / عِمَارَة",
+    "cemi": "مَبَانٍ / عِمَارَات",
+    "anlam_tr": "bina, yapı"
+  },
+  {
+    "id": "kelime_598",
+    "tur": "fiil",
+    "kok": "ب ن ي",
+    "mazi": "بَنَى",
+    "muzari": "يَبْنِي",
+    "masdar": "بِنَاء",
+    "anlam_tr": "inşa etmek, kurmak"
+  },
+  {
+    "id": "kelime_599",
+    "tur": "isim",
+    "kok": "ب ن ي",
+    "mufret": "بِنَاء",
+    "cemi": "أَبْنِيَة",
+    "anlam_tr": "inşaat, bina, yapı"
+  },
+  {
+    "id": "kelime_600",
+    "tur": "isim",
+    "kok": "ع م ر",
+    "mufret": "مُهَنْدِسٌ مِعْمَارِيٌّ",
+    "cemi": "مُهَنْدِسُونَ مِعْمَارِيُّونَ",
+    "anlam_tr": "mimar, mimarlık mühendisi"
+  },
+  {
+    "id": "kelime_601",
+    "tur": "fiil",
+    "kok": "س ك ن",
+    "mazi": "سَكَنَ",
+    "muzari": "يَسْكُنُ",
+    "masdar": "سَكَن / سُكْنَى",
+    "anlam_tr": "oturmak, ikamet etmek (فِي ile)"
+  },
+  {
+    "id": "kelime_602",
+    "tur": "isim",
+    "kok": "س ك ن",
+    "mufret": "سَكَن / مَسْكَن",
+    "cemi": "مَسَاكِن",
+    "anlam_tr": "konut, mesken, ikametgah"
+  },
+  {
+    "id": "kelime_603",
+    "tur": "isim",
+    "kok": "س ك ن",
+    "mufret": "سَاكِن",
+    "cemi": "سُكَّان",
+    "anlam_tr": "sakin, ikamet eden, nüfus"
+  },
+  {
+    "id": "kelime_604",
+    "tur": "isim",
+    "kok": "ش ق ق",
+    "mufret": "شَقَّة",
+    "cemi": "شُقَق",
+    "anlam_tr": "daire (apartman dairesi)"
+  },
+  {
+    "id": "kelime_605",
+    "tur": "fiil",
+    "kok": "أ ج ر",
+    "mazi": "أَجَّرَ / اِسْتَأْجَرَ",
+    "muzari": "يَسْتَأْجِرُ",
+    "masdar": "اِسْتِئْجَار",
+    "anlam_tr": "kiralamak (taraf olarak)"
+  },
+  {
+    "id": "kelime_606",
+    "tur": "isim",
+    "kok": "أ ج ر",
+    "mufret": "إِيجَار / أُجْرَة",
+    "cemi": "أُجَر",
+    "anlam_tr": "kira, kiralama, ücret"
+  },
+  {
+    "id": "kelime_607",
+    "tur": "isim",
+    "kok": "أ ج ر",
+    "mufret": "مُؤَجِّر",
+    "cemi": "مُؤَجِّرُونَ",
+    "anlam_tr": "kiraya veren, ev sahibi"
+  },
+  {
+    "id": "kelime_608",
+    "tur": "isim",
+    "kok": "أ ج ر",
+    "mufret": "مُسْتَأْجِر",
+    "cemi": "مُسْتَأْجِرُونَ",
+    "anlam_tr": "kiracı"
+  },
+  {
+    "id": "kelime_609",
+    "tur": "fiil",
+    "kok": "ع ق د",
+    "mazi": "عَقَدَ",
+    "muzari": "يَعْقِدُ",
+    "masdar": "عَقْد",
+    "anlam_tr": "sözleşme yapmak, bağlamak"
+  },
+  {
+    "id": "kelime_610",
+    "tur": "isim",
+    "kok": "ع ق د",
+    "mufret": "عَقْد",
+    "cemi": "عُقُود",
+    "anlam_tr": "kontrat, sözleşme, akit"
+  },
+  {
+    "id": "kelime_611",
+    "tur": "isim",
+    "kok": "د و ر",
+    "mufret": "دَوْر / طَابَق",
+    "cemi": "أَدْوَار / طَوَابِق",
+    "anlam_tr": "kat (bina katı)"
+  },
+  {
+    "id": "kelime_612",
+    "tur": "isim",
+    "kok": "س ل م",
+    "mufret": "سُلَّم / سَلَالِم",
+    "cemi": "سَلَالِم",
+    "anlam_tr": "merdiven"
+  },
+  {
+    "id": "kelime_613",
+    "tur": "isim",
+    "kok": "ص ع د",
+    "mufret": "مِصْعَد",
+    "cemi": "مَصَاعِد",
+    "anlam_tr": "asansör"
+  },
+  {
+    "id": "kelime_614",
+    "tur": "fiil",
+    "kok": "ص ع د",
+    "mazi": "صَعِدَ",
+    "muzari": "يَصْعَدُ",
+    "masdar": "صُعُود",
+    "anlam_tr": "yukarı çıkmak, tırmanmak"
+  },
+  {
+    "id": "kelime_615",
+    "tur": "fiil",
+    "kok": "ن ز ل",
+    "mazi": "نَزَلَ",
+    "muzari": "يَنْزِلُ",
+    "masdar": "نُزُول",
+    "anlam_tr": "aşağı inmek, konaklamak"
+  },
+  {
+    "id": "kelime_616",
+    "tur": "isim",
+    "kok": "ن ز ل",
+    "mufret": "نُزُول / مَنْزِل",
+    "cemi": "مَنَازِل",
+    "anlam_tr": "ev, konut, iniş"
+  },
+  {
+    "id": "kelime_617",
+    "tur": "isim",
+    "kok": "أ ث ث",
+    "mufret": "أَثَاث",
+    "cemi": "أَثَاثَات",
+    "anlam_tr": "mobilya, ev eşyası"
+  },
+  {
+    "id": "kelime_618",
+    "tur": "fiil",
+    "kok": "أ ث ث",
+    "mazi": "أَثَّثَ",
+    "muzari": "يُؤَثِّثُ",
+    "masdar": "تَأْثِيث",
+    "anlam_tr": "döşemek, mobilya yerleştirmek"
+  },
+  {
+    "id": "kelime_619",
+    "tur": "isim",
+    "kok": "أ ث ث",
+    "mufret": "مُؤَثَّث",
+    "cemi": "مُؤَثَّثُونَ",
+    "anlam_tr": "eşyalı, döşeli (daire)"
+  },
+  {
+    "id": "kelime_620",
+    "tur": "isim",
+    "kok": "س ر ر",
+    "mufret": "سَرِير",
+    "cemi": "أَسِرَّة",
+    "anlam_tr": "yatak, karyola"
+  },
+  {
+    "id": "kelime_621",
+    "tur": "isim",
+    "kok": "خ ز ن",
+    "mufret": "خِزَانَة",
+    "cemi": "خَزَائِن",
+    "anlam_tr": "dolap, gardırop"
+  },
+  {
+    "id": "kelime_622",
+    "tur": "isim",
+    "kok": "س ج د",
+    "mufret": "سَجَّادَة",
+    "cemi": "سَجَاجِيد",
+    "anlam_tr": "halı, seccade"
+  },
+  {
+    "id": "kelime_623",
+    "tur": "isim",
+    "kok": "س ت ر",
+    "mufret": "سِتَارَة",
+    "cemi": "سَتَائِر",
+    "anlam_tr": "perde"
+  },
+  {
+    "id": "kelime_624",
+    "tur": "isim",
+    "kok": "أ ر ك",
+    "mufret": "أَرِيكَة",
+    "cemi": "أَرَائِك",
+    "anlam_tr": "koltuk, kanepe"
+  },
+  {
+    "id": "kelime_625",
+    "tur": "isim",
+    "kok": "ط و ل",
+    "mufret": "طَاوِلَة",
+    "cemi": "طَاوِلَات",
+    "anlam_tr": "masa, sehpa"
+  },
+  {
+    "id": "kelime_626",
+    "tur": "isim",
+    "kok": "ك ر س",
+    "mufret": "كُرْسِيّ",
+    "cemi": "كَرَاسِي",
+    "anlam_tr": "sandalye, koltuk"
+  },
+  {
+    "id": "kelime_627",
+    "tur": "isim",
+    "kok": "ط ب خ",
+    "mufret": "مَطْبَخ",
+    "cemi": "مَطَابِخ",
+    "anlam_tr": "mutfak"
+  },
+  {
+    "id": "kelime_628",
+    "tur": "fiil",
+    "kok": "ط ب خ",
+    "mazi": "طَبَخَ",
+    "muzari": "يَطْبُخُ",
+    "masdar": "طَبْخ",
+    "anlam_tr": "yemek pişirmek"
+  },
+  {
+    "id": "kelime_629",
+    "tur": "isim",
+    "kok": "ط ب خ",
+    "mufret": "طَبَّاخ",
+    "cemi": "طَبَّاخُونَ",
+    "anlam_tr": "aşçı, ocak"
+  },
+  {
+    "id": "kelime_630",
+    "tur": "isim",
+    "kok": "ح م م",
+    "mufret": "حَمَّام",
+    "cemi": "حَمَّامَات",
+    "anlam_tr": "banyo, tuvalet"
+  },
+  {
+    "id": "kelime_631",
+    "tur": "fiil",
+    "kok": "ح م م",
+    "mazi": "اِسْتَحَمَّ",
+    "muzari": "يَسْتَحِمُّ",
+    "masdar": "اِسْتِحْمَام",
+    "anlam_tr": "banyo yapmak, yıkanmak"
+  },
+  {
+    "id": "kelime_632",
+    "tur": "isim",
+    "kok": "غ س ل",
+    "mufret": "غَسَّالَة",
+    "cemi": "غَسَّالَات",
+    "anlam_tr": "çamaşır makinesi"
+  },
+  {
+    "id": "kelime_633",
+    "tur": "fiil",
+    "kok": "غ س ل",
+    "mazi": "غَسَلَ",
+    "muzari": "يَغْسِلُ",
+    "masdar": "غَسْل",
+    "anlam_tr": "yıkamak"
+  },
+  {
+    "id": "kelime_634",
+    "tur": "isim",
+    "kok": "غ س ل",
+    "mufret": "مَغْسَلَة",
+    "cemi": "مَغَاسِل",
+    "anlam_tr": "lavabo, çamaşırhane"
+  },
+  {
+    "id": "kelime_635",
+    "tur": "isim",
+    "kok": "ث ل ج",
+    "mufret": "ثَلَّاجَة",
+    "cemi": "ثَلَّاجَات",
+    "anlam_tr": "buzdolabı"
+  },
+  {
+    "id": "kelime_636",
+    "tur": "isim",
+    "kok": "ف ر ن",
+    "mufret": "فُرْن",
+    "cemi": "أَفْرَان",
+    "anlam_tr": "fırın"
+  },
+  {
+    "id": "kelime_637",
+    "tur": "isim",
+    "kok": "ك و ي",
+    "mufret": "مِكْوَاة",
+    "cemi": "مَكَاوٍ / مَكَاوِي",
+    "anlam_tr": "ütü"
+  },
+  {
+    "id": "kelime_638",
+    "tur": "fiil",
+    "kok": "ك و ي",
+    "mazi": "كَوَى",
+    "muzari": "يَكْوِي",
+    "masdar": "كَيّ",
+    "anlam_tr": "ütülemek"
+  },
+  {
+    "id": "kelime_639",
+    "tur": "fiil",
+    "kok": "ن ظ ف",
+    "mazi": "نَظَّفَ",
+    "muzari": "يُنَظِّفُ",
+    "masdar": "تَنْظِيف",
+    "anlam_tr": "temizlemek"
+  },
+  {
+    "id": "kelime_640",
+    "tur": "isim",
+    "kok": "ن ظ ف",
+    "mufret": "تَنْظِيف",
+    "cemi": "تَنْظِيفَات",
+    "anlam_tr": "temizlik"
+  },
+  {
+    "id": "kelime_641",
+    "tur": "isim",
+    "kok": "ن ظ ف",
+    "mufret": "نَظِيف",
+    "cemi": "نُظَفَاء",
+    "anlam_tr": "temiz"
+  },
+  {
+    "id": "kelime_642",
+    "tur": "isim",
+    "kok": "و س خ",
+    "mufret": "وَسِخ / مُتَّسِخ",
+    "cemi": "وَسِخُونَ",
+    "anlam_tr": "kirli, pis"
+  },
+  {
+    "id": "kelime_643",
+    "tur": "fiil",
+    "kok": "ر ت ب",
+    "mazi": "رَتَّبَ / نَظَّمَ",
+    "muzari": "يُرَتِّبُ / يُنَظِّمُ",
+    "masdar": "تَرْتِيب / تَنْظِيم",
+    "anlam_tr": "düzenlemek, toplamak (oda vb.)"
+  },
+  {
+    "id": "kelime_644",
+    "tur": "isim",
+    "kok": "ع م ل",
+    "mufret": "أَعْمَالٌ مَنْزِلِيَّةٌ",
+    "cemi": "أَعْمَالٌ مَنْزِلِيَّةٌ",
+    "anlam_tr": "ev işleri"
+  },
+  {
+    "id": "kelime_645",
+    "tur": "isim",
+    "kok": "ك هـ ر ب",
+    "mufret": "كَهْرَبَاء",
+    "cemi": "-",
+    "anlam_tr": "elektrik"
+  },
+  {
+    "id": "kelime_646",
+    "tur": "isim",
+    "kok": "ك هـ ر ب",
+    "mufret": "كَهْرَبَائِيّ",
+    "cemi": "كَهْرَبَائِيُّونَ",
+    "anlam_tr": "elektrikli, elektrikçi"
+  },
+  {
+    "id": "kelime_647",
+    "tur": "isim",
+    "kok": "م و هـ",
+    "mufret": "مَاء",
+    "cemi": "مِيَاه",
+    "anlam_tr": "su"
+  },
+  {
+    "id": "kelime_648",
+    "tur": "isim",
+    "kok": "غ ا ز",
+    "mufret": "غَاز",
+    "cemi": "غَازَات",
+    "anlam_tr": "gaz, doğalgaz"
+  },
+  {
+    "id": "kelime_649",
+    "tur": "isim",
+    "kok": "ف ط ر",
+    "mufret": "فَاتُورَة",
+    "cemi": "فَوَاتِير",
+    "anlam_tr": "fatura"
+  },
+  {
+    "id": "kelime_650",
+    "tur": "fiil",
+    "kok": "د ف ع",
+    "mazi": "دَفَعَ",
+    "muzari": "يَدْفَعُ",
+    "masdar": "دَفْع",
+    "anlam_tr": "ödemek, itmek"
+  },
+  {
+    "id": "kelime_651",
+    "tur": "fiil",
+    "kok": "ش ر ي",
+    "mazi": "اِشْتَرَى",
+    "muzari": "يَشْتَرِي",
+    "masdar": "شِرَاء",
+    "anlam_tr": "satın almak"
+  },
+  {
+    "id": "kelime_652",
+    "tur": "isim",
+    "kok": "ش ر ي",
+    "mufret": "شِرَاء",
+    "cemi": "-",
+    "anlam_tr": "satın alma, alış"
+  },
+  {
+    "id": "kelime_653",
+    "tur": "fiil",
+    "kok": "ب ي ع",
+    "mazi": "بَاعَ",
+    "muzari": "يَبِيعُ",
+    "masdar": "بَيْع",
+    "anlam_tr": "satmak"
+  },
+  {
+    "id": "kelime_654",
+    "tur": "isim",
+    "kok": "ب ي ع",
+    "mufret": "بَائِع",
+    "cemi": "بَائِعُونَ / بَاعَة",
+    "anlam_tr": "satıcı"
+  },
+  {
+    "id": "kelime_655",
+    "tur": "isim",
+    "kok": "ب ي ع",
+    "mufret": "بَضَاعَة",
+    "cemi": "بَضَائِع",
+    "anlam_tr": "mal, ticari eşya, ürün"
+  },
+  {
+    "id": "kelime_656",
+    "tur": "isim",
+    "kok": "ث م ن",
+    "mufret": "ثَمَن / سِعْر",
+    "cemi": "أَثْمَان / أَسْعَار",
+    "anlam_tr": "fiyat, bedel, eder"
+  },
+  {
+    "id": "kelime_657",
+    "tur": "isim",
+    "kok": "ث م ن",
+    "mufret": "ثَمِين / غَالٍ",
+    "cemi": "ثَمِينُونَ / غَالُونَ",
+    "anlam_tr": "pahalı, değerli"
+  },
+  {
+    "id": "kelime_658",
+    "tur": "isim",
+    "kok": "ر خ ص",
+    "mufret": "رَخِيص",
+    "cemi": "رِخَاص",
+    "anlam_tr": "ucuz"
+  },
+  {
+    "id": "kelime_659",
+    "tur": "fiil",
+    "kok": "ر خ ص",
+    "mazi": "رَخُصَ",
+    "muzari": "يَرْخُصُ",
+    "masdar": "رُخْص",
+    "anlam_tr": "ucuzlamak"
+  },
+  {
+    "id": "kelime_660",
+    "tur": "fiil",
+    "kok": "خ ف ض",
+    "mazi": "خَفَّضَ",
+    "muzari": "يُخَفِّضُ",
+    "masdar": "تَخْفِيض",
+    "anlam_tr": "indirim yapmak, düşürmek"
+  },
+  {
+    "id": "kelime_661",
+    "tur": "isim",
+    "kok": "خ ف ض",
+    "mufret": "تَخْفِيض / خَصْم",
+    "cemi": "تَخْفِيضَات / خُصُومَات",
+    "anlam_tr": "indirim, iskonto"
+  },
+  {
+    "id": "kelime_662",
+    "tur": "fiil",
+    "kok": "س و م",
+    "mazi": "سَاوَمَ",
+    "muzari": "يُسَاوِمُ",
+    "masdar": "مُسَاوَمَة",
+    "anlam_tr": "pazarlık etmek"
+  },
+  {
+    "id": "kelime_663",
+    "tur": "isim",
+    "kok": "س و م",
+    "mufret": "مُسَاوَمَة",
+    "cemi": "مُسَاوَمَات",
+    "anlam_tr": "pazarlık"
+  },
+  {
+    "id": "kelime_664",
+    "tur": "isim",
+    "kok": "س و ق",
+    "mufret": "سُوق",
+    "cemi": "أَسْوَاق",
+    "anlam_tr": "çarşı, pazar, piyasa"
+  },
+  {
+    "id": "kelime_665",
+    "tur": "fiil",
+    "kok": "س و ق",
+    "mazi": "تَسَوَّقَ",
+    "muzari": "يَتَسَوَّقُ",
+    "masdar": "تَسَوُّق",
+    "anlam_tr": "alışveriş yapmak"
+  },
+  {
+    "id": "kelime_666",
+    "tur": "isim",
+    "kok": "س و ق",
+    "mufret": "تَسَوُّق",
+    "cemi": "-",
+    "anlam_tr": "alışveriş"
+  },
+  {
+    "id": "kelime_667",
+    "tur": "isim",
+    "kok": "م ر ك ز",
+    "mufret": "مَرْكَزُ تَسَوُّقٍ / مَوْل",
+    "cemi": "مَرَكِزُ تَسَوُّقٍ",
+    "anlam_tr": "alışveriş merkezi, AVM"
+  },
+  {
+    "id": "kelime_668",
+    "tur": "isim",
+    "kok": "د ك ك",
+    "mufret": "دُكَّان / مَتْجَر",
+    "cemi": "دَكَاكِين / مَتَاجِر",
+    "anlam_tr": "dükkan, mağaza"
+  },
+  {
+    "id": "kelime_669",
+    "tur": "isim",
+    "kok": "ن ق د",
+    "mufret": "نَقْد / نُقُود",
+    "cemi": "أَنْقَاد / نُقُود",
+    "anlam_tr": "nakit para, para"
+  },
+  {
+    "id": "kelime_670",
+    "tur": "isim",
+    "kok": "ن ق د",
+    "mufret": "نَقْدِيّ / نَقْداً",
+    "cemi": "-",
+    "anlam_tr": "nakit olarak"
+  },
+  {
+    "id": "kelime_671",
+    "tur": "isim",
+    "kok": "ب ط ق",
+    "mufret": "بِطَاقَةُ اِئْتِمَانٍ",
+    "cemi": "بِطَاقَاتُ اِئْتِمَانٍ",
+    "anlam_tr": "kredi kartı"
+  },
+  {
+    "id": "kelime_672",
+    "tur": "isim",
+    "kok": "ب ط ق",
+    "mufret": "بِطَاقَة",
+    "cemi": "بِطَاقَات",
+    "anlam_tr": "kart, kimlik, etiket"
+  },
+  {
+    "id": "kelime_673",
+    "tur": "isim",
+    "kok": "ص ن د ق",
+    "mufret": "صُنْدُوق / صَرَّاف",
+    "cemi": "صَنَادِيق",
+    "anlam_tr": "kasa, kutu, vezne"
+  },
+  {
+    "id": "kelime_674",
+    "tur": "isim",
+    "kok": "ص ن د ق",
+    "mufret": "صُنْدُوقُ أَمَانَاتٍ / خَزْنَة",
+    "cemi": "صَنَادِيقُ أَمَانَاتٍ",
+    "anlam_tr": "kasa (güvenlik kasası)"
+  },
+  {
+    "id": "kelime_675",
+    "tur": "isim",
+    "kok": "و ص ل",
+    "mufret": "إِيصَال / إِيصَالَات",
+    "cemi": "إِيصَالَات",
+    "anlam_tr": "fiş, makbuz, alındı belgesi"
+  },
+  {
+    "id": "kelime_676",
+    "tur": "fiil",
+    "kok": "ق ي س",
+    "mazi": "قَاسَ",
+    "muzari": "يَقِيسُ",
+    "masdar": "قِيَاس",
+    "anlam_tr": "ölçmek, denerken giymek (kıyafet)"
+  },
+  {
+    "id": "kelime_677",
+    "tur": "isim",
+    "kok": "ق ي س",
+    "mufret": "قِيَاس / حَجْم",
+    "cemi": "قِيَاسَات / أَحْجَام",
+    "anlam_tr": "beden, ölçü, ebat"
+  },
+  {
+    "id": "kelime_678",
+    "tur": "isim",
+    "kok": "ق ي س",
+    "mufret": "غُرْفَةُ القِيَاسِ / غُرْفَةُ التَّبْدِيلِ",
+    "cemi": "غُرَفُ القِيَاسِ",
+    "anlam_tr": "soyunma / giyinme kabini"
+  },
+  {
+    "id": "kelime_679",
+    "tur": "isim",
+    "kok": "ل ب س",
+    "mufret": "مَلَابِس / ثِيَاب",
+    "cemi": "مَلَابِس / ثِيَاب",
+    "anlam_tr": "giysi, elbise, kıyafet"
+  },
+  {
+    "id": "kelime_680",
+    "tur": "fiil",
+    "kok": "ل ب س",
+    "mazi": "لَبِسَ",
+    "muzari": "يَلْبَسُ",
+    "masdar": "لُبْس",
+    "anlam_tr": "giymek, giyinmek"
+  },
+  {
+    "id": "kelime_681",
+    "tur": "fiil",
+    "kok": "خ ل ع",
+    "mazi": "خَلَعَ",
+    "muzari": "يَخْلَعُ",
+    "masdar": "خَلْع",
+    "anlam_tr": "çıkarmak (kıyafet/ayakkabı)"
+  },
+  {
+    "id": "kelime_682",
+    "tur": "isim",
+    "kok": "ق م ص",
+    "mufret": "قَمِيص",
+    "cemi": "قُمْصَان",
+    "anlam_tr": "gömlek"
+  },
+  {
+    "id": "kelime_683",
+    "tur": "isim",
+    "kok": "ب ن ط ل",
+    "mufret": "بَنْطَلُون / بَنِطَال",
+    "cemi": "بَنْطَلُونَات",
+    "anlam_tr": "pantolon"
+  },
+  {
+    "id": "kelime_684",
+    "tur": "isim",
+    "kok": "ف س ط",
+    "mufret": "فُسْتَان",
+    "cemi": "فَسَاتِين",
+    "anlam_tr": "elbise, fistan"
+  },
+  {
+    "id": "kelime_685",
+    "tur": "isim",
+    "kok": "ت ن ر",
+    "mufret": "تَنُّورَة",
+    "cemi": "تَنَانِير",
+    "anlam_tr": "etek"
+  },
+  {
+    "id": "kelime_686",
+    "tur": "isim",
+    "kok": "ح ذ و",
+    "mufret": "حِذَاء",
+    "cemi": "أَحْذِيَة",
+    "anlam_tr": "ayakkabı"
+  },
+  {
+    "id": "kelime_687",
+    "tur": "isim",
+    "kok": "ج و ر ب",
+    "mufret": "جَوْرَب",
+    "cemi": "جَوَارِب",
+    "anlam_tr": "çorap"
+  },
+  {
+    "id": "kelime_688",
+    "tur": "isim",
+    "kok": "ق ب ع",
+    "mufret": "قُبَّعَة",
+    "cemi": "قُبَّعَات",
+    "anlam_tr": "şapka"
+  },
+  {
+    "id": "kelime_689",
+    "tur": "isim",
+    "kok": "ن ظ ر",
+    "mufret": "نَظَّارَة",
+    "cemi": "نَظَّارَات",
+    "anlam_tr": "gözlük"
+  },
+  {
+    "id": "kelime_690",
+    "tur": "isim",
+    "kok": "ح ق ب",
+    "mufret": "حَقِيبَة",
+    "cemi": "حَقَائِب",
+    "anlam_tr": "çanta, valiz"
+  },
+  {
+    "id": "kelime_691",
+    "tur": "isim",
+    "kok": "ج ل د",
+    "mufret": "جِلْد",
+    "cemi": "جُلُود",
+    "anlam_tr": "deri, cilt"
+  },
+  {
+    "id": "kelime_692",
+    "tur": "isim",
+    "kok": "ج ل د",
+    "mufret": "جِلْدِيّ",
+    "cemi": "جِلْدِيُّونَ",
+    "anlam_tr": "deriden yapılmış, deri"
+  },
+  {
+    "id": "kelime_693",
+    "tur": "isim",
+    "kok": "ص و ف",
+    "mufret": "صُوف",
+    "cemi": "أَصْوَاف",
+    "anlam_tr": "yün"
+  },
+  {
+    "id": "kelime_694",
+    "tur": "isim",
+    "kok": "ص و ف",
+    "mufret": "صُوفِيّ",
+    "cemi": "صُوفِيُّونَ",
+    "anlam_tr": "yünlü, yünden yapılmış"
+  },
+  {
+    "id": "kelime_695",
+    "tur": "isim",
+    "kok": "ق ط ن",
+    "mufret": "قُطْن",
+    "cemi": "أَقْطَان",
+    "anlam_tr": "pamuk"
+  },
+  {
+    "id": "kelime_696",
+    "tur": "isim",
+    "kok": "ق ط ن",
+    "mufret": "قُطْنِيّ",
+    "cemi": "قُطْنِيُّونَ",
+    "anlam_tr": "pamuklu"
+  },
+  {
+    "id": "kelime_697",
+    "tur": "isim",
+    "kok": "ح ر ر",
+    "mufret": "حَرِير",
+    "cemi": "حَرَائِر",
+    "anlam_tr": "ipek"
+  },
+  {
+    "id": "kelime_698",
+    "tur": "isim",
+    "kok": "ح ر ر",
+    "mufret": "حَرِيرِيّ",
+    "cemi": "حَرِيرِيُّونَ",
+    "anlam_tr": "ipeksi, ipekten yapılmış"
+  },
+  {
+    "id": "kelime_699",
+    "tur": "isim",
+    "kok": "ل و ن",
+    "mufret": "لَوْن",
+    "cemi": "أَلْوَان",
+    "anlam_tr": "renk, tür, çeşit"
+  },
+  {
+    "id": "kelime_700",
+    "tur": "fiil",
+    "kok": "ل و ن",
+    "mazi": "لَوَّنَ",
+    "muzari": "يُلَوِّنُ",
+    "masdar": "تَلْوِين",
+    "anlam_tr": "boyamak, renklendirmek"
+  },
+  {
+    "id": "kelime_701",
+    "tur": "isim",
+    "kok": "ب ي ض",
+    "mufret": "أَبْيَض",
+    "cemi": "بِيض",
+    "anlam_tr": "beyaz"
+  },
+  {
+    "id": "kelime_702",
+    "tur": "isim",
+    "kok": "س و د",
+    "mufret": "أَسْوَد",
+    "cemi": "سُود",
+    "anlam_tr": "siyah, kara"
+  },
+  {
+    "id": "kelime_703",
+    "tur": "isim",
+    "kok": "خ ض ر",
+    "mufret": "أَخْضَر",
+    "cemi": "خُضْر",
+    "anlam_tr": "yeşil"
+  },
+  {
+    "id": "kelime_704",
+    "tur": "isim",
+    "kok": "ز ر ق",
+    "mufret": "أَزْرَق",
+    "cemi": "زُرْق",
+    "anlam_tr": "mavi"
+  },
+  {
+    "id": "kelime_705",
+    "tur": "isim",
+    "kok": "ص ف ر",
+    "mufret": "أَصْفَر",
+    "cemi": "صُفْر",
+    "anlam_tr": "sarı"
+  },
+  {
+    "id": "kelime_706",
+    "tur": "isim",
+    "kok": "ب ن ن",
+    "mufret": "بُنِّيّ",
+    "cemi": "بُنِّيُّونَ",
+    "anlam_tr": "kahverengi"
+  },
+  {
+    "id": "kelime_707",
+    "tur": "isim",
+    "kok": "ر م د",
+    "mufret": "رَمَادِيّ",
+    "cemi": "رَمَادِيُّونَ",
+    "anlam_tr": "gri, kül rengi"
+  },
+  {
+    "id": "kelime_708",
+    "tur": "isim",
+    "kok": "ب ر ت ق ل",
+    "mufret": "بُرْتُقَالِيّ",
+    "cemi": "بُرْتُقَالِيُّونَ",
+    "anlam_tr": "turuncu"
+  },
+  {
+    "id": "kelime_709",
+    "tur": "isim",
+    "kok": "ب ن ف س ج",
+    "mufret": "بَنَفْسَجِيّ",
+    "cemi": "بَنَفْسَجِيُّونَ",
+    "anlam_tr": "mor, menekşe rengi"
+  },
+  {
+    "id": "kelime_710",
+    "tur": "isim",
+    "kok": "و ر د",
+    "mufret": "وَرْدِيّ",
+    "cemi": "وَرْدِيُّونَ",
+    "anlam_tr": "pembe"
+  },
+  {
+    "id": "kelime_711",
+    "tur": "fiil",
+    "kok": "ف ض ل",
+    "mazi": "فَضَّلَ",
+    "muzari": "يُفَضِّلُ",
+    "masdar": "تَفْضِيل",
+    "anlam_tr": "tercih etmek, üstün tutmak (عَلَى ile)"
+  },
+  {
+    "id": "kelime_712",
+    "tur": "isim",
+    "kok": "ف ض ل",
+    "mufret": "أَفْضَل / مُفَضَّل",
+    "cemi": "أَفَاضِل / مُفَضَّلُونَ",
+    "anlam_tr": "en iyi, favori, tercih edilen"
+  },
+  {
+    "id": "kelime_713",
+    "tur": "fiil",
+    "kok": "خ ي ر",
+    "mazi": "اِخْتَارَ",
+    "muzari": "يَخْتَارُ",
+    "masdar": "اِخْتِيَار",
+    "anlam_tr": "seçmek"
+  },
+  {
+    "id": "kelime_714",
+    "tur": "isim",
+    "kok": "خ ي ر",
+    "mufret": "اِخْتِيَار / خِيَار",
+    "cemi": "اِخْتِيَارَات / خِيَارَات",
+    "anlam_tr": "seçim, tercih, opsiyon"
+  },
+  {
+    "id": "kelime_715",
+    "tur": "fiil",
+    "kok": "ن س ب",
+    "mazi": "نَاسَبَ",
+    "muzari": "يُنَاسِبُ",
+    "masdar": "مُنَاسَبَة",
+    "anlam_tr": "uygun olmak, yakışmak"
+  },
+  {
+    "id": "kelime_716",
+    "tur": "isim",
+    "kok": "ن س ب",
+    "mufret": "مُنَاسِب",
+    "cemi": "مُنَاسِبُونَ",
+    "anlam_tr": "uygun, elverişli, münasip"
+  },
+  {
+    "id": "kelime_717",
+    "tur": "isim",
+    "kok": "ن س ب",
+    "mufret": "مُنَاسَبَة",
+    "cemi": "مُنَاسَبَات",
+    "anlam_tr": "vesile, durum, özel gün"
+  },
+  {
+    "id": "kelime_718",
+    "tur": "fiil",
+    "kok": "ق ب ل",
+    "mazi": "قَابَلَ",
+    "muzari": "يُقَابِلُ",
+    "masdar": "مُقَابَلَة",
+    "anlam_tr": "karşılaşmak, görüşmek, mülakat yapmak"
+  },
+  {
+    "id": "kelime_719",
+    "tur": "isim",
+    "kok": "ق ب ل",
+    "mufret": "مُقَابَلَة",
+    "cemi": "مُقَابَلَات",
+    "anlam_tr": "görüşme, mülakat, röportaj"
+  },
+  {
+    "id": "kelime_720",
+    "tur": "fiil",
+    "kok": "ج م ع",
+    "mazi": "اِجْتَمَعَ",
+    "muzari": "يَجْتَمِعُ",
+    "masdar": "اِجْتِمَاع",
+    "anlam_tr": "toplanmak, bir araya gelmek (بِـ / مَعَ ile)"
+  },
+  {
+    "id": "kelime_721",
+    "tur": "isim",
+    "kok": "ج م ع",
+    "mufret": "اِجْتِمَاع",
+    "cemi": "اِجْتِمَاعَات",
+    "anlam_tr": "toplantı, birleşim"
+  },
+  {
+    "id": "kelime_722",
+    "tur": "isim",
+    "kok": "ج م ع",
+    "mufret": "مُجْتَمَع",
+    "cemi": "مُجْتَمَعَات",
+    "anlam_tr": "toplum, cemiyet"
+  },
+  {
+    "id": "kelime_723",
+    "tur": "fiil",
+    "kok": "ن ق ش",
+    "mazi": "نَاقَشَ",
+    "muzari": "يُنَاقِشُ",
+    "masdar": "مُنَاقَشَة / نِقَاش",
+    "anlam_tr": "tartışmak, müzakere etmek"
+  },
+  {
+    "id": "kelime_724",
+    "tur": "isim",
+    "kok": "ن ق ش",
+    "mufret": "مُنَاقَشَة / نِقَاش",
+    "cemi": "مُنَاقَشَات / نِقَاشَات",
+    "anlam_tr": "tartışma, müzakere"
+  },
+  {
+    "id": "kelime_725",
+    "tur": "fiil",
+    "kok": "و ف ق",
+    "mazi": "اِتَّفَقَ",
+    "muzari": "يَتَّفِقُ",
+    "masdar": "اِتِّفَاق",
+    "anlam_tr": "anlaşmak, uzlaşmak (عَلَى ile)"
+  },
+  {
+    "id": "kelime_726",
+    "tur": "isim",
+    "kok": "و ف ق",
+    "mufret": "اِتِّفَاق / اِتِّفَاقِيَّة",
+    "cemi": "اِتِّفَاقَات / اِتِّفَاقِيَّات",
+    "anlam_tr": "anlaşma, sözleşme, antlaşma"
+  },
+  {
+    "id": "kelime_727",
+    "tur": "fiil",
+    "kok": "ق ر ر",
+    "mazi": "قَرَّرَ",
+    "muzari": "يُقَرِّرُ",
+    "masdar": "تَقْرِير",
+    "anlam_tr": "karar vermek"
+  },
+  {
+    "id": "kelime_728",
+    "tur": "isim",
+    "kok": "ق ر ر",
+    "mufret": "قَرَار",
+    "cemi": "قَرَارَات",
+    "anlam_tr": "karar"
+  },
+  {
+    "id": "kelime_729",
+    "tur": "isim",
+    "kok": "ق ر ر",
+    "mufret": "تَقْرِير",
+    "cemi": "تَقَارِير",
+    "anlam_tr": "rapor, bildiri"
+  },
+  {
+    "id": "kelime_730",
+    "tur": "fiil",
+    "kok": "غ ي ر",
+    "mazi": "غَيَّرَ / تَغَيَّرَ",
+    "muzari": "يُغَيِّرُ / يَتَغَيَّرُ",
+    "masdar": "تَغْيِير / تَغَيُّر",
+    "anlam_tr": "değiştirmek, değişmek"
+  },
+  {
+    "id": "kelime_731",
+    "tur": "isim",
+    "kok": "غ ي ر",
+    "mufret": "تَغْيِير",
+    "cemi": "تَغْيِيرَات",
+    "anlam_tr": "değişiklik, değişim"
+  },
+  {
+    "id": "kelime_732",
+    "tur": "fiil",
+    "kok": "ب د ل",
+    "mazi": "بَدَّلَ / اِسْتَبْدَلَ",
+    "muzari": "يُبَدِّلُ / يَسْتَبْدِلُ",
+    "masdar": "تَبْدِيل / اِسْتِبْدَال",
+    "anlam_tr": "değiş tokuş etmek, değiştirmek"
+  },
+  {
+    "id": "kelime_733",
+    "tur": "isim",
+    "kok": "ب د ل",
+    "mufret": "بَدِيل",
+    "cemi": "بَدَائِل",
+    "anlam_tr": "alternatif, yedek, karşılık"
+  },
+  {
+    "id": "kelime_734",
+    "tur": "fiil",
+    "kok": "ص ر ف",
+    "mazi": "صَرَفَ",
+    "muzari": "يَصْرِفُ",
+    "masdar": "صَرْف",
+    "anlam_tr": "döviz bozdurmak, harcamak"
+  },
+  {
+    "id": "kelime_735",
+    "tur": "isim",
+    "kok": "ص ر ف",
+    "mufret": "صِرَافَة / صَرَّاف",
+    "cemi": "صَرَّافُونَ",
+    "anlam_tr": "döviz bürosu, kuyumcu/dövizci, ATM"
+  },
+  {
+    "id": "kelime_736",
+    "tur": "isim",
+    "kok": "ع م ل",
+    "mufret": "عُمْلَة",
+    "cemi": "عُمَلَات",
+    "anlam_tr": "para birimi, döviz"
+  },
+  {
+    "id": "kelime_737",
+    "tur": "isim",
+    "kok": "ع م ل",
+    "mufret": "عُمْلَةٌ أَجْنَبِيَّةٌ",
+    "cemi": "عُمَلَاتٌ أَجْنَبِيَّةٌ",
+    "anlam_tr": "yabancı para, döviz"
+  },
+  {
+    "id": "kelime_738",
+    "tur": "fiil",
+    "kok": "ح و ل",
+    "mazi": "حَوَّلَ",
+    "muzari": "يُحَوِّيلُ",
+    "masdar": "تَحْوِيل",
+    "anlam_tr": "havale etmek, dönüştürmek, aktarmak"
+  },
+  {
+    "id": "kelime_739",
+    "tur": "isim",
+    "kok": "ح و ل",
+    "mufret": "تَحْوِيلٌ مَالِيٌّ",
+    "cemi": "تَحْوِيلَاتٌ مَالِيَّةٌ",
+    "anlam_tr": "para havalesi, transfer"
+  },
+  {
+    "id": "kelime_740",
+    "tur": "fiil",
+    "kok": "ن ق ل",
+    "mazi": "نَقَلَ",
+    "muzari": "يَنْقُلُ",
+    "masdar": "نَقْل",
+    "anlam_tr": "taşımak, nakletmek, aktarmak"
+  },
+  {
+    "id": "kelime_741",
+    "tur": "isim",
+    "kok": "ن ق ل",
+    "mufret": "نَقْل / مَوَاصَلَات",
+    "cemi": "مَوَاصَلَات",
+    "anlam_tr": "ulaşım, nakliye, toplu taşıma"
+  },
+  {
+    "id": "kelime_742",
+    "tur": "fiil",
+    "kok": "ح م ل",
+    "mazi": "حَمَلَ",
+    "muzari": "يَحْمِلُ",
+    "masdar": "حَمْل",
+    "anlam_tr": "taşımak, yüklenmek"
+  },
+  {
+    "id": "kelime_743",
+    "tur": "isim",
+    "kok": "ح م ل",
+    "mufret": "حَمَّال",
+    "cemi": "حَمَّالُونَ",
+    "anlam_tr": "hamal, bagaj taşıyıcısı"
+  },
+  {
+    "id": "kelime_744",
+    "tur": "fiil",
+    "kok": "س م ح",
+    "mazi": "سَمَحَ",
+    "muzari": "يَسْمَحُ",
+    "masdar": "سَمَاح",
+    "anlam_tr": "izin vermek, müsaade etmek (بِـ ile)"
+  },
+  {
+    "id": "kelime_745",
+    "tur": "isim",
+    "kok": "س م ح",
+    "mufret": "سَمَاح / إِذْن",
+    "cemi": "أُذُونات",
+    "anlam_tr": "izin, müsaade"
+  },
+  {
+    "id": "kelime_746",
+    "tur": "fiil",
+    "kok": "م ن ع",
+    "mazi": "مَنَعَ",
+    "muzari": "يَمْنَعُ",
+    "masdar": "مَنْع",
+    "anlam_tr": "yasaklamak, engel olmak"
+  },
+  {
+    "id": "kelime_747",
+    "tur": "isim",
+    "kok": "م ن ع",
+    "mufret": "مَمْنُوع",
+    "cemi": "مَمْنُوعَات",
+    "anlam_tr": "yasak, yasaklanmış"
+  },
+  {
+    "id": "kelime_748",
+    "tur": "fiil",
+    "kok": "م ك ن",
+    "mazi": "أَمْكَنَ",
+    "muzari": "يُمْكِنُ",
+    "masdar": "إِمْكَان",
+    "anlam_tr": "mümkün olmak, -ebilmek"
+  },
+  {
+    "id": "kelime_749",
+    "tur": "isim",
+    "kok": "م ك ن",
+    "mufret": "مُمْكِن / إِمْكَانِيَّة",
+    "cemi": "إِمْكَانِيَّات",
+    "anlam_tr": "mümkün, imkan, olasılık"
+  },
+  {
+    "id": "kelime_750",
+    "tur": "isim",
+    "kok": "ح و ل",
+    "mufret": "مُسْتَحِيل",
+    "cemi": "مُسْتَحِيلَات",
+    "anlam_tr": "imkansız, olanaksız"
+  },
+  {
+    "id": "kelime_751",
+    "tur": "fiil",
+    "kok": "ش ك و",
+    "mazi": "شَكَا",
+    "muzari": "يَشْكُو",
+    "masdar": "شَكْوَى",
+    "anlam_tr": "şikayet etmek (مِنْ ile)"
+  },
+  {
+    "id": "kelime_752",
+    "tur": "isim",
+    "kok": "ش ك و",
+    "mufret": "شَكْوَى",
+    "cemi": "شَكَاوَى",
+    "anlam_tr": "şikayet, yakınma"
+  },
+  {
+    "id": "kelime_753",
+    "tur": "fiil",
+    "kok": "أ ل م",
+    "mazi": "أَلِمَ / تَأَلَّمَ",
+    "muzari": "يَتَأَلَّمُ",
+    "masdar": "أَلَم / تَأَلُّم",
+    "anlam_tr": "ağrımak, acı çekmek"
+  },
+  {
+    "id": "kelime_754",
+    "tur": "isim",
+    "kok": "أ ل م",
+    "mufret": "أَلَم",
+    "cemi": "آلَام",
+    "anlam_tr": "ağrı, sızı, acı"
+  },
+  {
+    "id": "kelime_755",
+    "tur": "isim",
+    "kok": "أ ل م",
+    "mufret": "مُؤْلِم",
+    "cemi": "مُؤْلِمُونَ",
+    "anlam_tr": "ağrılı, acı verici"
+  },
+  {
+    "id": "kelime_756",
+    "tur": "isim",
+    "kok": "م ر ض",
+    "mufret": "مَرَض",
+    "cemi": "أَمْرَاض",
+    "anlam_tr": "hastalık"
+  },
+  {
+    "id": "kelime_757",
+    "tur": "fiil",
+    "kok": "م ر ض",
+    "mazi": "مَرِضَ",
+    "muzari": "يَمْرَضُ",
+    "masdar": "مَرَض",
+    "anlam_tr": "hastalanmak"
+  },
+  {
+    "id": "kelime_758",
+    "tur": "isim",
+    "kok": "م ر ض",
+    "mufret": "مَرِيض",
+    "cemi": "مَرْضَى",
+    "anlam_tr": "hasta"
+  },
+  {
+    "id": "kelime_759",
+    "tur": "isim",
+    "kok": "م ر ض",
+    "mufret": "مُمَرِّض / مُمَرِّضَة",
+    "cemi": "مُمَرِّضُونَ / مُمَرِّضَات",
+    "anlam_tr": "hemşire, hasta bakıcı"
+  },
+  {
+    "id": "kelime_760",
+    "tur": "isim",
+    "kok": "ش ف ي",
+    "mufret": "مُسْتَشْفَى",
+    "cemi": "مُسْتَشْفَيَات",
+    "anlam_tr": "hastane"
+  },
+  {
+    "id": "kelime_761",
+    "tur": "isim",
+    "kok": "ع و د",
+    "mufret": "عِيَادَة",
+    "cemi": "عِيَادَات",
+    "anlam_tr": "klinik, muayenehane"
+  },
+  {
+    "id": "kelime_762",
+    "tur": "fiil",
+    "kok": "ف ح ص",
+    "mazi": "فَحَصَ",
+    "muzari": "يَفْحَصُ",
+    "masdar": "فَحْص",
+    "anlam_tr": "muayene etmek, incelemek"
+  },
+  {
+    "id": "kelime_763",
+    "tur": "isim",
+    "kok": "ف ح ص",
+    "mufret": "فَحْص",
+    "cemi": "فُحُوص / فُحُوصَات",
+    "anlam_tr": "muayene, tahlil, kontrol"
+  },
+  {
+    "id": "kelime_764",
+    "tur": "fiil",
+    "kok": "ع ل ج",
+    "mazi": "عَالَجَ",
+    "muzari": "يُعَالِجُ",
+    "masdar": "عِلَاج / مُعَالَجَة",
+    "anlam_tr": "tedavi etmek"
+  },
+  {
+    "id": "kelime_765",
+    "tur": "isim",
+    "kok": "ع ل ج",
+    "mufret": "عِلَاج",
+    "cemi": "عِلَاجَات",
+    "anlam_tr": "tedavi, çare"
+  },
+  {
+    "id": "kelime_766",
+    "tur": "isim",
+    "kok": "د و ي",
+    "mufret": "دَوَاء",
+    "cemi": "أَدْوِيَة",
+    "anlam_tr": "ilaç"
+  },
+  {
+    "id": "kelime_767",
+    "tur": "isim",
+    "kok": "ص ي د ل",
+    "mufret": "صَيْدَلِيَّة",
+    "cemi": "صَيْدَلِيَّات",
+    "anlam_tr": "eczane"
+  },
+  {
+    "id": "kelime_768",
+    "tur": "isim",
+    "kok": "ص ي د ل",
+    "mufret": "صَيْدَلِيّ",
+    "cemi": "صَيَادِلَة",
+    "anlam_tr": "eczacı"
+  },
+  {
+    "id": "kelime_769",
+    "tur": "isim",
+    "kok": "و ص ف",
+    "mufret": "وَصْفَةٌ طِبِّيَّةٌ",
+    "cemi": "وَصَفَاتٌ طِبِّيَّةٌ",
+    "anlam_tr": "reçete"
+  },
+  {
+    "id": "kelime_770",
+    "tur": "isim",
+    "kok": "ط ب ب",
+    "mufret": "طَبِيب",
+    "cemi": "أَطِبَّاء",
+    "anlam_tr": "doktor, hekim"
+  },
+  {
+    "id": "kelime_771",
+    "tur": "isim",
+    "kok": "ط ب ب",
+    "mufret": "طِبّ",
+    "cemi": "-",
+    "anlam_tr": "tıp, hekimlik"
+  },
+  {
+    "id": "kelime_772",
+    "tur": "isim",
+    "kok": "ط ب ب",
+    "mufret": "طِبِّيّ",
+    "cemi": "طِبِّيُّونَ",
+    "anlam_tr": "tıbbi"
+  },
+  {
+    "id": "kelime_773",
+    "tur": "isim",
+    "kok": "ح ق ن",
+    "mufret": "حُقْنَة",
+    "cemi": "حُقَن",
+    "anlam_tr": "iğne, enjeksiyon"
+  },
+  {
+    "id": "kelime_774",
+    "tur": "isim",
+    "kok": "ق ر ص",
+    "mufret": "قُرْص",
+    "cemi": "أَقْرَاص",
+    "anlam_tr": "hap, tablet"
+  },
+  {
+    "id": "kelime_775",
+    "tur": "isim",
+    "kok": "ش ر ب",
+    "mufret": "شَرَاب",
+    "cemi": "أَشْرِبَة",
+    "anlam_tr": "şurup, içecek"
+  },
+  {
+    "id": "kelime_776",
+    "tur": "fiil",
+    "kok": "ش ف ي",
+    "mazi": "شَفَى",
+    "muzari": "يَشْفِي",
+    "masdar": "شِفَاء",
+    "anlam_tr": "şifa vermek, iyileştirmek"
+  },
+  {
+    "id": "kelime_777",
+    "tur": "isim",
+    "kok": "ش ف ي",
+    "mufret": "شِفَاء",
+    "cemi": "-",
+    "anlam_tr": "şifa, iyileşme, sağlık"
+  },
+  {
+    "id": "kelime_778",
+    "tur": "fiil",
+    "kok": "ش ف ي",
+    "mazi": "تَعَافَى / شُفِيَ",
+    "muzari": "يَتَعَافَى",
+    "masdar": "تَعَافٍ",
+    "anlam_tr": "iyileşmek, sağlığına kavuşmak"
+  },
+  {
+    "id": "kelime_779",
+    "tur": "isim",
+    "kok": "ص ح ح",
+    "mufret": "صِحَّة",
+    "cemi": "-",
+    "anlam_tr": "sağlık, doğruluk"
+  },
+  {
+    "id": "kelime_780",
+    "tur": "isim",
+    "kok": "ص ح ح",
+    "mufret": "صَحِيح / صِحِّيّ",
+    "cemi": "صَحِيحُونَ",
+    "anlam_tr": "sağlıklı, doğru, hijyenik"
+  },
+  {
+    "id": "kelime_781",
+    "tur": "isim",
+    "kok": "ع ف و",
+    "mufret": "عَافِيَة",
+    "cemi": "-",
+    "anlam_tr": "sağlık, afiyet"
+  },
+  {
+    "id": "kelime_782",
+    "tur": "isim",
+    "kok": "ع ض و",
+    "mufret": "عُضْو",
+    "cemi": "أَعْضَاء",
+    "anlam_tr": "organ, üye, uzuv"
+  },
+  {
+    "id": "kelime_783",
+    "tur": "isim",
+    "kok": "ر أ س",
+    "mufret": "رَأْس",
+    "cemi": "رُؤُوس",
+    "anlam_tr": "baş, kafa, başkan"
+  },
+  {
+    "id": "kelime_784",
+    "tur": "isim",
+    "kok": "ص د ع",
+    "mufret": "صُدَاع",
+    "cemi": "-",
+    "anlam_tr": "baş ağrısı"
+  },
+  {
+    "id": "kelime_785",
+    "tur": "isim",
+    "kok": "ع ي ن",
+    "mufret": "عَيْن",
+    "cemi": "أَعْيُن / عُيُون",
+    "anlam_tr": "göz, pınar"
+  },
+  {
+    "id": "kelime_786",
+    "tur": "isim",
+    "kok": "أ ذ ن",
+    "mufret": "أُذُن",
+    "cemi": "آذَان",
+    "anlam_tr": "kulak"
+  },
+  {
+    "id": "kelime_787",
+    "tur": "isim",
+    "kok": "أ ن ف",
+    "mufret": "أَنْف",
+    "cemi": "آَنَاف / أُنُوف",
+    "anlam_tr": "burun"
+  },
+  {
+    "id": "kelime_788",
+    "tur": "isim",
+    "kok": "ف م م",
+    "mufret": "فَم",
+    "cemi": "أَفْوَاه",
+    "anlam_tr": "ağız"
+  },
+  {
+    "id": "kelime_789",
+    "tur": "isim",
+    "kok": "ل س ن",
+    "mufret": "لِسَان",
+    "cemi": "أَلْسِنَة",
+    "anlam_tr": "dil (organ/lisan)"
+  },
+  {
+    "id": "kelime_790",
+    "tur": "isim",
+    "kok": "ح ل ق",
+    "mufret": "حَلْق / حَنْجَرَة",
+    "cemi": "حُلُوق / حَنَاجِر",
+    "anlam_tr": "boğaz, gırtlak"
+  },
+  {
+    "id": "kelime_791",
+    "tur": "isim",
+    "kok": "ب ط ن",
+    "mufret": "بَطْن",
+    "cemi": "بُطُون",
+    "anlam_tr": "karın, mide"
+  },
+  {
+    "id": "kelime_792",
+    "tur": "isim",
+    "kok": "م ع د",
+    "mufret": "مَعِدَة",
+    "cemi": "مِعَد",
+    "anlam_tr": "mide"
+  },
+  {
+    "id": "kelime_793",
+    "tur": "isim",
+    "kok": "ظ هـ ر",
+    "mufret": "ظَهْر",
+    "cemi": "ظُهُور",
+    "anlam_tr": "sırt, arka"
+  },
+  {
+    "id": "kelime_794",
+    "tur": "isim",
+    "kok": "ص د ر",
+    "mufret": "صَدْر",
+    "cemi": "صُدُور",
+    "anlam_tr": "göğüs, bağır"
+  },
+  {
+    "id": "kelime_795",
+    "tur": "isim",
+    "kok": "ق ل ب",
+    "mufret": "قَلْب",
+    "cemi": "قُلُوب",
+    "anlam_tr": "kalp, yürek"
+  },
+  {
+    "id": "kelime_796",
+    "tur": "isim",
+    "kok": "ي د ي",
+    "mufret": "يَد",
+    "cemi": "أَيْدٍ / أَيَادِي",
+    "anlam_tr": "el"
+  },
+  {
+    "id": "kelime_797",
+    "tur": "isim",
+    "kok": "ر ج ل",
+    "mufret": "رِجْل / قَدَم",
+    "cemi": "أَرْجُل / أَقْدَام",
+    "anlam_tr": "bacak, ayak"
+  },
+  {
+    "id": "kelime_798",
+    "tur": "isim",
+    "kok": "د م م",
+    "mufret": "دَم",
+    "cemi": "دِمَاء",
+    "anlam_tr": "kan"
+  },
+  {
+    "id": "kelime_799",
+    "tur": "fiil",
+    "kok": "ن ز ف",
+    "mazi": "نَزَفَ",
+    "muzari": "يَنْزِفُ",
+    "masdar": "نَزْف",
+    "anlam_tr": "kanamak"
+  },
+  {
+    "id": "kelime_800",
+    "tur": "isim",
+    "kok": "ض غ ط",
+    "mufret": "ضَغْطُ الدَّمِ",
+    "cemi": "-",
+    "anlam_tr": "tansiyon, kan basıncı"
+  },
+  {
+    "id": "kelime_801",
+    "tur": "fiil",
+    "kok": "ق ي س",
+    "mazi": "قَاسَ",
+    "muzari": "يَقِيسُ",
+    "masdar": "قِيَاس",
+    "anlam_tr": "ölçmek (vücut ısısı/ateş ölçmek)"
+  },
+  {
+    "id": "kelime_802",
+    "tur": "isim",
+    "kok": "ح ر ر",
+    "mufret": "حَرَارَة / دَرَجَةُ الحَرَارَةِ",
+    "cemi": "-",
+    "anlam_tr": "ateş, vücut ısısı, sıcaklık"
+  },
+  {
+    "id": "kelime_803",
+    "tur": "isim",
+    "kok": "م ز ج",
+    "mufret": "مِزَاج",
+    "cemi": "أَمْزِجَة",
+    "anlam_tr": "mizaç, ruh hali, keyif"
+  },
+  {
+    "id": "kelime_804",
+    "tur": "fiil",
+    "kok": "ت ع ب",
+    "mazi": "تَعِبَ",
+    "muzari": "يَتْعَبُ",
+    "masdar": "تَعَب",
+    "anlam_tr": "yorulmak, yorgun düşmek"
+  },
+  {
+    "id": "kelime_805",
+    "tur": "isim",
+    "kok": "ت ع ب",
+    "mufret": "تَعَب",
+    "cemi": "أَتْعَاب",
+    "anlam_tr": "yorgunluk, zahmet"
+  },
+  {
+    "id": "kelime_806",
+    "tur": "isim",
+    "kok": "ت ع ب",
+    "mufret": "تَعْبَان / مُتْعَب",
+    "cemi": "تَعْبَانُونَ",
+    "anlam_tr": "yorgun, halsiz"
+  },
+  {
+    "id": "kelime_807",
+    "tur": "fiil",
+    "kok": "ر و ح",
+    "mazi": "اِسْتَرَاحَ",
+    "muzari": "يَسْتَرِيحُ",
+    "masdar": "اِسْتِرَاحَة",
+    "anlam_tr": "dinlenmek, istirahat etmek"
+  },
+  {
+    "id": "kelime_808",
+    "tur": "isim",
+    "kok": "ر و ح",
+    "mufret": "اِسْتِرَاحَة / رَاحَة",
+    "cemi": "اِسْتِرَاحَات",
+    "anlam_tr": "dinlenme, mola, istirahat"
+  },
+  {
+    "id": "kelime_809",
+    "tur": "isim",
+    "kok": "ر و ح",
+    "mufret": "مُرْتَاح / مُرِيح",
+    "cemi": "مُرْتَاحُونَ",
+    "anlam_tr": "rahat, rahatlamış"
+  },
+  {
+    "id": "kelime_810",
+    "tur": "fiil",
+    "kok": "ن و م",
+    "mazi": "نَامَ",
+    "muzari": "يَنَامُ",
+    "masdar": "نَوْم",
+    "anlam_tr": "uyumak"
+  },
+  {
+    "id": "kelime_811",
+    "tur": "isim",
+    "kok": "ن و م",
+    "mufret": "نَوْم",
+    "cemi": "-",
+    "anlam_tr": "uyku"
+  },
+  {
+    "id": "kelime_812",
+    "tur": "fiil",
+    "kok": "ي ق ظ",
+    "mazi": "اِسْتَيْقَظَ",
+    "muzari": "يَسْتَيْقِظُ",
+    "masdar": "اِسْتِيقَاظ",
+    "anlam_tr": "uyanmak"
+  },
+  {
+    "id": "kelime_813",
+    "tur": "isim",
+    "kok": "ي ق ظ",
+    "mufret": "مُسْتَيْقِظ",
+    "cemi": "مُسْتَيْقِظُونَ",
+    "anlam_tr": "uyanık"
+  },
+  {
+    "id": "kelime_814",
+    "tur": "fiil",
+    "kok": "ن س ي",
+    "mazi": "نَسِيَ",
+    "muzari": "يَنْسَى",
+    "masdar": "نِسْيَان",
+    "anlam_tr": "unutmak"
+  },
+  {
+    "id": "kelime_815",
+    "tur": "isim",
+    "kok": "ن س ي",
+    "mufret": "نِسْيَان",
+    "cemi": "-",
+    "anlam_tr": "unutkanlık, unutma"
+  },
+  {
+    "id": "kelime_816",
+    "tur": "fiil",
+    "kok": "ذ ك ر",
+    "mazi": "تَذَكَّرَ",
+    "muzari": "يَتَذَكَّرُ",
+    "masdar": "تَذَكُّر",
+    "anlam_tr": "hatırlamak, anımsamak"
+  },
+  {
+    "id": "kelime_817",
+    "tur": "fiil",
+    "kok": "ذ ك ر",
+    "mazi": "ذَكَّرَ",
+    "muzari": "يُذَكِّرُ",
+    "masdar": "تَذْكِير",
+    "anlam_tr": "hatırlatmak"
+  },
+  {
+    "id": "kelime_818",
+    "tur": "isim",
+    "kok": "ذ ك ر",
+    "mufret": "ذِكْرَى",
+    "cemi": "ذِكْرَيَات",
+    "anlam_tr": "anı, hatıra, yıldönümü"
+  },
+  {
+    "id": "kelime_819",
+    "tur": "fiil",
+    "kok": "ف ك ر",
+    "mazi": "فَكَّرَ",
+    "muzari": "يُفَكِّرُ",
+    "masdar": "تَفْكِير",
+    "anlam_tr": "düşünmek (فِي ile)"
+  },
+  {
+    "id": "kelime_820",
+    "tur": "isim",
+    "kok": "ف ك ر",
+    "mufret": "فِكْرَة",
+    "cemi": "أَفْكَار",
+    "anlam_tr": "fikir, düşünce"
+  },
+  {
+    "id": "kelime_821",
+    "tur": "fiil",
+    "kok": "ف هـ م",
+    "mazi": "فَهِمَ",
+    "muzari": "يَفْهَمُ",
+    "masdar": "فَهْم",
+    "anlam_tr": "anlamak"
+  },
+  {
+    "id": "kelime_822",
+    "tur": "isim",
+    "kok": "ف هـ م",
+    "mufret": "فَهْم",
+    "cemi": "أَفْهَام",
+    "anlam_tr": "anlayış, kavrayış"
+  },
+  {
+    "id": "kelime_823",
+    "tur": "fiil",
+    "kok": "ف هـ م",
+    "mazi": "أَفْهَمَ / وَضَّحَ",
+    "muzari": "يُفْهِمُ / يُوَضِّحُ",
+    "masdar": "إِفْهَام / تَوْضِيح",
+    "anlam_tr": "anlatmak, kavratmak, açıklamak"
+  },
+  {
+    "id": "kelime_824",
+    "tur": "fiil",
+    "kok": "ع ر ف",
+    "mazi": "عَرَفَ",
+    "muzari": "يَعْرِفُ",
+    "masdar": "مَعْرِفَة",
+    "anlam_tr": "bilmek, tanımak"
+  },
+  {
+    "id": "kelime_825",
+    "tur": "isim",
+    "kok": "ع ر ف",
+    "mufret": "مَعْرِفَة / مَعْلُومَة",
+    "cemi": "مَعَارِف / مَعْلُومَات",
+    "anlam_tr": "bilgi, malumat"
+  },
+  {
+    "id": "kelime_826",
+    "tur": "fiil",
+    "kok": "ع ل م",
+    "mazi": "عَلِمَ",
+    "muzari": "يَعْلَمُ",
+    "masdar": "عِلْم",
+    "anlam_tr": "bilmek, öğrenmek"
+  },
+  {
+    "id": "kelime_827",
+    "tur": "fiil",
+    "kok": "ع ل م",
+    "mazi": "عَلَّمَ",
+    "muzari": "يُعَلِّمُ",
+    "masdar": "تَعْلِيم",
+    "anlam_tr": "öğretmek"
+  },
+  {
+    "id": "kelime_828",
+    "tur": "isim",
+    "kok": "ع ل م",
+    "mufret": "تَعْلِيم",
+    "cemi": "تَعَالِيم",
+    "anlam_tr": "öğretim, eğitim"
+  },
+  {
+    "id": "kelime_829",
+    "tur": "fiil",
+    "kok": "ع ل م",
+    "mazi": "تَعَلَّمَ",
+    "muzari": "يَتَعَلَّمُ",
+    "masdar": "تَعَلُّم",
+    "anlam_tr": "öğrenmek"
+  },
+  {
+    "id": "kelime_830",
+    "tur": "isim",
+    "kok": "ع ل م",
+    "mufret": "مُعَلِّم / أُسْتَاذ",
+    "cemi": "مُعَلِّمُونَ / أَسَاتِذَة",
+    "anlam_tr": "öğretmen, hoca"
+  },
+  {
+    "id": "kelime_831",
+    "tur": "isim",
+    "kok": "ع ل م",
+    "mufret": "مَعْلُومَة",
+    "cemi": "مَعْلُومَات",
+    "anlam_tr": "bilgi, malumat"
+  },
+  {
+    "id": "kelime_832",
+    "tur": "fiil",
+    "kok": "د ر س",
+    "mazi": "دَرَسَ",
+    "muzari": "يَدْرُسُ",
+    "masdar": "دِرَاسَة",
+    "anlam_tr": "ders çalışmak, okumak, öğrenim görmek"
+  },
+  {
+    "id": "kelime_833",
+    "tur": "isim",
+    "kok": "د ر س",
+    "mufret": "دِرَاسَة",
+    "cemi": "دِرَاسَات",
+    "anlam_tr": "öğrenim, eğitim, araştırma"
+  },
+  {
+    "id": "kelime_834",
+    "tur": "isim",
+    "kok": "د ر س",
+    "mufret": "دَرْس",
+    "cemi": "دُرُوس",
+    "anlam_tr": "ders"
+  },
+  {
+    "id": "kelime_835",
+    "tur": "isim",
+    "kok": "د ر س",
+    "mufret": "مَدْرَسَة",
+    "cemi": "مَدَارِس",
+    "anlam_tr": "okul"
+  },
+  {
+    "id": "kelime_836",
+    "tur": "isim",
+    "kok": "د ر س",
+    "mufret": "مُدَرِّس",
+    "cemi": "مُدَرِّسُونَ",
+    "anlam_tr": "ders veren, öğretmen"
+  },
+  {
+    "id": "kelime_837",
+    "tur": "isim",
+    "kok": "ط ل ب",
+    "mufret": "طَالِب / تِلْمِيذ",
+    "cemi": "طُلَّاب / تَلَامِيذ",
+    "anlam_tr": "öğrenci, talebe"
+  },
+  {
+    "id": "kelime_838",
+    "tur": "isim",
+    "kok": "ج م ع",
+    "mufret": "جَامِعَة",
+    "cemi": "جَامِعَات",
+    "anlam_tr": "üniversite"
+  },
+  {
+    "id": "kelime_839",
+    "tur": "isim",
+    "kok": "ك ل ي",
+    "mufret": "كُلِّيَّة",
+    "cemi": "كُلِّيَّات",
+    "anlam_tr": "fakülte, yüksekokul"
+  },
+  {
+    "id": "kelime_840",
+    "tur": "isim",
+    "kok": "ق س م",
+    "mufret": "قِسْم",
+    "cemi": "أَقْسَام",
+    "anlam_tr": "bölüm, kısım, departman"
+  },
+  {
+    "id": "kelime_841",
+    "tur": "fiil",
+    "kok": "م ح ن",
+    "mazi": "اِمْتَحَنَ",
+    "muzari": "يَمْتَحِنُ",
+    "masdar": "اِمْتِحَان",
+    "anlam_tr": "sınav yapmak, sınamak"
+  },
+  {
+    "id": "kelime_842",
+    "tur": "isim",
+    "kok": "م ح ن",
+    "mufret": "اِمْتِحَان / اِخْتِبَار",
+    "cemi": "اِمْتِحَانَات / اِخْتِبَارَات",
+    "anlam_tr": "sınav, imtihan, test"
+  },
+  {
+    "id": "kelime_843",
+    "tur": "fiil",
+    "kok": "ن ج ح",
+    "mazi": "نَجَحَ",
+    "muzari": "يَنْجَحُ",
+    "masdar": "نَجَاح",
+    "anlam_tr": "başarmak, sınavı geçmek (فِي ile)"
+  },
+  {
+    "id": "kelime_844",
+    "tur": "isim",
+    "kok": "ن ج ح",
+    "mufret": "نَجَاح",
+    "cemi": "نَجَاحَات",
+    "anlam_tr": "başarı"
+  },
+  {
+    "id": "kelime_845",
+    "tur": "isim",
+    "kok": "ن ج ح",
+    "mufret": "نَاجِح",
+    "cemi": "نَاجِحُونَ",
+    "anlam_tr": "başarılı, sınavı geçen kişi"
+  },
+  {
+    "id": "kelime_846",
+    "tur": "isim",
+    "kok": "د ر ج",
+    "mufret": "دَرَجَة / نُقْطَة",
+    "cemi": "دَرَجَات / نِقَاط",
+    "anlam_tr": "derece, not, puan"
+  },
+  {
+    "id": "kelime_847",
+    "tur": "fiil",
+    "kok": "خ ر ج",
+    "mazi": "تَخَرَّجَ",
+    "muzari": "يَتَخَرَّجُ",
+    "masdar": "تَخَرُّج",
+    "anlam_tr": "mezun olmak (مِنْ ile)"
+  },
+  {
+    "id": "kelime_848",
+    "tur": "isim",
+    "kok": "خ ر ج",
+    "mufret": "تَخَرُّج",
+    "cemi": "-",
+    "anlam_tr": "mezuniyet"
+  },
+  {
+    "id": "kelime_849",
+    "tur": "isim",
+    "kok": "خ ر ج",
+    "mufret": "خَرِيج",
+    "cemi": "خَرِيجُونَ",
+    "anlam_tr": "mezun"
+  },
+  {
+    "id": "kelime_850",
+    "tur": "isim",
+    "kok": "و ظ ف",
+    "mufret": "وَظِيفَة / مِهْنَة",
+    "cemi": "وَظَائِف / مِهَن",
+    "anlam_tr": "görev, meslek, iş"
+  },
+  {
+    "id": "kelime_851",
+    "tur": "fiil",
+    "kok": "ع م ل",
+    "mazi": "عَمِلَ",
+    "muzari": "يَعْمَلُ",
+    "masdar": "عَمَل",
+    "anlam_tr": "çalışmak, iş yapmak"
+  },
+  {
+    "id": "kelime_852",
+    "tur": "isim",
+    "kok": "ع م ل",
+    "mufret": "عَمَل",
+    "cemi": "أَعْمَال",
+    "anlam_tr": "iş, çalışma, faaliyet"
+  },
+  {
+    "id": "kelime_853",
+    "tur": "isim",
+    "kok": "ع م ل",
+    "mufret": "عَامِل / مُوَظَّف",
+    "cemi": "عُمَّال / مُوَظَّفُونَ",
+    "anlam_tr": "işçi, çalışan, memur"
+  },
+  {
+    "id": "kelime_854",
+    "tur": "isim",
+    "kok": "ع م ل",
+    "mufret": "مَعْمَل / مَصْنَع",
+    "cemi": "مَعَامِل / مَصَانِع",
+    "anlam_tr": "laboratuvar, fabrika"
+  },
+  {
+    "id": "kelime_855",
+    "tur": "fiil",
+    "kok": "ك س ب",
+    "mazi": "كَسَبَ",
+    "muzari": "يَكْسِبُ",
+    "masdar": "كَسْب",
+    "anlam_tr": "kazanmak (para/tecrübe)"
+  },
+  {
+    "id": "kelime_856",
+    "tur": "isim",
+    "kok": "ك س ب",
+    "mufret": "كَسْب / رِبْح",
+    "cemi": "أَرْبَاح",
+    "anlam_tr": "kazanç, kar"
+  },
+  {
+    "id": "kelime_857",
+    "tur": "fiil",
+    "kok": "خ س ر",
+    "mazi": "خَسِرَ",
+    "muzari": "يَخْسَرُ",
+    "masdar": "خَسَارَة",
+    "anlam_tr": "kaybetmek, zarar etmek"
+  },
+  {
+    "id": "kelime_858",
+    "tur": "isim",
+    "kok": "خ س ر",
+    "mufret": "خَسَارَة",
+    "cemi": "خَسَائِر",
+    "anlam_tr": "zarar, kayıp"
+  },
+  {
+    "id": "kelime_859",
+    "tur": "fiil",
+    "kok": "ر ب ح",
+    "mazi": "رَبِحَ",
+    "muzari": "يَرْبَحُ",
+    "masdar": "رِبْح",
+    "anlam_tr": "kar etmek, kazanmak"
+  },
+  {
+    "id": "kelime_860",
+    "tur": "isim",
+    "kok": "ر ب ح",
+    "mufret": "رِبْح",
+    "cemi": "أَرْبَاح",
+    "anlam_tr": "kar, kazanç"
+  },
+  {
+    "id": "kelime_861",
+    "tur": "isim",
+    "kok": "ر ت ب",
+    "mufret": "رَاتِب",
+    "cemi": "رَوَاتِب",
+    "anlam_tr": "maaş, aylık"
+  },
+  {
+    "id": "kelime_862",
+    "tur": "isim",
+    "kok": "ت ج ر",
+    "mufret": "تِجَارَة",
+    "cemi": "تِجَارَات",
+    "anlam_tr": "ticaret"
+  },
+  {
+    "id": "kelime_863",
+    "tur": "isim",
+    "kok": "ت ج ر",
+    "mufret": "تَاجِر",
+    "cemi": "تُجَّار",
+    "anlam_tr": "tüccar, tacir"
+  },
+  {
+    "id": "kelime_864",
+    "tur": "isim",
+    "kok": "ش ر ك",
+    "mufret": "شَرِكَة",
+    "cemi": "شَرِكَات",
+    "anlam_tr": "şirket, firma"
+  },
+  {
+    "id": "kelime_865",
+    "tur": "isim",
+    "kok": "ش ر ك",
+    "mufret": "شَرِيك",
+    "cemi": "شُرَكَاء",
+    "anlam_tr": "ortak, partner"
+  },
+  {
+    "id": "kelime_866",
+    "tur": "fiil",
+    "kok": "ش ر ك",
+    "mazi": "شَارَكَ",
+    "muzari": "يُشَارِكُ",
+    "masdar": "مُشَارَكَة",
+    "anlam_tr": "katılmak, ortak olmak (فِي ile)"
+  },
+  {
+    "id": "kelime_867",
+    "tur": "isim",
+    "kok": "ش ر ك",
+    "mufret": "مُشَارَكَة",
+    "cemi": "مُشَارَكَات",
+    "anlam_tr": "katılım, ortaklık"
+  },
+  {
+    "id": "kelime_868",
+    "tur": "isim",
+    "kok": "د و ر",
+    "mufret": "مُدِير",
+    "cemi": "مُدَرَاء",
+    "anlam_tr": "müdür, yönetici"
+  },
+  {
+    "id": "kelime_869",
+    "tur": "fiil",
+    "kok": "د و ر",
+    "mazi": "أَدَارَ",
+    "muzari": "يُدِيرُ",
+    "masdar": "إِدَارَة",
+    "anlam_tr": "yönetmek, idare etmek"
+  },
+  {
+    "id": "kelime_870",
+    "tur": "isim",
+    "kok": "د و ر",
+    "mufret": "إِدَارَة",
+    "cemi": "إِدَارَات",
+    "anlam_tr": "yönetim, idare, yönetim kurulu"
+  },
+  {
+    "id": "kelime_871",
+    "tur": "isim",
+    "kok": "د و ر",
+    "mufret": "إِدَارِيّ",
+    "cemi": "إِدَارِيُّونَ",
+    "anlam_tr": "idari, yönetici"
+  },
+  {
+    "id": "kelime_872",
+    "tur": "fiil",
+    "kok": "خ ب ر",
+    "mazi": "خَبِرَ",
+    "muzari": "يَخْبَرُ",
+    "masdar": "خِبْرَة",
+    "anlam_tr": "deneyim kazanmak, tecrübe etmek"
+  },
+  {
+    "id": "kelime_873",
+    "tur": "isim",
+    "kok": "خ ب ر",
+    "mufret": "خِبْرَة",
+    "cemi": "خِبَرَات",
+    "anlam_tr": "tecrübe, deneyim"
+  },
+  {
+    "id": "kelime_874",
+    "tur": "isim",
+    "kok": "خ ب ر",
+    "mufret": "خَبِير",
+    "cemi": "خُبَرَاء",
+    "anlam_tr": "uzman, bilirkişi, eksper"
+  },
+  {
+    "id": "kelime_875",
+    "tur": "isim",
+    "kok": "خ ب ر",
+    "mufret": "خَبَر",
+    "cemi": "أَخْبَار",
+    "anlam_tr": "haber, bilgi"
+  },
+  {
+    "id": "kelime_876",
+    "tur": "fiil",
+    "kok": "ن ش ر",
+    "mazi": "نَشَرَ",
+    "muzari": "يَنْشُرُ",
+    "masdar": "نَشْر",
+    "anlam_tr": "yayınlamak, basmak, yaymak"
+  },
+  {
+    "id": "kelime_877",
+    "tur": "isim",
+    "kok": "ن ش ر",
+    "mufret": "نَشْرَة",
+    "cemi": "نَشَرَات",
+    "anlam_tr": "bülten, yayın, broşür (نَشْرَةُ الأَخْبَارِ: haber bülteni)"
+  },
+  {
+    "id": "kelime_878",
+    "tur": "isim",
+    "kok": "ص ح ف",
+    "mufret": "صَحِيفَة / جَرِيدَة",
+    "cemi": "صُحُف / جَرَائِد",
+    "anlam_tr": "gazete"
+  },
+  {
+    "id": "kelime_879",
+    "tur": "isim",
+    "kok": "ص ح ف",
+    "mufret": "صَحَفِيّ",
+    "cemi": "صَحَفِيُّونَ",
+    "anlam_tr": "gazeteci, muhabir"
+  },
+  {
+    "id": "kelime_880",
+    "tur": "isim",
+    "kok": "ج ل و",
+    "mufret": "مَجَلَّة",
+    "cemi": "مَجَلَّات",
+    "anlam_tr": "dergi"
+  },
+  {
+    "id": "kelime_881",
+    "tur": "isim",
+    "kok": "ذ ي ع",
+    "mufret": "إِذَاعَة",
+    "cemi": "إِذَاعَات",
+    "anlam_tr": "radyo, yayın, radyo istasyonu"
+  },
+  {
+    "id": "kelime_882",
+    "tur": "isim",
+    "kok": "ت ل ف ز",
+    "mufret": "تِلْفَاز / تِلِفِزْيُون",
+    "cemi": "تِلْفَازَات",
+    "anlam_tr": "televizyon"
+  },
+  {
+    "id": "kelime_883",
+    "tur": "isim",
+    "kok": "ق ن و",
+    "mufret": "قَنَاة",
+    "cemi": "قَنَوَات",
+    "anlam_tr": "kanal (TV/medya/su kanalı)"
+  },
+  {
+    "id": "kelime_884",
+    "tur": "fiil",
+    "kok": "ش هـ د",
+    "mazi": "شَاهَدَ",
+    "muzari": "يُشَاهِدُ",
+    "masdar": "مُشَاهَدَة",
+    "anlam_tr": "izlemek, seyretmek"
+  },
+  {
+    "id": "kelime_885",
+    "tur": "isim",
+    "kok": "ش هـ د",
+    "mufret": "مُشَاهَدَة",
+    "cemi": "مُشَاهَدَات",
+    "anlam_tr": "izleme, seyir"
+  },
+  {
+    "id": "kelime_886",
+    "tur": "isim",
+    "kok": "ش هـ د",
+    "mufret": "مُشَاهِد",
+    "cemi": "مُشَاهِدُونَ",
+    "anlam_tr": "izleyici, seyirci"
+  },
+  {
+    "id": "kelime_887",
+    "tur": "fiil",
+    "kok": "س م ع",
+    "mazi": "سَمِعَ",
+    "muzari": "يَسْمَعُ",
+    "masdar": "سَمْع",
+    "anlam_tr": "duymak, işitmek"
+  },
+  {
+    "id": "kelime_888",
+    "tur": "fiil",
+    "kok": "س م ع",
+    "mazi": "اِسْتَمَعَ",
+    "muzari": "يَسْتَمِعُ",
+    "masdar": "اِسْتِمَاع",
+    "anlam_tr": "dinlemek (إِلَى ile)"
+  },
+  {
+    "id": "kelime_889",
+    "tur": "isim",
+    "kok": "س م ع",
+    "mufret": "مُسْتَمِع",
+    "cemi": "مُسْتَمِعُونَ",
+    "anlam_tr": "dinleyici"
+  },
+  {
+    "id": "kelime_890",
+    "tur": "fiil",
+    "kok": "ص و ت",
+    "mazi": "صَوَّتَ",
+    "muzari": "يُصَوِّتُ",
+    "masdar": "تَصْوِيت",
+    "anlam_tr": "oy kullanmak, ses çıkarmak"
+  },
+  {
+    "id": "kelime_891",
+    "tur": "isim",
+    "kok": "ص و ت",
+    "mufret": "صَوْت",
+    "cemi": "أَصْوَات",
+    "anlam_tr": "ses, oy"
+  },
+  {
+    "id": "kelime_892",
+    "tur": "isim",
+    "kok": "ص و ر",
+    "mufret": "صُورَة",
+    "cemi": "صُوَر",
+    "anlam_tr": "resim, fotoğraf, görüntü"
+  },
+  {
+    "id": "kelime_893",
+    "tur": "fiil",
+    "kok": "ص و ر",
+    "mazi": "صَوَّرَ",
+    "muzari": "يُصَوِّرُ",
+    "masdar": "تَصْوِير",
+    "anlam_tr": "fotoğraf/video çekmek, tasvir etmek"
+  },
+  {
+    "id": "kelime_894",
+    "tur": "isim",
+    "kok": "ص و ر",
+    "mufret": "مُصَوِّر",
+    "cemi": "مُصَوِّرُونَ",
+    "anlam_tr": "fotoğrafçı, kameraman"
+  },
+  {
+    "id": "kelime_895",
+    "tur": "isim",
+    "kok": "ف ل م",
+    "mufret": "فِيلْم",
+    "cemi": "أَفْلَام",
+    "anlam_tr": "film, sinema eseri"
+  },
+  {
+    "id": "kelime_896",
+    "tur": "isim",
+    "kok": "س ي ن م ا",
+    "mufret": "سِينَمَا",
+    "cemi": "-",
+    "anlam_tr": "sinema"
+  },
+  {
+    "id": "kelime_897",
+    "tur": "isim",
+    "kok": "س ر ح",
+    "mufret": "مَسْرَح",
+    "cemi": "مَسَارِح",
+    "anlam_tr": "tiyatro, sahne"
+  },
+  {
+    "id": "kelime_898",
+    "tur": "fiil",
+    "kok": "م ث ل",
+    "mazi": "مَثَّلَ",
+    "muzari": "يُمَثِّلُ",
+    "masdar": "تَمْثِيل",
+    "anlam_tr": "oynamak (rol), temsil etmek"
+  },
+  {
+    "id": "kelime_899",
+    "tur": "isim",
+    "kok": "م ث ل",
+    "mufret": "مُمَثِّل",
+    "cemi": "مُمَثِّلُونَ",
+    "anlam_tr": "oyuncu, aktör, temsilci"
+  },
+  {
+    "id": "kelime_900",
+    "tur": "isim",
+    "kok": "ف ن ن",
+    "mufret": "فَنّ",
+    "cemi": "فُنُون",
+    "anlam_tr": "sanat"
+  },
+  {
+    "id": "kelime_901",
+    "tur": "isim",
+    "kok": "ف ن ن",
+    "mufret": "فَنَّان",
+    "cemi": "فَنَّانُونَ",
+    "anlam_tr": "sanatçı, sanatkar"
+  },
+  {
+    "id": "kelime_902",
+    "tur": "isim",
+    "kok": "م س ق",
+    "mufret": "مُوسِيقَى",
+    "cemi": "-",
+    "anlam_tr": "müzik, musiki"
+  },
+  {
+    "id": "kelime_903",
+    "tur": "isim",
+    "kok": "م س ق",
+    "mufret": "مُوسِيقَار / مُوسِيقِيّ",
+    "cemi": "مُوسِيقَارُونَ",
+    "anlam_tr": "müzisyen, besteci"
+  },
+  {
+    "id": "kelime_904",
+    "tur": "fiil",
+    "kok": "غ ن ي",
+    "mazi": "غَنَّى",
+    "muzari": "يُغَنِّي",
+    "masdar": "غِنَاء",
+    "anlam_tr": "şarkı söylemek"
+  },
+  {
+    "id": "kelime_905",
+    "tur": "isim",
+    "kok": "غ ن ي",
+    "mufret": "أُغْنِيَة",
+    "cemi": "أَغَانٍ / أَغَانِي",
+    "anlam_tr": "şarkı, ezgi"
+  },
+  {
+    "id": "kelime_906",
+    "tur": "isim",
+    "kok": "غ ن ي",
+    "mufret": "مُغَنٍّ / مُغَنِّي",
+    "cemi": "مُغَنُّونَ",
+    "anlam_tr": "şarkıcı, vokalist"
+  },
+  {
+    "id": "kelime_907",
+    "tur": "fiil",
+    "kok": "ع ز ف",
+    "mazi": "عَزَفَ",
+    "muzari": "يَعْزِفُ",
+    "masdar": "عَزْف",
+    "anlam_tr": "enstrüman çalmak (عَلَى ile)"
+  },
+  {
+    "id": "kelime_908",
+    "tur": "isim",
+    "kok": "ع ز ف",
+    "mufret": "عَازِف",
+    "cemi": "عَازِفُونَ",
+    "anlam_tr": "çalgıcı, enstrüman çalan kişi"
+  },
+  {
+    "id": "kelime_909",
+    "tur": "isim",
+    "kok": "أ ل و",
+    "mufret": "آلَةٌ مُوسِيقِيَّةٌ",
+    "cemi": "آلَاتٌ مُوسِيقِيَّةٌ",
+    "anlam_tr": "müzik aleti, enstrüman"
+  },
+  {
+    "id": "kelime_910",
+    "tur": "isim",
+    "kok": "ر س م",
+    "mufret": "رَسْم",
+    "cemi": "رُسُوم / رُسُومَات",
+    "anlam_tr": "resim, çizim, harç/vergi"
+  },
+  {
+    "id": "kelime_911",
+    "tur": "fiil",
+    "kok": "ر س م",
+    "mazi": "رَسَمَ",
+    "muzari": "يَرْسُمُ",
+    "masdar": "رَسْم",
+    "anlam_tr": "resim çizmek, resmetmek"
+  },
+  {
+    "id": "kelime_912",
+    "tur": "isim",
+    "kok": "ر س م",
+    "mufret": "رَسَّام",
+    "cemi": "رَسَّامُونَ",
+    "anlam_tr": "ressam, çizer"
+  },
+  {
+    "id": "kelime_913",
+    "tur": "isim",
+    "kok": "ع ر ض",
+    "mufret": "مَعْرِض",
+    "cemi": "مَعَارِض",
+    "anlam_tr": "sergi, fuar"
+  },
+  {
+    "id": "kelime_914",
+    "tur": "fiil",
+    "kok": "ع ر ض",
+    "mazi": "عَرَضَ",
+    "muzari": "يَعْرِضُ",
+    "masdar": "عَرْض",
+    "anlam_tr": "sergilemek, sunmak, teklif etmek"
+  },
+  {
+    "id": "kelime_915",
+    "tur": "isim",
+    "kok": "ع ر ض",
+    "mufret": "عَرْض",
+    "cemi": "عُرُوض",
+    "anlam_tr": "gösteri, sunum, teklif, kampanya"
+  },
+  {
+    "id": "kelime_916",
+    "tur": "isim",
+    "kok": "ت ح ف",
+    "mufret": "مَتْحَف",
+    "cemi": "مَتَاحِف",
+    "anlam_tr": "müze"
+  },
+  {
+    "id": "kelime_917",
+    "tur": "isim",
+    "kok": "أ ث ر",
+    "mufret": "أَثَر / آثَار",
+    "cemi": "آثَار",
+    "anlam_tr": "eser, tarihi eser, iz"
+  },
+  {
+    "id": "kelime_918",
+    "tur": "isim",
+    "kok": "أ ث ر",
+    "mufret": "تَارِيخِيّ / أَلْآثَارِيّ",
+    "cemi": "-",
+    "anlam_tr": "tarihi, arkeolojik"
+  },
+  {
+    "id": "kelime_919",
+    "tur": "isim",
+    "kok": "أ ر خ",
+    "mufret": "تَارِيخ",
+    "cemi": "تَوَارِيخ",
+    "anlam_tr": "tarih"
+  },
+  {
+    "id": "kelime_920",
+    "tur": "isim",
+    "kok": "ث ق ف",
+    "mufret": "ثَقَافَة",
+    "cemi": "ثَقَافَات",
+    "anlam_tr": "kültür"
+  },
+  {
+    "id": "kelime_921",
+    "tur": "isim",
+    "kok": "ث ق ف",
+    "mufret": "ثَقَافِيّ",
+    "cemi": "ثَقَافِيُّونَ",
+    "anlam_tr": "kültürel"
+  },
+  {
+    "id": "kelime_922",
+    "tur": "isim",
+    "kok": "ح ض ر",
+    "mufret": "حَضَارَة",
+    "cemi": "حَضَارَات",
+    "anlam_tr": "medeniyet, uygarlık"
+  },
+  {
+    "id": "kelime_923",
+    "tur": "isim",
+    "kok": "و ر ث",
+    "mufret": "تُرَاث",
+    "cemi": "-",
+    "anlam_tr": "miras, kültürel miras"
+  },
+  {
+    "id": "kelime_924",
+    "tur": "isim",
+    "kok": "ق ل د",
+    "mufret": "تَقْلِيد / تَقَالِيد",
+    "cemi": "تَقَالِيد",
+    "anlam_tr": "gelenek, örf, adet"
+  }
+]
