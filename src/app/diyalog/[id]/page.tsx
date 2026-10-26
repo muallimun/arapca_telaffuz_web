@@ -134,12 +134,12 @@ export default function DialogueDetailPage({ params }: { params: Promise<{ id: s
     playSentence(line, false);
   };
 
-  const playNext = (currentSira: number) => {
-    if (!isPlayingAll) return;
+    const playNext = (currentSira: number) => {
+    // "if (!isPlayingAll) return;" satırını sildik. Çünkü playToken kontrolü zaten var.
+    
     const nextLine = dialogue.satirlar.find((s) => s.sira === currentSira + 1);
     
     if (nextLine) {
-      // Sarmal döngüdeyken cümle tekrarı sonsuz olamaz, ama state zaten togglePlayAll'da 1'e çekiliyor.
       playSentence(nextLine, true);
     } else {
       // Son cümle bitti, diyalog tekrar sayısını kontrol et

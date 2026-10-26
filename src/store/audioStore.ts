@@ -8,6 +8,9 @@ interface AudioState {
   stop: () => void;
 }
 
+// Beklemede kalan promise'i sonlandırmak için global değişken
+let currentResolve: (() => void) | null = null;
+
 export const useAudioStore = create<AudioState>((set, get) => ({
   activeAudio: null,
   playingLineId: null,
@@ -17,16 +20,23 @@ export const useAudioStore = create<AudioState>((set, get) => ({
     if (activeAudio) {
       activeAudio.pause();
       activeAudio.currentTime = 0;
-      activeAudio.src = ""; // Kaynağı tamamen kopar
+      activeAudio.src = ""; 
+      activeAudio.onended = null; // Olay dinleyicisini temizle
     }
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
     set({ activeAudio: null, playingLineId: null });
+
+    // Eğer askıda bekleyen bir ses döngüsü varsa onu serbest bırak
+    if (currentResolve) {
+      currentResolve();
+      currentResolve = null;
+    }
   },
 
   playAudio: async (url, lineId, rate) => {
-    get().stop(); // Önce eski sesi durdur
+    get().stop(); 
     set({ playingLineId: lineId });
     
     const audio = new Audio(url);
@@ -34,12 +44,16 @@ export const useAudioStore = create<AudioState>((set, get) => ({
     set({ activeAudio: audio });
 
     return new Promise((resolve, reject) => {
+      currentResolve = resolve; // Bu promise'i kaydet
+
       audio.onended = () => {
         set({ playingLineId: null, activeAudio: null });
+        if (currentResolve === resolve) currentResolve = null;
         resolve();
       };
       audio.onerror = () => {
         set({ playingLineId: null, activeAudio: null });
+        if (currentResolve === resolve) currentResolve = null;
         reject(new Error("Audio error"));
       };
       audio.play().catch(reject);
@@ -53,16 +67,20 @@ export const useAudioStore = create<AudioState>((set, get) => ({
     return new Promise((resolve) => {
       if (!("speechSynthesis" in window)) return resolve();
       
+      currentResolve = resolve;
+
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "ar-SA";
       utterance.rate = rate;
       
       utterance.onend = () => {
         set({ playingLineId: null });
+        if (currentResolve === resolve) currentResolve = null;
         resolve();
       };
       utterance.onerror = () => {
         set({ playingLineId: null });
+        if (currentResolve === resolve) currentResolve = null;
         resolve();
       };
       
