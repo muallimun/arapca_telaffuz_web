@@ -17,12 +17,15 @@ import {
   Timer,
   AlertCircle,
   Volume2,
+  ArrowLeft,
   ArrowRight,
   MessageSquareQuote,
   BookOpen,
   Play,
   Target,
   X,
+  ListChecks,
+  Eye,
 } from "lucide-react";
 import { useCountdown } from "@/lib/useTimer";
 import { speakHybrid, playTTS } from "@/lib/audio";
@@ -41,6 +44,24 @@ export interface QuizQuestionItem {
   metaLabel: string;
   wordId?: string;
   options: { text: string; isCorrect: boolean }[];
+}
+
+function formatWordTurLabel(tur?: string): string {
+  const normalized = (tur || "").trim().toLowerCase();
+  if (normalized === "isim") return "İsim";
+  if (normalized === "fiil") return "Fiil";
+  if (normalized === "edat" || normalized === "harf") return "Edat";
+  if (
+    normalized === "ozel-isim" ||
+    normalized === "özel isim" ||
+    normalized === "özel-isim"
+  ) {
+    return "Özel İsim";
+  }
+  if (!normalized) return "İsim";
+  return (
+    normalized.charAt(0).toLocaleUpperCase("tr-TR") + normalized.slice(1)
+  );
 }
 
 interface Props {
@@ -82,7 +103,9 @@ export default function MultipleChoice({
         id: `w-${w.id}`,
         arabic: (w.mufret || w.mazi || "").split("/")[0].trim(),
         turkish: w.anlam_tr,
-        metaLabel: `Tür: ${w.tur.toUpperCase()} · Kök: ${w.kok}`,
+        metaLabel: `Tür: ${formatWordTurLabel(w.tur)}${
+          w.kok && w.kok !== "-" ? ` · Kök: ${w.kok}` : ""
+        }`,
         wordId: w.id,
       }))
       .filter((w) => w.arabic.length > 0 && w.turkish.length > 0);
@@ -194,6 +217,10 @@ export default function MultipleChoice({
   >({});
   const [isFinished, setIsFinished] = useState(false);
   const [isTimeUp, setIsTimeUp] = useState(false);
+  const [resultViewMode, setResultViewMode] = useState<"summary" | "review">(
+    "summary"
+  );
+  const [reviewIndex, setReviewIndex] = useState(0);
 
   const handleTimeout = () => setIsTimeUp(true);
   const timeLeft = useCountdown(
@@ -236,16 +263,16 @@ export default function MultipleChoice({
     (a) => a.isCorrect
   ).length;
 
-  const handleListenQuestion = () => {
+  const handleListenQuestion = (qTarget: QuizQuestionItem = currentQuestion) => {
     playClick();
-    if (currentQuestion.kind === "word" && currentQuestion.wordId) {
+    if (qTarget.kind === "word" && qTarget.wordId) {
       speakHybrid({
-        text: currentQuestion.arabic,
-        wordId: currentQuestion.wordId,
+        text: qTarget.arabic,
+        wordId: qTarget.wordId,
         rate: speechRate,
       });
     } else {
-      playTTS(currentQuestion.arabic, speechRate);
+      playTTS(qTarget.arabic, speechRate);
     }
   };
 
@@ -270,16 +297,25 @@ export default function MultipleChoice({
     }
   };
 
+  const prevQuestion = () => {
+    if (currentIndex > 0) {
+      playClick();
+      setCurrentIndex((prev) => prev - 1);
+    }
+  };
+
   const nextQuestion = () => {
     playClick();
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
+      setResultViewMode("summary");
+      setReviewIndex(0);
       setIsFinished(true);
     }
   };
 
-  // 1) 🔄 Tekrar Yap (Aynı soruları karıştırarak baştan başlat)
+  // 1) Tekrar Yap (Aynı soruları karıştırarak baştan başlat)
   const handleRepeatSameSet = () => {
     playClick();
     fanfarePlayedRef.current = false;
@@ -293,11 +329,13 @@ export default function MultipleChoice({
     setCurrentIndex(0);
     setUserAnswers({});
     setSelected(null);
+    setResultViewMode("summary");
+    setReviewIndex(0);
     setIsFinished(false);
     setIsTimeUp(false);
   };
 
-  // 2) ▶️ Devam Et (Yeni Set)
+  // 2) Devam Et (Yeni Set)
   const handleStartNewSet = () => {
     playClick();
     fanfarePlayedRef.current = false;
@@ -306,11 +344,13 @@ export default function MultipleChoice({
     setCurrentIndex(0);
     setUserAnswers({});
     setSelected(null);
+    setResultViewMode("summary");
+    setReviewIndex(0);
     setIsFinished(false);
     setIsTimeUp(false);
   };
 
-  // 3) 🎯 Yanlışlarımı Tekrarla
+  // 3) Yanlışlarımı Tekrarla
   const wrongQuestions = questions.filter(
     (_, idx) => !userAnswers[idx]?.isCorrect
   );
@@ -329,6 +369,8 @@ export default function MultipleChoice({
     setCurrentIndex(0);
     setUserAnswers({});
     setSelected(null);
+    setResultViewMode("summary");
+    setReviewIndex(0);
     setIsFinished(false);
     setIsTimeUp(false);
   };
@@ -337,18 +379,20 @@ export default function MultipleChoice({
     const wrongCount = questions.length - correctCount;
     const pct = Math.round((correctCount / questions.length) * 100);
     const totalPoints = correctCount * 10;
+    const reviewQ = questions[reviewIndex] || questions[0];
+    const reviewAns = userAnswers[reviewIndex];
 
     return (
-      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-6 sm:p-8 space-y-5 max-w-2xl mx-auto">
+      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-5 sm:p-7 space-y-4 max-w-2xl mx-auto">
         <div className="text-center space-y-3">
           <div
-            className={`w-18 h-18 rounded-2xl border-2 border-b-4 flex items-center justify-center mx-auto ${
+            className={`w-16 h-16 rounded-2xl border-2 border-b-4 flex items-center justify-center mx-auto ${
               isFinished
                 ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
                 : "bg-red-50 border-red-300 text-red-600"
             }`}
           >
-            {isFinished ? <Trophy size={36} /> : <AlertCircle size={36} />}
+            {isFinished ? <Trophy size={32} /> : <AlertCircle size={32} />}
           </div>
 
           <div className="space-y-1">
@@ -397,55 +441,247 @@ export default function MultipleChoice({
           </div>
         </div>
 
-        {/* SORULARIN DOĞRU / YANLIŞ DÖKÜMÜ */}
-        <div className="space-y-2 max-h-64 overflow-y-auto pr-1 border-t border-b border-dashed border-[#E2D3B8] py-3">
-          <h4 className="text-xs font-extrabold uppercase tracking-wider text-[var(--muted)]">
-            Soru Dökümü ({questions.length} Soru)
-          </h4>
-          {questions.map((q, idx) => {
-            const ans = userAnswers[idx];
-            const isOk = ans?.isCorrect;
-            return (
-              <div
-                key={q.id + idx}
-                className={`p-2.5 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
-                  isOk
-                    ? "bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-300"
-                    : "bg-rose-50/70 dark:bg-rose-950/30 border-rose-300"
+        {/* SONUÇ EKRANI SORU GEZGİNİ (1..N) + GÖRÜNÜM MODU ANAHTARI */}
+        <div className="bg-white/70 dark:bg-[var(--background)] rounded-xl p-3 border border-[#E6D7BE] dark:border-[var(--border)] space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)]">
+              Soru Gezgini (İncelemek için numaraya tıklayın)
+            </span>
+            <div className="flex items-center gap-1 bg-[#F7EFE1] dark:bg-[var(--surface)] p-0.5 rounded-lg border border-[#E6D7BE]">
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setResultViewMode("summary");
+                }}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
+                  resultViewMode === "summary"
+                    ? "bg-[#0CA678] text-white shadow-2xs"
+                    : "text-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  {isOk ? (
-                    <CheckCircle2
-                      size={16}
-                      className="text-emerald-600 shrink-0"
-                    />
-                  ) : (
-                    <XCircle size={16} className="text-rose-600 shrink-0" />
-                  )}
-                  <span
-                    dir="rtl"
-                    className="arabic text-lg font-bold text-[var(--foreground)]"
-                  >
-                    {formatArabicText(q.arabic, showHareke, arabicFont)}
-                  </span>
-                </div>
-                <div className="text-right text-[11px] font-bold">
-                  {!isOk && ans?.chosen && (
-                    <span className="text-rose-700 line-through block">
-                      Seçiminiz: {ans.chosen}
-                    </span>
-                  )}
-                  <span className="text-emerald-800 dark:text-emerald-300 block">
-                    Doğru: {q.turkish}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+                <ListChecks size={12} />
+                <span>Toplu Sonuç Özeti</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setResultViewMode("review");
+                }}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
+                  resultViewMode === "review"
+                    ? "bg-[#6741D9] text-white shadow-2xs"
+                    : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <Eye size={12} />
+                <span>Soruları Tek Tek İncele</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-1.5 pt-0.5">
+            {questions.map((_, idx) => {
+              const ans = userAnswers[idx];
+              const isSelectedReview =
+                resultViewMode === "review" && reviewIndex === idx;
+              const statusCls = ans
+                ? ans.isCorrect
+                  ? "bg-emerald-500 text-white border-emerald-600"
+                  : "bg-rose-500 text-white border-rose-600"
+                : "bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400";
+
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setReviewIndex(idx);
+                    setResultViewMode("review");
+                  }}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border text-xs font-extrabold tabular-nums transition-all cursor-pointer flex items-center justify-center ${statusCls} ${
+                    isSelectedReview
+                      ? "ring-2 ring-offset-1 ring-[#6741D9] scale-110"
+                      : "hover:opacity-90"
+                  }`}
+                  title={`Soru ${idx + 1}`}
+                >
+                  {idx + 1}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* 4 AKSİYON BUTONU */}
+        {/* GÖRÜNÜM 1: TOPLU SONUÇ ÖZETİ VEYA GÖRÜNÜM 2: TEK TEK SORU İNCELEME */}
+        {resultViewMode === "summary" ? (
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1 border-t border-b border-dashed border-[#E2D3B8] pt-3 pb-3 mt-2">
+            <h4 className="text-xs font-extrabold uppercase tracking-wider text-[var(--muted)]">
+              Soru Dökümü ({questions.length} Soru)
+            </h4>
+            {questions.map((q, idx) => {
+              const ans = userAnswers[idx];
+              const isOk = ans?.isCorrect;
+              return (
+                <button
+                  key={q.id + idx}
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setReviewIndex(idx);
+                    setResultViewMode("review");
+                  }}
+                  className={`w-full text-left p-2.5 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-all cursor-pointer ${
+                    isOk
+                      ? "bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-300 hover:border-emerald-500"
+                      : "bg-rose-50/70 dark:bg-rose-950/30 border-rose-300 hover:border-rose-500"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-5 h-5 rounded-md bg-white/80 dark:bg-slate-800 border border-slate-300 text-[10px] font-extrabold flex items-center justify-center shrink-0 tabular-nums">
+                      {idx + 1}
+                    </span>
+                    {isOk ? (
+                      <CheckCircle2
+                        size={16}
+                        className="text-emerald-600 shrink-0"
+                      />
+                    ) : (
+                      <XCircle size={16} className="text-rose-600 shrink-0" />
+                    )}
+                    <span
+                      dir="rtl"
+                      className="arabic text-lg font-bold text-[var(--foreground)]"
+                    >
+                      {formatArabicText(q.arabic, showHareke, arabicFont)}
+                    </span>
+                  </div>
+                  <div className="text-right text-[11px] font-bold">
+                    {!isOk && ans?.chosen && (
+                      <span className="text-rose-700 line-through block">
+                        Seçiminiz: {ans.chosen}
+                      </span>
+                    )}
+                    {!ans && (
+                      <span className="text-slate-500 italic block">
+                        Boş Bırakıldı
+                      </span>
+                    )}
+                    <span className="text-emerald-800 dark:text-emerald-300 block">
+                      Doğru: {q.turkish}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-[var(--background)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-2">
+              <span className="text-xs font-extrabold text-[#6741D9]">
+                Soru {reviewIndex + 1} / {questions.length} İncelemesi
+              </span>
+              <button
+                type="button"
+                onClick={() => handleListenQuestion(reviewQ)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0CA678] text-white text-xs font-bold cursor-pointer"
+              >
+                <Volume2 size={13} />
+                <span>Sesli Dinle</span>
+              </button>
+            </div>
+
+            <div className="text-center py-1">
+              <h4
+                dir="rtl"
+                className="arabic text-3xl sm:text-4xl font-bold text-[#087F5B] dark:text-[#20c997]"
+              >
+                {formatArabicText(reviewQ.arabic, showHareke, arabicFont)}
+              </h4>
+              <p className="text-[11px] font-bold text-[var(--muted)] mt-1">
+                {reviewQ.metaLabel}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {reviewQ.options.map((opt, oIdx) => {
+                const isUserChoice = reviewAns?.chosen === opt.text;
+                const isRight = opt.isCorrect;
+                return (
+                  <div
+                    key={oIdx}
+                    className={`p-3 rounded-xl border-2 text-xs font-extrabold flex items-center justify-between gap-2 ${
+                      isRight
+                        ? "bg-emerald-50 border-emerald-500 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+                        : isUserChoice
+                        ? "bg-rose-50 border-rose-500 text-rose-900 dark:bg-rose-950/40 dark:text-rose-200"
+                        : "bg-[#F7EFE1]/50 dark:bg-[var(--surface)] border-[#E6D7BE] text-[var(--muted)] opacity-75"
+                    }`}
+                  >
+                    <span>{opt.text}</span>
+                    {isRight && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 shrink-0">
+                        <CheckCircle2 size={15} />
+                        <span>Doğru</span>
+                      </span>
+                    )}
+                    {!isRight && isUserChoice && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-700 shrink-0">
+                        <XCircle size={15} />
+                        <span>Seçiminiz</span>
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-[#E2D3B8]">
+              <button
+                type="button"
+                disabled={reviewIndex === 0}
+                onClick={() => {
+                  playClick();
+                  setReviewIndex((i) => Math.max(0, i - 1));
+                }}
+                className="px-3 py-1.5 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border border-[#E6D7BE] disabled:opacity-40 text-xs font-extrabold flex items-center gap-1 cursor-pointer"
+              >
+                <ArrowLeft size={14} />
+                <span>Önceki Soru</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setResultViewMode("summary");
+                }}
+                className="px-3 py-1.5 rounded-xl bg-[#F3F0FF] text-[#6741D9] border border-[#6741D9]/30 text-xs font-extrabold cursor-pointer"
+              >
+                Toplu Sonuçları Gör
+              </button>
+
+              <button
+                type="button"
+                disabled={reviewIndex === questions.length - 1}
+                onClick={() => {
+                  playClick();
+                  setReviewIndex((i) =>
+                    Math.min(questions.length - 1, i + 1)
+                  );
+                }}
+                className="px-3 py-1.5 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border border-[#E6D7BE] disabled:opacity-40 text-xs font-extrabold flex items-center gap-1 cursor-pointer"
+              >
+                <span>Sonraki Soru</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 4 AKSİYON BUTONU (ÇİFT İKON / EMOJİ TEMİZLENDİ) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <button
             type="button"
@@ -453,7 +689,7 @@ export default function MultipleChoice({
             className="py-3 px-4 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-4 font-extrabold text-xs text-[var(--foreground)] hover:border-[#6741D9] flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <RefreshCcw size={15} className="text-[#6741D9]" />
-            <span>🔄 Tekrar Yap</span>
+            <span>Tekrar Yap</span>
           </button>
 
           <button
@@ -462,7 +698,7 @@ export default function MultipleChoice({
             className="py-3 px-4 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-4 border-[#087F5B] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Play size={15} fill="currentColor" />
-            <span>▶️ Devam Et (Yeni Set)</span>
+            <span>Devam Et (Yeni Set)</span>
           </button>
 
           {wrongQuestions.length > 0 && (
@@ -472,9 +708,7 @@ export default function MultipleChoice({
               className="sm:col-span-2 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white border-b-4 border-amber-700 font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Target size={15} />
-              <span>
-                🎯 Yanlışlarımı Tekrarla ({wrongQuestions.length})
-              </span>
+              <span>Yanlışlarımı Tekrarla ({wrongQuestions.length})</span>
             </button>
           )}
 
@@ -488,7 +722,7 @@ export default function MultipleChoice({
               className="sm:col-span-2 py-2.5 px-4 rounded-xl bg-slate-200/80 dark:bg-slate-800 text-[var(--muted)] hover:text-[var(--foreground)] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <X size={15} />
-              <span>✖️ Kapat / Alıştırma Merkezine Dön</span>
+              <span>Kapat / Alıştırma Merkezine Dön</span>
             </button>
           )}
         </div>
@@ -497,52 +731,82 @@ export default function MultipleChoice({
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
-      {/* ÜST DURUM VE SÜRE ÇUBUĞU */}
-      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-2.5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] tabular-nums">
-            Soru {currentIndex + 1} / {questions.length}
-          </span>
-          <span
-            className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold inline-flex items-center gap-1 ${
-              currentQuestion.kind === "sentence"
-                ? "bg-[#F3F0FF] text-[#6741D9] border border-[#6741D9]/30"
-                : "bg-[#E6FCF5] text-[#087F5B] border border-[#0CA678]/30"
-            }`}
-          >
-            {currentQuestion.kind === "sentence" ? (
-              <>
-                <MessageSquareQuote size={11} />
-                <span>Diyalog Cümlesi</span>
-              </>
-            ) : (
-              <>
-                <BookOpen size={11} />
-                <span>Sözlük Kelimesi</span>
-              </>
-            )}
+    <div className="max-w-2xl mx-auto space-y-3.5">
+      {/* ÜST DURUM, SÜRE VE SORU GEZGİNİ (1..N) ÇUBUĞU */}
+      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-2.5 space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] tabular-nums">
+              Soru {currentIndex + 1} / {questions.length}
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold inline-flex items-center gap-1 ${
+                currentQuestion.kind === "sentence"
+                  ? "bg-[#F3F0FF] text-[#6741D9] border border-[#6741D9]/30"
+                  : "bg-[#E6FCF5] text-[#087F5B] border border-[#0CA678]/30"
+              }`}
+            >
+              {currentQuestion.kind === "sentence" ? (
+                <>
+                  <MessageSquareQuote size={11} />
+                  <span>Diyalog Cümlesi</span>
+                </>
+              ) : (
+                <>
+                  <BookOpen size={11} />
+                  <span>Sözlük Kelimesi</span>
+                </>
+              )}
+            </span>
+          </div>
+
+          {timeLeft !== null && (
+            <div
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs sm:text-sm font-black tabular-nums ${
+                timeLeft <= 5
+                  ? "bg-red-100 border-red-300 text-red-700 animate-pulse"
+                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-amber-700"
+              }`}
+            >
+              <Timer size={16} />
+              <span>{timeLeft} sn</span>
+            </div>
+          )}
+
+          <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-3 py-1 rounded-xl tabular-nums">
+            {feedbackMode === "instant"
+              ? `Doğru: ${correctCount}`
+              : `Yanıtlanan: ${Object.keys(userAnswers).length}/${questions.length}`}
           </span>
         </div>
 
-        {timeLeft !== null && (
-          <div
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs sm:text-sm font-black tabular-nums ${
-              timeLeft <= 5
-                ? "bg-red-100 border-red-300 text-red-700 animate-pulse"
-                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-amber-700"
-            }`}
-          >
-            <Timer size={16} />
-            <span>{timeLeft} sn</span>
-          </div>
-        )}
-
-        <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-3 py-1 rounded-xl tabular-nums">
-          {feedbackMode === "instant"
-            ? `Doğru: ${correctCount}`
-            : `Yanıtlanan: ${Object.keys(userAnswers).length}/${questions.length}`}
-        </span>
+        {/* Numaralı Soru Gezgini (1..N) */}
+        <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 border-t border-dashed border-[#E2D3B8]">
+          {questions.map((_, idx) => {
+            const isActive = idx === currentIndex;
+            const isAnswered = Boolean(userAnswers[idx]);
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setCurrentIndex(idx);
+                }}
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border text-xs tabular-nums transition-all cursor-pointer flex items-center justify-center ${
+                  isActive
+                    ? "ring-2 ring-emerald-600 bg-emerald-600 text-white font-bold scale-105 border-emerald-700"
+                    : isAnswered
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-200 font-bold"
+                    : "bg-white/80 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 font-semibold hover:border-emerald-400"
+                }`}
+                title={`Soru ${idx + 1}`}
+              >
+                {idx + 1}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* SORU KARTI */}
@@ -555,7 +819,7 @@ export default function MultipleChoice({
           </span>
           <button
             type="button"
-            onClick={handleListenQuestion}
+            onClick={() => handleListenQuestion(currentQuestion)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0CA678] text-white font-bold border-b-2 border-[#087F5B] shrink-0 cursor-pointer"
           >
             <Volume2 size={14} />
@@ -626,20 +890,31 @@ export default function MultipleChoice({
         })}
       </div>
 
-      {selected && (
+      {/* ÖNCEKİ SORU / SONRAKİ SORU (VEYA TESTİ BİTİR) NAVİGASYON BAR */}
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <button
+          type="button"
+          onClick={prevQuestion}
+          disabled={currentIndex === 0}
+          className="px-4 py-3 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 disabled:opacity-40 font-extrabold text-xs sm:text-sm text-[var(--foreground)] hover:border-[#6741D9] flex items-center gap-1.5 transition-all cursor-pointer"
+        >
+          <ArrowLeft size={16} />
+          <span>Önceki Soru</span>
+        </button>
+
         <button
           type="button"
           onClick={nextQuestion}
-          className="w-full py-3.5 px-6 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm sm:text-base rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          className="flex-1 py-3 px-5 bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <span>
             {currentIndex === questions.length - 1
-              ? "✅ Alıştırmayı Bitir ve Sonuçları Gör"
-              : "Sonraki Soruya Geç"}
+              ? "Testi Bitir ✓"
+              : "Sonraki Soru"}
           </span>
-          <ArrowRight size={18} />
+          <ArrowRight size={16} />
         </button>
-      )}
+      </div>
     </div>
   );
 }

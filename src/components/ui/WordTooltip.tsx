@@ -77,6 +77,17 @@ function getCategoryStyle(category: WordCategory) {
       arabicAccent: "text-purple-700 dark:text-purple-300",
     };
   }
+  if (category === "ozel-isim") {
+    return {
+      underline:
+        "border-teal-500/75 hover:bg-teal-500/15 hover:text-teal-700 dark:hover:text-teal-300",
+      badgeText: "👤 Özel İsim (اسم علم)",
+      badgeClass:
+        "bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-700/60",
+      popoverLeftBorder: "border-l-4 border-l-teal-500",
+      arabicAccent: "text-teal-700 dark:text-teal-300",
+    };
+  }
   return {
     underline:
       "border-sky-500/75 hover:bg-sky-500/15 hover:text-sky-700 dark:hover:text-sky-300",
@@ -109,9 +120,12 @@ export default function WordTooltip({
   } = useUserStore();
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [alignMode, setAlignMode] = useState<"center" | "left" | "right">(
-    "center"
-  );
+  const [tooltipPos, setTooltipPos] = useState<{
+    isMobile: boolean;
+    top?: number;
+    bottom?: number;
+    left?: number;
+  }>({ isMobile: false });
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [coachTarget, setCoachTarget] = useState<{
     text: string;
@@ -129,8 +143,17 @@ export default function WordTooltip({
         setActiveIndex(null);
       }
     };
+    const handleScrollOrResize = () => {
+      setActiveIndex(null);
+    };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScrollOrResize, { passive: true });
+    window.addEventListener("resize", handleScrollOrResize);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScrollOrResize);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
   }, []);
 
   const formatAr = (str: string) =>
@@ -271,22 +294,47 @@ export default function WordTooltip({
             }
             const rect = e.currentTarget.getBoundingClientRect();
             const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
-            if (rect.left < 155) {
-              setAlignMode("left");
-            } else if (rect.right > vw - 155) {
-              setAlignMode("right");
+            const vh = typeof window !== "undefined" ? window.innerHeight : 768;
+            const isMobile = vw < 640;
+            const tooltipWidth = 320;
+            const estimatedHeight = 250;
+
+            const spaceAbove = rect.top - 56;
+            const spaceBelow = vh - rect.bottom - 76;
+            const placeBelow =
+              spaceAbove < estimatedHeight && spaceBelow > spaceAbove;
+
+            const rawLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+            const clampedLeft = Math.max(
+              16,
+              Math.min(rawLeft, vw - tooltipWidth - 16)
+            );
+
+            if (placeBelow) {
+              const clampedTop = Math.max(
+                56,
+                Math.min(rect.bottom + 8, vh - estimatedHeight - 76)
+              );
+              setTooltipPos({
+                isMobile,
+                top: clampedTop,
+                left: clampedLeft,
+              });
             } else {
-              setAlignMode("center");
+              const rawBottom = vh - rect.top + 8;
+              const clampedBottom = Math.max(
+                76,
+                Math.min(rawBottom, vh - estimatedHeight - 56)
+              );
+              setTooltipPos({
+                isMobile,
+                bottom: clampedBottom,
+                left: clampedLeft,
+              });
             }
+
             setActiveIndex(index);
           };
-
-          const positionClasses =
-            alignMode === "left"
-              ? "left-0 translate-x-0"
-              : alignMode === "right"
-              ? "right-0 translate-x-0"
-              : "left-1/2 -translate-x-1/2";
 
           return (
             <span
@@ -311,12 +359,45 @@ export default function WordTooltip({
               </button>
               {suffix}
 
-              {/* 3B Dokunsal Morfolojik Sözlük İpucu Kartı (Tür Renk Kodlamalı) */}
+              {/* 3B Dokunsal Morfolojik Sözlük İpucu Kartı (Tür Renk Kodlamalı & Viewport Sınır Korumalı) */}
               {isOpen && (
                 <span
                   dir="ltr"
                   onClick={(e) => e.stopPropagation()}
-                  className={`absolute bottom-full ${positionClasses} mb-2.5 w-72 sm:w-80 max-w-[90vw] p-3.5 bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 ${catStyle.popoverLeftBorder} rounded-2xl shadow-2xl text-left z-50 block space-y-2`}
+                  style={
+                    tooltipPos.isMobile
+                      ? {
+                          top:
+                            tooltipPos.top !== undefined
+                              ? `${tooltipPos.top}px`
+                              : undefined,
+                          bottom:
+                            tooltipPos.bottom !== undefined
+                              ? `${tooltipPos.bottom}px`
+                              : undefined,
+                        }
+                      : {
+                          top:
+                            tooltipPos.top !== undefined
+                              ? `${tooltipPos.top}px`
+                              : undefined,
+                          bottom:
+                            tooltipPos.bottom !== undefined
+                              ? `${tooltipPos.bottom}px`
+                              : undefined,
+                          left:
+                            tooltipPos.left !== undefined
+                              ? `${tooltipPos.left}px`
+                              : undefined,
+                        }
+                  }
+                  className={`${
+                    tooltipPos.isMobile
+                      ? "fixed left-3 right-3 mx-auto w-auto max-w-[360px]"
+                      : "fixed w-80 max-w-[calc(100vw-2rem)]"
+                  } p-3.5 bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 ${
+                    catStyle.popoverLeftBorder
+                  } rounded-2xl shadow-2xl text-left z-50 block space-y-2`}
                 >
                   {/* Üst Satır: Tür Rozeti + Kök + Türkçe Anlam + Arapça Ana Kelime */}
                   <span className="flex items-start justify-between gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
@@ -349,9 +430,12 @@ export default function WordTooltip({
                         {coreWord !== primaryAr && (
                           <span
                             dir="rtl"
-                            className="arabic text-xs font-bold text-[#6741D9] block mt-0.5"
+                            className="text-xs md:text-sm font-medium text-[#6741D9] block mt-0.5"
                           >
-                            Metinde: {formatAr(coreWord)}
+                            Metinde:{" "}
+                            <strong className="arabic text-base md:text-lg font-arabic font-bold">
+                              {formatAr(coreWord)}
+                            </strong>
                           </span>
                         )}
                       </span>
@@ -382,11 +466,11 @@ export default function WordTooltip({
                   )}
 
                   {/* Sözlük Künyesi: Müfret/Cemi veya Mazi/Muzari/Masdar */}
-                  <span className="flex flex-wrap items-center justify-between gap-1.5 text-[11px] py-1 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] text-[var(--muted)]">
+                  <span className="flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm font-medium py-1 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] text-[var(--muted)]">
                     {dictItem.mufret && (
                       <span>
                         Müfret:{" "}
-                        <strong className="arabic text-sm text-[var(--foreground)]">
+                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
                           {formatAr(dictItem.mufret)}
                         </strong>
                       </span>
@@ -394,7 +478,7 @@ export default function WordTooltip({
                     {dictItem.cemi && dictItem.cemi !== "-" && (
                       <span>
                         Cemî:{" "}
-                        <strong className="arabic text-sm text-[var(--foreground)]">
+                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
                           {formatAr(dictItem.cemi)}
                         </strong>
                       </span>
@@ -402,7 +486,7 @@ export default function WordTooltip({
                     {dictItem.mazi && (
                       <span>
                         Mâzî:{" "}
-                        <strong className="arabic text-sm text-[var(--foreground)]">
+                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
                           {formatAr(dictItem.mazi)}
                         </strong>
                       </span>
@@ -410,7 +494,7 @@ export default function WordTooltip({
                     {dictItem.muzari && (
                       <span>
                         Muzâri:{" "}
-                        <strong className="arabic text-sm text-[var(--foreground)]">
+                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
                           {formatAr(dictItem.muzari)}
                         </strong>
                       </span>
@@ -418,7 +502,7 @@ export default function WordTooltip({
                     {dictItem.masdar && (
                       <span>
                         Masdar:{" "}
-                        <strong className="arabic text-sm text-[var(--foreground)]">
+                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
                           {formatAr(dictItem.masdar)}
                         </strong>
                       </span>

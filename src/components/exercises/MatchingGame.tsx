@@ -683,7 +683,7 @@ export default function MatchingGame({
               className="py-3 px-4 bg-white dark:bg-[var(--background)] hover:bg-[#EFE3CE] text-[var(--foreground)] font-extrabold text-xs sm:text-sm rounded-xl border-2 border-[#E6D7BE] border-b-4 active:border-b-2 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <RotateCcw size={16} className="text-[#6741D9]" />
-              <span>🔄 Tekrar Yap (Aynı Set)</span>
+              <span>Tekrar Yap (Aynı Set)</span>
             </button>
 
             <button
@@ -695,7 +695,7 @@ export default function MatchingGame({
               className="py-3 px-4 bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm rounded-xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Play size={16} fill="currentColor" />
-              <span>▶️ Devam Et (Yeni Set)</span>
+              <span>Devam Et (Yeni Set)</span>
             </button>
 
             {wrongPairsHistory.length > 0 && (
@@ -705,9 +705,7 @@ export default function MatchingGame({
                 className="py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs sm:text-sm rounded-xl border-b-4 border-amber-700 active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Target size={16} />
-                <span>
-                  🎯 Yanlışlarımı Tekrarla ({wrongPairsHistory.length})
-                </span>
+                <span>Yanlışlarımı Tekrarla ({wrongPairsHistory.length})</span>
               </button>
             )}
 
@@ -723,7 +721,7 @@ export default function MatchingGame({
                 }`}
               >
                 <X size={16} />
-                <span>✖️ Kapat / Alıştırma Merkezine Dön</span>
+                <span>Kapat / Alıştırma Merkezine Dön</span>
               </button>
             )}
           </div>
@@ -731,26 +729,26 @@ export default function MatchingGame({
       )}
 
       {/* ÜST DURUM VE YÖNERGE ÇUBUĞU */}
-      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5">
+      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 py-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
           <span className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] tabular-nums">
             Bağlanan: {connections.length} / {totalPairs}
           </span>
           <span className="hidden sm:inline text-[11px] font-semibold text-[var(--muted)]">
-            • Soketlerden sürükleyip bırakın veya iki karta tıklayarak ok çizin
+            • İki karta tıklayarak veya sürükleyerek eşleştirin
           </span>
         </div>
 
         <div className="flex items-center gap-2">
           {timeLeft !== null && (
             <div
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs sm:text-sm font-black tabular-nums ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-black tabular-nums ${
                 timeLeft <= 5
                   ? "bg-red-100 border-red-300 text-red-700 animate-pulse"
                   : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-amber-700"
               }`}
             >
-              <Timer size={15} />
+              <Timer size={14} />
               <span>00:{timeLeft.toString().padStart(2, "0")}</span>
             </div>
           )}
@@ -760,27 +758,31 @@ export default function MatchingGame({
               type="button"
               onClick={evaluateEndModeConnections}
               disabled={connections.length === 0}
-              className="px-3.5 py-1.5 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] disabled:opacity-45 text-white text-xs font-extrabold border-b-2 border-[#3b1f8c] flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] disabled:opacity-45 text-white text-xs font-extrabold border-b-2 border-[#3b1f8c] flex items-center gap-1.5 cursor-pointer"
             >
               <Check size={14} />
-              <span>✅ Alıştırmayı Bitir ve Sonuçları Gör</span>
+              <span>Alıştırmayı Bitir ve Sonuçları Gör</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* SÜTUN BAŞLIKLARI */}
-      <div className="grid grid-cols-2 gap-10 sm:gap-20 px-2 text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)]">
-        <div className="text-center">🇹🇷 Türkçe Anlam / Çeviri</div>
-        <div className="text-center">🇸🇦 Arapça İfade / Kelime</div>
+      {/* SÜTUN BAŞLIKLARI (SOL: ARAPÇA, SAĞ: TÜRKÇE) */}
+      <div className="grid grid-cols-2 gap-2.5 md:gap-4 px-2 text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)]">
+        <div className="text-center bg-[#F7EFE1]/80 dark:bg-[var(--surface)] py-1 rounded-lg border border-[#E6D7BE]">
+          Arapça
+        </div>
+        <div className="text-center bg-[#F7EFE1]/80 dark:bg-[var(--surface)] py-1 rounded-lg border border-[#E6D7BE]">
+          Türkçe
+        </div>
       </div>
 
-      {/* İNTERAKTİF OK ÇİZMELİ (SVG ARROW DRAG & DROP) EŞLEŞTİRME TAHTASI */}
+      {/* 2 SÜTUNLU KOMPAKT GRUP EŞLEŞTİRME TAHTASI */}
       <div
         ref={boardRef}
         onPointerMove={handleBoardPointerMove}
         onPointerUp={handleBoardPointerUp}
-        className="relative grid grid-cols-2 gap-10 sm:gap-20 items-stretch auto-rows-fr select-none touch-pan-y"
+        className="relative grid grid-cols-2 gap-2.5 md:gap-4 items-stretch auto-rows-fr select-none touch-pan-y"
       >
         {/* DİNAMİK VEKTÖREL SVG OK KATMANI */}
         <svg
@@ -793,8 +795,8 @@ export default function MatchingGame({
               viewBox="0 0 10 10"
               refX="8"
               refY="5"
-              markerWidth="6"
-              markerHeight="6"
+              markerWidth="5"
+              markerHeight="5"
               orient="auto-start-reverse"
             >
               <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
@@ -804,8 +806,8 @@ export default function MatchingGame({
               viewBox="0 0 10 10"
               refX="8"
               refY="5"
-              markerWidth="6"
-              markerHeight="6"
+              markerWidth="5"
+              markerHeight="5"
               orient="auto-start-reverse"
             >
               <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444" />
@@ -815,8 +817,8 @@ export default function MatchingGame({
               viewBox="0 0 10 10"
               refX="8"
               refY="5"
-              markerWidth="6"
-              markerHeight="6"
+              markerWidth="5"
+              markerHeight="5"
               orient="auto-start-reverse"
             >
               <path d="M 0 1 L 10 5 L 0 9 z" fill="#6366f1" />
@@ -825,8 +827,8 @@ export default function MatchingGame({
 
           {/* Kalıcı Bağlantı Okları */}
           {connections.map((conn) => {
-            const p1 = socketCoords.tr[conn.trId];
-            const p2 = socketCoords.ar[conn.arId];
+            const p1 = socketCoords.ar[conn.arId];
+            const p2 = socketCoords.tr[conn.trId];
             if (!p1 || !p2) return null;
 
             const strokeColor =
@@ -850,11 +852,11 @@ export default function MatchingGame({
                   x2={p2.x}
                   y2={p2.y}
                   stroke={strokeColor}
-                  strokeWidth={3.5}
+                  strokeWidth={2.5}
                   strokeLinecap="round"
                   markerEnd={markerId}
                 />
-                <circle cx={p1.x} cy={p1.y} r={4.5} fill={strokeColor} />
+                <circle cx={p1.x} cy={p1.y} r={3.5} fill={strokeColor} />
               </g>
             );
           })}
@@ -868,41 +870,32 @@ export default function MatchingGame({
                 x2={dragState.currentPoint.x}
                 y2={dragState.currentPoint.y}
                 stroke="#6366f1"
-                strokeWidth={3}
-                strokeDasharray="5 4"
+                strokeWidth={2.5}
+                strokeDasharray="4 3"
                 strokeLinecap="round"
                 markerEnd="url(#arrow-indigo)"
               />
               <circle
                 cx={dragState.startPoint.x}
                 cy={dragState.startPoint.y}
-                r={5}
+                r={4}
                 fill="#6366f1"
               />
             </g>
           )}
         </svg>
 
-        {trCards.map((trCard, idx) => {
-          const arCard = arCards[idx];
-          if (!arCard) return null;
+        {arCards.map((arCard, idx) => {
+          const trCard = trCards[idx];
+          if (!trCard) return null;
 
-          const trConn = connections.find((c) => c.trId === trCard.id);
           const arConn = connections.find((c) => c.arId === arCard.id);
+          const trConn = connections.find((c) => c.trId === trCard.id);
 
-          const isTrSelected =
-            selectedTr === trCard.id || dragState?.sourceId === trCard.id;
           const isArSelected =
             selectedAr === arCard.id || dragState?.sourceId === arCard.id;
-
-          const trBorderStyle =
-            trConn?.status === "correct"
-              ? "bg-emerald-50/90 dark:bg-emerald-950/30 border-emerald-500 text-emerald-900 dark:text-emerald-200"
-              : trConn?.status === "wrong"
-              ? "bg-rose-50/90 dark:bg-rose-950/30 border-rose-500 text-rose-900 dark:text-rose-200"
-              : trConn?.status === "pending" || isTrSelected
-              ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5]"
-              : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#6741D9] text-[var(--foreground)]";
+          const isTrSelected =
+            selectedTr === trCard.id || dragState?.sourceId === trCard.id;
 
           const arBorderStyle =
             arConn?.status === "correct"
@@ -913,14 +906,14 @@ export default function MatchingGame({
               ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5]"
               : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#6741D9] text-[var(--foreground)]";
 
-          const trSocketColor =
+          const trBorderStyle =
             trConn?.status === "correct"
-              ? "bg-emerald-500 border-emerald-700"
+              ? "bg-emerald-50/90 dark:bg-emerald-950/30 border-emerald-500 text-emerald-900 dark:text-emerald-200"
               : trConn?.status === "wrong"
-              ? "bg-rose-500 border-rose-700"
+              ? "bg-rose-50/90 dark:bg-rose-950/30 border-rose-500 text-rose-900 dark:text-rose-200"
               : trConn?.status === "pending" || isTrSelected
-              ? "bg-[#6741D9] border-[#4C28B5]"
-              : "bg-slate-600 border-slate-800";
+              ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5]"
+              : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#6741D9] text-[var(--foreground)]";
 
           const arSocketColor =
             arConn?.status === "correct"
@@ -929,63 +922,72 @@ export default function MatchingGame({
               ? "bg-rose-500 border-rose-700"
               : arConn?.status === "pending" || isArSelected
               ? "bg-[#6741D9] border-[#4C28B5]"
-              : "bg-slate-600 border-slate-800";
+              : "bg-slate-500 border-slate-700";
+
+          const trSocketColor =
+            trConn?.status === "correct"
+              ? "bg-emerald-500 border-emerald-700"
+              : trConn?.status === "wrong"
+              ? "bg-rose-500 border-rose-700"
+              : trConn?.status === "pending" || isTrSelected
+              ? "bg-[#6741D9] border-[#4C28B5]"
+              : "bg-slate-500 border-slate-700";
 
           return (
-            <div key={`${trCard.id}-${arCard.id}`} className="contents">
-              {/* SOL SÜTUN: TÜRKÇE KART (SAĞ İÇ KENARINDA BAĞLANTI SOKETİ ▪) */}
-              <button
-                type="button"
-                data-tr-card-id={trCard.id}
-                onPointerDown={(e) => handlePointerDownCard(e, trCard)}
-                onClick={() => handleCardSelect(trCard)}
-                className={`relative w-full h-full min-h-[74px] sm:min-h-[84px] flex items-center justify-center text-center px-3.5 py-2.5 pr-6 rounded-2xl border-2 border-b-4 transition-all font-extrabold text-xs sm:text-sm leading-snug cursor-pointer ${trBorderStyle}`}
-              >
-                <span className="line-clamp-3">{trCard.text}</span>
-
-                {/* Sağ İç Kenar Soket Noktası (▪) */}
-                <span
-                  ref={(el) => {
-                    trSocketRefs.current[trCard.id] = el;
-                  }}
-                  className={`absolute -right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-xs border-2 shadow-xs transition-transform ${trSocketColor}`}
-                  aria-hidden="true"
-                />
-              </button>
-
-              {/* SAĞ SÜTUN: ARAPÇA KART (SOL İÇ KENARINDA BAĞLANTI SOKETİ ▪) */}
+            <div key={`${arCard.id}-${trCard.id}`} className="contents">
+              {/* SOL SÜTUN: ARAPÇA GRUBU (py-2 px-3 min-h-[44px] text-lg font-arabic) */}
               <button
                 type="button"
                 data-ar-card-id={arCard.id}
                 onPointerDown={(e) => handlePointerDownCard(e, arCard)}
                 onClick={() => handleCardSelect(arCard)}
-                className={`relative w-full h-full min-h-[74px] sm:min-h-[84px] flex items-center justify-center text-center px-3.5 py-2.5 pl-6 rounded-2xl border-2 border-b-4 transition-all cursor-pointer ${arBorderStyle}`}
+                className={`relative w-full h-full min-h-[44px] flex items-center justify-center text-center py-2 px-3 pr-4 rounded-xl border-2 border-b-3 transition-all cursor-pointer ${arBorderStyle}`}
               >
-                {/* Sol İç Kenar Soket Noktası (▪) */}
-                <span
-                  ref={(el) => {
-                    arSocketRefs.current[arCard.id] = el;
-                  }}
-                  className={`absolute -left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-xs border-2 shadow-xs transition-transform ${arSocketColor}`}
-                  aria-hidden="true"
-                />
-
                 <div className="flex items-center justify-center gap-1.5">
                   <Volume2
-                    size={13}
+                    size={12}
                     className="text-[#0CA678] opacity-75 shrink-0"
                   />
                   <span
                     dir="rtl"
-                    className={`arabic font-bold leading-snug line-clamp-2 ${
+                    className={`arabic font-arabic font-bold leading-snug line-clamp-2 ${
                       arCard.isSentence
-                        ? "text-lg sm:text-2xl"
-                        : "text-2xl sm:text-3xl"
+                        ? "text-base sm:text-xl"
+                        : "text-lg sm:text-2xl"
                     }`}
                   >
                     {formatAr(arCard.text)}
                   </span>
                 </div>
+
+                {/* Sağ İç Kenar Soket Noktası */}
+                <span
+                  ref={(el) => {
+                    arSocketRefs.current[arCard.id] = el;
+                  }}
+                  className={`absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border shadow-2xs transition-transform ${arSocketColor}`}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {/* SAĞ SÜTUN: TÜRKÇE GRUBU (py-2 px-3 min-h-[44px] text-xs md:text-sm font-medium) */}
+              <button
+                type="button"
+                data-tr-card-id={trCard.id}
+                onPointerDown={(e) => handlePointerDownCard(e, trCard)}
+                onClick={() => handleCardSelect(trCard)}
+                className={`relative w-full h-full min-h-[44px] flex items-center justify-center text-center py-2 px-3 pl-4 rounded-xl border-2 border-b-3 transition-all text-xs md:text-sm font-medium leading-snug cursor-pointer ${trBorderStyle}`}
+              >
+                {/* Sol İç Kenar Soket Noktası */}
+                <span
+                  ref={(el) => {
+                    trSocketRefs.current[trCard.id] = el;
+                  }}
+                  className={`absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border shadow-2xs transition-transform ${trSocketColor}`}
+                  aria-hidden="true"
+                />
+
+                <span className="line-clamp-2">{trCard.text}</span>
               </button>
             </div>
           );
@@ -993,22 +995,22 @@ export default function MatchingGame({
       </div>
 
       {/* ALT PUAN VE SIFIRLAMA KONTROL ÇUBUĞU */}
-      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="bg-white dark:bg-[var(--background)] px-3.5 py-1.5 rounded-xl border border-[#E6D7BE] text-center">
+      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2">
+          <div className="bg-white dark:bg-[var(--background)] px-3 py-1 rounded-xl border border-[#E6D7BE] text-center">
             <span className="block text-[10px] font-bold text-[var(--muted)]">
               Bu Alıştırma Puanı
             </span>
-            <span className="text-sm sm:text-base font-black text-[#087F5B] tabular-nums">
+            <span className="text-sm font-black text-[#087F5B] tabular-nums">
               {exerciseScore}
             </span>
           </div>
 
-          <div className="bg-white dark:bg-[var(--background)] px-3.5 py-1.5 rounded-xl border border-[#E6D7BE] text-center">
+          <div className="bg-white dark:bg-[var(--background)] px-3 py-1 rounded-xl border border-[#E6D7BE] text-center">
             <span className="block text-[10px] font-bold text-[var(--muted)]">
               Toplam Puan
             </span>
-            <span className="text-sm sm:text-base font-black text-[#6741D9] tabular-nums">
+            <span className="text-sm font-black text-[#6741D9] tabular-nums">
               {totalCumulativeScore}
             </span>
           </div>
@@ -1020,9 +1022,9 @@ export default function MatchingGame({
               type="button"
               onClick={evaluateEndModeConnections}
               disabled={connections.length === 0}
-              className="px-4 py-2 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] disabled:opacity-45 text-white text-xs sm:text-sm font-extrabold border-b-3 border-[#3b1f8c] flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] disabled:opacity-45 text-white text-xs font-extrabold border-b-3 border-[#3b1f8c] flex items-center gap-1.5 cursor-pointer"
             >
-              <Check size={15} />
+              <Check size={14} />
               <span>Kontrol Et</span>
             </button>
           )}
@@ -1030,10 +1032,10 @@ export default function MatchingGame({
           <button
             type="button"
             onClick={handleRepeatSameSet}
-            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs sm:text-sm font-extrabold border-b-3 border-amber-700 active:border-b-0 active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold border-b-3 border-amber-700 active:border-b-0 active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <RotateCcw size={14} />
-            <span>🔄 Alıştırmayı Sıfırla</span>
+            <span>Alıştırmayı Sıfırla</span>
           </button>
         </div>
       </div>

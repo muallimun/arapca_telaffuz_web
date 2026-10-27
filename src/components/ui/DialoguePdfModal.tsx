@@ -343,6 +343,9 @@ export default function DialoguePdfModal({
     useState<VocabLanguageMode>("both");
   const [translationLayout, setTranslationLayout] =
     useState<TranslationLayout>("side-by-side");
+  const [translationPageBreak, setTranslationPageBreak] = useState<
+    "same" | "new"
+  >("same");
   const [sideBySideOrder, setSideBySideOrder] =
     useState<SideBySideOrder>("ar-right");
   const [showAdvancedLayout, setShowAdvancedLayout] = useState<boolean>(false);
@@ -681,10 +684,15 @@ export default function DialoguePdfModal({
         </div>
       `;
     } else {
-      // Sonda Toplu
+      // Sonda Toplu (grouped-end)
+      const trPageBreakStyle =
+        translationPageBreak === "new"
+          ? "page-break-before: always; break-before: page; margin-top: 0; padding-top: 6px;"
+          : "margin-top: 18px; page-break-inside: avoid;";
+
       dialogueBodyHtml = `
         <div class="section-block">
-          <div class="section-title">1. Arapça Diyalog Metni</div>
+          <div class="section-title">1. Arapça Diyalog Metni (النَّصُّ الْعَرَبِيُّ)</div>
           <div class="lines-container">
             ${dialogue.satirlar
               .map((line, idx) => {
@@ -707,8 +715,8 @@ export default function DialoguePdfModal({
               .join("")}
           </div>
         </div>
-        <div class="section-block" style="margin-top: 18px;">
-          <div class="section-title">2. Diyaloğun Türkçe Tercümesi</div>
+        <div class="section-block" style="${trPageBreakStyle}">
+          <div class="section-title">Diyalog Tercümeleri (الترجمة التركية)</div>
           <div class="end-tr-list">
             ${dialogue.satirlar
               .map((line) =>
@@ -1705,6 +1713,38 @@ export default function DialoguePdfModal({
                     </button>
                   </div>
                 )}
+                {translationLayout === "grouped-end" && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        setTranslationPageBreak("same");
+                      }}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold cursor-pointer ${
+                        translationPageBreak === "same"
+                          ? "bg-emerald-700 text-white"
+                          : "bg-white text-[var(--muted)]"
+                      }`}
+                    >
+                      Konum: Aynı Sayfada
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        setTranslationPageBreak("new");
+                      }}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold cursor-pointer ${
+                        translationPageBreak === "new"
+                          ? "bg-emerald-700 text-white"
+                          : "bg-white text-[var(--muted)]"
+                      }`}
+                    >
+                      Konum: Arka Sayfada
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Kelime Tablosu Test Modu & Konumu */}
@@ -1917,7 +1957,139 @@ export default function DialoguePdfModal({
                   );
                 })}
               </div>
+            ) : translationLayout === "stacked" ? (
+              /* ALT ALTA MODU: Üstte Arapça (dir="rtl"), hemen altında kesikli çizgi ile ayrılmış Türkçe tercüme (dir="ltr") */
+              <div className="border border-slate-300 rounded-xl overflow-hidden divide-y divide-slate-200">
+                {dialogue.satirlar.map((line, idx) => {
+                  const spIdx = speakers.indexOf(line.konusmaci);
+                  const isEmerald = spIdx % 2 === 0;
+                  const arText = clozeData.processedLines[idx] || line.arapca;
+
+                  return (
+                    <div
+                      key={line.sira}
+                      className={`p-3 ${
+                        idx % 2 === 0 ? "bg-slate-50" : "bg-white"
+                      }`}
+                    >
+                      <div dir="rtl" className="text-right flex items-baseline gap-2">
+                        <span
+                          className={`arabic text-base font-bold px-2 py-0.5 rounded-md border shrink-0 ${
+                            isEmerald
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                              : "bg-violet-50 text-violet-800 border-violet-200"
+                          }`}
+                        >
+                          {formatAr(line.konusmaci_ar)}
+                        </span>
+                        <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
+                          {formatAr(arText)}
+                        </span>
+                      </div>
+
+                      <div
+                        dir="ltr"
+                        className="mt-1.5 pt-1.5 border-t border-slate-200/70 text-left"
+                      >
+                        {translationMode === "dotted" ? (
+                          <div className="flex items-end gap-2">
+                            <span className="text-xs font-bold text-slate-600 shrink-0">
+                              {line.konusmaci}:
+                            </span>
+                            <div className="w-full border-b border-dotted border-slate-400 h-5" />
+                          </div>
+                        ) : (
+                          <div className="text-xs text-slate-600">
+                            <span className="font-bold text-slate-600 mr-1.5">
+                              {line.konusmaci}:
+                            </span>
+                            <span>{line.turkce}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : translationLayout === "grouped-end" ? (
+              /* SONDA TOPLU MODU: Diyalog satırlarında yalnızca numaralı Arapça cümleler, altında (veya yeni sayfada) toplu tercüme bloğu */
+              <div className="space-y-4">
+                <div className="border border-slate-300 rounded-xl overflow-hidden divide-y divide-slate-200">
+                  {dialogue.satirlar.map((line, idx) => {
+                    const spIdx = speakers.indexOf(line.konusmaci);
+                    const isEmerald = spIdx % 2 === 0;
+                    const arText = clozeData.processedLines[idx] || line.arapca;
+                    return (
+                      <div
+                        key={line.sira}
+                        dir="rtl"
+                        className={`p-3 flex items-baseline gap-2 ${
+                          idx % 2 === 0 ? "bg-slate-50" : "bg-white"
+                        }`}
+                      >
+                        <span
+                          className={`arabic text-base font-bold px-2 py-0.5 rounded-md border shrink-0 ${
+                            isEmerald
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                              : "bg-violet-50 text-violet-800 border-violet-200"
+                          }`}
+                        >
+                          {line.sira}. {formatAr(line.konusmaci_ar)}
+                        </span>
+                        <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
+                          {formatAr(arText)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div
+                  className={
+                    translationPageBreak === "new"
+                      ? "break-before-page print:break-before-page mt-6 pt-4 border-t-2 border-dashed border-emerald-400 space-y-2"
+                      : "mt-6 space-y-2"
+                  }
+                >
+                  <div className="flex items-center justify-between gap-2 text-xs font-extrabold text-[#087F5B] bg-slate-50 border border-slate-300 border-l-4 border-l-[#0CA678] px-3 py-1.5 rounded-lg">
+                    <span>Diyalog Tercümeleri (الترجمة التركية)</span>
+                    {translationPageBreak === "new" && (
+                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
+                        Konum: Arka Sayfada
+                      </span>
+                    )}
+                  </div>
+                  <div className="border border-slate-300 rounded-xl overflow-hidden divide-y divide-slate-200 bg-white">
+                    {dialogue.satirlar.map((line, idx) => (
+                      <div
+                        key={line.sira}
+                        dir="ltr"
+                        className={`px-3 py-2 text-xs text-slate-700 ${
+                          idx % 2 === 0 ? "bg-slate-50/70" : "bg-white"
+                        }`}
+                      >
+                        {translationMode === "dotted" ? (
+                          <div className="flex items-end gap-2">
+                            <span className="font-bold text-slate-700 shrink-0">
+                              {line.sira}. {line.konusmaci}:
+                            </span>
+                            <div className="w-full border-b border-dotted border-slate-400 h-5" />
+                          </div>
+                        ) : (
+                          <div>
+                            <strong className="font-bold text-slate-800 mr-1.5">
+                              {line.sira}. {line.konusmaci}:
+                            </strong>
+                            <span>{line.turkce}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             ) : (
+              /* YAN YANA MODU (Varsayılan) */
               <div className="border border-slate-300 rounded-xl overflow-hidden divide-y divide-slate-200">
                 {dialogue.satirlar.map((line, idx) => {
                   const spIdx = speakers.indexOf(line.konusmaci);

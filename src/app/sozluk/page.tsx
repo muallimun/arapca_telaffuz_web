@@ -32,7 +32,7 @@ import ShadowingModal from "@/components/ui/ShadowingModal";
 import { formatArabicText } from "@/lib/arabicTextUtils";
 
 type StatusFilter = "all" | "learned" | "unlearned" | "favorites";
-type TypeFilter = "all" | "isim" | "fiil" | "edat";
+type TypeFilter = "all" | "isim" | "ozel-isim" | "fiil" | "edat";
 
 function getCategoryCardTheme(category: WordCategory) {
   if (category === "fiil") {
@@ -53,6 +53,16 @@ function getCategoryCardTheme(category: WordCategory) {
         "bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-700/60",
       arabicColor:
         "text-purple-700 dark:text-purple-300 group-hover:text-purple-600",
+    };
+  }
+  if (category === "ozel-isim") {
+    return {
+      leftBorder: "border-l-4 border-l-teal-500",
+      badgeText: "👤 Özel İsim (اسم علم)",
+      badgeClass:
+        "bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-700/60",
+      arabicColor:
+        "text-teal-700 dark:text-teal-300 group-hover:text-teal-600",
     };
   }
   return {
@@ -395,6 +405,11 @@ export default function DictionaryPage() {
                 activeClass: "bg-sky-600 border-sky-700 text-white",
               },
               {
+                id: "ozel-isim",
+                label: "👤 Özel İsimler",
+                activeClass: "bg-teal-600 border-teal-700 text-white",
+              },
+              {
                 id: "fiil",
                 label: "⚡ Fiiller",
                 activeClass: "bg-amber-600 border-amber-700 text-white",
@@ -575,9 +590,12 @@ export default function DictionaryPage() {
                       {contextEntry?.contextWord && (
                         <span
                           dir="rtl"
-                          className="arabic text-xs font-bold text-[#6741D9] block mt-0.5"
+                          className="text-xs md:text-sm font-medium text-[#6741D9] block mt-0.5"
                         >
-                          Diyalogda: {getDisplayArabic(contextEntry.contextWord)}
+                          Metinde:{" "}
+                          <strong className="arabic text-base md:text-lg font-arabic font-bold">
+                            {getDisplayArabic(contextEntry.contextWord)}
+                          </strong>
                         </span>
                       )}
                     </button>
@@ -597,7 +615,7 @@ export default function DictionaryPage() {
                   )}
 
                   {/* Orta Satır: Çekimler / Formlar (Tıklanabilir Sesli) */}
-                  <div className="py-1.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="py-1.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm font-medium">
                     {category === "fiil" || word.mazi || word.muzari ? (
                       <div className="flex flex-wrap items-center gap-1.5">
                         {word.muzari && (
@@ -607,12 +625,12 @@ export default function DictionaryPage() {
                             className="inline-flex items-center gap-1 bg-white dark:bg-[var(--background)] px-2 py-0.5 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] hover:border-amber-500 cursor-pointer"
                             title="Muzâri halini dinle"
                           >
-                            <span className="font-bold text-[var(--muted)]">
+                            <span className="text-xs md:text-sm font-medium text-[var(--muted)]">
                               Muzâri:
                             </span>
                             <span
                               dir="rtl"
-                              className="arabic text-base font-bold text-[var(--foreground)]"
+                              className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]"
                             >
                               {getDisplayArabic(word.muzari)}
                             </span>
@@ -625,12 +643,12 @@ export default function DictionaryPage() {
                             className="inline-flex items-center gap-1 bg-white dark:bg-[var(--background)] px-2 py-0.5 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] hover:border-amber-500 cursor-pointer"
                             title="Masdar halini dinle"
                           >
-                            <span className="font-bold text-[var(--muted)]">
+                            <span className="text-xs md:text-sm font-medium text-[var(--muted)]">
                               Masdar:
                             </span>
                             <span
                               dir="rtl"
-                              className="arabic text-base font-bold text-[var(--foreground)]"
+                              className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]"
                             >
                               {getDisplayArabic(word.masdar)}
                             </span>
@@ -646,8 +664,23 @@ export default function DictionaryPage() {
                       <span className="text-[11px] font-medium text-purple-700 dark:text-purple-300">
                         Sabit Edat / Konuşma Kalıbı
                       </span>
+                    ) : category === "ozel-isim" ? (
+                      <span className="text-xs md:text-sm font-medium text-teal-700 dark:text-teal-300">
+                        Müfret:{" "}
+                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
+                          {getDisplayArabic(mainArabic)}
+                        </strong>
+                      </span>
                     ) : (
-                      <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {word.mufret && (
+                          <span className="text-xs md:text-sm font-medium text-[var(--muted)]">
+                            Müfret:{" "}
+                            <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
+                              {getDisplayArabic(word.mufret)}
+                            </strong>
+                          </span>
+                        )}
                         {word.cemi && word.cemi !== "-" ? (
                           <button
                             type="button"
@@ -655,23 +688,25 @@ export default function DictionaryPage() {
                             className="inline-flex items-center gap-1.5 bg-white dark:bg-[var(--background)] px-2.5 py-1 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] hover:border-sky-500 transition-colors cursor-pointer"
                             title="Çoğul halini sesli dinle"
                           >
-                            <span className="font-bold text-[var(--muted)]">
+                            <span className="text-xs md:text-sm font-medium text-[var(--muted)]">
                               Cemî:
                             </span>
                             <span
                               dir="rtl"
-                              className="arabic text-base font-bold text-[var(--foreground)]"
+                              className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]"
                             >
                               {getDisplayArabic(word.cemi)}
                             </span>
                             <Volume2 size={12} className="text-sky-600" />
                           </button>
                         ) : (
-                          <span className="text-[11px] font-medium text-[var(--muted)]">
-                            Tekil İsim Formu
-                          </span>
+                          !word.mufret && (
+                            <span className="text-[11px] font-medium text-[var(--muted)]">
+                              Tekil İsim Formu
+                            </span>
+                          )
                         )}
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>

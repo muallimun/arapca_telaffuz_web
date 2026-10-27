@@ -1463,6 +1463,14 @@ export default function DialogueDetailPage({
                       "bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300",
                     arColor: "text-purple-700 dark:text-purple-300",
                   }
+                : category === "ozel-isim"
+                ? {
+                    leftBorder: "border-l-4 border-l-teal-500",
+                    badgeText: "👤 Özel İsim (اسم علم)",
+                    badgeClass:
+                      "bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300",
+                    arColor: "text-teal-700 dark:text-teal-300",
+                  }
                 : {
                     leftBorder: "border-l-4 border-l-sky-500",
                     badgeText: "📘 İsim (اسم)",
@@ -1511,9 +1519,12 @@ export default function DialogueDetailPage({
                       {entry.contextWord && (
                         <span
                           dir="rtl"
-                          className="arabic text-sm font-bold text-[#6741D9] block"
+                          className="text-xs md:text-sm font-medium text-[#6741D9] block mt-0.5"
                         >
-                          Metinde: {getDisplayText(entry.contextWord)}
+                          Metinde:{" "}
+                          <strong className="arabic text-base md:text-lg font-arabic font-bold">
+                            {getDisplayText(entry.contextWord)}
+                          </strong>
                         </span>
                       )}
                     </div>
@@ -1530,11 +1541,19 @@ export default function DialogueDetailPage({
                     </div>
                   )}
 
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--muted)] border-b border-dashed border-[#E2D3B8] pb-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm font-medium text-[var(--muted)] border-b border-dashed border-[#E2D3B8] pb-2">
+                    {word.mufret && (
+                      <span>
+                        Müfret:{" "}
+                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
+                          {getDisplayText(word.mufret)}
+                        </strong>
+                      </span>
+                    )}
                     {word.cemi && word.cemi !== "-" && (
                       <span>
                         Cemî:{" "}
-                        <strong className="arabic text-base text-[var(--foreground)]">
+                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
                           {getDisplayText(word.cemi)}
                         </strong>
                       </span>
@@ -1542,7 +1561,7 @@ export default function DialogueDetailPage({
                     {word.muzari && (
                       <span>
                         Muzâri:{" "}
-                        <strong className="arabic text-base text-[var(--foreground)]">
+                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
                           {getDisplayText(word.muzari)}
                         </strong>
                       </span>
@@ -1550,7 +1569,7 @@ export default function DialogueDetailPage({
                     {word.masdar && (
                       <span>
                         Masdar:{" "}
-                        <strong className="arabic text-base text-[var(--foreground)]">
+                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
                           {getDisplayText(word.masdar)}
                         </strong>
                       </span>

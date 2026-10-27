@@ -21,6 +21,10 @@ import {
   Moon,
   Check,
   HelpCircle,
+  Home,
+  BookOpen,
+  Gamepad2,
+  BookMarked,
 } from "lucide-react";
 import { useSfxStore } from "@/store/sfxStore";
 import { useSettings, ViewMode } from "@/store/settings";
@@ -194,11 +198,11 @@ export default function Header() {
   };
 
   const navLinks = [
-    { href: "/", label: "Ana Sayfa" },
-    { href: "/kutuphane", label: "Kütüphane" },
-    { href: "/alistirmalar", label: "Alıştırmalar" },
-    { href: "/sozluk", label: "Sözlük" },
-    { href: "/ayarlar", label: "Ayarlar" },
+    { href: "/", label: "Ana Sayfa", Icon: Home },
+    { href: "/kutuphane", label: "Kütüphane", Icon: BookOpen },
+    { href: "/alistirmalar", label: "Alıştırmalar", Icon: Gamepad2 },
+    { href: "/sozluk", label: "Sözlük", Icon: BookMarked },
+    { href: "/ayarlar", label: "Ayarlar", Icon: Settings },
   ];
 
   const isHarekeOn = !mounted || showHareke;
@@ -209,7 +213,7 @@ export default function Header() {
     <>
       <header className="fixed top-0 left-0 right-0 z-40 print:hidden w-full h-12 py-1.5 bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b-2 border-[#E6D7BE] dark:border-[var(--border)] shadow-xs flex items-center">
         <div className="w-full max-w-6xl mx-auto px-2.5 sm:px-6 h-full flex items-center justify-between gap-1.5 sm:gap-2">
-          {/* SOL: 3B Dokunsal Rozetli Gerçek Logo + Başlık */}
+          {/* SOL: 3B Dokunsal Rozetli Gerçek Logo + Başlık + Masaüstü İkonlu Menü Kutusu */}
           <div className="flex items-center gap-2 min-w-0 shrink">
             <Link
               href="/"
@@ -233,25 +237,27 @@ export default function Header() {
               </div>
             </Link>
 
-            {/* Masaüstü Hızlı Navigasyon */}
-            <nav className="hidden lg:flex items-center gap-1 ml-2 bg-[#F7EFE1] dark:bg-[var(--surface)] p-0.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
+            {/* Masaüstü İkonlu ve Çerçeveli Premium Navigasyon Kutusu */}
+            <nav className="hidden md:flex items-center gap-1 ml-2 bg-slate-200/50 dark:bg-slate-800/60 p-1 rounded-xl border border-slate-300/60 dark:border-slate-700/60">
               {navLinks.map((item) => {
                 const isActive =
                   item.href === "/"
                     ? pathname === "/"
                     : pathname.startsWith(item.href);
+                const NavIcon = item.Icon;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => playClick()}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                    className={
                       isActive
-                        ? "bg-[#0CA678] text-white shadow-xs"
-                        : "text-[var(--muted)] hover:text-[var(--foreground)]"
-                    }`}
+                        ? "px-3 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm shadow-emerald-600/25 flex items-center gap-1.5 whitespace-nowrap transition-all"
+                        : "px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-700/60 hover:text-emerald-700 transition-all flex items-center gap-1.5 whitespace-nowrap"
+                    }
                   >
-                    {item.label}
+                    <NavIcon className="w-3.5 h-3.5 shrink-0" />
+                    <span>{item.label}</span>
                   </Link>
                 );
               })}
