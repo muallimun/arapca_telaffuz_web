@@ -11,6 +11,7 @@ import {
   Volume2,
   X,
   Sparkles,
+  SlidersHorizontal,
 } from "lucide-react";
 import { sozluk, diyaloglar } from "@/lib/data";
 import { DictionaryItem } from "@/types/data";
@@ -69,6 +70,7 @@ export default function DictionaryPage() {
   const [selectedDialogueId, setSelectedDialogueId] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [speakingWordId, setSpeakingWordId] = useState<string | null>(null);
   const [manifest, setManifest] = useState<Record<string, string[]>>({});
 
@@ -231,8 +233,13 @@ export default function DictionaryPage() {
     }
   };
 
+  const hasActiveFilter =
+    selectedDialogueId !== "all" ||
+    statusFilter !== "all" ||
+    typeFilter !== "all";
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* GÖLGELEME MODALI */}
       {shadowingTarget && (
         <ShadowingModal
@@ -243,140 +250,159 @@ export default function DictionaryPage() {
       )}
 
       {/* ÜST BAŞLIK */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <Link
             href="/"
             onClick={() => playClick()}
-            className="w-10 h-10 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-2 active:translate-y-0.5 transition-all shrink-0"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-2 active:translate-y-0.5 transition-all shrink-0"
             aria-label="Ana Sayfaya Dön"
           >
-            <ChevronLeft size={20} strokeWidth={2.5} />
+            <ChevronLeft size={19} strokeWidth={2.5} />
           </Link>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-[var(--foreground)] tracking-tight">
-              İnteraktif Morfolojik Arapça Sözlük
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-extrabold text-[var(--foreground)] tracking-tight leading-tight truncate">
+              İnteraktif Arapça Sözlük
             </h1>
-            <p className="text-xs font-medium text-[var(--muted)]">
-              Fiil / İsim / Edat renk kodlamalı morfolojik kök ve çekim sözlüğü
+            <p className="text-[11px] sm:text-xs font-medium text-[var(--muted)] truncate">
+              Fiil / İsim / Edat renk kodlamalı morfolojik kök sözlüğü
             </p>
           </div>
         </div>
 
-        <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 rounded-xl px-3.5 py-2 text-xs font-extrabold text-[var(--foreground)] tabular-nums self-start sm:self-auto">
-          Gösterilen: {filteredWords.length} / {sozluk.length} Kelime
+        <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 rounded-xl px-2.5 py-1.5 text-[11px] sm:text-xs font-extrabold text-[var(--foreground)] tabular-nums shrink-0">
+          {filteredWords.length} / {sozluk.length}
         </div>
       </div>
 
-      {/* TEK SATIRLIK KOMPAKT KONTROL ŞERİDİ (TOOLBAR) */}
-      <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-2.5 flex flex-wrap items-center justify-between gap-2">
-        {/* 1. Anlık Arapça/Türkçe Arama */}
-        <div className="relative flex-1 min-w-[180px]">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
-          />
-          <input
-            type="text"
-            placeholder="Arapça, Türkçe anlam veya kök ara (ör: أستودعك)..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-9 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] rounded-xl pl-9 pr-8 text-xs font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678]"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
-              aria-label="Aramayı Temizle"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
+      {/* KOMPAKT KONTROL ŞERİDİ (MOBİLDE TEK SATIR ARAMA + [SlidersHorizontal] FİLTRELER + YATAY KAYDIRILABİLİR HAPLAR) */}
+      <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-2 sm:p-2.5 space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 1. Anlık Arapça/Türkçe Arama */}
+          <div className="relative flex-1 min-w-[160px]">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
+            />
+            <input
+              type="text"
+              placeholder="Arapça, Türkçe anlam veya kök ara (ör: أستودعك)..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-9 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] rounded-xl pl-8 pr-8 text-xs font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678]"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+                aria-label="Aramayı Temizle"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
 
-        {/* 2. Diyaloğa Göre Filtreleme Dropdown */}
-        <div className="bg-white dark:bg-[var(--background)] rounded-xl px-2 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center">
-          <select
-            value={selectedDialogueId}
-            onChange={(e) => {
+          {/* Mobilde [SlidersHorizontal] Filtreler Açılır/Kapanır Butonu */}
+          <button
+            type="button"
+            onClick={() => {
               playClick();
-              setSelectedDialogueId(e.target.value);
+              setMobileFiltersOpen((v) => !v);
             }}
-            className="bg-transparent text-xs font-bold text-[var(--foreground)] focus:outline-none cursor-pointer max-w-[190px] truncate"
+            className={`sm:hidden h-9 px-3 rounded-xl border-2 border-b-3 text-xs font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
+              mobileFiltersOpen || hasActiveFilter
+                ? "bg-[#6741D9] border-[#5230B5] text-white"
+                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"
+            }`}
           >
-            <option value="all">Tüm Sözlük ({sozluk.length})</option>
-            {diyaloglar.map((dlg) => {
-              const num = dlg.id.replace("dlg_", "");
+            <SlidersHorizontal size={14} />
+            <span>Filtreler</span>
+          </button>
+
+          {/* 2. Diyaloğa Göre Filtreleme Dropdown (Masaüstünde görünür, mobilde Filtreler içinde) */}
+          <div className="hidden sm:flex bg-white dark:bg-[var(--background)] rounded-xl px-2 h-9 border border-[#E6D7BE] dark:border-[var(--border)] items-center">
+            <select
+              value={selectedDialogueId}
+              onChange={(e) => {
+                playClick();
+                setSelectedDialogueId(e.target.value);
+              }}
+              className="bg-transparent text-xs font-bold text-[var(--foreground)] focus:outline-none cursor-pointer max-w-[190px] truncate"
+            >
+              <option value="all">Tüm Sözlük ({sozluk.length})</option>
+              {diyaloglar.map((dlg) => {
+                const num = dlg.id.replace("dlg_", "");
+                return (
+                  <option key={dlg.id} value={dlg.id}>
+                    #{num} — {dlg.baslik_tr} ({dlg.seviye})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          {/* 3. Öğrenme Durumu Hapları (Masaüstünde görünür) */}
+          <div className="hidden sm:flex bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] items-center gap-1">
+            {(
+              [
+                { id: "all", label: "Tümü" },
+                {
+                  id: "learned",
+                  label: `Öğrendim (${mounted ? learnedWords.length : 0})`,
+                },
+                { id: "unlearned", label: "Yeni" },
+                {
+                  id: "favorites",
+                  label: `Favori (${mounted ? favoriteWords.length : 0})`,
+                },
+              ] as { id: StatusFilter; label: string }[]
+            ).map((tab) => {
+              const active = statusFilter === tab.id;
               return (
-                <option key={dlg.id} value={dlg.id}>
-                  #{num} — {dlg.baslik_tr} ({dlg.seviye})
-                </option>
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setStatusFilter(tab.id);
+                  }}
+                  className={`px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                    active
+                      ? "bg-[#0CA678] text-white font-semibold shadow-2xs"
+                      : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {tab.label}
+                </button>
               );
             })}
-          </select>
+          </div>
         </div>
 
-        {/* 3. Öğrenme Durumu Hapları */}
-        <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1">
-          {(
-            [
-              { id: "all", label: "Tümü" },
-              {
-                id: "learned",
-                label: `Öğrendim (${mounted ? learnedWords.length : 0})`,
-              },
-              { id: "unlearned", label: "Yeni" },
-              {
-                id: "favorites",
-                label: `Favori (${mounted ? favoriteWords.length : 0})`,
-              },
-            ] as { id: StatusFilter; label: string }[]
-          ).map((tab) => {
-            const active = statusFilter === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setStatusFilter(tab.id);
-                }}
-                className={`px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  active
-                    ? "bg-[#0CA678] text-white font-semibold shadow-2xs"
-                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* 4. Kelime Türü Hapları: [Tümü] | [📘 İsimler] | [⚡ Fiiller] | [🔗 Edat & Kalıplar] */}
-        <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1">
+        {/* 4. Tek Satırda Yatay Kaydırılabilir Kelime Türü & Durum Hapları Şeridi */}
+        <div className="flex overflow-x-auto no-scrollbar items-center gap-1.5 py-0.5">
           {(
             [
               {
                 id: "all",
                 label: "Tümü",
-                activeClass: "bg-[#0CA678] text-white",
+                activeClass: "bg-[#0CA678] border-[#087F5B] text-white",
               },
               {
                 id: "isim",
                 label: "📘 İsimler",
-                activeClass: "bg-sky-600 text-white",
+                activeClass: "bg-sky-600 border-sky-700 text-white",
               },
               {
                 id: "fiil",
                 label: "⚡ Fiiller",
-                activeClass: "bg-amber-600 text-white",
+                activeClass: "bg-amber-600 border-amber-700 text-white",
               },
               {
                 id: "edat",
                 label: "🔗 Edat & Kalıplar",
-                activeClass: "bg-purple-600 text-white",
+                activeClass: "bg-purple-600 border-purple-700 text-white",
               },
             ] as { id: TypeFilter; label: string; activeClass: string }[]
           ).map((t) => {
@@ -389,10 +415,10 @@ export default function DictionaryPage() {
                   playClick();
                   setTypeFilter(t.id);
                 }}
-                className={`px-2.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                className={`px-2.5 py-1 text-xs rounded-lg border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                   active
                     ? `${t.activeClass} font-bold shadow-2xs`
-                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
                 }`}
               >
                 {t.label}
@@ -400,6 +426,71 @@ export default function DictionaryPage() {
             );
           })}
         </div>
+
+        {/* Mobilde [SlidersHorizontal] Filtreler Açıkken Diyalog Seçici ve Öğrenme Durumu */}
+        {mobileFiltersOpen && (
+          <div className="sm:hidden pt-2 border-t border-dashed border-[#E2D3B8] space-y-2">
+            <div className="bg-white dark:bg-[var(--background)] rounded-xl px-2.5 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between">
+              <span className="text-[11px] font-bold text-[var(--muted)] mr-2 shrink-0">
+                Diyalog:
+              </span>
+              <select
+                value={selectedDialogueId}
+                onChange={(e) => {
+                  playClick();
+                  setSelectedDialogueId(e.target.value);
+                }}
+                className="bg-transparent text-xs font-bold text-[var(--foreground)] focus:outline-none cursor-pointer w-full truncate"
+              >
+                <option value="all">Tüm Sözlük ({sozluk.length})</option>
+                {diyaloglar.map((dlg) => {
+                  const num = dlg.id.replace("dlg_", "");
+                  return (
+                    <option key={dlg.id} value={dlg.id}>
+                      #{num} — {dlg.baslik_tr} ({dlg.seviye})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1">
+              {(
+                [
+                  { id: "all", label: "Tümü" },
+                  {
+                    id: "learned",
+                    label: `Öğrendim (${mounted ? learnedWords.length : 0})`,
+                  },
+                  { id: "unlearned", label: "Yeni" },
+                  {
+                    id: "favorites",
+                    label: `Favori (${mounted ? favoriteWords.length : 0})`,
+                  },
+                ] as { id: StatusFilter; label: string }[]
+              ).map((tab) => {
+                const active = statusFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setStatusFilter(tab.id);
+                    }}
+                    className={`px-2.5 py-1 text-xs rounded-lg border transition-all whitespace-nowrap cursor-pointer ${
+                      active
+                        ? "bg-[#0CA678] border-[#087F5B] text-white font-semibold"
+                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)] font-medium"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* SÖZLÜK KARTLARI IZGARASI */}

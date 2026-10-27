@@ -107,12 +107,17 @@ export class HybridSpeechManager {
 
   public stopLiveWebSpeech(): string {
     if (this.recognition) {
+      const rec = this.recognition;
+      this.recognition = null;
       try {
-        this.recognition.stop();
+        rec.onresult = null;
+        rec.onerror = null;
+        rec.onend = null;
+        if (typeof rec.abort === "function") rec.abort();
+        if (typeof rec.stop === "function") rec.stop();
       } catch {
         // sessizce geç
       }
-      this.recognition = null;
     }
     this.isWebSpeechActive = false;
     return (

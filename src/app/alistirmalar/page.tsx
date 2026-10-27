@@ -21,7 +21,9 @@ import { DictionaryItem } from "@/types/data";
 import { useUserStore } from "@/store/userStore";
 
 import Flashcard from "@/components/exercises/Flashcard";
-import MultipleChoice from "@/components/exercises/MultipleChoice";
+import MultipleChoice, {
+  QuizContentType,
+} from "@/components/exercises/MultipleChoice";
 import FillInBlanks from "@/components/exercises/FillInBlanks";
 import MatchingGame from "@/components/exercises/MatchingGame";
 
@@ -37,11 +39,12 @@ export default function ExercisesPage() {
 
   const { favoriteWords, weakWords } = useUserStore();
 
-  // Tek Satırlık Ultra-Kompakt Ayar Barı State
+  // Kompakt Ayar Barı State
   const [rangePreset, setRangePreset] = useState<string>("all-dict");
   const [singleDialogueId, setSingleDialogueId] = useState<string>("all");
   const [startNum, setStartNum] = useState(1);
   const [endNum, setEndNum] = useState(60);
+  const [contentType, setContentType] = useState<QuizContentType>("words");
   const [questionCount, setQuestionCount] = useState<10 | 20 | 30>(10);
   const [timeLimit, setTimeLimit] = useState<number | null>(null);
 
@@ -55,8 +58,14 @@ export default function ExercisesPage() {
     });
   }, [singleDialogueId, startNum, endNum]);
 
+  const sentenceCountInPool = useMemo(() => {
+    return selectedDialogues.reduce(
+      (sum, dlg) => sum + dlg.satirlar.length,
+      0
+    );
+  }, [selectedDialogues]);
+
   const { combinedVocabulary, poolNotice } = useMemo(() => {
-    // Tek bir diyalog seçildiyse o diyaloğun tüm kelimelerini morfolojik motorla getir
     if (singleDialogueId !== "all") {
       return {
         combinedVocabulary: getDialogueVocabulary(singleDialogueId).map(
@@ -66,7 +75,6 @@ export default function ExercisesPage() {
       };
     }
 
-    // Favori Kelimelerim Havuzu
     if (rangePreset === "favorites") {
       if (favoriteWords.length >= 4) {
         return {
@@ -86,7 +94,6 @@ export default function ExercisesPage() {
       };
     }
 
-    // Mahreç Tekrarı (Zayıf Kelimelerim) Havuzu
     if (rangePreset === "weak-words") {
       if (weakWords.length >= 4) {
         return {
@@ -106,7 +113,6 @@ export default function ExercisesPage() {
       };
     }
 
-    // "Tüm Sözlük" seçildiyse birleştirilmiş tam sözlüğü döndür
     if (rangePreset === "all-dict") {
       return {
         combinedVocabulary: sozluk,
@@ -149,7 +155,7 @@ export default function ExercisesPage() {
       id: "multiple-choice",
       title: "Çoktan Seçmeli Test",
       arabicBadge: "الاخْتِبَار",
-      subtitle: "4 şıklı kelime anlamı testi ile bilginizi ölçün",
+      subtitle: "Kelime veya diyalog cümleleriyle 4 şıklı anlam testi",
       icon: CheckSquare,
     },
     {
@@ -161,9 +167,9 @@ export default function ExercisesPage() {
     },
     {
       id: "matching",
-      title: "Kelime Eşleştirme",
+      title: "Kelime & Cümle Eşleştirme",
       arabicBadge: "المُطَابَقَة",
-      subtitle: "Arapça kelimelerle Türkçe anlamlarını eşleştirin",
+      subtitle: "Arapça kelimeleri veya cümleleri Türkçesiyle eşleştirin",
       icon: Link2,
     },
   ];
@@ -200,15 +206,25 @@ export default function ExercisesPage() {
 
   const handleStartExercise = () => {
     playClick();
-    if (combinedVocabulary.length < 4) return;
+    if (combinedVocabulary.length < 4 && sentenceCountInPool < 4) return;
     setIsPlaying(true);
   };
 
+  const supportsSentenceSource =
+    selectedType === "multiple-choice" || selectedType === "matching";
+
+  const activePoolCountLabel =
+    supportsSentenceSource && contentType === "sentences"
+      ? `${sentenceCountInPool} Cümle`
+      : supportsSentenceSource && contentType === "mixed"
+      ? `${combinedVocabulary.length} Kelime + ${sentenceCountInPool} Cümle`
+      : `${combinedVocabulary.length} Kelime`;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* ÜST BAŞLIK */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           {isPlaying ? (
             <button
               type="button"
@@ -216,7 +232,7 @@ export default function ExercisesPage() {
                 playClick();
                 setIsPlaying(false);
               }}
-              className="h-9 px-3 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center gap-1.5 text-xs font-extrabold text-[var(--foreground)] hover:bg-[#EFE3CE] cursor-pointer"
+              className="h-9 px-3 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center gap-1.5 text-xs font-extrabold text-[var(--foreground)] hover:bg-[#EFE3CE] cursor-pointer shrink-0"
             >
               <ChevronLeft size={16} />
               <span>Ayarlara Dön</span>
@@ -232,32 +248,32 @@ export default function ExercisesPage() {
             </Link>
           )}
 
-          <div>
-            <h1 className="text-lg sm:text-xl font-extrabold text-[var(--foreground)] tracking-tight leading-tight">
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-xl font-extrabold text-[var(--foreground)] tracking-tight leading-tight truncate">
               İnteraktif Alıştırma Merkezi
             </h1>
-            <p className="text-xs font-medium text-[var(--muted)]">
-              Morfolojik sözlük motoruyla diyalog kelimelerini kalıcı hale getirin
+            <p className="text-[11px] sm:text-xs font-medium text-[var(--muted)] truncate">
+              Kelime ve diyalog cümleleriyle interaktif pratik yapın
             </p>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 rounded-xl px-3 py-1.5 text-xs font-extrabold text-[#087F5B] tabular-nums">
+        <div className="hidden sm:flex items-center gap-2 bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 rounded-xl px-3 py-1.5 text-xs font-extrabold text-[#087F5B] tabular-nums shrink-0">
           <span>
             {singleDialogueId !== "all"
               ? `Diyalog #${singleDialogueId.replace("dlg_", "")}`
               : `${selectedDialogues.length} Diyalog`}
           </span>
           <span>·</span>
-          <span>{combinedVocabulary.length} Kelime Havuzu</span>
+          <span>{activePoolCountLabel}</span>
         </div>
       </div>
 
       {!isPlaying ? (
         <>
-          {/* 1. ÜSTTE 4'LÜ KOMPAKT ALIŞTIRMA TÜRÜ SEÇİM IZGARASI */}
+          {/* 1. ÜSTTE 2x2 (MOBİL) / 4'LÜ (MASAÜSTÜ) KOMPAKT ALIŞTIRMA TÜRÜ SEÇİM IZGARASI */}
           <section aria-label="Alıştırma Türü Seçimi">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
               {exerciseCards.map((card) => {
                 const isSelected = selectedType === card.id;
                 const Icon = card.icon;
@@ -270,35 +286,35 @@ export default function ExercisesPage() {
                       playClick();
                       setSelectedType(card.id);
                     }}
-                    className={`relative text-left p-3.5 rounded-2xl border-2 border-b-4 transition-all flex flex-col justify-between min-h-[98px] cursor-pointer ${
+                    className={`relative text-left p-3 rounded-2xl border-2 border-b-4 transition-all flex flex-col justify-between min-h-[88px] sm:min-h-[96px] cursor-pointer ${
                       isSelected
-                        ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] -translate-y-0.5"
+                        ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] -translate-y-0.5 shadow-xs"
                         : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#cbb692]"
                     }`}
                   >
                     {isSelected ? (
-                      <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-[#6741D9] text-white flex items-center justify-center">
-                        <Check size={12} strokeWidth={3} />
+                      <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#6741D9] text-white flex items-center justify-center">
+                        <Check size={11} strokeWidth={3} />
                       </span>
                     ) : (
-                      <span className="arabic absolute top-2 right-3 text-base font-bold text-[var(--muted)] opacity-75">
+                      <span className="arabic hidden sm:inline absolute top-1.5 right-2.5 text-sm font-bold text-[var(--muted)] opacity-75">
                         {card.arabicBadge}
                       </span>
                     )}
 
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2.5 pr-6">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 pr-5">
                         <div
-                          className={`w-8 h-8 rounded-xl border-2 border-b-3 flex items-center justify-center shrink-0 ${
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl border-2 border-b-3 flex items-center justify-center shrink-0 ${
                             isSelected
                               ? "bg-[#6741D9] border-[#5230B5] text-white"
                               : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#087F5B]"
                           }`}
                         >
-                          <Icon size={16} strokeWidth={2.3} />
+                          <Icon size={15} strokeWidth={2.3} />
                         </div>
                         <h2
-                          className={`text-sm font-extrabold leading-tight ${
+                          className={`text-xs sm:text-sm font-extrabold leading-tight ${
                             isSelected
                               ? "text-[#4C28B5] dark:text-[#d0bfff]"
                               : "text-[var(--foreground)]"
@@ -307,7 +323,7 @@ export default function ExercisesPage() {
                           {card.title}
                         </h2>
                       </div>
-                      <p className="text-xs text-[var(--muted)] leading-snug line-clamp-2">
+                      <p className="text-[11px] sm:text-xs text-[var(--muted)] leading-snug line-clamp-2">
                         {card.subtitle}
                       </p>
                     </div>
@@ -317,116 +333,147 @@ export default function ExercisesPage() {
             </div>
           </section>
 
-          {/* 2. TEK SATIRLIK ULTRA-KOMPAKT AYAR BARI + ENTEGRE BAŞLAT BUTONU */}
-          <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-2.5 space-y-2">
-            <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-2.5">
-              {/* Sol & Orta Kontroller */}
-              <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
-                {/* 1. Kelime Havuzu Select */}
-                <div className="bg-white dark:bg-[var(--background)] rounded-xl px-2.5 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1.5 shrink-0">
-                  <Layers size={14} className="text-[#0CA678] shrink-0" />
-                  <span className="text-[11px] font-bold text-[var(--muted)] whitespace-nowrap">
-                    Havuz:
-                  </span>
-                  <select
-                    value={singleDialogueId !== "all" ? "all-dict" : rangePreset}
-                    onChange={(e) => handlePoolSelectChange(e.target.value)}
-                    aria-label="Kelime Havuzu Seçimi"
-                    className="bg-transparent text-xs font-extrabold text-[var(--foreground)] focus:outline-none cursor-pointer pr-1"
-                  >
-                    {rangeOptions.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 2. Diyalog / Kur Select */}
-                <div className="bg-white dark:bg-[var(--background)] rounded-xl px-2.5 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1.5 shrink-0">
-                  <span className="text-[11px] font-bold text-[var(--muted)] whitespace-nowrap">
-                    Diyalog:
-                  </span>
-                  <select
-                    value={singleDialogueId}
-                    onChange={(e) => {
-                      playClick();
-                      setSingleDialogueId(e.target.value);
-                    }}
-                    aria-label="Diyalog Seçimi"
-                    className="bg-transparent text-xs font-extrabold text-[var(--foreground)] focus:outline-none cursor-pointer max-w-[185px] truncate"
-                  >
-                    <option value="all">Tüm Kurlar / Seçili Havuz</option>
-                    {diyaloglar.map((dlg) => {
-                      const num = dlg.id.replace("dlg_", "");
-                      return (
-                        <option key={dlg.id} value={dlg.id}>
-                          #{num} — {dlg.baslik_tr} ({dlg.seviye})
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-
-                {/* 3. Soru Sayısı (10 | 20 | 30) */}
-                <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 shrink-0">
-                  {([10, 20, 30] as (10 | 20 | 30)[]).map((cnt) => (
-                    <button
-                      key={cnt}
-                      type="button"
-                      onClick={() => {
-                        playClick();
-                        setQuestionCount(cnt);
-                      }}
-                      className={`px-2 py-1 text-xs tabular-nums rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                        questionCount === cnt
-                          ? "bg-[#0CA678] text-white font-bold"
-                          : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {cnt} Soru
-                    </button>
+          {/* 2. KOMPAKT AYAR PANELİ + HER ZAMAN GÖRÜNÜR BAŞLAT BUTONU */}
+          <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-2.5 space-y-2.5">
+            {/* Üst Ayar Satırı: Mobilde 2 Sütunlu Grid, Masaüstünde Flex */}
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+              {/* 1. Kelime Havuzu Select */}
+              <div className="bg-white dark:bg-[var(--background)] rounded-xl px-2.5 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1.5 min-w-0">
+                <Layers size={13} className="text-[#0CA678] shrink-0" />
+                <span className="hidden sm:inline text-[11px] font-bold text-[var(--muted)] whitespace-nowrap">
+                  Havuz:
+                </span>
+                <select
+                  value={singleDialogueId !== "all" ? "all-dict" : rangePreset}
+                  onChange={(e) => handlePoolSelectChange(e.target.value)}
+                  aria-label="Kelime Havuzu Seçimi"
+                  className="bg-transparent text-xs font-extrabold text-[var(--foreground)] focus:outline-none cursor-pointer w-full truncate"
+                >
+                  {rangeOptions.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
                   ))}
-                </div>
-
-                {/* 4. Süre (Süresiz | 60sn | 30sn) */}
-                <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 shrink-0">
-                  <Timer size={13} className="text-[#6741D9] ml-1 shrink-0" />
-                  {[
-                    { val: null, label: "Süresiz" },
-                    { val: 60, label: "60sn" },
-                    { val: 30, label: "30sn" },
-                  ].map((t) => (
-                    <button
-                      key={String(t.val)}
-                      type="button"
-                      onClick={() => {
-                        playClick();
-                        setTimeLimit(t.val);
-                      }}
-                      className={`px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                        timeLimit === t.val
-                          ? "bg-[#0CA678] text-white font-bold"
-                          : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
+                </select>
               </div>
 
-              {/* 5. Sağ Uç: Kompakt ve Vurgulu [▶ Alıştırmayı Başlat] Butonu */}
+              {/* 2. Diyalog / Kur Select */}
+              <div className="bg-white dark:bg-[var(--background)] rounded-xl px-2.5 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1.5 min-w-0">
+                <span className="hidden sm:inline text-[11px] font-bold text-[var(--muted)] whitespace-nowrap">
+                  Diyalog:
+                </span>
+                <select
+                  value={singleDialogueId}
+                  onChange={(e) => {
+                    playClick();
+                    setSingleDialogueId(e.target.value);
+                  }}
+                  aria-label="Diyalog Seçimi"
+                  className="bg-transparent text-xs font-extrabold text-[var(--foreground)] focus:outline-none cursor-pointer w-full sm:max-w-[180px] truncate"
+                >
+                  <option value="all">Tüm Kurlar / Seçili Havuz</option>
+                  {diyaloglar.map((dlg) => {
+                    const num = dlg.id.replace("dlg_", "");
+                    return (
+                      <option key={dlg.id} value={dlg.id}>
+                        #{num} — {dlg.baslik_tr} ({dlg.seviye})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* 3. İçerik Türü (Soru Kaynağı: Kelimeler | Cümleler | Karışık) */}
+              <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between sm:justify-start gap-1">
+                <span className="text-[11px] font-bold text-[var(--muted)] px-1.5 whitespace-nowrap">
+                  İçerik:
+                </span>
+                {(
+                  [
+                    { id: "words", label: "🔤 Kelimeler" },
+                    { id: "sentences", label: "💬 Cümleler" },
+                    { id: "mixed", label: "🔀 Karışık" },
+                  ] as { id: QuizContentType; label: string }[]
+                ).map((item) => {
+                  const active = contentType === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        setContentType(item.id);
+                      }}
+                      className={`flex-1 sm:flex-initial px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                        active
+                          ? "bg-[#6741D9] text-white font-bold shadow-2xs"
+                          : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 4. Soru Sayısı (10 | 20 | 30) */}
+              <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-0.5">
+                {([10, 20, 30] as (10 | 20 | 30)[]).map((cnt) => (
+                  <button
+                    key={cnt}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setQuestionCount(cnt);
+                    }}
+                    className={`flex-1 px-2 py-1 text-xs tabular-nums rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                      questionCount === cnt
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {cnt}
+                  </button>
+                ))}
+              </div>
+
+              {/* 5. Süre (Süresiz | 60sn | 30sn) */}
+              <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-0.5">
+                <Timer size={12} className="text-[#6741D9] ml-1 shrink-0" />
+                {[
+                  { val: null, label: "Süresiz" },
+                  { val: 60, label: "60s" },
+                  { val: 30, label: "30s" },
+                ].map((t) => (
+                  <button
+                    key={String(t.val)}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setTimeLimit(t.val);
+                    }}
+                    className={`flex-1 px-1.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                      timeLimit === t.val
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* 6. Sağ Uç / Alt Sticky: Vurgulu [▶ Alıştırmayı Başlat] Butonu */}
               <button
                 type="button"
                 onClick={handleStartExercise}
-                disabled={combinedVocabulary.length < 4}
-                className="w-full lg:w-auto h-10 px-5 bg-[#0CA678] hover:bg-[#099268] disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm rounded-xl border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-xs shrink-0 cursor-pointer whitespace-nowrap"
+                disabled={
+                  combinedVocabulary.length < 4 && sentenceCountInPool < 4
+                }
+                className="col-span-2 sm:col-span-1 sm:ml-auto w-full sm:w-auto h-10 px-5 bg-[#0CA678] hover:bg-[#099268] disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm rounded-xl border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-sm shrink-0 cursor-pointer whitespace-nowrap sticky bottom-2 z-20"
               >
                 <Play size={15} fill="currentColor" />
-                <span>
-                  Alıştırmayı Başlat ({combinedVocabulary.length})
-                </span>
+                <span>Alıştırmayı Başlat ({activePoolCountLabel})</span>
               </button>
             </div>
 
@@ -450,6 +497,8 @@ export default function ExercisesPage() {
           {selectedType === "multiple-choice" && (
             <MultipleChoice
               vocabulary={combinedVocabulary}
+              dialogues={selectedDialogues}
+              contentType={contentType}
               timeLimit={timeLimit}
               questionCount={questionCount}
             />
@@ -465,6 +514,8 @@ export default function ExercisesPage() {
           {selectedType === "matching" && (
             <MatchingGame
               vocabulary={combinedVocabulary}
+              dialogues={selectedDialogues}
+              contentType={contentType}
               timeLimit={timeLimit}
               questionCount={questionCount}
             />

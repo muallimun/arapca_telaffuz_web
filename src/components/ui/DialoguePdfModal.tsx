@@ -13,9 +13,14 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Dialogue } from "@/types/data";
-import { DialogueVocabularyEntry } from "@/lib/dict";
+import { DialogueVocabularyEntry, getWordCategory } from "@/lib/dict";
 import { playClick, playSuccess } from "@/lib/sfxManager";
-import { formatArabicText, removeArabicHarakat } from "@/lib/arabicTextUtils";
+import {
+  formatArabicText,
+  removeArabicHarakat,
+  getArabicFontConfig,
+} from "@/lib/arabicTextUtils";
+import { useSettings } from "@/store/settings";
 
 interface DialoguePdfModalProps {
   dialogue: Dialogue;
@@ -38,10 +43,14 @@ export default function DialoguePdfModal({
   rawNum,
   onClose,
 }: DialoguePdfModalProps) {
+  const { arabicFont } = useSettings();
+  const fontConfig = getArabicFontConfig(arabicFont);
+
   // 1. İçerik Seçenekleri (Checkbox'lar)
-  const [cleanHandoutOnly, setCleanHandoutOnly] = useState<boolean>(true);
   const [includeHarakat, setIncludeHarakat] = useState<boolean>(true);
   const [includeTurkish, setIncludeTurkish] = useState<boolean>(true);
+  const [includeVocabulary, setIncludeVocabulary] = useState<boolean>(true);
+  const [includeWorksheet, setIncludeWorksheet] = useState<boolean>(false);
 
   // 2. Tercüme Yerleşimi (Radio Butonlar)
   const [translationLayout, setTranslationLayout] =
@@ -57,9 +66,10 @@ export default function DialoguePdfModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const formatAr = (text: string) => formatArabicText(text, includeHarakat);
+  const formatAr = (text: string) =>
+    formatArabicText(text, includeHarakat, arabicFont);
 
-  // 5 soruluk mini çalışma kağıdı (cleanHandoutOnly === false ise eklenir)
+  // 5 soruluk mini çalışma kağıdı (includeWorksheet === true ise eklenir)
   const miniWorksheetQuestions = useMemo(() => {
     const stripPunct = (w: string) =>
       w.replace(/[.,!?؟،؛:"'«»()]/g, "").trim();
@@ -109,6 +119,10 @@ export default function DialoguePdfModal({
         ? `${window.location.origin}${imagePath}`
         : imagePath;
 
+    const speakers = Array.from(
+      new Set(dialogue.satirlar.map((l) => l.konusmaci))
+    );
+
     // Cümle satırları HTML üretimi
     let dialogueBodyHtml = "";
 
@@ -117,45 +131,59 @@ export default function DialoguePdfModal({
       dialogueBodyHtml = `
         <div class="lines-container">
           ${dialogue.satirlar
-            .map(
-              (line) => `
-            <div class="line-row single-ar">
-              <div class="ar-col" dir="rtl">
-                <span class="speaker-ar">${formatAr(line.konusmaci_ar)}:</span>
-                <span class="ar-text">${formatAr(line.arapca)}</span>
-              </div>
-            </div>
-          `
-            )
+            .map((line, idx) => {
+              const spIdx = speakers.indexOf(line.konusmaci);
+              const badgeCls =
+                spIdx % 2 === 0 ? "sp-badge-emerald" : "sp-badge-indigo";
+              const rowBg = idx % 2 === 0 ? "#f8fafc" : "#ffffff";
+              return `
+                <div class="line-row single-ar" style="background: ${rowBg};">
+                  <div class="ar-col" dir="rtl">
+                    <span class="speaker-ar ${badgeCls}">${formatAr(
+                line.konusmaci_ar
+              )}</span>
+                    <span class="ar-text">${formatAr(line.arapca)}</span>
+                  </div>
+                </div>
+              `;
+            })
             .join("")}
         </div>
       `;
     } else if (translationLayout === "side-by-side") {
-      // Yan Yana (İki Sütun: Sol Arapça %50 RTL, Sağ Türkçe %50 LTR)
+      // Yan Yana (İki Sütun: Sol Arapça %52 RTL, Sağ Türkçe %48 LTR)
       dialogueBodyHtml = `
         <table class="two-col-table">
           <thead>
             <tr>
-              <th style="width: 52%; text-align: right;" dir="rtl">النَّصُّ الْعَرَبِيُّ (Arapça Metin)</th>
-              <th style="width: 48%; text-align: left;">Türkçe Tercüme</th>
+              <th style="width: 54%; text-align: right;" dir="rtl">النَّصُّ الْعَرَبِيُّ (Arapça Metin)</th>
+              <th style="width: 46%; text-align: left;">Türkçe Tercüme</th>
             </tr>
           </thead>
           <tbody>
             ${dialogue.satirlar
-              .map(
-                (line) => `
-              <tr>
-                <td class="ar-cell" dir="rtl">
-                  <span class="speaker-ar">${formatAr(line.konusmaci_ar)}:</span>
-                  <span class="ar-text">${formatAr(line.arapca)}</span>
-                </td>
-                <td class="tr-cell" dir="ltr">
-                  <span class="speaker-tr">${line.konusmaci}:</span>
-                  <span class="tr-text">${line.turkce}</span>
-                </td>
-              </tr>
-            `
-              )
+              .map((line, idx) => {
+                const spIdx = speakers.indexOf(line.konusmaci);
+                const badgeCls =
+                  spIdx % 2 === 0 ? "sp-badge-emerald" : "sp-badge-indigo";
+                const rowBg = idx % 2 === 0 ? "#f8fafc" : "#ffffff";
+                return `
+                  <tr style="background: ${rowBg};">
+                    <td class="ar-cell" dir="rtl">
+                      <span class="speaker-ar ${badgeCls}">${formatAr(
+                  line.konusmaci_ar
+                )}</span>
+                      <span class="ar-text">${formatAr(line.arapca)}</span>
+                    </td>
+                    <td class="tr-cell" dir="ltr">
+                      <span class="speaker-tr ${badgeCls}">${
+                  line.konusmaci
+                }</span>
+                      <span class="tr-text">${line.turkce}</span>
+                    </td>
+                  </tr>
+                `;
+              })
               .join("")}
           </tbody>
         </table>
@@ -165,20 +193,28 @@ export default function DialoguePdfModal({
       dialogueBodyHtml = `
         <div class="lines-container">
           ${dialogue.satirlar
-            .map(
-              (line) => `
-            <div class="stacked-card">
-              <div class="ar-col" dir="rtl">
-                <span class="speaker-ar">${formatAr(line.konusmaci_ar)}:</span>
-                <span class="ar-text">${formatAr(line.arapca)}</span>
-              </div>
-              <div class="tr-col" dir="ltr">
-                <span class="speaker-tr">${line.konusmaci}:</span>
-                <span class="tr-text">${line.turkce}</span>
-              </div>
-            </div>
-          `
-            )
+            .map((line, idx) => {
+              const spIdx = speakers.indexOf(line.konusmaci);
+              const badgeCls =
+                spIdx % 2 === 0 ? "sp-badge-emerald" : "sp-badge-indigo";
+              const rowBg = idx % 2 === 0 ? "#f8fafc" : "#ffffff";
+              return `
+                <div class="stacked-card" style="background: ${rowBg};">
+                  <div class="ar-col" dir="rtl">
+                    <span class="speaker-ar ${badgeCls}">${formatAr(
+                line.konusmaci_ar
+              )}</span>
+                    <span class="ar-text">${formatAr(line.arapca)}</span>
+                  </div>
+                  <div class="tr-col" dir="ltr">
+                    <span class="speaker-tr ${badgeCls}">${
+                line.konusmaci
+              }</span>
+                    <span class="tr-text">${line.turkce}</span>
+                  </div>
+                </div>
+              `;
+            })
             .join("")}
         </div>
       `;
@@ -189,18 +225,22 @@ export default function DialoguePdfModal({
           <div class="section-title">1. Arapça Diyalog Metni</div>
           <div class="lines-container">
             ${dialogue.satirlar
-              .map(
-                (line) => `
-              <div class="line-row single-ar">
-                <div class="ar-col" dir="rtl">
-                  <span class="speaker-ar">${line.sira}. ${formatAr(
-                  line.konusmaci_ar
-                )}:</span>
-                  <span class="ar-text">${formatAr(line.arapca)}</span>
-                </div>
-              </div>
-            `
-              )
+              .map((line, idx) => {
+                const spIdx = speakers.indexOf(line.konusmaci);
+                const badgeCls =
+                  spIdx % 2 === 0 ? "sp-badge-emerald" : "sp-badge-indigo";
+                const rowBg = idx % 2 === 0 ? "#f8fafc" : "#ffffff";
+                return `
+                  <div class="line-row single-ar" style="background: ${rowBg};">
+                    <div class="ar-col" dir="rtl">
+                      <span class="speaker-ar ${badgeCls}">${
+                  line.sira
+                }. ${formatAr(line.konusmaci_ar)}</span>
+                      <span class="ar-text">${formatAr(line.arapca)}</span>
+                    </div>
+                  </div>
+                `;
+              })
               .join("")}
           </div>
         </div>
@@ -221,33 +261,57 @@ export default function DialoguePdfModal({
       `;
     }
 
-    // Sözlük ve Mini Çalışma Kağıdı (cleanHandoutOnly === false ise)
-    let extraSectionsHtml = "";
-    if (!cleanHandoutOnly) {
-      const vocabRows = vocabEntries
-        .slice(0, 18)
-        .map((entry) => {
-          const w = entry.item;
-          const mainAr = w.mufret || w.mazi || "";
-          const subAr =
-            w.tur === "isim"
-              ? w.cemi && w.cemi !== "-"
-                ? `Cemî: ${formatAr(w.cemi)}`
-                : "-"
-              : w.muzari
-              ? `Muzâri: ${formatAr(w.muzari)}`
-              : "-";
-          return `
-            <tr>
-              <td dir="rtl" class="vocab-ar">${formatAr(mainAr)}</td>
-              <td dir="rtl" class="vocab-sub">${subAr}</td>
-              <td>${w.tur.toUpperCase()} (${w.kok})</td>
-              <td><strong>${w.anlam_tr}</strong></td>
-            </tr>
-          `;
-        })
-        .join("");
+    // Opsiyonel: 📚 Diyalog Kelime Hazinesi (المفردات) — 2 Sütunlu Şık Tablo
+    let vocabSectionHtml = "";
+    if (includeVocabulary && vocabEntries.length > 0) {
+      const vocabCells = vocabEntries.map((entry) => {
+        const w = entry.item;
+        const mainAr = w.mufret || w.mazi || "";
+        const category = getWordCategory(w);
+        const badgeHtml =
+          category === "fiil"
+            ? `<span class="pos-badge pos-fiil">Fiil</span>`
+            : category === "edat"
+            ? `<span class="pos-badge pos-edat">Edat</span>`
+            : `<span class="pos-badge pos-isim">İsim</span>`;
+        const rootText =
+          w.kok && w.kok !== "-" ? `Kök: ${formatAr(w.kok)}` : "";
 
+        return `
+          <div class="vocab-grid-card">
+            <div class="vocab-left">
+              <div class="vocab-meta-row">
+                ${badgeHtml}
+                ${
+                  rootText
+                    ? `<span class="vocab-root" dir="rtl">${rootText}</span>`
+                    : ""
+                }
+              </div>
+              <div class="vocab-meaning">${w.anlam_tr}</div>
+            </div>
+            <div class="vocab-right" dir="rtl">
+              <span class="vocab-ar">${formatAr(mainAr)}</span>
+            </div>
+          </div>
+        `;
+      });
+
+      vocabSectionHtml = `
+        <div class="section-block" style="margin-top: 20px; page-break-inside: avoid;">
+          <div class="section-title">📚 Diyalog Kelime Hazinesi (المفردات) — ${
+            vocabEntries.length
+          } Kelime</div>
+          <div class="vocab-two-col-grid">
+            ${vocabCells.join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    // Opsiyonel: Çalışma Soruları / Boşluk Doldurma Etkinliği
+    let worksheetSectionHtml = "";
+    if (includeWorksheet && miniWorksheetQuestions.length > 0) {
       const worksheetRows = miniWorksheetQuestions
         .map(
           (q) => `
@@ -269,29 +333,9 @@ export default function DialoguePdfModal({
         .map((q) => formatAr(q.answer))
         .join("  •  ");
 
-      extraSectionsHtml = `
-        <div class="section-block" style="margin-top: 22px; page-break-inside: avoid;">
-          <div class="section-title">Diyalog Kelime Sözlüğü (${Math.min(
-            18,
-            vocabEntries.length
-          )} Kelime)</div>
-          <table class="vocab-table">
-            <thead>
-              <tr>
-                <th style="text-align: right;" dir="rtl">الْكَلِمَة (Kelime)</th>
-                <th style="text-align: right;" dir="rtl">التَّصْرِيف (Çoğul / Çekim)</th>
-                <th>Tür & Kök</th>
-                <th>Türkçe Anlamı</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${vocabRows}
-            </tbody>
-          </table>
-        </div>
-
+      worksheetSectionHtml = `
         <div class="section-block" style="margin-top: 20px; page-break-inside: avoid;">
-          <div class="section-title">Mini Çalışma Kağıdı — Boşluk Doldurma Alıştırması (5 Soru)</div>
+          <div class="section-title">✏️ Çalışma Soruları — Boşluk Doldurma Etkinliği (${miniWorksheetQuestions.length} Soru)</div>
           <div class="word-bank" dir="rtl">
             <strong>Kelime Havuzu:</strong> ${wordBank}
           </div>
@@ -312,8 +356,24 @@ export default function DialoguePdfModal({
     } | A4 Ders Notu</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Lateef:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
         <style>
+          @font-face {
+            font-family: "ArakomFont";
+            src: url("${
+              typeof window !== "undefined" ? window.location.origin : ""
+            }/fonts/Arakom-Regular.ttf") format("truetype");
+            font-weight: 400;
+            font-style: normal;
+          }
+          @font-face {
+            font-family: "ArakomFont";
+            src: url("${
+              typeof window !== "undefined" ? window.location.origin : ""
+            }/fonts/Arakom-Bold.ttf") format("truetype");
+            font-weight: 700;
+            font-style: normal;
+          }
           @page {
             size: A4 portrait;
             margin: 12mm 14mm;
@@ -345,25 +405,40 @@ export default function DialoguePdfModal({
             margin-bottom: 16px;
           }
           .header-left {
+            flex: 1;
+            min-width: 0;
+          }
+          .header-right {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
+            border-left: 1px dashed #cbd5e1;
+            padding-left: 12px;
           }
           .cover-img {
-            width: 78px;
-            height: 62px;
+            width: 84px;
+            height: 64px;
             object-fit: cover;
-            border-radius: 10px;
-            border: 1.5px solid #e6d7be;
+            border-radius: 12px;
+            border: 1.5px solid #cbd5e1;
           }
           .badge-row {
             display: flex;
             align-items: center;
             gap: 8px;
             margin-bottom: 4px;
+            flex-wrap: wrap;
           }
           .badge {
             background: #0ca678;
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 6px;
+          }
+          .badge-cefr {
+            background: #6741d9;
             color: #ffffff;
             font-weight: 800;
             font-size: 10px;
@@ -391,98 +466,109 @@ export default function DialoguePdfModal({
             margin: 0;
           }
           .title-ar {
-            font-family: 'Scheherazade New', serif;
+            font-family: ${fontConfig.cssFamily};
             font-size: 26px;
             font-weight: 700;
             color: #087f5b;
-            line-height: 1.2;
+            line-height: 1.25;
           }
           .header-meta {
             text-align: right;
             font-size: 10px;
-            color: #6b5e4c;
-            border-left: 1px dashed #e2d3b8;
-            padding-left: 12px;
+            color: #475569;
           }
           .qr-box {
             display: inline-block;
             border: 1.5px solid #0ca678;
             border-radius: 6px;
-            padding: 3px 7px;
+            padding: 2px 6px;
             font-weight: 800;
             color: #087f5b;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
             font-size: 9px;
           }
           .two-col-table {
             width: 100%;
             border-collapse: collapse;
-            border: 1.5px solid #e6d7be;
+            border: 1.5px solid #cbd5e1;
             border-radius: 10px;
             overflow: hidden;
           }
           .two-col-table th {
-            background: #f7efe1;
-            color: #3d3428;
+            background: #f1f5f9;
+            color: #1e293b;
             font-size: 11px;
             font-weight: 800;
             padding: 8px 12px;
-            border-bottom: 1.5px solid #e6d7be;
+            border-bottom: 1.5px solid #cbd5e1;
           }
           .two-col-table td {
             padding: 9px 12px;
-            border-bottom: 1px dashed #e6d7be;
+            border-bottom: 1px solid #e2e8f0;
             vertical-align: middle;
           }
           .ar-cell {
             text-align: right;
-            border-left: 1px dashed #e6d7be;
-            background: #fffdf9;
+            border-left: 1px dashed #cbd5e1;
           }
           .tr-cell {
             text-align: left;
-            color: #3b3228;
+            color: #334155;
             font-size: 12.5px;
           }
-          .speaker-ar {
-            font-family: 'Scheherazade New', serif;
-            font-size: 19px;
-            font-weight: 700;
+          .sp-badge-emerald {
+            background: #e6fcf5;
             color: #087f5b;
-            margin-left: 6px;
+            border: 1px solid #96f2d7;
+          }
+          .sp-badge-indigo {
+            background: #f3f0ff;
+            color: #5f3dc4;
+            border: 1px solid #d0bfff;
+          }
+          .speaker-ar {
+            font-family: ${fontConfig.cssFamily};
+            font-size: 16px;
+            font-weight: 700;
+            padding: 1px 8px;
+            border-radius: 6px;
+            margin-left: 8px;
+            display: inline-block;
           }
           .ar-text {
-            font-family: 'Scheherazade New', serif;
-            font-size: 22px;
+            font-family: ${fontConfig.cssFamily};
+            font-size: ${Math.round(22 * fontConfig.scale)}px;
             font-weight: 700;
-            color: #191510;
-            line-height: 1.85;
+            color: #0f172a;
+            line-height: ${fontConfig.lineHeight};
           }
           .speaker-tr {
             font-weight: 800;
-            color: #6741d9;
-            margin-right: 4px;
+            font-size: 10.5px;
+            padding: 2px 7px;
+            border-radius: 6px;
+            margin-right: 6px;
+            display: inline-block;
           }
           .tr-text {
             font-weight: 600;
           }
           .stacked-card {
-            border: 1px solid #e6d7be;
+            border: 1px solid #e2e8f0;
             border-radius: 10px;
             padding: 8px 12px;
-            margin-bottom: 8px;
-            background: #fffdf9;
+            margin-bottom: 7px;
             page-break-inside: avoid;
           }
           .stacked-card .tr-col {
             margin-top: 4px;
             padding-top: 4px;
-            border-top: 1px dashed #e6d7be;
+            border-top: 1px dashed #cbd5e1;
             font-size: 12px;
-            color: #4a3f33;
+            color: #334155;
           }
           .line-row.single-ar {
-            border-bottom: 1px dashed #e6d7be;
+            border-bottom: 1px solid #e2e8f0;
             padding: 8px 10px;
             page-break-inside: avoid;
           }
@@ -490,8 +576,9 @@ export default function DialoguePdfModal({
             font-size: 13px;
             font-weight: 800;
             color: #087f5b;
-            background: #f7efe1;
-            border: 1.5px solid #e6d7be;
+            background: #f8fafc;
+            border: 1.5px solid #cbd5e1;
+            border-left: 4px solid #0ca678;
             padding: 6px 12px;
             border-radius: 8px;
             margin-bottom: 10px;
@@ -500,117 +587,165 @@ export default function DialoguePdfModal({
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 6px 16px;
-            border: 1px solid #e6d7be;
+            border: 1px solid #cbd5e1;
             border-radius: 10px;
             padding: 10px 14px;
           }
           .end-tr-item {
             font-size: 11.5px;
-            color: #3b3228;
+            color: #334155;
           }
-          .vocab-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11.5px;
+          .vocab-two-col-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 12px;
           }
-          .vocab-table th, .vocab-table td {
-            border: 1px solid #e6d7be;
-            padding: 5px 9px;
+          .vocab-grid-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 6px 10px;
+            background: #f8fafc;
+            page-break-inside: avoid;
           }
-          .vocab-table th {
-            background: #f7efe1;
+          .vocab-left {
+            flex: 1;
+            min-width: 0;
+          }
+          .vocab-meta-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 2px;
+          }
+          .pos-badge {
+            font-size: 9.5px;
             font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+          }
+          .pos-fiil {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+          }
+          .pos-isim {
+            background: #e0f2fe;
+            color: #075985;
+            border: 1px solid #7dd3fc;
+          }
+          .pos-edat {
+            background: #f3e8ff;
+            color: #6b21a8;
+            border: 1px solid #d8b4fe;
+          }
+          .vocab-root {
+            font-family: ${fontConfig.cssFamily};
+            font-size: 13px;
+            font-weight: 700;
+            color: #64748b;
+          }
+          .vocab-meaning {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #1e293b;
+          }
+          .vocab-right {
+            text-align: right;
+            flex-shrink: 0;
           }
           .vocab-ar {
-            font-family: 'Scheherazade New', serif;
-            font-size: 19px;
+            font-family: ${fontConfig.cssFamily};
+            font-size: ${Math.round(21 * fontConfig.scale)}px;
             font-weight: 700;
             color: #087f5b;
-          }
-          .vocab-sub {
-            font-family: 'Scheherazade New', serif;
-            font-size: 16px;
-            color: #5230b5;
+            line-height: 1.4;
           }
           .word-bank {
             background: #f3f0ff;
             border: 1px dashed #6741d9;
             border-radius: 8px;
             padding: 7px 12px;
-            font-family: 'Scheherazade New', serif;
-            font-size: 19px;
+            font-family: ${fontConfig.cssFamily};
+            font-size: 20px;
             font-weight: 700;
             color: #4c28b5;
             margin-bottom: 10px;
             text-align: center;
           }
           .quiz-row {
-            border-bottom: 1px dashed #e6d7be;
+            border-bottom: 1px dashed #cbd5e1;
             padding: 7px 4px;
           }
           .quiz-ar {
-            font-family: 'Scheherazade New', serif;
+            font-family: ${fontConfig.cssFamily};
             font-size: 20px;
             font-weight: 700;
           }
           .quiz-tr {
             font-size: 11px;
-            color: #6b5e4c;
+            color: #64748b;
             font-style: italic;
           }
           .footer-note {
             margin-top: 16px;
             padding-top: 8px;
-            border-top: 1px solid #e6d7be;
+            border-top: 1px solid #cbd5e1;
             display: flex;
             justify-content: space-between;
             font-size: 10px;
-            color: #7d6f5d;
+            color: #64748b;
           }
         </style>
       </head>
       <body>
         <div class="header-card">
           <div class="header-left">
+            <div class="badge-row">
+              <span class="badge">DİYALOG #${String(rawNum).padStart(
+                2,
+                "0"
+              )}</span>
+              <span class="badge-cefr">CEFR ${dialogue.seviye}</span>
+              <span class="badge-outline">${
+                dialogue.satirlar.length
+              } Cümle • ${vocabEntries.length} Kelime</span>
+              <span class="badge-outline">${
+                includeHarakat ? "Harekeli Metin" : "Harekesiz Metin"
+              }</span>
+            </div>
+            <div class="title-row">
+              <h1 class="title-tr">${dialogue.baslik_tr}</h1>
+              <span class="title-ar" dir="rtl">${formatAr(
+                dialogue.baslik_ar
+              )}</span>
+            </div>
+          </div>
+          <div class="header-right">
+            <div class="header-meta">
+              <div class="qr-box">ARAPÇA DİYALOG STÜDYOSU</div>
+              <div>Tarih: ${formattedDate}</div>
+              <div>Font: ${fontConfig.name.split(" (")[0]}</div>
+            </div>
             <img src="${absoluteImgUrl}" alt="${
       dialogue.baslik_tr
     }" class="cover-img" onerror="this.style.display='none'" />
-            <div>
-              <div class="badge-row">
-                <span class="badge">DİYALOG #${String(rawNum).padStart(
-                  2,
-                  "0"
-                )} • ${dialogue.seviye}</span>
-                <span class="badge-outline">${
-                  dialogue.satirlar.length
-                } Cümle • ${vocabEntries.length} Kelime</span>
-                <span class="badge-outline">${
-                  includeHarakat ? "Harekeli Metin" : "Harekesiz Metin"
-                }</span>
-              </div>
-              <div class="title-row">
-                <h1 class="title-tr">${dialogue.baslik_tr}</h1>
-                <span class="title-ar" dir="rtl">${formatAr(
-                  dialogue.baslik_ar
-                )}</span>
-              </div>
-            </div>
-          </div>
-          <div class="header-meta">
-            <div class="qr-box">ARAPÇA DİYALOG STÜDYOSU</div>
-            <div>Tarih: ${formattedDate}</div>
-            <div>Öğrenci Ders Notu (A4)</div>
           </div>
         </div>
 
         ${dialogueBodyHtml}
-        ${extraSectionsHtml}
+        ${vocabSectionHtml}
+        ${worksheetSectionHtml}
 
         <div class="footer-note">
           <span>Arapça Konuşma ve Telaffuz Stüdyosu — Diyalog #${String(
             rawNum
           ).padStart(2, "0")}: ${dialogue.baslik_tr}</span>
-          <span>Sayfa 1 / Vektörel A4 Ders Notu</span>
+          <span>Kurumsal A4 Ders Notu</span>
         </div>
       </body>
       </html>
@@ -659,7 +794,7 @@ export default function DialoguePdfModal({
               </h2>
               <p className="text-xs font-semibold text-[var(--muted)]">
                 #{String(rawNum).padStart(2, "0")} {dialogue.baslik_tr} (
-                {dialogue.baslik_ar}) — Vektörel A4 Şablonu
+                {formatAr(dialogue.baslik_ar)}) — Kurumsal A4 Şablonu
               </p>
             </div>
           </div>
@@ -680,45 +815,12 @@ export default function DialoguePdfModal({
         {/* MODAL GÖVDE */}
         <div className="p-5 space-y-5 max-h-[80vh] overflow-y-auto">
           {/* 1. İÇERİK SEÇENEKLERİ (CHECKBOX'LAR) */}
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#087F5B] dark:text-[#20c997]">
               1. İçerik Seçenekleri
             </h3>
 
-            {/* Checkbox 1: Temiz Ders Notu */}
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                setCleanHandoutOnly((v) => !v);
-              }}
-              className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3 cursor-pointer ${
-                cleanHandoutOnly
-                  ? "bg-[#F7EFE1] dark:bg-[var(--background)] border-[#0CA678]"
-                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)]"
-              }`}
-            >
-              <div className="mt-0.5 text-[#0CA678] shrink-0">
-                {cleanHandoutOnly ? (
-                  <CheckSquare size={18} />
-                ) : (
-                  <Square size={18} className="text-[var(--muted)]" />
-                )}
-              </div>
-              <div className="space-y-0.5">
-                <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
-                  Sınav/Kelime Bölümlerini Yoksay ve &lsquo;Temiz Ders Notu /
-                  Okuma Metni (Handout)&rsquo; Olarak Üret
-                </span>
-                <span className="block text-[11px] font-medium text-[var(--muted)]">
-                  {cleanHandoutOnly
-                    ? "Sadece diyalog cümlelerini içeren sade A4 okuma kağıdı üretilir."
-                    : "Sayfa sonuna Diyalog Kelime Sözlüğü tablosu ve 5 soruluk mini boşluk doldurma çalışma kağıdı eklenir."}
-                </span>
-              </div>
-            </button>
-
-            {/* Checkbox 2: Harekeli Göster */}
+            {/* Checkbox 1: Harekeli Göster */}
             <button
               type="button"
               onClick={() => {
@@ -741,7 +843,7 @@ export default function DialoguePdfModal({
                 </div>
                 <div>
                   <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
-                    Harekeli Göster (Varsayılan: Seçili)
+                    Harekeli Göster
                   </span>
                   <span className="block text-[11px] font-medium text-[var(--muted)]">
                     İşaret kaldırılırsa Arapça metinlerden harekeler temizlenerek
@@ -757,7 +859,7 @@ export default function DialoguePdfModal({
               </span>
             </button>
 
-            {/* Checkbox 3: Türkçe Tercümeyi Dahil Et */}
+            {/* Checkbox 2: Türkçe Tercümeyi Dahil Et */}
             <button
               type="button"
               onClick={() => {
@@ -779,11 +881,76 @@ export default function DialoguePdfModal({
               </div>
               <div>
                 <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
-                  Türkçe Tercümeyi Dahil Et (Varsayılan: Seçili)
+                  Türkçe Tercümeyi Dahil Et
                 </span>
                 <span className="block text-[11px] font-medium text-[var(--muted)]">
                   Kapatılırsa yalnızca Arapça metinden oluşan çalışma kağıdı
                   hazırlanır
+                </span>
+              </div>
+            </button>
+
+            {/* Checkbox 3: Diyaloğa Ait Sözlük Kelimelerini (Kelime Tablosu) PDF'e Ekle (Opsiyonel) */}
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setIncludeVocabulary((v) => !v);
+              }}
+              className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3 cursor-pointer ${
+                includeVocabulary
+                  ? "bg-[#F7EFE1] dark:bg-[var(--background)] border-[#0CA678]"
+                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)]"
+              }`}
+            >
+              <div className="mt-0.5 text-[#0CA678] shrink-0">
+                {includeVocabulary ? (
+                  <CheckSquare size={18} />
+                ) : (
+                  <Square size={18} className="text-[var(--muted)]" />
+                )}
+              </div>
+              <div className="space-y-0.5">
+                <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                  Diyaloğa Ait Sözlük Kelimelerini (Kelime Tablosu) PDF&apos;e
+                  Ekle (Opsiyonel)
+                </span>
+                <span className="block text-[11px] font-medium text-[var(--muted)]">
+                  Diyalog metninin altına &ldquo;📚 Diyalog Kelime Hazinesi
+                  (المفردات)&rdquo; başlığıyla {vocabEntries.length} kelimelik
+                  (Fiil / İsim / Edat rozetli) 2 sütunlu tablo ekler
+                </span>
+              </div>
+            </button>
+
+            {/* Checkbox 4: Çalışma Sorularını / Boşluk Doldurma Etkinliğini PDF Sonuna Ekle (Opsiyonel) */}
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setIncludeWorksheet((v) => !v);
+              }}
+              className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3 cursor-pointer ${
+                includeWorksheet
+                  ? "bg-[#F7EFE1] dark:bg-[var(--background)] border-[#0CA678]"
+                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)]"
+              }`}
+            >
+              <div className="mt-0.5 text-[#0CA678] shrink-0">
+                {includeWorksheet ? (
+                  <CheckSquare size={18} />
+                ) : (
+                  <Square size={18} className="text-[var(--muted)]" />
+                )}
+              </div>
+              <div className="space-y-0.5">
+                <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                  Çalışma Sorularını / Boşluk Doldurma Etkinliğini PDF Sonuna
+                  Ekle (Opsiyonel)
+                </span>
+                <span className="block text-[11px] font-medium text-[var(--muted)]">
+                  Sayfa sonuna 5 soruluk kelime havuzlu boşluk doldurma
+                  alıştırması ekler
                 </span>
               </div>
             </button>
@@ -805,7 +972,7 @@ export default function DialoguePdfModal({
                   id: "side-by-side" as TranslationLayout,
                   title:
                     "Yan Yana (İki Sütun: Sol Arapça %50 RTL, Sağ Türkçe %50 LTR)",
-                  desc: "Karşılaştırmalı okuma ve ders takibi için en verimli A4 tablo düzeni",
+                  desc: "Karşılaştırmalı okuma ve ders takibi için en verimli A4 zebra tablo düzeni",
                   icon: Columns2,
                 },
                 {
@@ -873,8 +1040,8 @@ export default function DialoguePdfModal({
           <div className="rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-dashed border-[#cbb692] px-3.5 py-2.5 flex items-center gap-2.5 text-xs font-semibold text-[var(--muted)]">
             <Sparkles size={16} className="text-[#0CA678] shrink-0" />
             <span>
-              Vektörel A4 motoru Arapça harf bağlantılarını ve harekeleri
-              bozmadan yüksek çözünürlüklü PDF/yazıcı çıktısı üretir.
+              Aktif Arapça Font: <strong>{fontConfig.name}</strong> — Lafzatullah
+              ve hareke tipografi motoru ile vektörel A4 çıktı üretilir.
             </span>
           </div>
         </div>
@@ -905,3 +1072,4 @@ export default function DialoguePdfModal({
     </div>
   );
 }
+

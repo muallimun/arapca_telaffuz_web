@@ -2,6 +2,7 @@
 // Web Audio API (16kHz Kayıt, Canlı RMS, VAD, Çift Dalga Formu Ritim Korelasyonu ve 16-bit PCM .wav Üretimi)
 
 export interface RecordingSession16kHz {
+  killStreamImmediately: () => void;
   stop: () => Promise<{
     samples16kHz: Float32Array;
     trimmedSamples: Float32Array;
@@ -232,6 +233,8 @@ export function trimSilence(
 export async function start16kHzRecorder(options?: {
   onLiveRms?: (rms: number, rmsHistory: number[]) => void;
   onAutoSilenceStop?: () => void;
+  silenceDurationMs?: number;
+  maxDurationMs?: number;
 }): Promise<RecordingSession16kHz> {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
@@ -260,9 +263,28 @@ export async function start16kHzRecorder(options?: {
   const rmsHistory: number[] = [];
   let currentRms = 0;
   let hasSpoken = false;
-  let silentBuffers = 0;
+  let firstSpeechAt = 0;
+  let lastSpeechAt = Date.now();
   let stopped = false;
+  let autoStopTriggered = false;
   const startedAt = Date.now();
+  const silenceLimitMs = options?.silenceDurationMs ?? 1000;
+  const maxDurationLimitMs = options?.maxDurationMs ?? 10000;
+
+  const killStreamImmediately = () => {
+    stopped = true;
+    try {
+      processor.disconnect();
+      source.disconnect();
+    } catch {
+      // ignore
+    }
+    try {
+      stream.getTracks().forEach((t) => t.stop());
+    } catch {
+      // ignore
+    }
+  };
 
   processor.onaudioprocess = (event: AudioProcessingEvent) => {
     // Çıkış kanalını sessizlikle (0) doldur ki hiçbir tarayıcıda yankı/uğultu oluşmasın
@@ -287,17 +309,30 @@ export async function start16kHzRecorder(options?: {
 
     options?.onLiveRms?.(currentRms, rmsHistory.slice(-48));
 
-    // VAD: Konuşma başladıktan sonra ~1.8 sn sessizlik olursa otomatik durdur
-    if (rms > 0.02) {
-      hasSpoken = true;
-      silentBuffers = 0;
-    } else if (hasSpoken) {
-      silentBuffers += 1;
-      if (silentBuffers > 16) {
+    const now = Date.now();
+    // VAD: Konuşma başladıktan sonra silenceLimitMs (1000ms) sessizlik olursa otomatik durdur
+    if (rms > 0.015) {
+      if (!hasSpoken) {
+        hasSpoken = true;
+        firstSpeechAt = now;
+      }
+      lastSpeechAt = now;
+    } else if (
+      hasSpoken &&
+      now - firstSpeechAt >= 300 &&
+      now - lastSpeechAt >= silenceLimitMs
+    ) {
+      if (!autoStopTriggered) {
+        autoStopTriggered = true;
+        killStreamImmediately();
         options?.onAutoSilenceStop?.();
       }
-    } else if (Date.now() - startedAt > 12000) {
-      options?.onAutoSilenceStop?.();
+    } else if (now - startedAt >= maxDurationLimitMs) {
+      if (!autoStopTriggered) {
+        autoStopTriggered = true;
+        killStreamImmediately();
+        options?.onAutoSilenceStop?.();
+      }
     }
   };
 
@@ -305,18 +340,10 @@ export async function start16kHzRecorder(options?: {
   processor.connect(audioCtx.destination);
 
   return {
+    killStreamImmediately,
     getLiveRms: () => currentRms,
     stop: async () => {
-      if (!stopped) {
-        stopped = true;
-        try {
-          processor.disconnect();
-          source.disconnect();
-        } catch {
-          // ignore
-        }
-        stream.getTracks().forEach((t) => t.stop());
-      }
+      killStreamImmediately();
 
       const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
       const merged = new Float32Array(totalLength);
@@ -329,13 +356,17 @@ export async function start16kHzRecorder(options?: {
       // Cihaz 16000 Hz desteklemediyse (ör. 48000 Hz açtıysa) 16000 Hz'e resample et
       let samples16kHz: Float32Array = merged;
       if (audioCtx.sampleRate !== 16000 && merged.length > 0) {
-        const tempBuf = audioCtx.createBuffer(
-          1,
-          merged.length,
-          audioCtx.sampleRate
-        );
-        tempBuf.getChannelData(0).set(merged);
-        samples16kHz = await resampleTo16kHz(tempBuf);
+        try {
+          const tempBuf = audioCtx.createBuffer(
+            1,
+            merged.length,
+            audioCtx.sampleRate
+          );
+          tempBuf.getChannelData(0).set(merged);
+          samples16kHz = await resampleTo16kHz(tempBuf);
+        } catch {
+          samples16kHz = merged;
+        }
       }
 
       await audioCtx.close().catch(() => {});

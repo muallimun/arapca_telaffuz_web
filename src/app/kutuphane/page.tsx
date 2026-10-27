@@ -46,6 +46,7 @@ export default function LibraryPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [levelFilter, setLevelFilter] = useState<Level | "all">("all");
   const [activeSection, setActiveSection] = useState<ViewSection>("dialogues");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const [shadowingTarget, setShadowingTarget] = useState<{
     text: string;
@@ -147,8 +148,10 @@ export default function LibraryPage() {
     return `/gorseller/${String(mappedIndex).padStart(3, "0")}.jpg`;
   };
 
+  const hasActiveFilter = statusFilter !== "all" || levelFilter !== "all";
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 sm:space-y-4">
       {/* GÖLGELEME MODALI */}
       {shadowingTarget && (
         <ShadowingModal
@@ -159,36 +162,36 @@ export default function LibraryPage() {
       )}
 
       {/* ÜST BAŞLIK & MODÜL SEÇİCİ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5">
           <Link
             href="/"
             onClick={() => playClick()}
-            className="w-10 h-10 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-2 active:translate-y-0.5 transition-all shrink-0"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-2 active:translate-y-0.5 transition-all shrink-0"
             aria-label="Ana Sayfaya Dön"
           >
-            <ChevronLeft size={20} strokeWidth={2.5} />
+            <ChevronLeft size={19} strokeWidth={2.5} />
           </Link>
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-[var(--foreground)] tracking-tight">
+            <h1 className="text-lg sm:text-2xl font-extrabold text-[var(--foreground)] tracking-tight leading-tight">
               Diyalog Kütüphanesi
             </h1>
-            <p className="text-xs font-medium text-[var(--muted)]">
+            <p className="text-[11px] sm:text-xs font-medium text-[var(--muted)]">
               {diyaloglar.length} sesli Arapça diyalog, kelime defteri ve mahreç
               antrenmanları
             </p>
           </div>
         </div>
 
-        {/* Alt Bölüm Geçiş Hapları */}
-        <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
+        {/* Alt Bölüm Geçiş Hapları (Mobilde Tek Satır Yatay Kaydırılabilir) */}
+        <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border-2 border-[#E6D7BE] dark:border-[var(--border)] flex overflow-x-auto no-scrollbar items-center gap-1 max-w-full">
           <button
             type="button"
             onClick={() => {
               playClick();
               setActiveSection("dialogues");
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               activeSection === "dialogues"
                 ? "bg-[#0CA678] text-white font-semibold"
                 : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -202,7 +205,7 @@ export default function LibraryPage() {
               playClick();
               setActiveSection("saved-words");
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               activeSection === "saved-words"
                 ? "bg-[#0CA678] text-white font-semibold"
                 : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -216,7 +219,7 @@ export default function LibraryPage() {
               playClick();
               setActiveSection("weak-words");
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               activeSection === "weak-words"
                 ? "bg-[#0CA678] text-white font-semibold"
                 : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -229,35 +232,80 @@ export default function LibraryPage() {
 
       {activeSection === "dialogues" && (
         <>
-          {/* TEK SATIRLIK KOMPAKT KONTROL ŞERİDİ (TOOLBAR) */}
-          <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-2.5 flex flex-wrap items-center justify-between gap-2">
-            {/* 1. Arama Inputu */}
-            <div className="relative flex-1 min-w-[200px]">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
-              />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Diyalog başlığı, Arapça ifade veya numara ara..."
-                className="w-full h-9 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] rounded-xl pl-9 pr-8 text-xs font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678]"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
-                  aria-label="Aramayı Temizle"
-                >
-                  <X size={14} />
-                </button>
-              )}
+          {/* KOMPAKT KONTROL ŞERİDİ (MOBİLDE TEK SATIR ARAMA + [SlidersHorizontal] FİLTRELER + YATAY KAYDIRILABİLİR HAPLAR) */}
+          <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-2 sm:p-2.5 space-y-2">
+            <div className="flex items-center gap-2">
+              {/* 1. Arama Inputu */}
+              <div className="relative flex-1 min-w-0">
+                <Search
+                  size={15}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
+                />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Diyalog başlığı, Arapça ifade veya numara ara..."
+                  className="w-full h-9 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] rounded-xl pl-8 pr-8 text-xs font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678]"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+                    aria-label="Aramayı Temizle"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Mobilde [SlidersHorizontal] Filtreler Açılır/Kapanır Butonu */}
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setMobileFiltersOpen((v) => !v);
+                }}
+                className={`sm:hidden h-9 px-3 rounded-xl border-2 border-b-3 text-xs font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
+                  mobileFiltersOpen || hasActiveFilter
+                    ? "bg-[#6741D9] border-[#5230B5] text-white"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"
+                }`}
+              >
+                <SlidersHorizontal size={14} />
+                <span>Filtreler</span>
+              </button>
+
+              {/* Masaüstünde Seviye Hapları aynı satırda */}
+              <div className="hidden sm:flex bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] items-center gap-1 shrink-0">
+                {(["all", "A1", "A2", "B1", "B2"] as (Level | "all")[]).map(
+                  (lvl) => {
+                    const active = levelFilter === lvl;
+                    return (
+                      <button
+                        key={lvl}
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setLevelFilter(lvl);
+                        }}
+                        className={`px-2.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                          active
+                            ? "bg-[#0CA678] text-white font-semibold shadow-2xs"
+                            : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {lvl === "all" ? "Tüm Kurlar" : lvl}
+                      </button>
+                    );
+                  }
+                )}
+              </div>
             </div>
 
-            {/* 2. Çalışma Durumu Hapları */}
-            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1">
+            {/* 2. Tek Satırda Yatay Kaydırılabilir Hızlı Durum & Seviye Şeridi */}
+            <div className="flex overflow-x-auto no-scrollbar items-center gap-1.5 py-0.5">
               {(
                 [
                   { id: "all", label: `Tümü (${diyaloglar.length})` },
@@ -290,43 +338,93 @@ export default function LibraryPage() {
                       playClick();
                       setStatusFilter(tab.id);
                     }}
-                    className={`px-2.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                    className={`px-2.5 py-1 text-xs rounded-lg border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                       active
-                        ? "bg-[#0CA678] text-white font-semibold shadow-2xs"
-                        : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                        ? "bg-[#0CA678] border-[#087F5B] text-white font-bold shadow-2xs"
+                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
                     }`}
                   >
                     {tab.label}
                   </button>
                 );
               })}
+
+              {/* Mobilde Filtreler açıksa veya tek satır devamında Seviye Hapları */}
+              <div
+                className={`${
+                  mobileFiltersOpen ? "flex" : "flex sm:hidden"
+                } items-center gap-1 pl-1 border-l border-dashed border-[#cbb692] shrink-0`}
+              >
+                {(["all", "A1", "A2", "B1", "B2"] as (Level | "all")[]).map(
+                  (lvl) => {
+                    const active = levelFilter === lvl;
+                    return (
+                      <button
+                        key={lvl}
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setLevelFilter(lvl);
+                        }}
+                        className={`px-2 py-1 text-xs rounded-lg border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                          active
+                            ? "bg-[#6741D9] border-[#5230B5] text-white font-bold"
+                            : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] font-medium"
+                        }`}
+                      >
+                        {lvl === "all" ? "Tüm Kurlar" : lvl}
+                      </button>
+                    );
+                  }
+                )}
+              </div>
             </div>
 
-            {/* 3. Seviye Hapları */}
-            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1">
-              {(["all", "A1", "A2", "B1", "B2"] as (Level | "all")[]).map(
-                (lvl) => {
-                  const active = levelFilter === lvl;
-                  return (
-                    <button
-                      key={lvl}
-                      type="button"
-                      onClick={() => {
-                        playClick();
-                        setLevelFilter(lvl);
-                      }}
-                      className={`px-2.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                        active
-                          ? "bg-[#0CA678] text-white font-semibold shadow-2xs"
-                          : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {lvl === "all" ? "Tüm Kurlar" : lvl}
-                    </button>
-                  );
-                }
-              )}
-            </div>
+            {/* Mobilde [SlidersHorizontal] Filtreler Butonu Açıkken Genişletilmiş Kur/Durum Seçici */}
+            {mobileFiltersOpen && (
+              <div className="sm:hidden pt-1.5 border-t border-dashed border-[#E2D3B8] flex flex-wrap items-center justify-between gap-1.5">
+                <div className="flex flex-wrap items-center gap-1">
+                  <span className="text-[11px] font-extrabold text-[var(--muted)] mr-1">
+                    Seviye:
+                  </span>
+                  {(["all", "A1", "A2", "B1", "B2"] as (Level | "all")[]).map(
+                    (lvl) => {
+                      const active = levelFilter === lvl;
+                      return (
+                        <button
+                          key={lvl}
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            setLevelFilter(lvl);
+                          }}
+                          className={`px-2.5 py-1 text-xs rounded-lg border transition-all cursor-pointer ${
+                            active
+                              ? "bg-[#6741D9] border-[#5230B5] text-white font-bold"
+                              : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--foreground)] font-semibold"
+                          }`}
+                        >
+                          {lvl === "all" ? "Tümü" : lvl}
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+                {hasActiveFilter && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setStatusFilter("all");
+                      setLevelFilter("all");
+                    }}
+                    className="text-[11px] font-bold text-rose-600 underline"
+                  >
+                    Sıfırla
+                  </button>
+                )}
+              </div>
+            )}
           </section>
 
           {/* DİYALOG KARTLARI IZGARASI */}

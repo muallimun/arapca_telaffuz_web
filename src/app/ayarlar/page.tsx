@@ -195,7 +195,7 @@ export default function SettingsPage() {
     { label: "Küçük", value: 14 },
     { label: "Orta", value: 16 },
     { label: "Büyük", value: 18 },
-    { label: "Çok Büyük", value: 21 },
+    { label: "Çok Büyük", value: 20 },
   ];
 
   const rawSampleArabic =
@@ -204,7 +204,7 @@ export default function SettingsPage() {
   const activeFontCfg = getArabicFontConfig(arabicFont);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 overflow-x-hidden">
       {/* ÜST BAŞLIK */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -308,7 +308,7 @@ export default function SettingsPage() {
         {/* Arapça ve Türkçe Yazı Boyutu Kontrolleri */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]">
           {/* Arapça Yazı Boyutu ('sm' | 'md' | 'lg' | 'xl') */}
-          <div className="bg-white dark:bg-[var(--background)] rounded-2xl p-3 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="bg-white dark:bg-[var(--background)] rounded-2xl p-3 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5 min-w-0">
             <div>
               <span className="block text-xs font-extrabold text-[var(--foreground)]">
                 Arapça Yazı Boyutu ({arabicFontSizePreset.toUpperCase()} ·{" "}
@@ -319,7 +319,7 @@ export default function SettingsPage() {
               </span>
             </div>
 
-            <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
+            <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1.5 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full">
               {ARABIC_FONT_SIZE_PRESETS.map(
                 (preset: {
                   id: ArabicFontSizePreset;
@@ -337,10 +337,10 @@ export default function SettingsPage() {
                         playClick();
                         setArabicFontSize(preset.id);
                       }}
-                      className={`px-2.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                      className={`px-2 py-1.5 text-xs rounded-lg transition-all text-center truncate cursor-pointer ${
                         active
-                          ? "bg-[#0CA678] text-white font-bold"
-                          : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                          ? "bg-[#0CA678] text-white font-bold shadow-2xs"
+                          : "bg-white/60 dark:bg-[var(--background)]/50 text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                       }`}
                     >
                       {preset.id.toUpperCase()} ({preset.px})
@@ -352,7 +352,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Türkçe Yazı Boyutu */}
-          <div className="bg-white dark:bg-[var(--background)] rounded-2xl p-3 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="bg-white dark:bg-[var(--background)] rounded-2xl p-3 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5 min-w-0">
             <div>
               <span className="block text-xs font-extrabold text-[var(--foreground)]">
                 Türkçe Çeviri Boyutu ({turkishFontSize}px)
@@ -362,24 +362,29 @@ export default function SettingsPage() {
               </span>
             </div>
 
-            <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
-              {turkishSizes.map((s) => (
-                <button
-                  key={s.value}
-                  type="button"
-                  onClick={() => {
-                    playClick();
-                    setTurkishFontSize(s.value);
-                  }}
-                  className={`px-2.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                    turkishFontSize === s.value
-                      ? "bg-[#0CA678] text-white font-bold"
-                      : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  {s.label} ({s.value})
-                </button>
-              ))}
+            <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1.5 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full">
+              {turkishSizes.map((s) => {
+                const isSelected =
+                  turkishFontSize === s.value ||
+                  (s.value === 20 && turkishFontSize === 21);
+                return (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setTurkishFontSize(s.value);
+                    }}
+                    className={`px-2 py-1.5 text-xs rounded-lg transition-all text-center truncate cursor-pointer ${
+                      isSelected
+                        ? "bg-[#0CA678] text-white font-bold shadow-2xs"
+                        : "bg-white/60 dark:bg-[var(--background)]/50 text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {s.label} ({s.value})
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
