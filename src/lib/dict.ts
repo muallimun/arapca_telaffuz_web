@@ -3,6 +3,8 @@ import diyaloglarRaw from "@/data/diyaloglar.json";
 import { SUPPLEMENT_DICTIONARY } from "./supplementDict";
 import { Dialogue, DictionaryItem } from "@/types/data";
 
+export type WordCategory = "fiil" | "isim" | "edat";
+
 export interface MorphologicalMatch {
   item: DictionaryItem;
   originalWord: string;
@@ -33,7 +35,7 @@ export function stripHarakat(text: string): string {
 // Arapça metindeki harekeleri ve noktalama işaretlerini temizle (Karşılaştırma anahtarı)
 export function cleanArabicText(text: string): string {
   return text
-    .replace(/[\u064B-\u065F\u0670\u0640]/g, "") // Harekeler ve tatweel
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, "") // Harekeler, asâ/çeker ve tatweel
     .replace(/[أإآٱ]/g, "ا") // Elif çeşitleri
     .replace(/ة/g, "ه") // Kapalı te -> he
     .replace(/ى/g, "ي") // Elif-i maksura -> ye
@@ -41,6 +43,141 @@ export function cleanArabicText(text: string): string {
     .replace(/ئ/g, "ي")
     .replace(/[.,!?؟،;؛:"'()\[\]{}\d]/g, "") // Noktalama ve sayılar
     .trim();
+}
+
+// Edat, Harf-i Cer, Zarf, Bağlaç ve Soru Edatları kümesi (normalize edilmiş)
+const ARABIC_PARTICLES_SET = new Set<string>([
+  "الي",
+  "من",
+  "يا",
+  "في",
+  "علي",
+  "عن",
+  "مع",
+  "هل",
+  "ما",
+  "ماذا",
+  "كيف",
+  "اين",
+  "متي",
+  "كم",
+  "لماذا",
+  "نعم",
+  "لا",
+  "بلي",
+  "هنا",
+  "هناك",
+  "ايضا",
+  "جدا",
+  "فقط",
+  "قبل",
+  "بعد",
+  "عند",
+  "بين",
+  "امام",
+  "خلف",
+  "فوق",
+  "تحت",
+  "بجانب",
+  "حول",
+  "منذ",
+  "حتي",
+  "او",
+  "ام",
+  "ثم",
+  "بل",
+  "لكن",
+  "ان",
+  "لان",
+  "لو",
+  "اذا",
+  "اذن",
+  "ربما",
+  "طيب",
+  "حسنا",
+  "طبعا",
+  "فعلا",
+  "الآن",
+  "الان",
+  "غدا",
+  "امس",
+  "اليوم",
+  "دائما",
+  "ابدا",
+  "معا",
+  "سريعا",
+  "قليلا",
+  "كثيرا",
+  "اهلا",
+  "سهلا",
+  "مرحبا",
+  "عفوا",
+  "اليس",
+  "ليس",
+]);
+
+/**
+ * Akıllı Kelime Türü Sınıflandırıcı:
+ * Her sözlük öğesini 'fiil' | 'isim' | 'edat' olarak sınıflandırır.
+ */
+export function getWordCategory(item: DictionaryItem): WordCategory {
+  const rawTur = (item.tur || "").toLowerCase().trim();
+
+  // 1. Açıkça edat / harf / kalıp olarak işaretlenmişse
+  if (
+    rawTur === "edat" ||
+    rawTur === "harf" ||
+    rawTur === "zarf" ||
+    rawTur === "kalıp" ||
+    rawTur === "bağlaç"
+  ) {
+    return "edat";
+  }
+
+  // 2. Fiil kontrolü:
+  // - tur alanı "fiil" ise
+  // - mazi veya muzari alanı doluysa
+  // - Türkçe anlamı mastar ekiyle (-mak, -mek, -ması, -mesi) bitiyorsa
+  // - Arapça alanı "كتب - يكتب" gibi mazi-muzari kalıbındaysa
+  if (rawTur === "fiil" || Boolean(item.mazi || item.muzari)) {
+    return "fiil";
+  }
+
+  const baseTr = (item.anlam_tr || "")
+    .replace(/\(.*?\)/g, "")
+    .split(/[;,]/)[0]
+    .trim()
+    .toLowerCase();
+
+  if (/(mak|mek|ması|mesi)$/i.test(baseTr)) {
+    return "fiil";
+  }
+
+  const primaryArRaw = (item.mufret || "").trim();
+  const primaryArClean = cleanArabicText(primaryArRaw.split(/[\/\-]/)[0] || "");
+
+  if (
+    primaryArRaw.includes(" - ي") ||
+    primaryArRaw.includes(" - ت") ||
+    /^(استودع|يستودع|اخرج|يخرج)$/.test(primaryArClean)
+  ) {
+    return "fiil";
+  }
+
+  // 3. Edat / Zarf / Konuşma Kalıbı kontrolü:
+  if (ARABIC_PARTICLES_SET.has(primaryArClean)) {
+    return "edat";
+  }
+
+  if (
+    item.kok === "-" &&
+    (!item.cemi || item.cemi === "-") &&
+    (primaryArClean.split(/\s+/).length >= 2 || primaryArClean.length <= 4)
+  ) {
+    return "edat";
+  }
+
+  return "isim";
 }
 
 // Anlamları kısalt (Eşleştirme oyununda ve kısa kartlarda taşmayı önler)
@@ -63,13 +200,15 @@ function buildUnifiedDictionary(): DictionaryItem[] {
     const primary = (item.mufret || item.mazi || item.muzari || "")
       .split(/[\/\-]/)[0]
       .trim();
-    const key = `${item.tur}_${cleanArabicText(primary)}`;
+    const category = getWordCategory(item);
+    const key = `${category}_${cleanArabicText(primary)}`;
     if (!primary) continue;
 
     if (!seenKeys.has(key)) {
       seenKeys.add(key);
       deduplicated.push({
         ...item,
+        tur: category,
         anlam_tr: item.anlam_tr.trim(),
       });
     }
@@ -85,8 +224,10 @@ const dictIndex = new Map<string, DictionaryItem>();
 const rootIndex = new Map<string, DictionaryItem[]>();
 
 function indexDictionaryItem(item: DictionaryItem) {
+  const category = getWordCategory(item);
   const cleanedItem: DictionaryItem = {
     ...item,
+    tur: category,
     anlam_tr: cleanMeaning(item.anlam_tr),
   };
 
@@ -99,7 +240,6 @@ function indexDictionaryItem(item: DictionaryItem) {
   ].filter(Boolean) as string[];
 
   for (const raw of rawFields) {
-    // Parantez içlerini ve / veya - ile ayrılmış alternatifleri ayrı ayrı indeksle
     const withoutParens = raw.replace(/\(.*?\)/g, " ");
     const variants = withoutParens
       .split(/[\/\-،,]/)
@@ -111,7 +251,6 @@ function indexDictionaryItem(item: DictionaryItem) {
       if (norm.length > 0 && !dictIndex.has(norm)) {
         dictIndex.set(norm, cleanedItem);
       }
-      // Eğer çok kelimeli bir kalıpsa (ör: جبن أبيض), ilk anahtar kelimesini de indeksle
       const subWords = norm.split(/\s+/).filter((sw) => sw.length >= 2);
       if (subWords.length > 1) {
         for (const sw of subWords) {
@@ -134,7 +273,7 @@ function indexDictionaryItem(item: DictionaryItem) {
   }
 }
 
-// Önce tamamlayıcı sözlüğü (temel diyalog kelimeleri öncelikli), sonra ana sözlüğü indeksle
+// Önce tamamlayıcı sözlüğü, sonra ana sözlüğü indeksle
 SUPPLEMENT_DICTIONARY.forEach(indexDictionaryItem);
 (sozlukRaw as DictionaryItem[]).forEach(indexDictionaryItem);
 
@@ -149,6 +288,8 @@ const PREFIX_RULES: Array<{ raw: string; label: string }> = [
   { raw: "فال", label: "فَـ (böylece) + ال (belirlilik)" },
   { raw: "بال", label: "بِـ (ile/-de) + ال (belirlilik)" },
   { raw: "كال", label: "كَـ (gibi) + ال (belirlilik)" },
+  { raw: "ولل", label: "وَ (ve) + لِـ (için) + ال (belirlilik)" },
+  { raw: "فلل", label: "فَـ + لِـ (için) + ال (belirlilik)" },
   { raw: "لل", label: "لِـ (için/-e) + ال (belirlilik)" },
   { raw: "ال", label: "ال (belirlilik takısı)" },
   { raw: "وب", label: "وَ (ve) + بِـ (ile/-de)" },
@@ -156,6 +297,7 @@ const PREFIX_RULES: Array<{ raw: string; label: string }> = [
   { raw: "وس", label: "وَ (ve) + سَـ (gelecek zaman)" },
   { raw: "فب", label: "فَـ + بِـ (ile)" },
   { raw: "فل", label: "فَـ + لِـ (için)" },
+  { raw: "فس", label: "فَـ + سَـ (gelecek zaman)" },
   { raw: "س", label: "سَـ (gelecek zaman -ecek)" },
   { raw: "ل", label: "لِـ (için / -e)" },
   { raw: "ب", label: "بِـ (ile / -de)" },
@@ -165,28 +307,59 @@ const PREFIX_RULES: Array<{ raw: string; label: string }> = [
 ];
 
 const SUFFIX_RULES: Array<{ raw: string; label: string }> = [
-  { raw: "كما", label: "كُمَا (ikinizin)" },
-  { raw: "كم", label: "كُمْ (sizin)" },
-  { raw: "كن", label: "كُنَّ (siz kadınların)" },
-  { raw: "هما", label: "هُمَا (ikisinin)" },
-  { raw: "هم", label: "هُمْ (onların)" },
-  { raw: "هن", label: "هُنَّ (o kadınların)" },
-  { raw: "تني", label: "تْ (müennes) + نِي (beni/bana)" },
-  { raw: "ني", label: "نِي (beni/bana)" },
-  { raw: "نا", label: "نَا (bizim / biz)" },
-  { raw: "ها", label: "هَا (onun [مؤنث])" },
+  { raw: "تموني", label: "تُمْ (siz) + نِي (beni/bana)" },
+  { raw: "تني", label: "تَ / تْ + نِي (beni/bana)" },
+  { raw: "نني", label: "نِي (beni/bana)" },
+  { raw: "كما", label: "كُمَا (ikinizin / ikinize)" },
+  { raw: "كم", label: "كُمْ (sizin / size)" },
+  { raw: "كن", label: "كُنَّ (siz kadınların / size)" },
+  { raw: "هما", label: "هُمَا (ikisinin / ikisine)" },
+  { raw: "هم", label: "هُمْ (onların / onlara)" },
+  { raw: "هن", label: "هُنَّ (o kadınların / onlara)" },
+  { raw: "تها", label: "تُ / تَ / تْ + هَا (onu)" },
+  { raw: "ته", label: "تُ / تَ / تْ + هُ (onu)" },
+  { raw: "تك", label: "تُ + كَ / كِ (seni / sana)" },
+  { raw: "ناها", label: "نَا (biz) + هَا (onu)" },
+  { raw: "ناه", label: "نَا (biz) + هُ (onu)" },
+  { raw: "وها", label: "وا (onlar/çoğul) + هَا (onu)" },
+  { raw: "وه", label: "وا (onlar/çoğul) + هُ (onu)" },
+  { raw: "يها", label: "ي (muhataba) + هَا (onu)" },
+  { raw: "يه", label: "ي (muhataba) + هُ (onu)" },
+  { raw: "ني", label: "نِي (beni / bana)" },
+  { raw: "نا", label: "نَا (bizim / bizi / bize)" },
+  { raw: "ها", label: "هَا (onun / onu [مؤنث])" },
   { raw: "ان", label: "انِ (ikil / tesniye eki)" },
   { raw: "ين", label: "ينَ / يْنِ (çoğul / ikil / muhataba eki)" },
   { raw: "ون", label: "ونَ (kurallı eril çoğul eki)" },
   { raw: "ات", label: "ات (kurallı dişil çoğul eki)" },
   { raw: "تم", label: "تُمْ (siz [mazi])" },
-  { raw: "وا", label: "وا (onlar [mazi])" },
-  { raw: "ك", label: "كَ / كِ (senin)" },
-  { raw: "ه", label: "هُ (onun [مذكر])" },
-  { raw: "ي", label: "ي (benim)" },
-  { raw: "ت", label: "تُ / تَ / تِ (mazi şahıs eki)" },
+  { raw: "تن", label: "تُنَّ (siz kadınlar [mazi])" },
+  { raw: "وا", label: "وا (onlar / emir çoğul)" },
+  { raw: "ك", label: "كَ / كِ (senin / seni / sana)" },
+  { raw: "ه", label: "هُ (onun / onu [مذكر])" },
+  { raw: "ي", label: "ي (benim / muhataba)" },
+  { raw: "ت", label: "تُ / تَ / تِ / تْ (mazi şahıs eki)" },
   { raw: "ا", label: "اً (tenvin / mansub eki)" },
 ];
+
+// 2 harfli düzensiz / mehmuz / misal / ecvef emir kök haritası
+const IRREGULAR_IMPERATIVE_MAP: Record<string, string> = {
+  خذ: "اخذ",
+  كل: "اكل",
+  مر: "امر",
+  قف: "وقف",
+  صل: "وصل",
+  ضع: "وضع",
+  عد: "وعد",
+  جد: "وجد",
+  صف: "وصف",
+  قل: "قال",
+  بع: "باع",
+  نم: "نام",
+  قم: "قام",
+  سر: "سار",
+  زر: "زار",
+};
 
 function formatPrimaryWord(item: DictionaryItem): string {
   return (item.mufret || item.mazi || item.muzari || "")
@@ -225,9 +398,19 @@ function matchStemWithRules(
     return { item: dictIndex.get(stem)!, stage: "exact" };
   }
 
+  // 1b. 2 harfli emir fiil eşleşmesi (ör: خذ -> اخذ, قل -> قال, قف -> وقف)
+  if (stem.length === 2 && IRREGULAR_IMPERATIVE_MAP[stem]) {
+    const mapped = IRREGULAR_IMPERATIVE_MAP[stem];
+    if (dictIndex.has(mapped)) {
+      return {
+        item: dictIndex.get(mapped)!,
+        stage: "verb",
+        extraNote: "emir kipi",
+      };
+    }
+  }
+
   // 2. Tâ-i Merbûta (ت -> ة) Onarımı:
-  // Zamir soyulduğunda kelime "ت" ile bitiyorsa (ör: غُرْفَتِكُمْ -> غرفت veya بِمَعْرِفَتِكَ -> معرفت)
-  // son harfi "ه" (normalize edilmiş ة) yaparak ara
   if (stem.endsWith("ت") && stem.length >= 3) {
     const taMarbutaRestored = stem.slice(0, -1) + "ه";
     if (dictIndex.has(taMarbutaRestored)) {
@@ -239,7 +422,6 @@ function matchStemWithRules(
     }
   }
 
-  // Kurallı dişil çoğul veya tekil sonuna "ه" (ة) ekleyerek deneme (ör: ملاحظ -> ملاحظه)
   const withTaMarbuta = stem + "ه";
   if (dictIndex.has(withTaMarbuta)) {
     return {
@@ -250,26 +432,46 @@ function matchStemWithRules(
   }
 
   // 3. Fiil Çekim Çözücü (Muzari & Mazi & Emir)
-  // 3a. Muzari fiillerde baştaki أ / ن / ت şahıs eklerini ي ile değiştir (أَسْكُنُ / تَسْكُنِينَ -> يَسْكُنُ)
+  // 3a. Muzari fiillerde baştaki أ / ن / ت şahıs eklerini ي veya ا (mazi bablar için) ile değiştir
+  // (أَسْتَوْدِعُ -> يَسْتَوْدِعُ / اِسْتَوْدَعَ, أَسْكُنُ -> يَسْكُنُ)
   if (/^[انت]/.test(stem) && stem.length >= 3) {
     const muzariPrefixChar = stem[0];
+    const personNote =
+      muzariPrefixChar === "ا"
+        ? "أَ (ben - muzari)"
+        : muzariPrefixChar === "ن"
+        ? "نَـ (biz - muzari)"
+        : "تَـ (sen/o - muzari)";
+
     const asYa = "ي" + stem.slice(1);
     if (dictIndex.has(asYa)) {
-      const personNote =
-        muzariPrefixChar === "ا"
-          ? "أَ (ben - muzari)"
-          : muzariPrefixChar === "ن"
-          ? "نَـ (biz - muzari)"
-          : "تَـ (sen/o - muzari)";
       return {
         item: dictIndex.get(asYa)!,
         stage: "verb",
         extraNote: personNote,
       };
     }
+
+    const asAlifMazi = "ا" + stem.slice(1);
+    if (dictIndex.has(asAlifMazi)) {
+      return {
+        item: dictIndex.get(asAlifMazi)!,
+        stage: "verb",
+        extraNote: personNote,
+      };
+    }
+
+    const bareThree = stem.slice(1);
+    if (bareThree.length >= 3 && dictIndex.has(bareThree)) {
+      return {
+        item: dictIndex.get(bareThree)!,
+        stage: "verb",
+        extraNote: personNote,
+      };
+    }
   }
 
-  // 3b. سَآكُلُ -> ساكل -> اكل / ياكل (Hemze-i med ile başlayan muzari 1. tekil şahıs)
+  // 3b. سَآكُلُ -> ساكل -> اكل / ياكل ve Emir fiiller (اِمْلَأْ، اِجْلِبْ، أَخْرِجْ)
   if (stem.startsWith("ا") && stem.length >= 3) {
     const asYaWithAlif = "يا" + stem.slice(1);
     if (dictIndex.has(asYaWithAlif)) {
@@ -279,13 +481,12 @@ function matchStemWithRules(
         extraNote: "أَ (ben - muzari)",
       };
     }
-    // Emir fiiller: اِمْلَأْ -> ملا, اِجْلِبْ -> جلب, اُنْظُرْ -> نظر, اِذْهَبِي -> ذهب
     const withoutInitialAlif = stem.slice(1);
     if (withoutInitialAlif.length >= 3 && dictIndex.has(withoutInitialAlif)) {
       return {
         item: dictIndex.get(withoutInitialAlif)!,
         stage: "verb",
-        extraNote: "emir kipi",
+        extraNote: "emir / muzari kipi",
       };
     }
     const asYaImperative = "ي" + withoutInitialAlif;
@@ -293,7 +494,7 @@ function matchStemWithRules(
       return {
         item: dictIndex.get(asYaImperative)!,
         stage: "verb",
-        extraNote: "emir kipi",
+        extraNote: "emir / muzari kipi",
       };
     }
   }
@@ -311,14 +512,14 @@ function matchStemWithRules(
     };
   }
 
-  // 3d. Ecvef (ortası illetli) fiil mazi çekimi: جُعْتُ / جُعْنَا -> جع -> جاع, قُلْتُ -> قل -> قال
+  // 3d. Ecvef (ortası illetli) fiil mazi/emir çekimi: جُعْتُ -> جع -> جاع, قُلْتُ -> قل -> قال
   if (stem.length === 2) {
     const hollowForm = stem[0] + "ا" + stem[1];
     if (dictIndex.has(hollowForm)) {
       return {
         item: dictIndex.get(hollowForm)!,
         stage: "verb",
-        extraNote: "أجوف (ortası illetli mazi çekimi)",
+        extraNote: "أجوف (ortası illetli fiil çekimi)",
       };
     }
   }
@@ -355,7 +556,21 @@ export function analyzeAndMatchWord(rawWord: string): MorphologicalMatch | null 
   const normalized = cleanArabicText(cleanedRaw);
   if (normalized.length < 2) return null;
 
-  // Kademe 1: Doğrudan Eşleşme (veya tek başına fiil/Tâ-i Merbûta)
+  // Özel Lafzatullah kontrolü (اللّٰهَ، باللّٰهِ، واللّٰهِ، للّٰهِ، فاللّٰهِ)
+  if (/^[وفبتكل]*الله$/.test(normalized) || normalized === "لله" || normalized === "ولله") {
+    const allahItem = dictIndex.get("الله");
+    if (allahItem) {
+      return {
+        item: allahItem,
+        originalWord: cleanedRaw,
+        matchedStem: "الله",
+        morphologyNote: buildMorphologyNote(allahItem),
+        matchStage: "exact",
+      };
+    }
+  }
+
+  // Kademe 1: Doğrudan Eşleşme
   const direct = matchStemWithRules(normalized);
   if (direct) {
     return {
@@ -400,6 +615,7 @@ export function analyzeAndMatchWord(rawWord: string): MorphologicalMatch | null 
   }
 
   // Kademe 3: Sadece Son Ek (Zamir / Çoğul / İkil / Şahıs) Soyarak Dene
+  // (ör: أَسْتَوْدِعُكِ، أَسْتَوْدِعُكَ، مَعَكَ، خُذْهَا، أُمِّي، أَبِي)
   for (const suff of SUFFIX_RULES) {
     if (
       normalized.endsWith(suff.raw) &&
@@ -426,7 +642,8 @@ export function analyzeAndMatchWord(rawWord: string): MorphologicalMatch | null 
     }
   }
 
-  // Kademe 4: Hem Ön Ek Hem Son Ek Soyarak Dene (ör: وَبِجَانِبِهَا, بِمَعْرِفَتِكَ, لِتَعَارُفِنَا, سَأَطْبُخُ)
+  // Kademe 4: Hem Ön Ek Hem Son Ek Soyarak Dene
+  // (ör: وَأَسْتَوْدِعُكَ، وَخُذْهَا، وَبِجَانِبِهَا، بِمَعْرِفَتِكَ، لِتَعَارُفِنَا)
   for (const pref of PREFIX_RULES) {
     if (normalized.startsWith(pref.raw)) {
       const afterPref = normalized.slice(pref.raw.length);
@@ -460,7 +677,6 @@ export function analyzeAndMatchWord(rawWord: string): MorphologicalMatch | null 
   }
 
   // Kademe 5: Kök (kok) Ünsüz İskeleti Eşleştirmesi
-  // Ön/son ekleri soyulmuş en olası gövdeden illet harflerini (ا، و، ي) çıkarıp 3 harfli kökü kontrol et
   let candidateCore = normalized;
   for (const pref of PREFIX_RULES) {
     if (
@@ -481,12 +697,17 @@ export function analyzeAndMatchWord(rawWord: string): MorphologicalMatch | null 
     }
   }
 
-  // İstif'al / İfti'al / Tef'il / Meful kalıplarından 3'lü kök çıkarma
   const skeletonCandidates: string[] = [];
   if (candidateCore.startsWith("است") && candidateCore.length >= 6) {
     skeletonCandidates.push(candidateCore.slice(3));
   }
+  if (/^[انتي]ست/.test(candidateCore) && candidateCore.length >= 6) {
+    skeletonCandidates.push(candidateCore.slice(3));
+  }
   if (candidateCore.startsWith("م") && candidateCore.length >= 4) {
+    skeletonCandidates.push(candidateCore.slice(1));
+  }
+  if (/^[انتي]/.test(candidateCore) && candidateCore.length === 4) {
     skeletonCandidates.push(candidateCore.slice(1));
   }
   skeletonCandidates.push(candidateCore);
@@ -519,7 +740,7 @@ export function lookupWord(rawWord: string): DictionaryItem | null {
 
 /**
  * Seçilen diyaloğun tüm satırlarını tarayarak o diyalogda geçen TÜM sözlük kelimelerini
- * (önceki diyaloglarda geçmiş olsa bile) orijinal çekimli cümle örneği ve morfolojik notuyla çıkarır.
+ * orijinal çekimli cümle örneği ve morfolojik notuyla çıkarır.
  */
 export function getDialogueVocabulary(
   dialogueId: string

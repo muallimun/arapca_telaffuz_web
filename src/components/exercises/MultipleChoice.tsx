@@ -23,6 +23,7 @@ import { useCountdown } from "@/lib/useTimer";
 import { speakHybrid } from "@/lib/audio";
 import { useSettings } from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
+import { formatArabicText } from "@/lib/arabicTextUtils";
 
 interface Props {
   vocabulary: DictionaryItem[];
@@ -92,10 +93,7 @@ export default function MultipleChoice({
 
   const currentWord = questions[currentIndex];
   const primaryArabic = currentWord.mufret || currentWord.mazi || "";
-  const removeTashkeel = (t: string) => t.replace(/[\u064B-\u0652]/g, "");
-  const displayArabic = showHareke
-    ? primaryArabic
-    : removeTashkeel(primaryArabic);
+  const displayArabic = formatArabicText(primaryArabic, showHareke);
 
   const handleSelect = (text: string, isCorrect: boolean) => {
     if (selected || isTimeUp) return;

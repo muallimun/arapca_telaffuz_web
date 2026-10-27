@@ -2,13 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Volume2, Heart, CheckCircle2, X, Sparkles, Mic } from "lucide-react";
-import { analyzeAndMatchWord } from "@/lib/dict";
+import { analyzeAndMatchWord, getWordCategory, WordCategory } from "@/lib/dict";
 import { useSettings } from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
 import { speakHybrid } from "@/lib/audio";
 import { playClick } from "@/lib/sfxManager";
 import ShadowingModal, { TargetForm } from "@/components/ui/ShadowingModal";
 import { DictionaryItem } from "@/types/data";
+import { formatArabicText } from "@/lib/arabicTextUtils";
 
 interface Props {
   text: string;
@@ -49,8 +50,42 @@ function buildWordForms(item: DictionaryItem): TargetForm[] {
   return forms;
 }
 
+function getCategoryStyle(category: WordCategory) {
+  if (category === "fiil") {
+    return {
+      underline:
+        "border-amber-500/75 hover:bg-amber-500/15 hover:text-amber-700 dark:hover:text-amber-300",
+      badgeText: "⚡ Fiil (فعل)",
+      badgeClass:
+        "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700/60",
+      popoverLeftBorder: "border-l-4 border-l-amber-500",
+      arabicAccent: "text-amber-700 dark:text-amber-300",
+    };
+  }
+  if (category === "edat") {
+    return {
+      underline:
+        "border-purple-400/70 hover:bg-purple-500/15 hover:text-purple-700 dark:hover:text-purple-300",
+      badgeText: "🔗 Edat / Kalıp",
+      badgeClass:
+        "bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-700/60",
+      popoverLeftBorder: "border-l-4 border-l-purple-500",
+      arabicAccent: "text-purple-700 dark:text-purple-300",
+    };
+  }
+  return {
+    underline:
+      "border-sky-500/75 hover:bg-sky-500/15 hover:text-sky-700 dark:hover:text-sky-300",
+    badgeText: "📘 İsim (اسم)",
+    badgeClass:
+      "bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-700/60",
+    popoverLeftBorder: "border-l-4 border-l-sky-500",
+    arabicAccent: "text-sky-700 dark:text-sky-300",
+  };
+}
+
 export default function WordTooltip({ text }: Props) {
-  const { showTooltips, showHareke, speechRate } = useSettings();
+  const { showTooltips, showHareke, speechRate, arabicFont } = useSettings();
   const {
     toggleFavoriteWord,
     isWordFavorite,
@@ -83,10 +118,10 @@ export default function WordTooltip({ text }: Props) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  if (!showTooltips) return <>{text}</>;
+  const formatAr = (str: string) =>
+    formatArabicText(str, showHareke, arabicFont);
 
-  const removeTashkeel = (str: string) => str.replace(/[\u064B-\u0652]/g, "");
-  const formatAr = (str: string) => (showHareke ? str : removeTashkeel(str));
+  if (!showTooltips) return <>{formatAr(text)}</>;
 
   const words = text.split(" ");
 
@@ -103,19 +138,21 @@ export default function WordTooltip({ text }: Props) {
       <span ref={containerRef} className="inline">
         {words.map((word, index) => {
           const match = word.match(
-            /^([.,!?؟،؛:"'()\[\]{}]*)([\u0600-\u06FF]+)([.,!?؟،؛:"'()\[\]{}]*)$/
+            /^([.,!?؟،؛:"'()\[\]{}]*)([\u0600-\u06FF\u0670]+)([.,!?؟،؛:"'()\[\]{}]*)$/
           );
 
-          if (!match) return <span key={index}>{word} </span>;
+          if (!match) return <span key={index}>{formatAr(word)} </span>;
 
           const [, prefix, coreWord, suffix] = match;
           const analysis = analyzeAndMatchWord(coreWord);
 
           if (!analysis) {
-            return <span key={index}>{word} </span>;
+            return <span key={index}>{formatAr(word)} </span>;
           }
 
           const { item: dictItem, morphologyNote } = analysis;
+          const category = getWordCategory(dictItem);
+          const catStyle = getCategoryStyle(category);
           const isOpen = activeIndex === index;
           const isFav = isWordFavorite(dictItem.id);
           const isLearned = isWordLearned(dictItem.id);
@@ -147,7 +184,6 @@ export default function WordTooltip({ text }: Props) {
               setActiveIndex(null);
               return;
             }
-            // Ekran kenarı taşma koruması: Tıklanan kelimenin ekran içindeki yatay konumunu ölç
             const rect = e.currentTarget.getBoundingClientRect();
             const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
             if (rect.left < 155) {
@@ -176,25 +212,34 @@ export default function WordTooltip({ text }: Props) {
                 className={`cursor-pointer rounded-lg px-1 transition-all border-b-2 border-dashed ${
                   isOpen
                     ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] text-[#6741D9] dark:text-[#d0bfff] border-[#6741D9]"
-                    : "border-[#0CA678]/65 hover:bg-[#0CA678]/10 hover:text-[#087F5B]"
+                    : catStyle.underline
                 }`}
               >
                 {formatAr(coreWord)}
               </button>
               {suffix}
 
-              {/* 3B Dokunsal Morfolojik Sözlük İpucu Kartı (Ekran Kenarı Korumalı) */}
+              {/* 3B Dokunsal Morfolojik Sözlük İpucu Kartı (Tür Renk Kodlamalı) */}
               {isOpen && (
                 <span
                   dir="ltr"
                   onClick={(e) => e.stopPropagation()}
-                  className={`absolute bottom-full ${positionClasses} mb-2.5 w-72 sm:w-80 max-w-[90vw] p-3.5 bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 rounded-2xl shadow-2xl text-left z-50 block space-y-2`}
+                  className={`absolute bottom-full ${positionClasses} mb-2.5 w-72 sm:w-80 max-w-[90vw] p-3.5 bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 ${catStyle.popoverLeftBorder} rounded-2xl shadow-2xl text-left z-50 block space-y-2`}
                 >
-                  {/* Üst Satır: Diyalogdaki Hali + Sözlükteki Yalın Hali + Kapat */}
+                  {/* Üst Satır: Tür Rozeti + Kök + Türkçe Anlam + Arapça Ana Kelime */}
                   <span className="flex items-start justify-between gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
-                    <span className="space-y-0.5">
-                      <span className="block text-[10px] font-extrabold uppercase tracking-wider text-[#087F5B] dark:text-[#20c997]">
-                        {dictItem.tur.toUpperCase()} · KÖK: {dictItem.kok}
+                    <span className="space-y-1">
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`px-2 py-0.5 rounded-md border text-[10px] font-extrabold ${catStyle.badgeClass}`}
+                        >
+                          {catStyle.badgeText}
+                        </span>
+                        {dictItem.kok && dictItem.kok !== "-" && (
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--muted)]">
+                            KÖK: {dictItem.kok}
+                          </span>
+                        )}
                       </span>
                       <span className="block text-xs font-extrabold text-[var(--foreground)] leading-snug">
                         {dictItem.anlam_tr}
@@ -205,7 +250,7 @@ export default function WordTooltip({ text }: Props) {
                       <span className="text-right">
                         <span
                           dir="rtl"
-                          className="arabic text-2xl font-bold text-[#087F5B] dark:text-[#20c997] block leading-none"
+                          className={`arabic text-2xl font-bold block leading-none ${catStyle.arabicAccent}`}
                         >
                           {formatAr(primaryAr)}
                         </span>
@@ -239,7 +284,7 @@ export default function WordTooltip({ text }: Props) {
                         <span>Morfolojik Çözümleme:</span>
                       </span>
                       <span dir="rtl" className="block text-right leading-snug">
-                        {morphologyNote}
+                        {formatAr(morphologyNote)}
                       </span>
                     </span>
                   )}
@@ -348,13 +393,13 @@ export default function WordTooltip({ text }: Props) {
                         toggleLearnedWord(dictItem.id);
                       }}
                       title="Öğrendim Olarak İşaretle"
-                      className={`h-8 w-8 rounded-xl border-2 border-b-3 flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                      className={`h-8 w-8 rounded-xl border-2 border-b-3 flex items-center justify-center transition-all cursor-pointer ${
                         isLearned
                           ? "bg-[#6741D9] border-[#5230B5] text-white"
-                          : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)] hover:text-[#0CA678]"
+                          : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)] hover:border-[#6741D9]"
                       }`}
                     >
-                      <CheckCircle2 size={13} />
+                      <CheckCircle2 size={14} />
                     </button>
                   </span>
                 </span>

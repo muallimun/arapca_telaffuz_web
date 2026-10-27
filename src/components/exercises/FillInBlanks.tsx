@@ -17,11 +17,13 @@ import {
   AlertCircle,
   Volume2,
   CheckCircle2,
+  GripVertical,
 } from "lucide-react";
 import { useCountdown } from "@/lib/useTimer";
 import { playTTS } from "@/lib/audio";
 import { useSettings } from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
+import { formatArabicText } from "@/lib/arabicTextUtils";
 
 interface Props {
   dialogues: Dialogue[];
@@ -37,6 +39,7 @@ export default function FillInBlanks({
   questionCount = 10,
 }: Props) {
   const fanfarePlayedRef = useRef(false);
+  const dropZoneRef = useRef<HTMLSpanElement | null>(null);
   const [roundSeed, setRoundSeed] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -45,10 +48,14 @@ export default function FillInBlanks({
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
 
+  // Sürükle-Bırak (Drag & Drop) State
+  const [draggingWord, setDraggingWord] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState<boolean>(false);
+
   const { speechRate, showHareke } = useSettings();
   const { addStudyMinutes } = useUserStore();
-  const removeTashkeel = (t: string) => t.replace(/[\u064B-\u0652]/g, "");
-  const formatAr = (t: string) => (showHareke ? t : removeTashkeel(t));
+  const removeTashkeel = (t: string) => t.replace(/[\u064B-\u065F\u0670]/g, "");
+  const formatAr = (t: string) => formatArabicText(t, showHareke);
 
   const handleTimeout = () => setIsTimeUp(true);
   const timeLeft = useCountdown(
@@ -144,6 +151,8 @@ export default function FillInBlanks({
   useEffect(() => {
     setFeedback(null);
     setSelectedWord(null);
+    setDraggingWord(null);
+    setIsDragOver(false);
   }, [currentIndex]);
 
   useEffect(() => {
@@ -191,6 +200,86 @@ export default function FillInBlanks({
     }
   };
 
+  // --- HTML5 DRAG & DROP HANDLERS ---
+  const handleDragStart = (e: React.DragEvent<HTMLButtonElement>, word: string) => {
+    if (feedback === "correct" || isTimeUp) return;
+    setDraggingWord(word);
+    e.dataTransfer.setData("text/plain", word);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragEnd = () => {
+    setDraggingWord(null);
+    setIsDragOver(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLSpanElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (!isDragOver) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLSpanElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLSpanElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const droppedWord = e.dataTransfer.getData("text/plain") || draggingWord;
+    setDraggingWord(null);
+    if (droppedWord) {
+      handleChooseOption(droppedWord);
+    }
+  };
+
+  // --- MOBİL DOKUNMATİK SÜRÜKLE-BIRAK (TOUCH DRAG) ---
+  const handleTouchMove = (e: React.TouchEvent<HTMLButtonElement>, word: string) => {
+    if (feedback === "correct" || isTimeUp) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    if (draggingWord !== word) {
+      setDraggingWord(word);
+    }
+    const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (
+      dropZoneRef.current &&
+      targetEl &&
+      (dropZoneRef.current === targetEl || dropZoneRef.current.contains(targetEl))
+    ) {
+      if (!isDragOver) setIsDragOver(true);
+    } else if (isDragOver) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLButtonElement>, word: string) => {
+    if (!draggingWord) return;
+    const touch = e.changedTouches[0];
+    if (touch && dropZoneRef.current) {
+      const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (
+        targetEl &&
+        (dropZoneRef.current === targetEl ||
+          dropZoneRef.current.contains(targetEl))
+      ) {
+        setIsDragOver(false);
+        setDraggingWord(null);
+        handleChooseOption(word);
+        return;
+      }
+    }
+    setIsDragOver(false);
+    setDraggingWord(null);
+  };
+
   const restart = () => {
     playClick();
     fanfarePlayedRef.current = false;
@@ -201,6 +290,8 @@ export default function FillInBlanks({
     setIsTimeUp(false);
     setFeedback(null);
     setSelectedWord(null);
+    setDraggingWord(null);
+    setIsDragOver(false);
   };
 
   if (isFinished || isTimeUp) {
@@ -242,9 +333,9 @@ export default function FillInBlanks({
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5">
+    <div className="max-w-3xl mx-auto space-y-4">
       {/* ÜST DURUM ÇUBUĞU */}
-      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-3 flex items-center justify-between gap-2">
+      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-2.5 flex items-center justify-between gap-2">
         <span className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] tabular-nums">
           Cümle {currentIndex + 1} / {questions.length}
         </span>
@@ -269,7 +360,7 @@ export default function FillInBlanks({
 
       {/* CÜMLE KARTI */}
       <div
-        className={`rounded-2xl border-2 border-b-4 p-6 sm:p-8 text-center space-y-4 transition-all ${
+        className={`rounded-2xl border-2 border-b-4 p-5 sm:p-7 text-center space-y-4 transition-all ${
           feedback === "correct"
             ? "bg-emerald-50 border-[#0CA678]"
             : feedback === "wrong"
@@ -277,8 +368,10 @@ export default function FillInBlanks({
             : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-dashed border-[#E2D3B8] pb-2.5 text-xs font-bold text-[var(--muted)]">
-          <span>Boşluğa uygun Arapça kelimeyi seçin</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-2.5 text-xs font-bold text-[var(--muted)]">
+          <span>
+            💡 Kelimeye tıklayın veya cümledeki boşluğa sürükleyip bırakın
+          </span>
           <button
             type="button"
             onClick={() => {
@@ -301,39 +394,60 @@ export default function FillInBlanks({
               <span>{formatAr(part)}</span>
               {i < arr.length - 1 && (
                 <span
-                  className={`inline-flex items-center justify-center min-w-[120px] px-4 py-1 rounded-xl border-2 border-dashed mx-1 transition-all ${
+                  ref={dropZoneRef}
+                  onDragOver={handleDragOver}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`inline-flex items-center justify-center min-w-[130px] px-4 py-1 rounded-xl border-2 border-dashed mx-1.5 transition-all select-none ${
                     feedback === "correct"
-                      ? "border-[#0CA678] bg-[#0CA678] text-white"
-                      : "border-[#6741D9] bg-[#F3F0FF] text-[#6741D9]"
+                      ? "border-[#0CA678] bg-[#0CA678] text-white scale-105"
+                      : feedback === "wrong" && selectedWord
+                      ? "border-rose-500 bg-rose-100 text-rose-800"
+                      : isDragOver
+                      ? "ring-4 ring-emerald-500/30 border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/60 text-[#087F5B] dark:text-[#20c997] scale-105"
+                      : "border-[#6741D9] bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] text-[#6741D9] dark:text-[#d0bfff]"
                   }`}
                 >
                   {feedback === "correct"
                     ? formatAr(currentQ.correctWord)
-                    : "؟"}
+                    : feedback === "wrong" && selectedWord
+                    ? formatAr(selectedWord)
+                    : isDragOver && draggingWord
+                    ? formatAr(draggingWord)
+                    : "____"}
                 </span>
               )}
             </span>
           ))}
         </div>
 
-        <p className="pt-3 border-t border-dashed border-[#E2D3B8] text-sm font-semibold text-[var(--muted)]">
+        <p className="pt-2.5 border-t border-dashed border-[#E2D3B8] text-sm font-semibold text-[var(--muted)]">
           “{currentQ.turkce}”
         </p>
       </div>
 
-      {/* KELİME SEÇENEKLERİ */}
+      {/* KELİME SEÇENEKLERİ (TIKLA VEYA SÜRÜKLE-BIRAK) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {currentQ.options.map((word, idx) => {
           const isChosen = selectedWord === word;
           const isRight = feedback === "correct" && word === currentQ.correctWord;
           const isWrong = feedback === "wrong" && isChosen;
+          const isDragging = draggingWord === word;
 
           return (
             <button
               key={idx}
               type="button"
+              draggable={feedback !== "correct" && !isTimeUp}
+              onDragStart={(e) => handleDragStart(e, word)}
+              onDragEnd={handleDragEnd}
+              onTouchMove={(e) => handleTouchMove(e, word)}
+              onTouchEnd={(e) => handleTouchEnd(e, word)}
               onClick={() => handleChooseOption(word)}
-              className={`py-4 px-3 rounded-2xl border-2 border-b-4 arabic text-2xl sm:text-3xl font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`py-4 px-3 rounded-2xl border-2 border-b-4 arabic text-2xl sm:text-3xl font-bold transition-all flex items-center justify-center gap-2 cursor-grab active:cursor-grabbing ${
+                isDragging ? "opacity-60 scale-95 border-[#6741D9]" : ""
+              } ${
                 isRight
                   ? "bg-[#0CA678] border-[#087F5B] text-white"
                   : isWrong
@@ -341,6 +455,12 @@ export default function FillInBlanks({
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#6741D9] text-[var(--foreground)] active:border-b-2 active:translate-y-0.5"
               }`}
             >
+              <GripVertical
+                size={15}
+                className={`shrink-0 opacity-45 ${
+                  isRight ? "text-white" : "text-[var(--muted)]"
+                }`}
+              />
               <span dir="rtl">{formatAr(word)}</span>
               {isRight && <CheckCircle2 size={18} className="shrink-0" />}
               {isWrong && <XCircle size={18} className="shrink-0" />}

@@ -15,21 +15,46 @@ import {
   AlertCircle,
   X,
   Download,
+  Sparkles,
+  Languages,
+  Sun,
+  Moon,
+  Check,
 } from "lucide-react";
 import { useSfxStore } from "@/store/sfxStore";
-import { useSettings } from "@/store/settings";
+import { useSettings, ViewMode } from "@/store/settings";
 import { playClick, playSuccess } from "@/lib/sfxManager";
 import { usePwaInstall } from "@/lib/usePwaInstall";
+import { getArabicFontConfig } from "@/lib/arabicTextUtils";
+
+const VIEW_MODE_LABELS: Record<ViewMode, string> = {
+  stacked: "Alt Alta (Arapça + Türkçe)",
+  columns: "İki Sütun (Yan Yana)",
+  "arabic-only": "Sadece Arapça",
+  "turkish-only": "Sadece Türkçe (Kendini Sına)",
+};
 
 export default function Header() {
   const pathname = usePathname();
   const { enabled: sfxEnabled, toggle: toggleSfx } = useSfxStore();
-  const { theme, speechRate, cycleSpeechRate } = useSettings();
+  const {
+    theme,
+    toggleTheme,
+    showHareke,
+    toggleHareke,
+    viewMode,
+    setViewMode,
+    speechRate,
+    cycleSpeechRate,
+    arabicFont,
+  } = useSettings();
   const { isInstallable, isIOS, installApp } = usePwaInstall();
 
   const [mounted, setMounted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iosInstallOpen, setIosInstallOpen] = useState(false);
+  const [viewMenuOpen, setViewMenuOpen] = useState(false);
+  const viewMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Mikrofon Testi Modal/Popover State
   const [micModalOpen, setMicModalOpen] = useState(false);
@@ -49,12 +74,38 @@ export default function Header() {
   }, [theme]);
 
   useEffect(() => {
+    const cfg = getArabicFontConfig(arabicFont);
+    document.documentElement.style.setProperty(
+      "--font-arabic-family",
+      cfg.cssFamily
+    );
+    document.documentElement.style.setProperty(
+      "--font-arabic-scale",
+      String(cfg.scale)
+    );
+    document.documentElement.style.setProperty(
+      "--font-arabic-line-height",
+      String(cfg.lineHeight)
+    );
+  }, [arabicFont]);
+
+  useEffect(() => {
     const handleFsChange = () => {
       setIsFullscreen(Boolean(document.fullscreenElement));
     };
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        viewMenuRef.current &&
+        !viewMenuRef.current.contains(e.target as Node)
+      ) {
+        setViewMenuOpen(false);
+      }
+    };
     document.addEventListener("fullscreenchange", handleFsChange);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("fullscreenchange", handleFsChange);
+      document.removeEventListener("mousedown", handleClickOutside);
       stopMicTest();
     };
   }, []);
@@ -148,36 +199,40 @@ export default function Header() {
     { href: "/ayarlar", label: "Ayarlar" },
   ];
 
+  const isHarekeOn = !mounted || showHareke;
+  const currentViewMode: ViewMode = mounted ? viewMode : "stacked";
+  const isDark = mounted && theme === "dark";
+
   return (
     <>
       <header className="sticky top-0 z-50 w-full bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b-2 border-[#E6D7BE] dark:border-[var(--border)]">
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 h-15 flex items-center justify-between gap-2">
           {/* SOL: 3B Dokunsal Rozetli Gerçek Logo + Başlık */}
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             <Link
               href="/"
               onClick={() => playClick()}
               className="flex items-center gap-2.5 group min-w-0"
             >
-              <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-center shrink-0 group-active:translate-y-0.5 transition-transform p-0.5">
+              <div className="w-9 h-9 rounded-xl bg-white dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-center shrink-0 group-active:translate-y-0.5 transition-transform p-0.5">
                 <img
                   src="/icons/android-chrome-192x192.png"
                   alt="Logo"
-                  className="w-8 h-8 object-contain rounded-lg"
+                  className="w-7 h-7 object-contain rounded-lg"
                 />
               </div>
               <div className="min-w-0">
                 <span className="block text-sm sm:text-base font-extrabold tracking-tight text-[var(--foreground)] truncate">
                   Arapça Telaffuz & Diyalog
                 </span>
-                <span className="hidden sm:block text-[11px] font-semibold text-[var(--muted)] truncate">
+                <span className="hidden xl:block text-[11px] font-semibold text-[var(--muted)] truncate">
                   İnteraktif Konuşma, Mahreç ve Sözlük Asistanı
                 </span>
               </div>
             </Link>
 
             {/* Masaüstü Hızlı Navigasyon */}
-            <nav className="hidden lg:flex items-center gap-1 ml-4 bg-[#F7EFE1] dark:bg-[var(--surface)] p-1 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
+            <nav className="hidden lg:flex items-center gap-1 ml-2 bg-[#F7EFE1] dark:bg-[var(--surface)] p-1 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
               {navLinks.map((item) => {
                 const isActive =
                   item.href === "/"
@@ -188,7 +243,7 @@ export default function Header() {
                     key={item.href}
                     href={item.href}
                     onClick={() => playClick()}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
                       isActive
                         ? "bg-[#0CA678] text-white shadow-xs"
                         : "text-[var(--muted)] hover:text-[var(--foreground)]"
@@ -201,8 +256,8 @@ export default function Header() {
             </nav>
           </div>
 
-          {/* SAĞ: 3B Dokunsal Kontrol Butonları */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* SAĞ: 3B Dokunsal Global Hızlı Ayar İkonları */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {/* PWA Uygulamayı Kur Butonu */}
             {mounted && (isInstallable || isIOS) && (
               <button
@@ -216,14 +271,139 @@ export default function Header() {
                   }
                 }}
                 title="Uygulamayı Cihaza Kur"
-                className="h-10 px-2.5 sm:px-3 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center gap-1.5 text-xs font-extrabold cursor-pointer"
+                className="group relative w-9 h-9 sm:w-auto sm:px-2.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-1 text-xs font-extrabold cursor-pointer"
               >
                 <Download size={15} />
-                <span className="hidden md:inline">Uygulamayı Kur</span>
+                <span className="hidden xl:inline">Kur</span>
               </button>
             )}
 
-            {/* 1. Ses Efektleri Aç/Kapa */}
+            {/* 1. Hareke Aç/Kapa İkonu */}
+            <button
+              type="button"
+              onClick={() => {
+                toggleHareke();
+                playClick();
+              }}
+              title={
+                isHarekeOn
+                  ? "Harekeler: Açık (Gizlemek için tıkla)"
+                  : "Harekeler: Gizli (Göstermek için tıkla)"
+              }
+              aria-label="Hareke Aç/Kapa"
+              className={`group relative w-9 h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer ${
+                isHarekeOn
+                  ? "bg-[#0CA678]/15 border-[#0CA678] text-[#087F5B] dark:text-[#20c997]"
+                  : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] opacity-75"
+              }`}
+            >
+              <Sparkles size={16} strokeWidth={2.4} />
+              <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
+                {isHarekeOn ? "Hareke: Açık" : "Hareke: Kapalı"}
+              </span>
+            </button>
+
+            {/* 2. Çeviri Görünümü İkonu + Popover Menü */}
+            <div className="relative" ref={viewMenuRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setViewMenuOpen((o) => !o);
+                }}
+                title={`Çeviri Görünümü: ${VIEW_MODE_LABELS[currentViewMode]}`}
+                aria-label="Çeviri Görünümü"
+                className={`group relative w-9 h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer ${
+                  currentViewMode !== "arabic-only"
+                    ? "bg-[#0CA678]/15 border-[#0CA678] text-[#087F5B] dark:text-[#20c997]"
+                    : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)]"
+                }`}
+              >
+                <Languages size={16} strokeWidth={2.4} />
+                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
+                  Çeviri: {VIEW_MODE_LABELS[currentViewMode].split(" ")[0]}
+                </span>
+              </button>
+
+              {viewMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-1.5 shadow-xl z-50 space-y-1">
+                  <div className="px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[var(--muted)] border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]">
+                    Çeviri & Görünüm Modu
+                  </div>
+                  {(
+                    Object.keys(VIEW_MODE_LABELS) as ViewMode[]
+                  ).map((mode) => {
+                    const active = currentViewMode === mode;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setViewMode(mode);
+                          setViewMenuOpen(false);
+                        }}
+                        className={`w-full px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                          active
+                            ? "bg-[#0CA678] text-white"
+                            : "text-[var(--foreground)] hover:bg-white/70 dark:hover:bg-[var(--background)]"
+                        }`}
+                      >
+                        <span>{VIEW_MODE_LABELS[mode]}</span>
+                        {active && <Check size={13} strokeWidth={3} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 3. TTS Okuma Hızı */}
+            <button
+              type="button"
+              onClick={() => {
+                cycleSpeechRate();
+                playClick();
+              }}
+              title={`Okuma Hızı: ${mounted ? speechRate : 1}x (Değiştirmek için tıkla)`}
+              aria-label="TTS Okuma Hızı"
+              className="group relative h-9 px-2 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center gap-1 text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer"
+            >
+              <Gauge size={15} className="text-[#0CA678] shrink-0" />
+              <span className="text-[11px] font-extrabold tabular-nums">
+                {mounted ? `${speechRate}x` : "1x"}
+              </span>
+              <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
+                Okuma Hızı ({mounted ? `${speechRate}x` : "1x"})
+              </span>
+            </button>
+
+            {/* 4. Tema Değiştirici (Sun / Moon) */}
+            <button
+              type="button"
+              onClick={() => {
+                toggleTheme();
+                playClick();
+              }}
+              title={
+                isDark
+                  ? "Tema: Gece Modu (Sıcak Krem temaya geç)"
+                  : "Tema: Sıcak Krem (Gece moduna geç)"
+              }
+              aria-label="Tema Değiştir"
+              className="group relative w-9 h-9 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer"
+            >
+              {isDark ? (
+                <Sun size={16} strokeWidth={2.4} className="text-amber-400" />
+              ) : (
+                <Moon size={16} strokeWidth={2.4} className="text-[#6741D9]" />
+              )}
+              <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
+                {isDark ? "Sıcak Krem Tema" : "Gece Modu"}
+              </span>
+            </button>
+
+            {/* 5. Ses Efektleri Aç/Kapa */}
             <button
               type="button"
               onClick={() => {
@@ -236,79 +416,71 @@ export default function Header() {
                   : "Ses Efektleri: Kapalı (Açmak için tıkla)"
               }
               aria-label="Ses Efektleri Aç/Kapa"
-              className={`relative h-10 px-2.5 sm:w-10 sm:px-0 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-center hover:bg-[#EFE3CE] active:border-b-2 active:translate-y-0.5 transition-all ${
+              className={`group relative w-9 h-9 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer ${
                 mounted && sfxEnabled
                   ? "text-[#087F5B] dark:text-[#20c997]"
                   : "text-[var(--muted)] opacity-75"
               }`}
             >
               {mounted && sfxEnabled ? (
-                <Volume2 size={18} strokeWidth={2.4} />
+                <Volume2 size={16} strokeWidth={2.4} />
               ) : (
-                <VolumeX size={18} strokeWidth={2.4} />
+                <VolumeX size={16} strokeWidth={2.4} />
               )}
-            </button>
-
-            {/* 2. TTS Okuma Hızı */}
-            <button
-              type="button"
-              onClick={() => {
-                cycleSpeechRate();
-                playClick();
-              }}
-              title={`TTS Okuma Hızı: ${mounted ? speechRate : 1}x (Değiştirmek için tıkla)`}
-              aria-label="TTS Okuma Hızı"
-              className="h-10 px-2.5 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-center gap-1 text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-2 active:translate-y-0.5 transition-all"
-            >
-              <Gauge size={16} className="text-[#0CA678] shrink-0" />
-              <span className="text-xs font-extrabold tabular-nums">
-                {mounted ? `${speechRate}x` : "1x"}
+              <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
+                {mounted && sfxEnabled ? "SFX: Açık" : "SFX: Kapalı"}
               </span>
             </button>
 
-            {/* 3. Mikrofon Testi */}
+            {/* 6. Mikrofon Testi */}
             <button
               type="button"
               onClick={handleToggleMicModal}
               title="Mikrofon Testi"
               aria-label="Mikrofon Testi"
-              className={`h-10 w-10 rounded-xl border-2 border-b-4 flex items-center justify-center active:border-b-2 active:translate-y-0.5 transition-all ${
+              className={`group relative w-9 h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer ${
                 micModalOpen
                   ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:bg-[#EFE3CE]"
               }`}
             >
-              <Mic size={18} strokeWidth={2.4} />
+              <Mic size={16} strokeWidth={2.4} />
+              <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
+                Mikrofon Testi
+              </span>
             </button>
 
-            {/* 4. Tam Ekran */}
+            {/* 7. Tam Ekran */}
             <button
               type="button"
               onClick={handleToggleFullscreen}
               title={isFullscreen ? "Tam Ekrandan Çık" : "Tam Ekran"}
               aria-label="Tam Ekran"
-              className="hidden sm:flex h-10 w-10 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-2 active:translate-y-0.5 transition-all"
+              className="group relative hidden sm:flex w-9 h-9 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer"
             >
               {isFullscreen ? (
-                <Minimize2 size={17} strokeWidth={2.4} />
+                <Minimize2 size={15} strokeWidth={2.4} />
               ) : (
-                <Maximize2 size={17} strokeWidth={2.4} />
+                <Maximize2 size={15} strokeWidth={2.4} />
               )}
+              <span className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
+                {isFullscreen ? "Tam Ekrandan Çık" : "Tam Ekran"}
+              </span>
             </button>
 
-            {/* 5. Ayarlar Kısayolu (Tablet/Mobil için) */}
+            {/* 8. Ayarlar Kısayolu (Tablet/Mobil için) */}
             <Link
               href="/ayarlar"
               onClick={() => playClick()}
               title="Ayarlar"
               aria-label="Ayarlar"
-              className={`lg:hidden h-10 w-10 rounded-xl border-2 border-b-4 flex items-center justify-center active:border-b-2 active:translate-y-0.5 transition-all ${
+              className={`lg:hidden w-9 h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all ${
                 pathname === "/ayarlar"
                   ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"
               }`}
             >
-              <Settings size={18} strokeWidth={2.4} />
+              <Settings size={16} strokeWidth={2.4} />
             </Link>
           </div>
         </div>

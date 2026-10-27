@@ -17,6 +17,7 @@ import { playFlip, playClick } from "@/lib/sfxManager";
 import { speakHybrid } from "@/lib/audio";
 import { shuffleArray } from "@/lib/quiz";
 import ShadowingModal from "@/components/ui/ShadowingModal";
+import { formatArabicText } from "@/lib/arabicTextUtils";
 
 interface Props {
   vocabulary: DictionaryItem[];
@@ -96,8 +97,7 @@ export default function Flashcard({ vocabulary, questionCount = 20 }: Props) {
   const isLearned = isWordLearned(currentWord.id);
   const primaryArabic = currentWord.mufret || currentWord.mazi || "";
   const cleanArabic = primaryArabic.split("/")[0].trim();
-  const removeTashkeel = (t: string) => t.replace(/[\u064B-\u0652]/g, "");
-  const formatAr = (t: string) => (showHareke ? t : removeTashkeel(t));
+  const formatAr = (t: string) => formatArabicText(t, showHareke);
   const displayArabic = formatAr(primaryArabic);
 
   const handleSpeak = (e?: React.MouseEvent) => {

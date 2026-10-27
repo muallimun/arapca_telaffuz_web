@@ -9,9 +9,6 @@ import {
   CheckCircle2,
   Mic,
   Volume2,
-  BookOpen,
-  Filter,
-  Layers,
   X,
   Sparkles,
 } from "lucide-react";
@@ -22,6 +19,8 @@ import {
   DialogueVocabularyEntry,
   cleanArabicText,
   analyzeAndMatchWord,
+  getWordCategory,
+  WordCategory,
 } from "@/lib/dict";
 import { loadAudioManifest, playTTS } from "@/lib/audio";
 import { useAudioStore } from "@/store/audioStore";
@@ -29,9 +28,40 @@ import { useUserStore } from "@/store/userStore";
 import { useSettings } from "@/store/settings";
 import { playClick } from "@/lib/sfxManager";
 import ShadowingModal from "@/components/ui/ShadowingModal";
+import { formatArabicText } from "@/lib/arabicTextUtils";
 
 type StatusFilter = "all" | "learned" | "unlearned" | "favorites";
-type TypeFilter = "all" | "isim" | "fiil";
+type TypeFilter = "all" | "isim" | "fiil" | "edat";
+
+function getCategoryCardTheme(category: WordCategory) {
+  if (category === "fiil") {
+    return {
+      leftBorder: "border-l-4 border-l-amber-500",
+      badgeText: "⚡ Fiil (فعل)",
+      badgeClass:
+        "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700/60",
+      arabicColor:
+        "text-amber-700 dark:text-amber-300 group-hover:text-amber-600",
+    };
+  }
+  if (category === "edat") {
+    return {
+      leftBorder: "border-l-4 border-l-purple-500",
+      badgeText: "🔗 Edat / Kalıp",
+      badgeClass:
+        "bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-700/60",
+      arabicColor:
+        "text-purple-700 dark:text-purple-300 group-hover:text-purple-600",
+    };
+  }
+  return {
+    leftBorder: "border-l-4 border-l-sky-500",
+    badgeText: "📘 İsim (اسم)",
+    badgeClass:
+      "bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-700/60",
+    arabicColor: "text-sky-700 dark:text-sky-300 group-hover:text-sky-600",
+  };
+}
 
 export default function DictionaryPage() {
   const [mounted, setMounted] = useState(false);
@@ -56,7 +86,7 @@ export default function DictionaryPage() {
     learnedWords,
   } = useUserStore();
 
-  const { speechRate, showHareke } = useSettings();
+  const { speechRate, showHareke, arabicFont } = useSettings();
   const { playAudio } = useAudioStore();
 
   useEffect(() => {
@@ -71,9 +101,8 @@ export default function DictionaryPage() {
     }
   }, []);
 
-  const removeTashkeel = (text: string) => text.replace(/[\u064B-\u0652]/g, "");
   const getDisplayArabic = (text: string) =>
-    !mounted || showHareke ? text : removeTashkeel(text);
+    formatArabicText(text, !mounted || showHareke, arabicFont);
 
   // Seçili diyaloğun morfolojik kelime haritası (getDialogueVocabulary ile)
   const dialogueContextMap = useMemo(() => {
@@ -89,9 +118,9 @@ export default function DictionaryPage() {
       ? Array.from(dialogueContextMap.values()).map((e) => e.item)
       : sozluk;
 
-    // 1. Kelime türüne göre filtreleme
+    // 1. Kelime türüne göre filtreleme (getWordCategory ile)
     if (typeFilter !== "all") {
-      result = result.filter((w) => w.tur.toLowerCase() === typeFilter);
+      result = result.filter((w) => getWordCategory(w) === typeFilter);
     }
 
     // 2. Öğrenilme / Favori durumuna göre filtreleme
@@ -175,17 +204,21 @@ export default function DictionaryPage() {
   // Kelimenin tüm formlarını hazırla (Gölgeleme modalı için)
   const prepareForms = (word: DictionaryItem) => {
     const forms: { label: string; arabic: string }[] = [];
-    if (word.tur === "isim") {
-      if (word.mufret)
-        forms.push({ label: "Müfret (Tekil)", arabic: word.mufret });
-      if (word.cemi && word.cemi !== "-")
-        forms.push({ label: "Cemî (Çoğul)", arabic: word.cemi });
-    } else if (word.tur === "fiil") {
+    const category = getWordCategory(word);
+    if (category === "fiil" || word.mazi || word.muzari) {
       if (word.mazi) forms.push({ label: "Mâzî (Geçmiş)", arabic: word.mazi });
       if (word.muzari)
         forms.push({ label: "Muzâri (Şimdiki/Geniş)", arabic: word.muzari });
       if (word.masdar)
         forms.push({ label: "Masdar (İsim Hali)", arabic: word.masdar });
+      if (forms.length === 0 && word.mufret) {
+        forms.push({ label: "Fiil Formu", arabic: word.mufret });
+      }
+    } else {
+      if (word.mufret)
+        forms.push({ label: "Müfret (Tekil)", arabic: word.mufret });
+      if (word.cemi && word.cemi !== "-")
+        forms.push({ label: "Cemî (Çoğul)", arabic: word.cemi });
     }
     return forms.length > 0 ? forms : null;
   };
@@ -199,7 +232,7 @@ export default function DictionaryPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* GÖLGELEME MODALI */}
       {shadowingTarget && (
         <ShadowingModal
@@ -225,8 +258,7 @@ export default function DictionaryPage() {
               İnteraktif Morfolojik Arapça Sözlük
             </h1>
             <p className="text-xs font-medium text-[var(--muted)]">
-              5 kademeli ek/zamir çözümleyici, kök harf arama ve diyaloğa göre
-              eksiksiz kelime filtreleme
+              Fiil / İsim / Edat renk kodlamalı morfolojik kök ve çekim sözlüğü
             </p>
           </div>
         </div>
@@ -236,156 +268,137 @@ export default function DictionaryPage() {
         </div>
       </div>
 
-      {/* ARAMA VE KESİK ÇİZGİLİ FİLTRE PANELİ */}
-      <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 sm:px-6 py-3">
-        {/* Satır 1: Anlık Arapça/Türkçe Arama */}
-        <div className="py-3 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]">
-          <div className="relative">
-            <Search
-              size={18}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
-            />
-            <input
-              type="text"
-              placeholder="Arapça (çekimli veya yalın), Türkçe anlam veya kök harf ara (ör: غرفتكم, بمعرفتك)..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] rounded-xl pl-10 pr-9 py-2.5 text-sm font-medium text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678]"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
-                aria-label="Aramayı Temizle"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Satır 2: Diyaloğa Göre Filtreleme */}
-        <div className="py-3 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <BookOpen size={16} className="text-[#087F5B] shrink-0" />
-            <div>
-              <span className="text-sm font-extrabold text-[var(--foreground)]">
-                Diyaloğa Göre Kelime Filtresi
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Tüm sözlüğü veya belirli bir diyaloğun tüm kelimelerini (dlg_01
-                - dlg_60) seçin
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] w-full sm:w-auto sm:min-w-[300px]">
-            <select
-              value={selectedDialogueId}
-              onChange={(e) => {
-                playClick();
-                setSelectedDialogueId(e.target.value);
-              }}
-              className="w-full bg-transparent px-3 py-1.5 text-xs font-bold text-[var(--foreground)] focus:outline-none cursor-pointer"
+      {/* TEK SATIRLIK KOMPAKT KONTROL ŞERİDİ (TOOLBAR) */}
+      <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-2.5 flex flex-wrap items-center justify-between gap-2">
+        {/* 1. Anlık Arapça/Türkçe Arama */}
+        <div className="relative flex-1 min-w-[180px]">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
+          />
+          <input
+            type="text"
+            placeholder="Arapça, Türkçe anlam veya kök ara (ör: أستودعك)..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-9 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] rounded-xl pl-9 pr-8 text-xs font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678]"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+              aria-label="Aramayı Temizle"
             >
-              <option value="all">
-                Tüm Sözlük ({sozluk.length} Kelime)
-              </option>
-              {diyaloglar.map((dlg) => {
-                const num = dlg.id.replace("dlg_", "");
-                return (
-                  <option key={dlg.id} value={dlg.id}>
-                    Diyalog #{num} — {dlg.baslik_tr} ({dlg.seviye})
-                  </option>
-                );
-              })}
-            </select>
-          </div>
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        {/* Satır 3: Öğrenme Durumu ve Kelime Türü Hapları */}
-        <div className="py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Öğrenme Durumu */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <span className="text-xs font-extrabold text-[var(--foreground)] flex items-center gap-1.5 mr-1">
-              <Filter size={14} className="text-[#087F5B]" />
-              Durum:
-            </span>
-            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1 w-fit">
-              {(
-                [
-                  { id: "all", label: "Tümü" },
-                  {
-                    id: "learned",
-                    label: `Öğrendiklerim (${
-                      mounted ? learnedWords.length : 0
-                    })`,
-                  },
-                  { id: "unlearned", label: "Öğrenmediklerim" },
-                  {
-                    id: "favorites",
-                    label: `Favoriler (${mounted ? favoriteWords.length : 0})`,
-                  },
-                ] as { id: StatusFilter; label: string }[]
-              ).map((tab) => {
-                const active = statusFilter === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => {
-                      playClick();
-                      setStatusFilter(tab.id);
-                    }}
-                    className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                      active
-                        ? "bg-[#0CA678] text-white font-semibold shadow-2xs"
-                        : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        {/* 2. Diyaloğa Göre Filtreleme Dropdown */}
+        <div className="bg-white dark:bg-[var(--background)] rounded-xl px-2 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center">
+          <select
+            value={selectedDialogueId}
+            onChange={(e) => {
+              playClick();
+              setSelectedDialogueId(e.target.value);
+            }}
+            className="bg-transparent text-xs font-bold text-[var(--foreground)] focus:outline-none cursor-pointer max-w-[190px] truncate"
+          >
+            <option value="all">Tüm Sözlük ({sozluk.length})</option>
+            {diyaloglar.map((dlg) => {
+              const num = dlg.id.replace("dlg_", "");
+              return (
+                <option key={dlg.id} value={dlg.id}>
+                  #{num} — {dlg.baslik_tr} ({dlg.seviye})
+                </option>
+              );
+            })}
+          </select>
+        </div>
 
-          {/* Kelime Türü */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-extrabold text-[var(--foreground)] flex items-center gap-1.5">
-              <Layers size={14} className="text-[#087F5B]" />
-              Tür:
-            </span>
-            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1">
-              {(
-                [
-                  { id: "all", label: "Tümü" },
-                  { id: "isim", label: "İsim" },
-                  { id: "fiil", label: "Fiil" },
-                ] as { id: TypeFilter; label: string }[]
-              ).map((t) => {
-                const active = typeFilter === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      playClick();
-                      setTypeFilter(t.id);
-                    }}
-                    className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                      active
-                        ? "bg-[#0CA678] text-white font-semibold shadow-2xs"
-                        : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        {/* 3. Öğrenme Durumu Hapları */}
+        <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1">
+          {(
+            [
+              { id: "all", label: "Tümü" },
+              {
+                id: "learned",
+                label: `Öğrendim (${mounted ? learnedWords.length : 0})`,
+              },
+              { id: "unlearned", label: "Yeni" },
+              {
+                id: "favorites",
+                label: `Favori (${mounted ? favoriteWords.length : 0})`,
+              },
+            ] as { id: StatusFilter; label: string }[]
+          ).map((tab) => {
+            const active = statusFilter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setStatusFilter(tab.id);
+                }}
+                className={`px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  active
+                    ? "bg-[#0CA678] text-white font-semibold shadow-2xs"
+                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 4. Kelime Türü Hapları: [Tümü] | [📘 İsimler] | [⚡ Fiiller] | [🔗 Edat & Kalıplar] */}
+        <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1">
+          {(
+            [
+              {
+                id: "all",
+                label: "Tümü",
+                activeClass: "bg-[#0CA678] text-white",
+              },
+              {
+                id: "isim",
+                label: "📘 İsimler",
+                activeClass: "bg-sky-600 text-white",
+              },
+              {
+                id: "fiil",
+                label: "⚡ Fiiller",
+                activeClass: "bg-amber-600 text-white",
+              },
+              {
+                id: "edat",
+                label: "🔗 Edat & Kalıplar",
+                activeClass: "bg-purple-600 text-white",
+              },
+            ] as { id: TypeFilter; label: string; activeClass: string }[]
+          ).map((t) => {
+            const active = typeFilter === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setTypeFilter(t.id);
+                }}
+                className={`px-2.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  active
+                    ? `${t.activeClass} font-bold shadow-2xs`
+                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                }`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -417,31 +430,38 @@ export default function DictionaryPage() {
             const isSpeaking = speakingWordId === word.id;
             const mainArabic = word.mufret || word.mazi || "";
             const contextEntry = dialogueContextMap?.get(word.id);
+            const category = getWordCategory(word);
+            const theme = getCategoryCardTheme(category);
 
             return (
               <div
                 key={word.id}
-                className={`rounded-2xl border-2 border-b-4 p-4 flex flex-col justify-between transition-all ${
+                className={`rounded-2xl border-2 border-b-4 ${
+                  theme.leftBorder
+                } p-4 flex flex-col justify-between transition-all ${
                   isLearned
                     ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9]"
                     : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
                 }`}
               >
                 <div className="space-y-2.5">
-                  {/* Üst Satır: Kök & Tür Etiketi + Arapça Ana Kelime */}
+                  {/* Üst Satır: Tür Rozeti (Fiil/İsim/Edat) + Kök + Arapça Ana Kelime */}
                   <div className="flex items-start justify-between gap-3 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--muted)]">
-                        <span className="uppercase text-[#087F5B] dark:text-[#20c997]">
-                          {word.tur}
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`px-2 py-0.5 rounded-md border text-[11px] font-extrabold ${theme.badgeClass}`}
+                        >
+                          {theme.badgeText}
                         </span>
-                        <span aria-hidden="true">·</span>
-                        <span>
-                          Kök:{" "}
-                          <strong className="arabic text-sm text-[var(--foreground)]">
-                            {word.kok}
-                          </strong>
-                        </span>
+                        {word.kok && word.kok !== "-" && (
+                          <span className="text-xs font-bold text-[var(--muted)]">
+                            Kök:{" "}
+                            <strong className="arabic text-sm text-[var(--foreground)]">
+                              {getDisplayArabic(word.kok)}
+                            </strong>
+                          </span>
+                        )}
                       </div>
 
                       <p className="text-sm font-extrabold text-[var(--foreground)] leading-snug">
@@ -457,7 +477,7 @@ export default function DictionaryPage() {
                     >
                       <span
                         dir="rtl"
-                        className="arabic text-3xl font-bold text-[#087F5B] dark:text-[#20c997] group-hover:text-[#0CA678] transition-colors block leading-tight"
+                        className={`arabic text-3xl font-bold transition-colors block leading-tight ${theme.arabicColor}`}
                       >
                         {getDisplayArabic(mainArabic)}
                       </span>
@@ -480,46 +500,20 @@ export default function DictionaryPage() {
                         <span>Diyalogdaki Morfolojik Yapı:</span>
                       </span>
                       <span dir="rtl" className="block text-right">
-                        {contextEntry.morphologyNote}
+                        {getDisplayArabic(contextEntry.morphologyNote)}
                       </span>
                     </div>
                   )}
 
                   {/* Orta Satır: Çekimler / Formlar (Tıklanabilir Sesli) */}
                   <div className="py-1.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-wrap items-center justify-between gap-2 text-xs">
-                    {word.tur === "isim" ? (
-                      <>
-                        {word.cemi && word.cemi !== "-" ? (
-                          <button
-                            type="button"
-                            onClick={() => handleListenWord(word, word.cemi)}
-                            className="inline-flex items-center gap-1.5 bg-white dark:bg-[var(--background)] px-2.5 py-1 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] transition-colors cursor-pointer"
-                            title="Çoğul halini sesli dinle"
-                          >
-                            <span className="font-bold text-[var(--muted)]">
-                              Cemî:
-                            </span>
-                            <span
-                              dir="rtl"
-                              className="arabic text-base font-bold text-[var(--foreground)]"
-                            >
-                              {getDisplayArabic(word.cemi)}
-                            </span>
-                            <Volume2 size={12} className="text-[#0CA678]" />
-                          </button>
-                        ) : (
-                          <span className="text-[11px] font-medium text-[var(--muted)]">
-                            Tekil İsim Formu
-                          </span>
-                        )}
-                      </>
-                    ) : (
+                    {category === "fiil" || word.mazi || word.muzari ? (
                       <div className="flex flex-wrap items-center gap-1.5">
                         {word.muzari && (
                           <button
                             type="button"
                             onClick={() => handleListenWord(word, word.muzari)}
-                            className="inline-flex items-center gap-1 bg-white dark:bg-[var(--background)] px-2 py-0.5 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] cursor-pointer"
+                            className="inline-flex items-center gap-1 bg-white dark:bg-[var(--background)] px-2 py-0.5 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] hover:border-amber-500 cursor-pointer"
                             title="Muzâri halini dinle"
                           >
                             <span className="font-bold text-[var(--muted)]">
@@ -537,7 +531,7 @@ export default function DictionaryPage() {
                           <button
                             type="button"
                             onClick={() => handleListenWord(word, word.masdar)}
-                            className="inline-flex items-center gap-1 bg-white dark:bg-[var(--background)] px-2 py-0.5 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] cursor-pointer"
+                            className="inline-flex items-center gap-1 bg-white dark:bg-[var(--background)] px-2 py-0.5 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] hover:border-amber-500 cursor-pointer"
                             title="Masdar halini dinle"
                           >
                             <span className="font-bold text-[var(--muted)]">
@@ -551,7 +545,42 @@ export default function DictionaryPage() {
                             </span>
                           </button>
                         )}
+                        {!word.muzari && !word.masdar && (
+                          <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                            Fiil Çekim Formu
+                          </span>
+                        )}
                       </div>
+                    ) : category === "edat" ? (
+                      <span className="text-[11px] font-medium text-purple-700 dark:text-purple-300">
+                        Sabit Edat / Konuşma Kalıbı
+                      </span>
+                    ) : (
+                      <>
+                        {word.cemi && word.cemi !== "-" ? (
+                          <button
+                            type="button"
+                            onClick={() => handleListenWord(word, word.cemi)}
+                            className="inline-flex items-center gap-1.5 bg-white dark:bg-[var(--background)] px-2.5 py-1 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] hover:border-sky-500 transition-colors cursor-pointer"
+                            title="Çoğul halini sesli dinle"
+                          >
+                            <span className="font-bold text-[var(--muted)]">
+                              Cemî:
+                            </span>
+                            <span
+                              dir="rtl"
+                              className="arabic text-base font-bold text-[var(--foreground)]"
+                            >
+                              {getDisplayArabic(word.cemi)}
+                            </span>
+                            <Volume2 size={12} className="text-sky-600" />
+                          </button>
+                        ) : (
+                          <span className="text-[11px] font-medium text-[var(--muted)]">
+                            Tekil İsim Formu
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

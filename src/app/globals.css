@@ -47,6 +47,10 @@
   --lavender-bg: #f3f0ff;
   --purple-accent: #6741d9;
 
+  --font-arabic-family: "ArakomFont", "Amiri", "Noto Naskh Arabic", serif;
+  --font-arabic-scale: 1;
+  --font-arabic-line-height: 2.05;
+
   --speaker-1: #087f5b;
   --speaker-2: #6741d9;
   --speaker-3: #b45309;
@@ -92,11 +96,17 @@ body {
   max-width: 100vw;
 }
 
-/* Arapça Metinler İçin Zorunlu Arakom Fontu */
+/* Arapça Metinler İçin Dinamik Font Ailesi ve Ölçekleme */
 .arabic {
-  font-family: "ArakomFont", "Amiri", "Noto Naskh Arabic", serif !important;
+  font-family: var(
+    --font-arabic-family,
+    "ArakomFont",
+    "Amiri",
+    "Noto Naskh Arabic",
+    serif
+  ) !important;
   direction: rtl;
-  line-height: 2.05;
+  line-height: var(--font-arabic-line-height, 2.05);
   letter-spacing: 0;
   font-feature-settings: "liga" 1, "calt" 1;
 }

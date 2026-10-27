@@ -100,63 +100,78 @@ export default function ShadowingButton({ onOpenCoach }: Props) {
 
   return (
     <div className="inline-flex items-center gap-1.5">
-      {/* Hızlı 16kHz WAV Ses Kaydı Butonu */}
+      {/* 🎤 Sesimi Kaydet (16kHz) */}
       {!isRecording && !audioUrl && (
         <button
           type="button"
           onClick={startRecording}
-          className="h-9 px-2.5 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] active:border-b-1 active:translate-y-0.5 transition-all inline-flex items-center gap-1.5 cursor-pointer"
-          title="16kHz Ses Kaydı Al ve Dinle (.wav)"
+          className="group relative w-9 h-9 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-[var(--foreground)] hover:border-[#0CA678] active:border-b-1 active:translate-y-0.5 transition-all inline-flex items-center justify-center cursor-pointer"
+          title="Sesimi Kaydet (16kHz)"
+          aria-label="Sesimi Kaydet (16kHz)"
         >
-          <Mic size={14} className="text-[#0CA678]" />
-          <span className="hidden sm:inline">Kaydet</span>
+          <Mic size={15} className="text-[#0CA678]" />
+          <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2.5 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-50 shadow-md">
+            Sesimi Kaydet (16kHz)
+          </span>
         </button>
       )}
 
+      {/* ⏹️ Kaydı Durdur */}
       {isRecording && (
         <button
           type="button"
           onClick={stopRecording}
-          className="h-9 px-3 rounded-xl bg-red-600 text-white border-b-3 border-red-800 text-xs font-extrabold animate-pulse inline-flex items-center gap-1.5 cursor-pointer"
+          className="group relative w-9 h-9 rounded-xl bg-red-600 text-white border-b-3 border-red-800 animate-pulse inline-flex items-center justify-center cursor-pointer"
           title="Kaydı Durdur"
+          aria-label="Kaydı Durdur"
         >
-          <Square size={12} fill="currentColor" />
-          <span>Durdur</span>
+          <Square size={14} fill="currentColor" />
+          <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2.5 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-50 shadow-md">
+            Kaydı Durdur
+          </span>
         </button>
       )}
 
+      {/* ▶️ Kaydımı Dinle & 🔄 Yeniden Kaydet */}
       {audioUrl && !isRecording && (
         <div className="inline-flex items-center gap-1">
           <button
             type="button"
             onClick={playRecording}
-            className={`h-9 px-2.5 rounded-xl border-2 border-b-3 text-xs font-extrabold inline-flex items-center gap-1 transition-all cursor-pointer ${
+            className={`group relative w-9 h-9 rounded-xl border-2 border-b-3 inline-flex items-center justify-center transition-all cursor-pointer ${
               isPlaying
                 ? "bg-[#0CA678] border-[#087F5B] text-white"
                 : "bg-white dark:bg-[var(--background)] border-[#0CA678] text-[#087F5B]"
             }`}
-            title={isPlaying ? "Durdur" : "Kaydını Dinle (.wav)"}
+            title={isPlaying ? "Durdur" : "Kaydımı Dinle"}
+            aria-label={isPlaying ? "Durdur" : "Kaydımı Dinle"}
           >
             {isPlaying ? (
-              <Square size={12} fill="currentColor" />
+              <Square size={13} fill="currentColor" />
             ) : (
-              <Play size={12} fill="currentColor" />
+              <Play size={14} fill="currentColor" />
             )}
-            <span>▶️ Sesim</span>
+            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2.5 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-50 shadow-md">
+              {isPlaying ? "Durdur" : "Kaydımı Dinle"}
+            </span>
           </button>
 
           <button
             type="button"
             onClick={resetRecording}
-            className="h-9 w-9 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+            className="group relative w-9 h-9 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
             title="Yeniden Kaydet"
+            aria-label="Yeniden Kaydet"
           >
-            <RotateCcw size={13} />
+            <RotateCcw size={14} />
+            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2.5 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-50 shadow-md">
+              Yeniden Kaydet
+            </span>
           </button>
         </div>
       )}
 
-      {/* Yapay Zeka Telaffuz & Mahreç Koçu Modalı Butonu */}
+      {/* ✨ Yapay Zeka Telaffuz & Mahreç Koçu */}
       {onOpenCoach && (
         <button
           type="button"
@@ -164,11 +179,14 @@ export default function ShadowingButton({ onOpenCoach }: Props) {
             playClick();
             onOpenCoach();
           }}
-          className="h-9 px-2.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] hover:opacity-95 active:border-b-1 active:translate-y-0.5 transition-all inline-flex items-center gap-1 cursor-pointer"
-          title="Yapay Zeka Telaffuz ve Mahreç Analizi"
+          className="group relative w-9 h-9 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 text-[#6741D9] dark:text-[#d0bfff] hover:opacity-95 active:border-b-1 active:translate-y-0.5 transition-all inline-flex items-center justify-center cursor-pointer"
+          title="Yapay Zeka Telaffuz & Mahreç Koçu"
+          aria-label="Yapay Zeka Telaffuz & Mahreç Koçu"
         >
-          <Sparkles size={13} />
-          <span>Analiz</span>
+          <Sparkles size={15} />
+          <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-lg bg-[#2b241d] px-2.5 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-50 shadow-md">
+            Yapay Zeka Telaffuz & Mahreç Koçu
+          </span>
         </button>
       )}
 

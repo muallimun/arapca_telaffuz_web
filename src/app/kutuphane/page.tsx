@@ -229,130 +229,103 @@ export default function LibraryPage() {
 
       {activeSection === "dialogues" && (
         <>
-          {/* ARAMA VE KESİK ÇİZGİLİ FİLTRE PANELİ */}
-          <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 sm:px-6 py-3">
-            {/* Satır 1: Arama Çubuğu */}
-            <div className="py-3 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="relative flex-1">
-                <Search
-                  size={18}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
-                />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Diyalog başlığı, Arapça ifade veya numara ara..."
-                  className="w-full bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] rounded-xl pl-10 pr-9 py-2.5 text-sm font-medium text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678]"
-                />
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => setSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)]"
-                    aria-label="Aramayı Temizle"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
-
-              <div className="text-xs font-extrabold text-[var(--muted)] tabular-nums shrink-0">
-                Gösterilen: {filteredDialogues.length} / {diyaloglar.length}{" "}
-                Diyalog
-              </div>
+          {/* TEK SATIRLIK KOMPAKT KONTROL ŞERİDİ (TOOLBAR) */}
+          <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-2.5 flex flex-wrap items-center justify-between gap-2">
+            {/* 1. Arama Inputu */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none"
+              />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Diyalog başlığı, Arapça ifade veya numara ara..."
+                className="w-full h-9 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] rounded-xl pl-9 pr-8 text-xs font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678]"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+                  aria-label="Aramayı Temizle"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
-            {/* Satır 2: İlerleme Durumu Filtresi (Tümü / Tamamlananlar / Devam Edenler) */}
-            <div className="py-3 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Filter size={16} className="text-[#087F5B]" />
-                <span className="text-sm font-extrabold text-[var(--foreground)]">
-                  Çalışma Durumu
-                </span>
-              </div>
+            {/* 2. Çalışma Durumu Hapları */}
+            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1">
+              {(
+                [
+                  { id: "all", label: `Tümü (${diyaloglar.length})` },
+                  {
+                    id: "completed",
+                    label: `Tamamlanan (${
+                      mounted ? completedDialogues.length : 0
+                    })`,
+                  },
+                  {
+                    id: "ongoing",
+                    label: `Devam Eden (${
+                      mounted
+                        ? diyaloglar.length - completedDialogues.length
+                        : diyaloglar.length
+                    })`,
+                  },
+                  {
+                    id: "favorites",
+                    label: `Favori (${mounted ? favoriteDialogues.length : 0})`,
+                  },
+                ] as { id: StatusFilter; label: string }[]
+              ).map((tab) => {
+                const active = statusFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setStatusFilter(tab.id);
+                    }}
+                    className={`px-2.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                      active
+                        ? "bg-[#0CA678] text-white font-semibold shadow-2xs"
+                        : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
 
-              <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1 self-start sm:self-auto">
-                {(
-                  [
-                    { id: "all", label: "Tümü" },
-                    {
-                      id: "completed",
-                      label: `Tamamlananlar (${
-                        mounted ? completedDialogues.length : 0
-                      })`,
-                    },
-                    {
-                      id: "ongoing",
-                      label: `Devam Edenler (${
-                        mounted
-                          ? diyaloglar.length - completedDialogues.length
-                          : diyaloglar.length
-                      })`,
-                    },
-                    {
-                      id: "favorites",
-                      label: `Favoriler (${
-                        mounted ? favoriteDialogues.length : 0
-                      })`,
-                    },
-                  ] as { id: StatusFilter; label: string }[]
-                ).map((tab) => {
-                  const active = statusFilter === tab.id;
+            {/* 3. Seviye Hapları */}
+            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1">
+              {(["all", "A1", "A2", "B1", "B2"] as (Level | "all")[]).map(
+                (lvl) => {
+                  const active = levelFilter === lvl;
                   return (
                     <button
-                      key={tab.id}
+                      key={lvl}
                       type="button"
                       onClick={() => {
                         playClick();
-                        setStatusFilter(tab.id);
+                        setLevelFilter(lvl);
                       }}
-                      className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
+                      className={`px-2.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                         active
                           ? "bg-[#0CA678] text-white font-semibold shadow-2xs"
                           : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
                       }`}
                     >
-                      {tab.label}
+                      {lvl === "all" ? "Tüm Kurlar" : lvl}
                     </button>
                   );
-                })}
-              </div>
-            </div>
-
-            {/* Satır 3: Seviye Filtresi */}
-            <div className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal size={16} className="text-[#087F5B]" />
-                <span className="text-sm font-extrabold text-[var(--foreground)]">
-                  Seviye Filtresi
-                </span>
-              </div>
-
-              <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
-                {(["all", "A1", "A2", "B1", "B2"] as (Level | "all")[]).map(
-                  (lvl) => {
-                    const active = levelFilter === lvl;
-                    return (
-                      <button
-                        key={lvl}
-                        type="button"
-                        onClick={() => {
-                          playClick();
-                          setLevelFilter(lvl);
-                        }}
-                        className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
-                          active
-                            ? "bg-[#0CA678] text-white font-semibold shadow-2xs"
-                            : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                        }`}
-                      >
-                        {lvl === "all" ? "Tümü" : lvl}
-                      </button>
-                    );
-                  }
-                )}
-              </div>
+                }
+              )}
             </div>
           </section>
 

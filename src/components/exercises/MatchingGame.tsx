@@ -21,6 +21,7 @@ import { useCountdown } from "@/lib/useTimer";
 import { playTTS } from "@/lib/audio";
 import { useSettings } from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
+import { formatArabicText } from "@/lib/arabicTextUtils";
 
 interface Props {
   vocabulary: DictionaryItem[];
@@ -37,8 +38,7 @@ export default function MatchingGame({
   const fanfarePlayedRef = useRef(false);
   const { speechRate, showHareke } = useSettings();
   const { addStudyMinutes } = useUserStore();
-  const removeTashkeel = (t: string) => t.replace(/[\u064B-\u0652]/g, "");
-  const formatAr = (t: string) => (showHareke ? t : removeTashkeel(t));
+  const formatAr = (t: string) => formatArabicText(t, showHareke);
 
   const [cards, setCards] = useState<
     { id: string; text: string; type: "ar" | "tr"; matchId: string }[]

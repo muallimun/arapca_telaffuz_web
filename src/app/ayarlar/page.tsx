@@ -23,12 +23,23 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from "lucide-react";
-import { useSettings, ViewMode, SpeechRate } from "@/store/settings";
+import {
+  useSettings,
+  ViewMode,
+  SpeechRate,
+  ArabicFontSizePreset,
+} from "@/store/settings";
 import { useSfxStore } from "@/store/sfxStore";
 import { useUserStore } from "@/store/userStore";
 import { usePwaInstall } from "@/lib/usePwaInstall";
 import { playClick } from "@/lib/sfxManager";
 import { playTTS } from "@/lib/audio";
+import {
+  ARABIC_FONT_OPTIONS,
+  ARABIC_FONT_SIZE_PRESETS,
+  formatArabicText,
+  getArabicFontConfig,
+} from "@/lib/arabicTextUtils";
 
 export default function SettingsPage() {
   const {
@@ -42,7 +53,10 @@ export default function SettingsPage() {
     setShowTooltips,
     showShadowing,
     setShowShadowing,
+    arabicFont,
+    setArabicFont,
     arabicFontSize,
+    arabicFontSizePreset,
     setArabicFontSize,
     turkishFontSize,
     setTurkishFontSize,
@@ -75,6 +89,22 @@ export default function SettingsPage() {
     if (theme === "dark") document.documentElement.classList.add("dark");
     else document.documentElement.classList.remove("dark");
   }, [theme]);
+
+  useEffect(() => {
+    const cfg = getArabicFontConfig(arabicFont);
+    document.documentElement.style.setProperty(
+      "--font-arabic-family",
+      cfg.cssFamily
+    );
+    document.documentElement.style.setProperty(
+      "--font-arabic-scale",
+      String(cfg.scale)
+    );
+    document.documentElement.style.setProperty(
+      "--font-arabic-line-height",
+      String(cfg.lineHeight)
+    );
+  }, [arabicFont]);
 
   if (!mounted) return null;
 
@@ -161,13 +191,6 @@ export default function SettingsPage() {
     },
   ];
 
-  const arabicSizes = [
-    { label: "Normal", value: 28 },
-    { label: "Orta", value: 34 },
-    { label: "Büyük", value: 42 },
-    { label: "Dev", value: 50 },
-  ];
-
   const turkishSizes = [
     { label: "Küçük", value: 14 },
     { label: "Orta", value: 16 },
@@ -175,9 +198,10 @@ export default function SettingsPage() {
     { label: "Çok Büyük", value: 21 },
   ];
 
-  const sampleArabic = showHareke
-    ? "اَلسَّلَامُ عَلَيْكُمْ، كَيْفَ حَالُكَ الْيَوْمَ؟"
-    : "السلام عليكم، كيف حالك اليوم؟";
+  const rawSampleArabic =
+    "أَسْتَوْدِعُكِ اللّٰهَ يَا أُمِّي، وَأَسْتَوْدِعُكَ اللّٰهَ يَا أَبِي.";
+  const sampleArabic = formatArabicText(rawSampleArabic, showHareke, arabicFont);
+  const activeFontCfg = getArabicFontConfig(arabicFont);
 
   return (
     <div className="space-y-5">
@@ -197,14 +221,218 @@ export default function SettingsPage() {
               Uygulama ve Okuma Ayarları
             </h1>
             <p className="text-xs font-medium text-[var(--muted)]">
-              Arapça tipografi, hareke, ses hızı ve diyalog görünüm tercihlerinizi
-              özelleştirin
+              Arapça yazı tipi (font), hareke, ses hızı ve diyalog görünüm
+              tercihlerinizi özelleştirin
             </p>
           </div>
         </div>
       </div>
 
-      {/* 1. DİYALOG GÖRÜNÜM MODU (4'lü Seçim Izgarası) */}
+      {/* 1. ARAPÇA YAZI TİPİ (FONT) VE BOYUTU + CANLI TİPOGRAFİ ÖNİZLEME */}
+      <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-3">
+          <div className="flex items-center gap-2">
+            <Type size={18} className="text-[#087F5B]" />
+            <div>
+              <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
+                🔤 Arapça Yazı Tipi (Font) ve Boyutu
+              </h2>
+              <p className="text-xs text-[var(--muted)]">
+                Arapça metinleri ve harekeleri en rahat okuyabildiğiniz seçkin
+                hat/yazı tipini seçin
+              </p>
+            </div>
+          </div>
+
+          <span className="px-3 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] text-xs font-extrabold text-[#087F5B] dark:text-[#20c997]">
+            Aktif Font: {activeFontCfg.name.split(" (")[0]} (
+            {activeFontCfg.scale > 1 ? `${activeFontCfg.scale}x Ölçek` : "1x"})
+          </span>
+        </div>
+
+        {/* 5 Seçkin Arapça Font Radyo Kartları */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {ARABIC_FONT_OPTIONS.map((font) => {
+            const isSelected = arabicFont === font.id;
+            return (
+              <button
+                key={font.id}
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setArabicFont(font.id);
+                }}
+                className={`relative text-left p-3.5 rounded-2xl border-2 border-b-4 transition-all flex flex-col justify-between gap-2.5 cursor-pointer ${
+                  isSelected
+                    ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] -translate-y-0.5 shadow-xs"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#cbb692]"
+                }`}
+              >
+                {isSelected && (
+                  <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-[#6741D9] text-white flex items-center justify-center">
+                    <Check size={12} strokeWidth={3} />
+                  </span>
+                )}
+
+                <div className="space-y-1 pr-5">
+                  <span
+                    className={`block text-xs font-extrabold leading-snug ${
+                      isSelected
+                        ? "text-[#4C28B5] dark:text-[#d0bfff]"
+                        : "text-[var(--foreground)]"
+                    }`}
+                  >
+                    {font.name}
+                  </span>
+                  <span className="block text-[11px] text-[var(--muted)] leading-tight">
+                    {font.subtitle}
+                  </span>
+                </div>
+
+                <div
+                  dir="rtl"
+                  style={{
+                    fontFamily: font.cssFamily,
+                    fontSize: `${Math.round(25 * font.scale)}px`,
+                    lineHeight: font.lineHeight,
+                  }}
+                  className="w-full rounded-xl bg-[#F7EFE1]/70 dark:bg-[var(--surface)] px-3 py-1.5 border border-[#E6D7BE] dark:border-[var(--border)] text-right font-bold text-[#087F5B] dark:text-[#20c997]"
+                >
+                  {formatArabicText("أَسْتَوْدِعُكَ اللّٰهَ", showHareke)}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Arapça ve Türkçe Yazı Boyutu Kontrolleri */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]">
+          {/* Arapça Yazı Boyutu ('sm' | 'md' | 'lg' | 'xl') */}
+          <div className="bg-white dark:bg-[var(--background)] rounded-2xl p-3 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span className="block text-xs font-extrabold text-[var(--foreground)]">
+                Arapça Yazı Boyutu ({arabicFontSizePreset.toUpperCase()} ·{" "}
+                {arabicFontSize}px)
+              </span>
+              <span className="block text-[11px] text-[var(--muted)]">
+                Diyalog ve sözlükteki Arapça metin büyüklüğü
+              </span>
+            </div>
+
+            <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
+              {ARABIC_FONT_SIZE_PRESETS.map(
+                (preset: {
+                  id: ArabicFontSizePreset;
+                  label: string;
+                  px: number;
+                }) => {
+                  const active =
+                    arabicFontSizePreset === preset.id ||
+                    arabicFontSize === preset.px;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        setArabicFontSize(preset.id);
+                      }}
+                      className={`px-2.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                        active
+                          ? "bg-[#0CA678] text-white font-bold"
+                          : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {preset.id.toUpperCase()} ({preset.px})
+                    </button>
+                  );
+                }
+              )}
+            </div>
+          </div>
+
+          {/* Türkçe Yazı Boyutu */}
+          <div className="bg-white dark:bg-[var(--background)] rounded-2xl p-3 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span className="block text-xs font-extrabold text-[var(--foreground)]">
+                Türkçe Çeviri Boyutu ({turkishFontSize}px)
+              </span>
+              <span className="block text-[11px] text-[var(--muted)]">
+                Diyalog altındaki Türkçe çeviri büyüklüğü
+              </span>
+            </div>
+
+            <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
+              {turkishSizes.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setTurkishFontSize(s.value);
+                  }}
+                  className={`px-2.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                    turkishFontSize === s.value
+                      ? "bg-[#0CA678] text-white font-bold"
+                      : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {s.label} ({s.value})
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Canlı Tipografi Önizleme Kutusu */}
+        <div className="pt-2 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-[#087F5B] dark:text-[#20c997]">
+              Canlı Tipografi Önizleme Kutusu (Lafzatullah & Hareke Testi)
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                playTTS(rawSampleArabic, speechRate);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0CA678] text-white text-xs font-bold border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
+            >
+              <Volume2 size={14} />
+              <span>Örnek Cümleyi Dinle ({speechRate}x)</span>
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-[var(--background)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] p-4 sm:p-5 space-y-2.5 shadow-2xs">
+            {viewMode !== "turkish-only" && (
+              <p
+                dir="rtl"
+                style={{
+                  fontFamily: activeFontCfg.cssFamily,
+                  fontSize: `${Math.round(
+                    arabicFontSize * activeFontCfg.scale
+                  )}px`,
+                  lineHeight: activeFontCfg.lineHeight,
+                }}
+                className="arabic font-bold text-[var(--foreground)]"
+              >
+                {sampleArabic}
+              </p>
+            )}
+            {viewMode !== "arabic-only" && (
+              <p
+                style={{ fontSize: `${turkishFontSize}px` }}
+                className="font-semibold text-[var(--muted)] border-t border-dashed border-[#E2D3B8] pt-2"
+              >
+                “Anneciğim seni Allah&apos;a emanet ediyorum; babacığım seni de
+                Allah&apos;a emanet ediyorum.”
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* 2. DİYALOG GÖRÜNÜM MODU (4'lü Seçim Izgarası) */}
       <section className="space-y-2.5">
         <div className="flex items-center gap-2 px-1">
           <Eye size={17} className="text-[#087F5B]" />
@@ -253,7 +481,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* 2. KESİK ÇİZGİLİ SATIRLAR: OKUMA, SES VE ETKİLEŞİM AYARLARI */}
+      {/* 3. KESİK ÇİZGİLİ SATIRLAR: OKUMA, SES VE ETKİLEŞİM AYARLARI */}
       <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 sm:px-6 py-2">
         {/* Satır 1: Harekeleri Göster */}
         <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -277,7 +505,7 @@ export default function SettingsPage() {
                 playClick();
                 setShowHareke(true);
               }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 showHareke
                   ? "bg-[#0CA678] text-white font-semibold"
                   : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -291,7 +519,7 @@ export default function SettingsPage() {
                 playClick();
                 setShowHareke(false);
               }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 !showHareke
                   ? "bg-[#0CA678] text-white font-semibold"
                   : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -324,7 +552,7 @@ export default function SettingsPage() {
                 playClick();
                 setShowTooltips(true);
               }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 showTooltips
                   ? "bg-[#0CA678] text-white font-semibold"
                   : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -338,7 +566,7 @@ export default function SettingsPage() {
                 playClick();
                 setShowTooltips(false);
               }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 !showTooltips
                   ? "bg-[#0CA678] text-white font-semibold"
                   : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -371,7 +599,7 @@ export default function SettingsPage() {
                 playClick();
                 setShowShadowing(true);
               }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 showShadowing
                   ? "bg-[#0CA678] text-white font-semibold"
                   : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -385,7 +613,7 @@ export default function SettingsPage() {
                 playClick();
                 setShowShadowing(false);
               }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 !showShadowing
                   ? "bg-[#0CA678] text-white font-semibold"
                   : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -419,7 +647,7 @@ export default function SettingsPage() {
                   playClick();
                   setSpeechRate(rate);
                 }}
-                className={`px-3.5 py-1.5 text-xs tabular-nums rounded-lg transition-all whitespace-nowrap ${
+                className={`px-3.5 py-1.5 text-xs tabular-nums rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   speechRate === rate
                     ? "bg-[#0CA678] text-white font-semibold"
                     : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -452,7 +680,7 @@ export default function SettingsPage() {
                 setSfxEnabled(true);
                 playClick();
               }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 sfxEnabled
                   ? "bg-[#0CA678] text-white font-semibold"
                   : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -463,7 +691,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => setSfxEnabled(false)}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 !sfxEnabled
                   ? "bg-[#0CA678] text-white font-semibold"
                   : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -495,7 +723,7 @@ export default function SettingsPage() {
                 playClick();
                 setTheme("light");
               }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 theme === "light"
                   ? "bg-[#0CA678] text-white font-semibold"
                   : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -509,7 +737,7 @@ export default function SettingsPage() {
                 playClick();
                 setTheme("dark");
               }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 theme === "dark"
                   ? "bg-[#0CA678] text-white font-semibold"
                   : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
@@ -517,119 +745,6 @@ export default function SettingsPage() {
             >
               Gece Modu
             </button>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. TİPOGRAFİ BOYUTLARI VE CANLI ÖNİZLEME */}
-      <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 sm:px-6 py-3">
-        {/* Satır 1: Arapça Yazı Boyutu */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Type size={18} className="text-[#087F5B] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Arapça Metin Boyutu ({arabicFontSize}px)
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Arakom fontuyla gösterilen diyalog cümlelerinin punto büyüklüğü
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1 self-start sm:self-auto">
-            {arabicSizes.map((s) => (
-              <button
-                key={s.value}
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setArabicFontSize(s.value);
-                }}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
-                  arabicFontSize === s.value
-                    ? "bg-[#0CA678] text-white font-semibold"
-                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                }`}
-              >
-                {s.label} ({s.value}px)
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Satır 2: Türkçe Yazı Boyutu */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <AlignLeft size={18} className="text-[#087F5B] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Türkçe Çeviri Boyutu ({turkishFontSize}px)
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Diyalog altındaki Türkçe çeviri metinlerinin punto büyüklüğü
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1 self-start sm:self-auto">
-            {turkishSizes.map((s) => (
-              <button
-                key={s.value}
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setTurkishFontSize(s.value);
-                }}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
-                  turkishFontSize === s.value
-                    ? "bg-[#0CA678] text-white font-semibold"
-                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                }`}
-              >
-                {s.label} ({s.value}px)
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Satır 3: Canlı Önizleme Kutusu */}
-        <div className="py-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--muted)]">
-              Canlı Tipografi ve Ses Önizlemesi
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                playTTS(sampleArabic, speechRate);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0CA678] text-white text-xs font-bold border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
-            >
-              <Volume2 size={14} />
-              <span>Örnek Cümleyi Dinle ({speechRate}x)</span>
-            </button>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] p-4 sm:p-5 space-y-2">
-            {viewMode !== "turkish-only" && (
-              <p
-                dir="rtl"
-                style={{ fontSize: `${arabicFontSize}px` }}
-                className="arabic font-bold text-[var(--foreground)] leading-relaxed"
-              >
-                {sampleArabic}
-              </p>
-            )}
-            {viewMode !== "arabic-only" && (
-              <p
-                style={{ fontSize: `${turkishFontSize}px` }}
-                className="font-semibold text-[var(--muted)]"
-              >
-                “Selamün aleyküm, bugün nasılsınız?”
-              </p>
-            )}
           </div>
         </div>
       </section>
@@ -642,7 +757,8 @@ export default function SettingsPage() {
             <Flame size={18} className="text-orange-500 shrink-0" />
             <div>
               <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Günlük Çalışma Hedefi ({dailyGoalMinutes} dk) · 🔥 {streakDays} Gün Seri
+                Günlük Çalışma Hedefi ({dailyGoalMinutes} dk) · 🔥 {streakDays}{" "}
+                Gün Seri
               </span>
               <span className="block text-xs text-[var(--muted)]">
                 Her gün düzenli Arapça pratik için hedef sürenizi belirleyin
@@ -659,7 +775,7 @@ export default function SettingsPage() {
                   playClick();
                   setDailyGoalMinutes(mins);
                 }}
-                className={`px-3 py-1.5 text-xs tabular-nums rounded-lg transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 text-xs tabular-nums rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   dailyGoalMinutes === mins
                     ? "bg-[#0CA678] text-white font-semibold"
                     : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"

@@ -1,10 +1,16 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import {
+  ArabicFontId,
+  ArabicFontSizePreset,
+  ARABIC_FONT_SIZE_PRESETS,
+} from "@/lib/arabicTextUtils";
 
 export type ViewMode = "stacked" | "columns" | "arabic-only" | "turkish-only";
 export type PreferredLevel = "Başlangıç" | "Orta" | "İleri";
 export type SpeechRate = 0.5 | 0.75 | 1 | 1.25;
 export type SttEngine = "whisper" | "webspeech";
+export type { ArabicFontId, ArabicFontSizePreset };
 
 interface SettingsState {
   theme: "light" | "dark";
@@ -12,7 +18,9 @@ interface SettingsState {
   showHareke: boolean;
   showTooltips: boolean;
   showShadowing: boolean;
+  arabicFont: ArabicFontId;
   arabicFontSize: number;
+  arabicFontSizePreset: ArabicFontSizePreset;
   turkishFontSize: number;
   speechRate: SpeechRate;
   preferredLevel: PreferredLevel;
@@ -27,12 +35,30 @@ interface SettingsState {
   setShowTooltips: (show: boolean) => void;
   toggleShadowing: () => void;
   setShowShadowing: (show: boolean) => void;
-  setArabicFontSize: (size: number) => void;
+  setArabicFont: (font: ArabicFontId) => void;
+  setArabicFontSize: (size: number | ArabicFontSizePreset) => void;
+  setArabicFontSizePreset: (preset: ArabicFontSizePreset) => void;
   setTurkishFontSize: (size: number) => void;
   setSpeechRate: (rate: SpeechRate) => void;
   cycleSpeechRate: () => void;
   setPreferredLevel: (level: PreferredLevel) => void;
   setSttEngine: (engine: SttEngine) => void;
+}
+
+function resolveSizeFromInput(size: number | ArabicFontSizePreset): {
+  px: number;
+  preset: ArabicFontSizePreset;
+} {
+  if (typeof size === "string") {
+    const found = ARABIC_FONT_SIZE_PRESETS.find((p) => p.id === size);
+    return {
+      px: found ? found.px : 34,
+      preset: found ? found.id : "md",
+    };
+  }
+  const preset: ArabicFontSizePreset =
+    size <= 29 ? "sm" : size <= 36 ? "md" : size <= 44 ? "lg" : "xl";
+  return { px: size, preset };
 }
 
 export const useSettings = create<SettingsState>()(
@@ -43,7 +69,9 @@ export const useSettings = create<SettingsState>()(
       showHareke: true,
       showTooltips: true,
       showShadowing: true,
-      arabicFontSize: 32,
+      arabicFont: "arakom",
+      arabicFontSize: 34,
+      arabicFontSizePreset: "md",
       turkishFontSize: 16,
       speechRate: 1,
       preferredLevel: "Başlangıç",
@@ -61,7 +89,21 @@ export const useSettings = create<SettingsState>()(
       toggleShadowing: () =>
         set((state) => ({ showShadowing: !state.showShadowing })),
       setShowShadowing: (show) => set({ showShadowing: show }),
-      setArabicFontSize: (size) => set({ arabicFontSize: size }),
+      setArabicFont: (font) => set({ arabicFont: font }),
+      setArabicFontSize: (size) => {
+        const resolved = resolveSizeFromInput(size);
+        set({
+          arabicFontSize: resolved.px,
+          arabicFontSizePreset: resolved.preset,
+        });
+      },
+      setArabicFontSizePreset: (preset) => {
+        const resolved = resolveSizeFromInput(preset);
+        set({
+          arabicFontSize: resolved.px,
+          arabicFontSizePreset: resolved.preset,
+        });
+      },
       setTurkishFontSize: (size) => set({ turkishFontSize: size }),
       setSpeechRate: (rate) => set({ speechRate: rate }),
       cycleSpeechRate: () =>
