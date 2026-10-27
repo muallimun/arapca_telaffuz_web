@@ -25,7 +25,7 @@ export default function MobileNav() {
   return (
     <nav
       aria-label="Mobil Alt Navigasyon"
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-t-2 border-[#E6D7BE] dark:border-[var(--border)] px-2 py-1.5"
+      className="lg:hidden print:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-t-2 border-[#E6D7BE] dark:border-[var(--border)] px-2 py-1.5"
     >
       <div className="max-w-md mx-auto grid grid-cols-5 gap-1.5">
         {navItems.map((item) => {

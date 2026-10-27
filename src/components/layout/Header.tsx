@@ -207,7 +207,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b-2 border-[#E6D7BE] dark:border-[var(--border)]">
+      <header className="sticky top-0 z-40 print:hidden w-full bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b-2 border-[#E6D7BE] dark:border-[var(--border)]">
         <div className="max-w-6xl mx-auto px-2.5 sm:px-6 h-14 sm:h-15 flex items-center justify-between gap-1.5 sm:gap-2">
           {/* SOL: 3B Dokunsal Rozetli Gerçek Logo + Başlık */}
           <div className="flex items-center gap-2 min-w-0 shrink">
@@ -516,7 +516,7 @@ export default function Header() {
 
       {/* iOS KURULUM REHBERİ MODALI */}
       {iosInstallOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50 backdrop-blur-xs">
+        <div className="fixed inset-0 z-[60] print:hidden flex items-center justify-center px-4 bg-black/50 backdrop-blur-xs">
           <div className="w-full max-w-sm bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-5 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-dashed border-[#E2D3B8] pb-3">
               <div className="flex items-center gap-2.5">
@@ -555,7 +555,7 @@ export default function Header() {
 
       {/* MİKROFON TESTİ PANELİ */}
       {micModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/40 backdrop-blur-xs">
+        <div className="fixed inset-0 z-[60] print:hidden flex items-start justify-center pt-20 px-4 bg-black/40 backdrop-blur-xs">
           <div className="w-full max-w-md bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-5 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-dashed border-[#E2D3B8] pb-3">
               <div className="flex items-center gap-2.5">

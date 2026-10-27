@@ -330,17 +330,42 @@ async function getOrFetchNeuralTtsBlobUrl(
   }
 }
 
+function applyPlaybackRateAndPitch(audio: HTMLAudioElement, rate: number) {
+  audio.defaultPlaybackRate = rate;
+  audio.playbackRate = rate;
+  audio.preservesPitch = true;
+  const extAudio = audio as HTMLAudioElement & {
+    webkitPreservesPitch?: boolean;
+    mozPreservesPitch?: boolean;
+  };
+  if ("webkitPreservesPitch" in extAudio) {
+    extAudio.webkitPreservesPitch = true;
+  }
+  if ("mozPreservesPitch" in extAudio) {
+    extAudio.mozPreservesPitch = true;
+  }
+}
+
+export function setActiveAudioPlaybackRate(rate: number) {
+  if (activeAudio) {
+    try {
+      applyPlaybackRateAndPitch(activeAudio, rate);
+    } catch {
+      // ignore
+    }
+  }
+}
+
 function playSingleAudioUrl(url: string, rate: number = 1): Promise<void> {
   return new Promise((resolve, reject) => {
     stopAllAudio();
     const audio = new Audio(url);
     audio.preload = "auto";
-    audio.defaultPlaybackRate = rate;
-    audio.playbackRate = rate;
+    applyPlaybackRateAndPitch(audio, rate);
     activeAudio = audio;
 
     audio.onloadedmetadata = () => {
-      audio.playbackRate = rate;
+      applyPlaybackRateAndPitch(audio, rate);
     };
 
     audio.onended = () => {

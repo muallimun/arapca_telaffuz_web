@@ -499,7 +499,7 @@ export default function ShadowingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-hidden">
+    <div className="fixed inset-0 z-[60] print:hidden flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-hidden">
       <div className="bg-[#FDFBF7] dark:bg-[var(--background)] w-full max-w-3xl max-h-[92vh] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl flex flex-col overflow-hidden">
         {/* ÜST BAŞLIK + ÇİFT MOTORLU STT SEÇİCİ */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3.5 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] dark:bg-[var(--surface)] shrink-0">

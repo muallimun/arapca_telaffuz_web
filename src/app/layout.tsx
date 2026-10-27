@@ -5,6 +5,7 @@ import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import AudioStopper from "@/components/AudioStopper";
 import OnboardingTourModal from "@/components/ui/OnboardingTourModal";
 import GuideAndInfoModal from "@/components/ui/GuideAndInfoModal";
+import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -94,9 +95,10 @@ export default function RootLayout({
         <main className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 md:py-6 pb-24 md:pb-10">
           {children}
         </main>
+        <ScrollToTopButton />
         <MobileNav />
 
-        <footer className="hidden md:flex border-t-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] dark:bg-[var(--surface)] py-4 px-6 text-center text-xs text-[var(--muted)] mt-auto items-center justify-between max-w-6xl w-full mx-auto rounded-t-2xl">
+        <footer className="hidden md:flex print:hidden border-t-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] dark:bg-[var(--surface)] py-4 px-6 text-center text-xs text-[var(--muted)] mt-auto items-center justify-between max-w-6xl w-full mx-auto rounded-t-2xl">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center p-0.5 shrink-0">
               <img

@@ -76,6 +76,7 @@ export default function DialogueDetailPage({
     stop,
     playAudio,
     playTTS,
+    setPlaybackRate,
     playingLineId,
     activeWordIndex,
     activeWordProgress,
@@ -84,11 +85,13 @@ export default function DialogueDetailPage({
     viewMode,
     setViewMode,
     showHareke,
+    toggleHareke,
     showShadowing,
     arabicFont,
     arabicFontSize,
     turkishFontSize,
     speechRate,
+    setSpeechRate,
     cycleSpeechRate,
     dialogueLoopCount,
     cycleDialogueLoopCount,
@@ -405,7 +408,7 @@ export default function DialogueDetailPage({
       setRoleplaySpeakingLine(null);
     }
 
-    // 1. Eğer bu cümle için Tekrarla (Loop) aktifse sentenceLoopCount sayısına göre tekrar çal
+    // 1. Eğer bu cümle için Tekrarla (Loop) aktifse 800ms es vererek kullanıcı durdurana veya başka cümleye geçene kadar tekrar çal
     if (isLooping) {
       const nextRem =
         loopRemaining === "infinite"
@@ -416,7 +419,7 @@ export default function DialogueDetailPage({
 
       if (nextRem === "infinite" || (typeof nextRem === "number" && nextRem > 0)) {
         setSentenceLoopRemaining(nextRem);
-        await new Promise((r) => setTimeout(r, 900));
+        await new Promise((r) => setTimeout(r, 800));
         if (playToken.current !== currentToken) return;
         await playSentence(line, false, true, false, nextRem, currentDlgTurn);
         return;
@@ -523,6 +526,25 @@ export default function DialogueDetailPage({
     }
   };
 
+  const openShadowingCoach = (target: {
+    text: string;
+    audioUrl?: string;
+    voice?: VoiceOption;
+    forms?: { label: string; arabic: string }[];
+  }) => {
+    playToken.current += 1;
+    stop();
+    cleanupRoleplayMic();
+    setIsPlayingAll(false);
+    setLoopingLineSira(null);
+    setSentenceLoopRemaining(null);
+    setIsRoleplayRunning(false);
+    setRoleplayActiveLine(null);
+    setRoleplaySpeakingLine(null);
+    setRoleplayTransitionNotice(false);
+    setShadowingTarget(target);
+  };
+
   const handleToggleLoopLine = (line: DialogueLine) => {
     playClick();
     playToken.current += 1;
@@ -538,7 +560,8 @@ export default function DialogueDetailPage({
       setLoopingLineSira(null);
       setSentenceLoopRemaining(null);
     } else {
-      const targetLoops = sentenceLoopCount;
+      // Kullanıcı durdurana veya başka bir cümleye geçene kadar 800ms es ile sürekli tekrarla
+      const targetLoops: number | "infinite" = "infinite";
       setLoopingLineSira(line.sira);
       setSentenceLoopRemaining(targetLoops);
       playSentence(line, false, true, false, targetLoops, 1);
@@ -676,7 +699,7 @@ export default function DialogueDetailPage({
       {/* TAM EKRAN DİYALOG GÖRSELİ ÖNİZLEME (LIGHTBOX MODAL) */}
       {isLightboxOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[60] print:hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setIsLightboxOpen(false)}
         >
           <div
@@ -727,7 +750,7 @@ export default function DialogueDetailPage({
       )}
 
       {/* STICKY MOBİL UYUMLU BAŞLIK KARTI */}
-      <section className="sticky top-15 z-40 bg-[#F7EFE1]/95 dark:bg-[var(--surface)]/95 backdrop-blur-md rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-sm p-3 sm:p-3.5 space-y-2">
+      <section className="sticky top-14 sm:top-16 z-30 bg-[#F7EFE1]/95 dark:bg-[var(--surface)]/95 backdrop-blur-md rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-sm p-3 sm:p-3.5 space-y-2">
         {/* 1. ÜST SATIR (Başlık + Kapak Görseli Yan Yana) */}
         <div className="flex items-center justify-between gap-2.5 sm:gap-4">
           {/* Sol Taraf: Geri (<), #01 • A1 rozeti, Türkçe ve Arapça başlık, Cümle/Kelime bilgisi */}
@@ -937,21 +960,73 @@ export default function DialogueDetailPage({
                     </button>
                   </div>
 
-                  {/* Hız Seçici */}
+                  {/* UYG-1: Ekranda Anlık Harekeli / Harekesiz Okuma Geçişi */}
                   <button
                     type="button"
                     onClick={() => {
-                      cycleSpeechRate();
                       playClick();
+                      toggleHareke();
                     }}
-                    title="Okuma Hızını Değiştir"
-                    className="h-8 px-2 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 text-xs font-extrabold text-[var(--foreground)] cursor-pointer"
+                    title="Arapça metin harekelerini anlık olarak göster veya gizle"
+                    aria-label="Harekeli / Harekesiz Geçişi"
+                    className={`h-8 px-2.5 rounded-xl border flex items-center gap-1 text-xs font-extrabold transition-all cursor-pointer ${
+                      !mounted || showHareke
+                        ? "bg-[#0CA678]/15 border-[#0CA678] text-[#087F5B] dark:text-[#20c997]"
+                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]"
+                    }`}
                   >
-                    <Gauge size={13} className="text-[#0CA678]" />
-                    <span className="tabular-nums">
-                      {mounted ? `${speechRate}x` : "1x"}
-                    </span>
+                    <Sparkles size={13} className="shrink-0" />
+                    <span>{!mounted || showHareke ? "Harekeli" : "Harekesiz"}</span>
                   </button>
+
+                  {/* UYG-2: Ses Oynatma Hızı (1.0x / 0.75x Yavaşlatılmış Net Telaffuz) */}
+                  <div className="bg-white dark:bg-[var(--background)] rounded-xl p-0.5 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-0.5">
+                    {(
+                      [
+                        { rate: 1 as const, label: "1.0x" },
+                        { rate: 0.75 as const, label: "0.75x" },
+                      ]
+                    ).map((item) => {
+                      const isRateActive =
+                        mounted ? speechRate === item.rate : item.rate === 1;
+                      return (
+                        <button
+                          key={item.rate}
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            setSpeechRate(item.rate);
+                            setPlaybackRate(item.rate);
+                          }}
+                          title={
+                            item.rate === 0.75
+                              ? "0.75x Yavaşlatılmış Net Telaffuz (Ses tonu bozulmadan)"
+                              : "1.0x Normal Konuşma Hızı"
+                          }
+                          className={`px-2 py-1 rounded-lg text-[11px] font-extrabold tabular-nums transition-all cursor-pointer ${
+                            isRateActive
+                              ? "bg-[#0CA678] text-white shadow-2xs"
+                              : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                    {mounted && speechRate !== 1 && speechRate !== 0.75 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          cycleSpeechRate();
+                          playClick();
+                        }}
+                        className="px-1.5 py-1 rounded-lg bg-[#0CA678] text-white text-[11px] font-extrabold tabular-nums cursor-pointer"
+                        title="Okuma Hızı"
+                      >
+                        {speechRate}x
+                      </button>
+                    )}
+                  </div>
 
                   {/* Diyalog Döngü (Loop) İkon/Rozet Butonu: 1x -> 2x -> 3x -> 5x -> ∞ */}
                   <button
@@ -997,6 +1072,24 @@ export default function DialogueDetailPage({
                         ? `${dialogueLoopTurn}/${dialogueLoopCount}`
                         : `${dialogueLoopCount}x`}
                     </span>
+                  </button>
+
+                  {/* UYG-3: Karşılıklı Rol Yapma (Role-Play) Hızlı Geçiş Butonu */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      playToken.current += 1;
+                      stop();
+                      setIsPlayingAll(false);
+                      setLoopingLineSira(null);
+                      setStudyMode("roleplay");
+                    }}
+                    title="Karşılıklı Rol Yapma (Role-Play / Diyalog Simülasyonu) Moduna Geç"
+                    className="h-8 px-2.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/50 hover:border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff] text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer"
+                  >
+                    <Mic size={13} className="text-[#6741D9] shrink-0" />
+                    <span>🎭 Rol Yapma</span>
                   </button>
                 </>
               )}
@@ -1221,17 +1314,94 @@ export default function DialogueDetailPage({
             )}
 
           {studyMode === "roleplay" && roleplayCompletedBanner && (
-            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border-2 border-[#0CA678] px-3.5 py-2 flex items-center justify-between gap-2">
-              <span className="text-xs font-extrabold text-[#087F5B] dark:text-[#20c997]">
-                🎉 Tebrikler! Diyalog canlandırmasını başarıyla tamamladınız.
-              </span>
-              <button
-                type="button"
-                onClick={handleToggleRoleplay}
-                className="px-2.5 py-1 rounded-lg bg-[#0CA678] text-white text-xs font-bold cursor-pointer"
-              >
-                Tekrar Canlandır
-              </button>
+            <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border-2 border-[#0CA678] border-b-4 p-3.5 space-y-2.5 shadow-sm">
+              {(() => {
+                const userLines = dialogue.satirlar.filter(
+                  (l) => l.konusmaci === selectedRoleSpeaker
+                );
+                const scoredValues = userLines
+                  .map((l) => roleplayLineScores[l.sira])
+                  .filter((v): v is number => typeof v === "number");
+                const avgScore =
+                  scoredValues.length > 0
+                    ? Math.round(
+                        scoredValues.reduce((a, b) => a + b, 0) /
+                          scoredValues.length
+                      )
+                    : 88;
+                const otherSpeaker =
+                  speakers.find((sp) => sp !== selectedRoleSpeaker) ||
+                  selectedRoleSpeaker;
+
+                return (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-[#20c997] block">
+                          🎉 Tebrikler! &ldquo;{selectedRoleSpeaker}&rdquo; Rolüyle Diyalog Simülasyonunu Tamamladınız!
+                        </span>
+                        <span className="text-[11px] font-semibold text-[var(--muted)] block">
+                          {avgScore >= 85
+                            ? "Harika akıcılık ve mahreç uyumu! Şimdi diğer karakterin rolüne geçerek diyaloğu pekiştirebilirsiniz."
+                            : "İyi bir pratik oldu! Cümleleri 0.75x hızda dinleyip tekrar canlandırarak puanınızı yükseltebilirsiniz."}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="px-3 py-1 rounded-xl bg-[#0CA678] text-white text-xs font-extrabold tabular-nums shadow-xs">
+                          Genel Telaffuz: %{avgScore}
+                        </span>
+                        <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#0CA678]/40 text-[11px] font-extrabold text-[var(--foreground)] tabular-nums">
+                          {userLines.length} / {userLines.length} Replik
+                        </span>
+                      </div>
+                    </div>
+
+                    {scoredValues.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-emerald-200/70 dark:border-emerald-800/60">
+                        <span className="text-[10px] font-extrabold uppercase text-[#087F5B] dark:text-emerald-300">
+                          Replik Puanlarınız:
+                        </span>
+                        {userLines.map((ul) => {
+                          const sc = roleplayLineScores[ul.sira] ?? avgScore;
+                          return (
+                            <span
+                              key={ul.sira}
+                              className="px-2 py-0.5 rounded-lg bg-white dark:bg-[var(--background)] border border-[#0CA678]/50 text-[10px] font-extrabold text-[#087F5B] dark:text-emerald-300 tabular-nums"
+                            >
+                              #{ul.sira}: %{sc}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                      {otherSpeaker !== selectedRoleSpeaker && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            setSelectedRoleSpeaker(otherSpeaker);
+                            setRoleplayCompletedBanner(false);
+                            setRoleplayLineScores({});
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] text-white text-xs font-extrabold border-b-2 border-[#422399] cursor-pointer"
+                        >
+                          🔄 Rol Değiştir ({otherSpeaker} Ol)
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleToggleRoleplay}
+                        className="px-3 py-1.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white text-xs font-extrabold border-b-2 border-[#087F5B] cursor-pointer"
+                      >
+                        ▶️ Aynı Rolle Tekrar Canlandır
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -1380,7 +1550,7 @@ export default function DialogueDetailPage({
                     onClick={() => {
                       playClick();
                       const forms = prepareWordForms(word);
-                      setShadowingTarget({
+                      openShadowingCoach({
                         text:
                           forms?.[0]?.arabic || mainAr.split("/")[0].trim(),
                         forms,
@@ -1608,7 +1778,7 @@ export default function DialogueDetailPage({
                                 [line.sira]: true,
                               }));
                             }
-                            setShadowingTarget({
+                            openShadowingCoach({
                               text: line.arapca,
                               audioUrl: lineAudioUrl,
                               voice: voiceForLine,
@@ -1643,7 +1813,7 @@ export default function DialogueDetailPage({
                       className="order-1 md:order-2 arabic font-bold text-[var(--foreground)] text-right py-1.5"
                     >
                       <WordTooltip
-                        text={getDisplayText(line.arapca)}
+                        text={line.arapca}
                         isLineSpeaking={isPlaying}
                         activeWordIndex={isPlaying ? activeWordIndex : null}
                         activeWordProgress={isPlaying ? activeWordProgress : 0}
@@ -1678,7 +1848,7 @@ export default function DialogueDetailPage({
                         className="arabic font-bold text-[var(--foreground)] text-right py-1.5"
                       >
                         <WordTooltip
-                          text={getDisplayText(line.arapca)}
+                          text={line.arapca}
                           isLineSpeaking={isPlaying}
                           activeWordIndex={isPlaying ? activeWordIndex : null}
                           activeWordProgress={isPlaying ? activeWordProgress : 0}
@@ -1753,7 +1923,7 @@ export default function DialogueDetailPage({
                         <button
                           type="button"
                           onClick={() =>
-                            setShadowingTarget({
+                            openShadowingCoach({
                               text: line.arapca,
                               audioUrl: lineAudioUrl,
                               voice: voiceForLine,

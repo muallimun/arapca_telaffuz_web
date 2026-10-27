@@ -3,6 +3,7 @@ import {
   playTTS as playHybridTTS,
   setActiveAudio,
   getActiveAudio,
+  setActiveAudioPlaybackRate,
   stopAllAudio,
   VoiceOption,
   calculateWordPhoneticWeights,
@@ -28,6 +29,7 @@ interface AudioState {
     rate: number,
     voice?: VoiceOption
   ) => Promise<void>;
+  setPlaybackRate: (rate: number) => void;
   stop: () => void;
 }
 
@@ -41,7 +43,7 @@ function stopWordTrackingLoop() {
   }
 }
 
-export const useAudioStore = create<AudioState>((set) => {
+export const useAudioStore = create<AudioState>((set, get) => {
   const startPhoneticTracking = (
     sentenceText: string | undefined,
     rate: number,
@@ -104,6 +106,20 @@ export const useAudioStore = create<AudioState>((set) => {
     activeWordProgress: 0,
     lastPlayedDurationSec: 2.5,
 
+    setPlaybackRate: (rate: number) => {
+      setActiveAudioPlaybackRate(rate);
+      const current = get().activeAudio;
+      if (current) {
+        try {
+          current.defaultPlaybackRate = rate;
+          current.playbackRate = rate;
+          current.preservesPitch = true;
+        } catch {
+          // ignore
+        }
+      }
+    },
+
     stop: () => {
       stopWordTrackingLoop();
       stopAllAudio();
@@ -138,6 +154,17 @@ export const useAudioStore = create<AudioState>((set) => {
           audio.preload = "auto";
           audio.defaultPlaybackRate = rate;
           audio.playbackRate = rate;
+          audio.preservesPitch = true;
+          const extAudio = audio as HTMLAudioElement & {
+            webkitPreservesPitch?: boolean;
+            mozPreservesPitch?: boolean;
+          };
+          if ("webkitPreservesPitch" in extAudio) {
+            extAudio.webkitPreservesPitch = true;
+          }
+          if ("mozPreservesPitch" in extAudio) {
+            extAudio.mozPreservesPitch = true;
+          }
           setActiveAudio(audio);
           set({ playingLineId: lineId, activeAudio: audio });
 
@@ -145,6 +172,7 @@ export const useAudioStore = create<AudioState>((set) => {
 
           audio.onloadedmetadata = () => {
             audio.playbackRate = rate;
+            audio.preservesPitch = true;
           };
 
           audio.onended = () => {

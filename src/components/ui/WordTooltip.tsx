@@ -5,6 +5,7 @@ import { Volume2, Heart, CheckCircle2, X, Sparkles, Mic } from "lucide-react";
 import { analyzeAndMatchWord, getWordCategory, WordCategory } from "@/lib/dict";
 import { useSettings } from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
+import { useAudioStore } from "@/store/audioStore";
 import { speakHybrid } from "@/lib/audio";
 import { playClick } from "@/lib/sfxManager";
 import ShadowingModal, { TargetForm } from "@/components/ui/ShadowingModal";
@@ -247,6 +248,7 @@ export default function WordTooltip({
           ) => {
             e.stopPropagation();
             playClick();
+            useAudioStore.getState().stop();
             setIsSpeaking(true);
             try {
               await speakHybrid({
@@ -443,6 +445,7 @@ export default function WordTooltip({
                       onClick={(e) => {
                         e.stopPropagation();
                         playClick();
+                        useAudioStore.getState().stop();
                         const forms = buildWordForms(dictItem);
                         const defaultText =
                           forms[0]?.arabic || primaryAr.split("/")[0].trim();
