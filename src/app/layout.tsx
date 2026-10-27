@@ -6,6 +6,7 @@ import AudioStopper from "@/components/AudioStopper";
 import OnboardingTourModal from "@/components/ui/OnboardingTourModal";
 import GuideAndInfoModal from "@/components/ui/GuideAndInfoModal";
 import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
+import AppIntroSplash from "@/components/ui/AppIntroSplash";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -87,6 +88,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased flex flex-col min-h-screen bg-[var(--background)] text-[var(--foreground)] overflow-x-clip selection:bg-[#0CA678]/20">
+        <AppIntroSplash />
         <ServiceWorkerRegister />
         <AudioStopper />
         <OnboardingTourModal />

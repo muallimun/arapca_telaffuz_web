@@ -207,8 +207,8 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 print:hidden w-full bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b-2 border-[#E6D7BE] dark:border-[var(--border)] shadow-xs">
-        <div className="max-w-6xl mx-auto px-2.5 sm:px-6 h-14 sm:h-15 flex items-center justify-between gap-1.5 sm:gap-2">
+      <header className="fixed top-0 left-0 right-0 z-40 print:hidden w-full h-12 py-1.5 bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b-2 border-[#E6D7BE] dark:border-[var(--border)] shadow-xs flex items-center">
+        <div className="w-full max-w-6xl mx-auto px-2.5 sm:px-6 h-full flex items-center justify-between gap-1.5 sm:gap-2">
           {/* SOL: 3B Dokunsal Rozetli Gerçek Logo + Başlık */}
           <div className="flex items-center gap-2 min-w-0 shrink">
             <Link
@@ -216,28 +216,25 @@ export default function Header() {
               onClick={() => playClick()}
               className="flex items-center gap-2 group min-w-0"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 sm:border-b-4 flex items-center justify-center shrink-0 group-active:translate-y-0.5 transition-transform p-0.5">
+              <div className="w-8 h-8 rounded-xl bg-white dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center shrink-0 group-active:translate-y-0.5 transition-transform p-0.5">
                 <img
                   src="/icons/android-chrome-192x192.png"
                   alt="Logo"
-                  className="w-6 h-6 sm:w-7 sm:h-7 object-contain rounded-lg"
+                  className="w-6 h-6 object-contain rounded-lg"
                 />
               </div>
               <div className="min-w-0">
                 <span className="block sm:hidden text-xs font-extrabold tracking-tight text-[var(--foreground)] truncate">
                   Arapça Diyalog
                 </span>
-                <span className="hidden sm:block text-sm sm:text-base font-extrabold tracking-tight text-[var(--foreground)] truncate">
+                <span className="hidden sm:block text-xs sm:text-sm font-extrabold tracking-tight text-[var(--foreground)] truncate leading-tight">
                   Arapça Telaffuz & Diyalog
-                </span>
-                <span className="hidden xl:block text-[11px] font-semibold text-[var(--muted)] truncate">
-                  İnteraktif Konuşma, Mahreç ve Sözlük Asistanı
                 </span>
               </div>
             </Link>
 
             {/* Masaüstü Hızlı Navigasyon */}
-            <nav className="hidden lg:flex items-center gap-1 ml-2 bg-[#F7EFE1] dark:bg-[var(--surface)] p-1 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
+            <nav className="hidden lg:flex items-center gap-1 ml-2 bg-[#F7EFE1] dark:bg-[var(--surface)] p-0.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
               {navLinks.map((item) => {
                 const isActive =
                   item.href === "/"
@@ -262,7 +259,7 @@ export default function Header() {
           </div>
 
           {/* SAĞ: 3B Dokunsal Global Hızlı Ayar İkonları */}
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 max-w-full overflow-x-auto sm:overflow-visible no-scrollbar py-0.5">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 max-w-full overflow-x-auto sm:overflow-visible no-scrollbar">
             {/* PWA Uygulamayı Kur Butonu */}
             {mounted && (isInstallable || isIOS) && (
               <button
@@ -276,7 +273,7 @@ export default function Header() {
                   }
                 }}
                 title="Uygulamayı Cihaza Kur"
-                className="group relative w-8 h-8 sm:w-auto sm:h-9 sm:px-2.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-1 text-xs font-extrabold cursor-pointer shrink-0"
+                className="group relative w-8 h-8 sm:w-auto sm:px-2.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-1 text-xs font-extrabold cursor-pointer shrink-0"
               >
                 <Download size={14} />
                 <span className="hidden xl:inline">Kur</span>
@@ -296,13 +293,13 @@ export default function Header() {
                   : "Harekeler: Gizli (Göstermek için tıkla)"
               }
               aria-label="Hareke Aç/Kapa"
-              className={`group relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
+              className={`group relative w-8 h-8 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
                 isHarekeOn
                   ? "bg-[#0CA678]/15 border-[#0CA678] text-[#087F5B] dark:text-[#20c997]"
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] opacity-75"
               }`}
             >
-              <Sparkles size={15} strokeWidth={2.4} />
+              <Sparkles size={14} strokeWidth={2.4} />
               <span className="hidden sm:block pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
                 {isHarekeOn ? "Hareke: Açık" : "Hareke: Kapalı"}
               </span>
@@ -318,20 +315,20 @@ export default function Header() {
                 }}
                 title={`Çeviri Görünümü: ${VIEW_MODE_LABELS[currentViewMode]}`}
                 aria-label="Çeviri Görünümü"
-                className={`group relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer ${
+                className={`group relative w-8 h-8 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer ${
                   currentViewMode !== "arabic-only"
                     ? "bg-[#0CA678]/15 border-[#0CA678] text-[#087F5B] dark:text-[#20c997]"
                     : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)]"
                 }`}
               >
-                <Languages size={15} strokeWidth={2.4} />
+                <Languages size={14} strokeWidth={2.4} />
                 <span className="hidden sm:block pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
                   Çeviri: {VIEW_MODE_LABELS[currentViewMode].split(" ")[0]}
                 </span>
               </button>
 
               {viewMenuOpen && (
-                <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-2 shadow-2xl z-50 space-y-1">
+                <div className="fixed inset-x-3 top-13 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-2 shadow-2xl z-50 space-y-1">
                   <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[var(--muted)] border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]">
                     <span>Görünüm Modu</span>
                     <button
@@ -378,9 +375,9 @@ export default function Header() {
               }}
               title={`Okuma Hızı: ${mounted ? speechRate : 1}x (Değiştirmek için tıkla)`}
               aria-label="TTS Okuma Hızı"
-              className="group relative h-8 sm:h-9 px-1.5 sm:px-2 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center gap-1 text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="group relative h-8 px-1.5 sm:px-2 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center gap-1 text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
-              <Gauge size={14} className="text-[#0CA678] shrink-0" />
+              <Gauge size={13} className="text-[#0CA678] shrink-0" />
               <span className="text-[11px] font-extrabold tabular-nums">
                 {mounted ? `${speechRate}x` : "1x"}
               </span>
@@ -402,12 +399,12 @@ export default function Header() {
                   : "Tema: Sıcak Krem (Gece moduna geç)"
               }
               aria-label="Tema Değiştir"
-              className="group relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="group relative w-8 h-8 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
               {isDark ? (
-                <Sun size={15} strokeWidth={2.4} className="text-amber-400" />
+                <Sun size={14} strokeWidth={2.4} className="text-amber-400" />
               ) : (
-                <Moon size={15} strokeWidth={2.4} className="text-[#6741D9]" />
+                <Moon size={14} strokeWidth={2.4} className="text-[#6741D9]" />
               )}
               <span className="hidden sm:block pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
                 {isDark ? "Sıcak Krem Tema" : "Gece Modu"}
@@ -427,16 +424,16 @@ export default function Header() {
                   : "Ses Efektleri: Kapalı (Açmak için tıkla)"
               }
               aria-label="Ses Efektleri Aç/Kapa"
-              className={`group relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
+              className={`group relative w-8 h-8 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
                 mounted && sfxEnabled
                   ? "text-[#087F5B] dark:text-[#20c997]"
                   : "text-[var(--muted)] opacity-75"
               }`}
             >
               {mounted && sfxEnabled ? (
-                <Volume2 size={15} strokeWidth={2.4} />
+                <Volume2 size={14} strokeWidth={2.4} />
               ) : (
-                <VolumeX size={15} strokeWidth={2.4} />
+                <VolumeX size={14} strokeWidth={2.4} />
               )}
               <span className="hidden sm:block pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
                 {mounted && sfxEnabled ? "SFX: Açık" : "SFX: Kapalı"}
@@ -449,13 +446,13 @@ export default function Header() {
               onClick={handleToggleMicModal}
               title="Mikrofon Testi"
               aria-label="Mikrofon Testi"
-              className={`group relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
+              className={`group relative w-8 h-8 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
                 micModalOpen
                   ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:bg-[#EFE3CE]"
               }`}
             >
-              <Mic size={15} strokeWidth={2.4} />
+              <Mic size={14} strokeWidth={2.4} />
               <span className="hidden sm:block pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
                 Mikrofon Testi
               </span>
@@ -470,9 +467,9 @@ export default function Header() {
               }}
               title="Kullanım Kılavuzu & Uygulama Bilgisi (İnfo)"
               aria-label="Kullanım Kılavuzu & İnfo"
-              className="group relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 flex items-center justify-center text-[#6741D9] dark:text-[#d0bfff] hover:bg-[#e8e2ff] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="group relative w-8 h-8 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 flex items-center justify-center text-[#6741D9] dark:text-[#d0bfff] hover:bg-[#e8e2ff] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
-              <HelpCircle size={15} strokeWidth={2.4} />
+              <HelpCircle size={14} strokeWidth={2.4} />
               <span className="hidden sm:block pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
                 Kılavuz & İnfo
               </span>
@@ -484,12 +481,12 @@ export default function Header() {
               onClick={handleToggleFullscreen}
               title={isFullscreen ? "Tam Ekrandan Çık" : "Tam Ekran"}
               aria-label="Tam Ekran"
-              className="group relative hidden sm:flex w-9 h-9 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="group relative hidden sm:flex w-8 h-8 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
               {isFullscreen ? (
-                <Minimize2 size={15} strokeWidth={2.4} />
+                <Minimize2 size={14} strokeWidth={2.4} />
               ) : (
-                <Maximize2 size={15} strokeWidth={2.4} />
+                <Maximize2 size={14} strokeWidth={2.4} />
               )}
               <span className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
                 {isFullscreen ? "Tam Ekrandan Çık" : "Tam Ekran"}
@@ -502,21 +499,21 @@ export default function Header() {
               onClick={() => playClick()}
               title="Ayarlar"
               aria-label="Ayarlar"
-              className={`lg:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all shrink-0 ${
+              className={`lg:hidden w-8 h-8 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all shrink-0 ${
                 pathname === "/ayarlar"
                   ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"
               }`}
             >
-              <Settings size={15} strokeWidth={2.4} />
+              <Settings size={14} strokeWidth={2.4} />
             </Link>
           </div>
         </div>
       </header>
-      {/* Sabit Header İçin Görünmez Yer Tutucu (Spacer) */}
+      {/* Sabit İnce Topbar İçin Görünmez Yer Tutucu (Spacer) */}
       <div
         aria-hidden="true"
-        className="h-[58px] sm:h-[62px] w-full shrink-0 print:hidden"
+        className="h-12 w-full shrink-0 print:hidden"
       />
 
       {/* iOS KURULUM REHBERİ MODALI */}
