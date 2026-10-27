@@ -21,11 +21,18 @@ import {
   Target,
   Cpu,
   Smartphone,
+  BookMarked,
+  PenTool,
+  Layers,
+  FileCheck,
+  Calendar,
+  ExternalLink,
+  Globe,
 } from "lucide-react";
 import { playClick } from "@/lib/sfxManager";
 import { triggerOnboardingTour } from "./OnboardingTourModal";
 
-type GuideTab = "quickstart" | "icons" | "pedagogy" | "about";
+type GuideTab = "quickstart" | "icons" | "pedagogy" | "about" | "apps";
 
 export function triggerGuideModal(initialTab?: GuideTab) {
   if (typeof window !== "undefined") {
@@ -67,6 +74,7 @@ export default function GuideAndInfoModal() {
     { id: "icons", label: "🎨 İkonlar & Renkler", icon: Palette },
     { id: "pedagogy", label: "🎓 5 Adımda Yöntem", icon: GraduationCap },
     { id: "about", label: "ℹ️ Uygulama Hakkında", icon: Info },
+    { id: "apps", label: "🚀 Diğer Uygulamalarımız", icon: Globe },
   ];
 
   return (
@@ -107,8 +115,8 @@ export default function GuideAndInfoModal() {
           </button>
         </div>
 
-        {/* 4 SEKME SEÇİCİ */}
-        <div className="bg-[#F7EFE1]/60 dark:bg-[var(--background)]/60 px-4 py-2 border-b border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 sm:grid-cols-4 gap-1.5 shrink-0">
+        {/* 5 SEKME SEÇİCİ */}
+        <div className="bg-[#F7EFE1]/60 dark:bg-[var(--background)]/60 px-4 py-2 border-b border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap sm:grid sm:grid-cols-5 gap-1.5 shrink-0">
           {tabs.map((tab) => {
             const active = activeTab === tab.id;
             return (
@@ -119,7 +127,7 @@ export default function GuideAndInfoModal() {
                   playClick();
                   setActiveTab(tab.id);
                 }}
-                className={`px-2.5 py-2 rounded-xl text-xs font-extrabold transition-all text-center truncate cursor-pointer ${
+                className={`px-2 py-2 rounded-xl text-[11px] sm:text-xs font-extrabold transition-all text-center truncate cursor-pointer flex-1 sm:flex-initial ${
                   active
                     ? "bg-[#6741D9] text-white shadow-2xs"
                     : "bg-white dark:bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--foreground)] border border-[#E6D7BE] dark:border-[var(--border)]"
@@ -204,6 +212,23 @@ export default function GuideAndInfoModal() {
                   </p>
                 </div>
               </div>
+
+              {/* Diğer 10 Uygulamamıza Hızlı Geçiş Butonu */}
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setActiveTab("apps");
+                }}
+                className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600/10 via-teal-600/10 to-indigo-600/10 hover:from-emerald-600/20 hover:to-indigo-600/20 border-2 border-emerald-500/40 flex items-center justify-between gap-2 text-left transition-all cursor-pointer group"
+              >
+                <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-emerald-300 group-hover:underline">
+                  🌐 Muallimun Ekosistemindeki Diğer 10 Uygulamamıza Göz Atın →
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-[#0CA678] text-white text-[11px] font-extrabold shrink-0">
+                  Keşfet
+                </span>
+              </button>
             </div>
           )}
 
@@ -444,8 +469,227 @@ export default function GuideAndInfoModal() {
                   muallimun.net
                 </a>
               </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setActiveTab("apps");
+                }}
+                className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600/10 via-teal-600/10 to-indigo-600/10 hover:from-emerald-600/20 hover:to-indigo-600/20 border-2 border-emerald-500/40 flex items-center justify-between gap-2 text-left transition-all cursor-pointer group"
+              >
+                <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-emerald-300 group-hover:underline">
+                  🌐 Muallimun Ekosistemindeki Diğer 10 Uygulamamıza Göz Atın →
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-[#0CA678] text-white text-[11px] font-extrabold shrink-0">
+                  Keşfet
+                </span>
+              </button>
             </div>
           )}
+
+          {activeTab === "apps" && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                    🌐 Muallimun Dijital Eğitim Ekosistemi (10 Kardeş Uygulama)
+                  </h3>
+                  <p className="text-[11px] text-[var(--muted)]">
+                    İlgili uygulamaya tıklayarak yeni sekmede doğrudan açabilirsiniz.
+                  </p>
+                </div>
+              </div>
+
+              {[
+                {
+                  categoryTitle: "📖 Kur'an-ı Kerim & Mushaf Uygulamaları",
+                  categoryColor: "text-[#087F5B] dark:text-emerald-300",
+                  items: [
+                    {
+                      title: "Muallimun Dijital Mushaf",
+                      url: "https://kuran.muallimun.net/mushaf/",
+                      desc: "Sesli Kur'an-ı Kerim tilaveti, meal ve interaktif Mushaf inceleme platformu.",
+                      icon: BookOpen,
+                      badgeBg:
+                        "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300",
+                    },
+                    {
+                      title: "Kur'an Kelime & Meal Çalışması",
+                      url: "https://kuran.muallimun.net/quran_vocab/",
+                      desc: "Kur'an-ı Kerim kelimelerini ayet bağlamıyla öğrenme ve kelime analiz uygulaması.",
+                      icon: Sparkles,
+                      badgeBg:
+                        "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300",
+                    },
+                  ],
+                },
+                {
+                  categoryTitle: "🎓 Arapça Eğitim, Sözlük & Yazı Atölyesi",
+                  categoryColor: "text-[#6741D9] dark:text-indigo-300",
+                  items: [
+                    {
+                      title: "Arapça Telaffuz Asistanı",
+                      url: "https://arapca.muallimun.net/arapca-telaffuz-asistani/",
+                      desc: "Yapay zeka ve ses analizi destekli interaktif Arapça telaffuz geliştirme aracı.",
+                      icon: Mic,
+                      badgeBg:
+                        "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300",
+                    },
+                    {
+                      title: "Muallimun Asistan Sözlük",
+                      url: "https://arapca.muallimun.net/asistan_sozluk/",
+                      desc: "Hızlı Arapça-Türkçe kelime arama, kök analizi ve sesli sözlük asistanı.",
+                      icon: BookMarked,
+                      badgeBg:
+                        "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300",
+                    },
+                    {
+                      title: "Kitâbetü'l-Hurûf (Harf Yazma Atölyesi)",
+                      url: "https://arapca.muallimun.net/kitabetulhuruf/",
+                      desc: "Arapça harflerin yazılış yönlerini çizerek öğrenme ve interaktif hat pratiği.",
+                      icon: PenTool,
+                      badgeBg:
+                        "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300",
+                    },
+                    {
+                      title: "Arapça Mobil Eğitim Portalı",
+                      url: "https://arapca.muallimun.net/api/mobile/",
+                      desc: "Mobil cihazlara özel interaktif Arapça ders ve alıştırma uygulaması.",
+                      icon: Smartphone,
+                      badgeBg:
+                        "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300",
+                    },
+                  ],
+                },
+                {
+                  categoryTitle: "🏆 YDS / YÖKDİL Hazırlık & Kültür Araçları",
+                  categoryColor: "text-amber-700 dark:text-amber-300",
+                  items: [
+                    {
+                      title: "Arapça YDS Hazırlık Portalı",
+                      url: "https://arapca.muallimun.net/YDS/",
+                      desc: "Arapça YDS ve YÖKDİL sınavlarına yönelik kapsamlı soru, metin ve çalışma merkezi.",
+                      icon: GraduationCap,
+                      badgeBg:
+                        "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
+                    },
+                    {
+                      title: "Arapça YDS Kelimeler",
+                      url: "https://arapca.muallimun.net/ydskelimeler/",
+                      desc: "Sınavlarda en çok çıkan Arapça YDS kelimeleri, ezber kartları ve testler.",
+                      icon: Layers,
+                      badgeBg:
+                        "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
+                    },
+                    {
+                      title: "WhatsArapp YDS Platformu",
+                      url: "https://whatsarappyds.rf.gd/Arapca_YDS/",
+                      desc: "Pratik Arapça YDS soru çözümleri ve interaktif sınav hazırlık modülü.",
+                      icon: FileCheck,
+                      badgeBg:
+                        "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
+                    },
+                    {
+                      title: "Muallimun İnteraktif Takvim",
+                      url: "https://www.muallimun.com/takvim/",
+                      desc: "Namaz vakitleri, tarihte bugün İslam tarihi olayları ve Osmanlı atasözleri takvimi.",
+                      icon: Calendar,
+                      badgeBg:
+                        "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
+                    },
+                  ],
+                },
+              ].map((group, gIdx) => (
+                <div key={gIdx} className="space-y-2">
+                  <h4
+                    className={`text-xs font-extrabold uppercase tracking-wider ${group.categoryColor}`}
+                  >
+                    {group.categoryTitle}
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {group.items.map((app) => {
+                      const AppIcon = app.icon;
+                      return (
+                        <a
+                          key={app.url}
+                          href={app.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => playClick()}
+                          className="group p-3 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] hover:-translate-y-0.5 hover:border-emerald-500/50 hover:shadow-md transition-all flex items-start gap-3"
+                        >
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${app.badgeBg}`}
+                          >
+                            <AppIcon size={18} />
+                          </div>
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <div className="flex items-center justify-between gap-1.5">
+                              <span className="text-xs font-extrabold text-[var(--foreground)] group-hover:text-[#087F5B] dark:group-hover:text-emerald-300 truncate">
+                                {app.title}
+                              </span>
+                              <ExternalLink
+                                size={12}
+                                className="text-[var(--muted)] group-hover:text-[#087F5B] shrink-0"
+                              />
+                            </div>
+                            <p className="text-[11px] text-[var(--muted)] leading-snug line-clamp-2">
+                              {app.desc}
+                            </p>
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* DUYURU & PAYLAŞIM KANALLARIMIZ ŞERİDİ (TÜM SEKMELERDE GÖRÜNÜR) */}
+          <div className="mt-4 pt-3 border-t border-stone-200/80 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-2.5 bg-stone-100/60 dark:bg-slate-800/50 px-3.5 py-2.5 rounded-xl">
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 text-center sm:text-left">
+              📢 Yeni diyalog, PDF ve güncellemelerden haberdar olmak için kanallarımıza katılın:
+            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href="https://t.me/muallimun"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Telegram Kanalımıza Katılın"
+                onClick={() => playClick()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/25 text-xs font-semibold transition-all"
+              >
+                <svg
+                  className="w-3.5 h-3.5 fill-current shrink-0"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+                </svg>
+                <span>Telegram</span>
+              </a>
+
+              <a
+                href="https://whatsapp.com/channel/0029VaAif947oQhgdaDMjK1Q"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="WhatsApp Kanalımızı Takip Edin"
+                onClick={() => playClick()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 text-xs font-semibold transition-all"
+              >
+                <svg
+                  className="w-3.5 h-3.5 fill-current shrink-0"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824zm-3.423-14.416c-6.627 0-12 5.373-12 12 0 2.127.558 4.198 1.613 6.008L0 24l6.135-1.608A11.943 11.943 0 0 0 12.031 24c6.627 0 12-5.373 12-12s-5.373-12-12-12z" />
+                </svg>
+                <span>WhatsApp</span>
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* ALT KAPAT BUTONU */}

@@ -19,8 +19,6 @@ import {
   Play,
   Target,
   X,
-  CheckCircle2,
-  XCircle,
 } from "lucide-react";
 import { useCountdown } from "@/lib/useTimer";
 import { playTTS } from "@/lib/audio";
@@ -72,11 +70,11 @@ export default function MatchingGame({
   dialogues = [],
   contentType = "words",
   timeLimit,
-  questionCount = 10,
   feedbackMode = "instant",
   onClose,
 }: Props) {
-  const pairTarget = Math.min(8, Math.max(4, Math.floor(questionCount / 2)));
+  // Her sette 5 kelime ile tek ekranda kaydırmasız görünüm
+  const pairTarget = 5;
   const fanfarePlayedRef = useRef(false);
   const { speechRate, showHareke, arabicFont } = useSettings();
   const { addStudyMinutes } = useUserStore();
@@ -94,6 +92,7 @@ export default function MatchingGame({
   const [wrongPairsHistory, setWrongPairsHistory] = useState<PairDefinition[]>(
     []
   );
+  const [wrongAttemptsCount, setWrongAttemptsCount] = useState(0);
 
   // Score tracking
   const [exerciseScore, setExerciseScore] = useState(0);
@@ -101,7 +100,7 @@ export default function MatchingGame({
 
   // End-mode evaluation state
   const [isExamEvaluated, setIsExamEvaluated] = useState(false);
-  const [showEndModal, setShowEndModal] = useState(false);
+  const [showEndBar, setShowEndBar] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
 
   // SVG Board & Socket Refs for coordinate calculation
@@ -133,14 +132,14 @@ export default function MatchingGame({
     connections.filter((c) => c.status === "correct").length === totalPairs;
 
   const isCompleted =
-    isInstantCompleted || (feedbackMode === "end" && showEndModal);
+    isInstantCompleted || (feedbackMode === "end" && showEndBar) || showEndBar;
 
   const handleTimeout = () => {
     if (feedbackMode === "end" && !isExamEvaluated) {
       evaluateEndModeConnections();
     }
     setIsGameOver(true);
-    setShowEndModal(true);
+    setShowEndBar(true);
   };
 
   const timeLeft = useCountdown(
@@ -216,11 +215,12 @@ export default function MatchingGame({
     setTrCards(shuffleArray(nextTr));
     setConnections([]);
     setWrongPairsHistory([]);
+    setWrongAttemptsCount(0);
     setExerciseScore(0);
     setSelectedAr(null);
     setSelectedTr(null);
     setIsExamEvaluated(false);
-    setShowEndModal(false);
+    setShowEndBar(false);
     setIsGameOver(false);
   }, []);
 
@@ -267,21 +267,30 @@ export default function MatchingGame({
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(updateSocketCoordinates, 40);
+    const timer = setTimeout(updateSocketCoordinates, 30);
     window.addEventListener("resize", updateSocketCoordinates);
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && boardRef.current) {
+      observer = new ResizeObserver(() => {
+        updateSocketCoordinates();
+      });
+      observer.observe(boardRef.current);
+    }
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener("resize", updateSocketCoordinates);
+      if (observer) observer.disconnect();
     };
-  }, [trCards, arCards, connections, showEndModal, updateSocketCoordinates]);
+  }, [trCards, arCards, connections, showEndBar, updateSocketCoordinates]);
 
   useEffect(() => {
     if (isInstantCompleted && !fanfarePlayedRef.current) {
       fanfarePlayedRef.current = true;
       addStudyMinutes(3);
       playFanfare();
-      const t = setTimeout(() => setShowEndModal(true), 650);
-      return () => clearTimeout(t);
+      setShowEndBar(true);
     } else if (isGameOver && !fanfarePlayedRef.current) {
       fanfarePlayedRef.current = true;
       playError();
@@ -289,6 +298,7 @@ export default function MatchingGame({
   }, [isInstantCompleted, isGameOver, addStudyMinutes]);
 
   const recordWrongPair = (trMatchId: string, arMatchId: string) => {
+    setWrongAttemptsCount((c) => c + 1);
     setWrongPairsHistory((prev) => {
       const next = [...prev];
       const p1 = currentPairs.find((p) => p.matchId === trMatchId);
@@ -368,11 +378,13 @@ export default function MatchingGame({
   const evaluateEndModeConnections = () => {
     playClick();
     let gained = 0;
+    let wrongs = 0;
     const evaluated: ArrowConnection[] = connections.map((c) => {
       const isOk = c.trMatchId === c.arMatchId;
       if (isOk) {
         gained += 10;
       } else {
+        wrongs += 1;
         recordWrongPair(c.trMatchId, c.arMatchId);
       }
       return {
@@ -393,13 +405,14 @@ export default function MatchingGame({
       }
     });
 
+    setWrongAttemptsCount(wrongs + (totalPairs - evaluated.length));
     setConnections(evaluated);
     setExerciseScore(gained);
     setTotalCumulativeScore((s) => s + gained);
     setIsExamEvaluated(true);
     addStudyMinutes(3);
     playFanfare();
-    setShowEndModal(true);
+    setShowEndBar(true);
   };
 
   const handleCardSelect = (card: MatchCardItem) => {
@@ -511,7 +524,9 @@ export default function MatchingGame({
     if (!targetEl) return;
 
     if (currentDrag.sourceType === "tr") {
-      const arCardEl = targetEl.closest("[data-ar-card-id]") as HTMLElement | null;
+      const arCardEl = targetEl.closest(
+        "[data-ar-card-id]"
+      ) as HTMLElement | null;
       const targetArId = arCardEl?.getAttribute("data-ar-card-id");
       if (targetArId) {
         const arObj = arCards.find((c) => c.id === targetArId);
@@ -519,7 +534,9 @@ export default function MatchingGame({
         connectPair(currentDrag.sourceId, targetArId);
       }
     } else {
-      const trCardEl = targetEl.closest("[data-tr-card-id]") as HTMLElement | null;
+      const trCardEl = targetEl.closest(
+        "[data-tr-card-id]"
+      ) as HTMLElement | null;
       const targetTrId = trCardEl?.getAttribute("data-tr-card-id");
       if (targetTrId) {
         connectPair(targetTrId, currentDrag.sourceId);
@@ -537,7 +554,6 @@ export default function MatchingGame({
   const handleRetryWrongPairs = () => {
     playClick();
     if (wrongPairsHistory.length === 0) return;
-    // Pad to at least 2 pairs if only 1 wrong pair exists so matching works smoothly
     let retryPool = [...wrongPairsHistory];
     if (retryPool.length < 2 && currentPairs.length >= 2) {
       const extra = currentPairs.find(
@@ -556,244 +572,60 @@ export default function MatchingGame({
     );
   }
 
-  const wrongCount =
-    feedbackMode === "end" && isExamEvaluated
-      ? totalPairs - correctConnectionsCount
-      : wrongPairsHistory.length;
-
   const accuracyPct =
     totalPairs > 0
       ? Math.round((correctConnectionsCount / totalPairs) * 100)
       : 0;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
-      {/* BİTİŞ / SONUÇ EKRANI KARTI */}
-      {showEndModal && (
-        <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-5 sm:p-7 text-center space-y-5 animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 border-b border-dashed border-[#E2D3B8] pb-4">
-            <div
-              className={`w-16 h-16 rounded-2xl border-2 border-b-4 flex items-center justify-center shrink-0 ${
-                correctConnectionsCount === totalPairs
-                  ? "bg-emerald-50 border-[#0CA678] text-[#0CA678]"
-                  : "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
-              }`}
-            >
-              {isGameOver && correctConnectionsCount < totalPairs ? (
-                <AlertCircle size={34} />
-              ) : (
-                <Trophy size={34} />
-              )}
-            </div>
-            <div className="text-center sm:text-left">
-              <h3 className="text-xl sm:text-2xl font-extrabold text-[var(--foreground)]">
-                {isGameOver && correctConnectionsCount < totalPairs
-                  ? "Süre Doldu! Eşleştirme Sonuçları"
-                  : "Eşleştirme Alıştırması Tamamlandı!"}
-              </h3>
-              <p className="text-xs font-semibold text-[var(--muted)]">
-                Oklarla yaptığınız eşleştirmelerin başarı özeti ve detaylı dökümü
-              </p>
-            </div>
+    <div className="max-w-4xl mx-auto bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3 sm:p-5 shadow-xs">
+      {/* 1. ÜST YÖNERGE BAŞLIĞI (ÇİFT DİLLİ KOMPAKT BAŞLIK) */}
+      <div className="relative text-center pb-3 mb-3 border-b border-stone-200/80 dark:border-slate-700/80">
+        <p
+          dir="rtl"
+          className="arabic font-arabic text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 leading-snug"
+        >
+          {formatAr("صِلْ كُلَّ عُنْصُرٍ بِمَا يُنَاسِبُهُ.")}
+        </p>
+        <p
+          dir="ltr"
+          className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5"
+        >
+          Her bir kelimeyi kendisine uygun olanla eşleştiriniz.
+        </p>
+
+        {/* Varsa Süre Sayacı Sağ Üst Köşede Kompakt */}
+        {timeLeft !== null && (
+          <div
+            className={`mt-2 sm:mt-0 sm:absolute sm:right-0 sm:top-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-black tabular-nums ${
+              timeLeft <= 5
+                ? "bg-red-100 border-red-300 text-red-700 animate-pulse"
+                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-amber-700"
+            }`}
+          >
+            <Timer size={13} />
+            <span>00:{timeLeft.toString().padStart(2, "0")}</span>
           </div>
-
-          {/* İSTATİSTİK KUTULARI */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE]">
-              <span className="block text-[10px] font-bold uppercase text-[var(--muted)]">
-                Başarı Yüzdesi
-              </span>
-              <span className="text-xl font-black text-[#6741D9]">
-                %{accuracyPct}
-              </span>
-            </div>
-            <div className="bg-emerald-50/80 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-300">
-              <span className="block text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-300">
-                Doğru Eşleşme
-              </span>
-              <span className="text-xl font-black text-emerald-700 dark:text-emerald-300">
-                {correctConnectionsCount} / {totalPairs}
-              </span>
-            </div>
-            <div className="bg-rose-50/80 dark:bg-rose-950/30 p-3 rounded-xl border border-rose-300">
-              <span className="block text-[10px] font-bold uppercase text-rose-700 dark:text-rose-300">
-                Hatalı Deneme
-              </span>
-              <span className="text-xl font-black text-rose-700 dark:text-rose-300">
-                {wrongPairsHistory.length}
-              </span>
-            </div>
-            <div className="bg-amber-50/80 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-300">
-              <span className="block text-[10px] font-bold uppercase text-amber-800 dark:text-amber-300">
-                Bu Alıştırma Puanı
-              </span>
-              <span className="text-xl font-black text-amber-700 dark:text-amber-300">
-                {exerciseScore} Puan
-              </span>
-            </div>
-          </div>
-
-          {/* EŞLEŞTİRME DÖKÜMÜ */}
-          <div className="text-left space-y-1.5 max-h-52 overflow-y-auto pr-1">
-            {currentPairs.map((pair) => {
-              const userConn = connections.find(
-                (c) => c.trMatchId === pair.matchId
-              );
-              const isOk =
-                userConn?.status === "correct" &&
-                !wrongPairsHistory.some((w) => w.matchId === pair.matchId);
-              return (
-                <div
-                  key={pair.matchId}
-                  className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-xs ${
-                    isOk
-                      ? "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300"
-                      : "bg-rose-50/60 dark:bg-rose-950/20 border-rose-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    {isOk ? (
-                      <CheckCircle2
-                        size={15}
-                        className="text-emerald-600 shrink-0"
-                      />
-                    ) : (
-                      <XCircle size={15} className="text-rose-600 shrink-0" />
-                    )}
-                    <span className="font-bold text-[var(--foreground)] truncate">
-                      {pair.trText}
-                    </span>
-                  </div>
-                  <span
-                    dir="rtl"
-                    className="arabic text-lg font-bold text-[#087F5B] dark:text-emerald-300 shrink-0"
-                  >
-                    {formatAr(pair.arText)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 4 STANDART BİTİŞ AKSİYON BUTONU */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-            <button
-              type="button"
-              onClick={handleRepeatSameSet}
-              className="py-3 px-4 bg-white dark:bg-[var(--background)] hover:bg-[#EFE3CE] text-[var(--foreground)] font-extrabold text-xs sm:text-sm rounded-xl border-2 border-[#E6D7BE] border-b-4 active:border-b-2 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <RotateCcw size={16} className="text-[#6741D9]" />
-              <span>Tekrar Yap (Aynı Set)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                initNewSet();
-              }}
-              className="py-3 px-4 bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm rounded-xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Play size={16} fill="currentColor" />
-              <span>Devam Et (Yeni Set)</span>
-            </button>
-
-            {wrongPairsHistory.length > 0 && (
-              <button
-                type="button"
-                onClick={handleRetryWrongPairs}
-                className="py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs sm:text-sm rounded-xl border-b-4 border-amber-700 active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Target size={16} />
-                <span>Yanlışlarımı Tekrarla ({wrongPairsHistory.length})</span>
-              </button>
-            )}
-
-            {onClose && (
-              <button
-                type="button"
-                onClick={() => {
-                  playClick();
-                  onClose();
-                }}
-                className={`py-3 px-4 bg-white dark:bg-[var(--background)] hover:bg-rose-50 text-rose-700 font-extrabold text-xs sm:text-sm rounded-xl border-2 border-rose-200 border-b-4 active:border-b-2 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  wrongPairsHistory.length === 0 ? "sm:col-span-2" : ""
-                }`}
-              >
-                <X size={16} />
-                <span>Kapat / Alıştırma Merkezine Dön</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ÜST DURUM VE YÖNERGE ÇUBUĞU */}
-      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 py-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] tabular-nums">
-            Bağlanan: {connections.length} / {totalPairs}
-          </span>
-          <span className="hidden sm:inline text-[11px] font-semibold text-[var(--muted)]">
-            • İki karta tıklayarak veya sürükleyerek eşleştirin
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {timeLeft !== null && (
-            <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-black tabular-nums ${
-                timeLeft <= 5
-                  ? "bg-red-100 border-red-300 text-red-700 animate-pulse"
-                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-amber-700"
-              }`}
-            >
-              <Timer size={14} />
-              <span>00:{timeLeft.toString().padStart(2, "0")}</span>
-            </div>
-          )}
-
-          {feedbackMode === "end" && !isExamEvaluated && (
-            <button
-              type="button"
-              onClick={evaluateEndModeConnections}
-              disabled={connections.length === 0}
-              className="px-3 py-1 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] disabled:opacity-45 text-white text-xs font-extrabold border-b-2 border-[#3b1f8c] flex items-center gap-1.5 cursor-pointer"
-            >
-              <Check size={14} />
-              <span>Alıştırmayı Bitir ve Sonuçları Gör</span>
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* SÜTUN BAŞLIKLARI (SOL: ARAPÇA, SAĞ: TÜRKÇE) */}
-      <div className="grid grid-cols-2 gap-2.5 md:gap-4 px-2 text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)]">
-        <div className="text-center bg-[#F7EFE1]/80 dark:bg-[var(--surface)] py-1 rounded-lg border border-[#E6D7BE]">
-          Arapça
-        </div>
-        <div className="text-center bg-[#F7EFE1]/80 dark:bg-[var(--surface)] py-1 rounded-lg border border-[#E6D7BE]">
-          Türkçe
-        </div>
-      </div>
-
-      {/* 2 SÜTUNLU KOMPAKT GRUP EŞLEŞTİRME TAHTASI */}
+      {/* 2. İKİ ANA GRUP KUTUSU VE GENİŞ ORTA ÇİZGİ KORİDORU */}
       <div
         ref={boardRef}
         onPointerMove={handleBoardPointerMove}
         onPointerUp={handleBoardPointerUp}
-        className="relative grid grid-cols-2 gap-2.5 md:gap-4 items-stretch auto-rows-fr select-none touch-pan-y"
+        className="flex items-stretch justify-between relative w-full overflow-hidden select-none touch-pan-y"
       >
-        {/* DİNAMİK VEKTÖREL SVG OK KATMANI */}
+        {/* DİNAMİK VEKTÖREL SVG ÇİZGİ / OK KATMANI */}
         <svg
-          className="absolute inset-0 w-full h-full pointer-events-none z-10 overflow-visible"
+          className="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible"
           aria-hidden="true"
         >
           <defs>
             <marker
               id="arrow-green"
               viewBox="0 0 10 10"
-              refX="8"
+              refX="7"
               refY="5"
               markerWidth="5"
               markerHeight="5"
@@ -804,28 +636,28 @@ export default function MatchingGame({
             <marker
               id="arrow-red"
               viewBox="0 0 10 10"
-              refX="8"
+              refX="7"
               refY="5"
               markerWidth="5"
               markerHeight="5"
               orient="auto-start-reverse"
             >
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444" />
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#f43f5e" />
             </marker>
             <marker
               id="arrow-indigo"
               viewBox="0 0 10 10"
-              refX="8"
+              refX="7"
               refY="5"
               markerWidth="5"
               markerHeight="5"
               orient="auto-start-reverse"
             >
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="#6366f1" />
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#6741D9" />
             </marker>
           </defs>
 
-          {/* Kalıcı Bağlantı Okları */}
+          {/* Kalıcı Bağlantı Çizgileri */}
           {connections.map((conn) => {
             const p1 = socketCoords.ar[conn.arId];
             const p2 = socketCoords.tr[conn.trId];
@@ -835,8 +667,8 @@ export default function MatchingGame({
               conn.status === "correct"
                 ? "#10b981"
                 : conn.status === "wrong"
-                ? "#ef4444"
-                : "#6366f1";
+                ? "#f43f5e"
+                : "#6741D9";
             const markerId =
               conn.status === "correct"
                 ? "url(#arrow-green)"
@@ -856,12 +688,11 @@ export default function MatchingGame({
                   strokeLinecap="round"
                   markerEnd={markerId}
                 />
-                <circle cx={p1.x} cy={p1.y} r={3.5} fill={strokeColor} />
               </g>
             );
           })}
 
-          {/* Sürükleme Esnasında Canlı Çizilen Ok */}
+          {/* Sürükleme Esnasında Canlı Çizilen Çizgi */}
           {dragState && (
             <g>
               <line
@@ -869,175 +700,318 @@ export default function MatchingGame({
                 y1={dragState.startPoint.y}
                 x2={dragState.currentPoint.x}
                 y2={dragState.currentPoint.y}
-                stroke="#6366f1"
+                stroke="#6741D9"
                 strokeWidth={2.5}
                 strokeDasharray="4 3"
                 strokeLinecap="round"
                 markerEnd="url(#arrow-indigo)"
               />
-              <circle
-                cx={dragState.startPoint.x}
-                cy={dragState.startPoint.y}
-                r={4}
-                fill="#6366f1"
-              />
             </g>
           )}
         </svg>
 
-        {arCards.map((arCard, idx) => {
-          const trCard = trCards[idx];
-          if (!trCard) return null;
+        {/* SOL GRUP KUTUSU (ARAPÇA) */}
+        <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[42%] sm:w-[39%] flex flex-col justify-between gap-2 z-10">
+          {arCards.map((arCard) => {
+            const arConn = connections.find((c) => c.arId === arCard.id);
+            const isArSelected =
+              selectedAr === arCard.id || dragState?.sourceId === arCard.id;
 
-          const arConn = connections.find((c) => c.arId === arCard.id);
-          const trConn = connections.find((c) => c.trId === trCard.id);
+            const rowStyle =
+              arConn?.status === "correct"
+                ? "bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/70 text-emerald-900 dark:text-emerald-200"
+                : arConn?.status === "wrong"
+                ? "bg-rose-500/15 dark:bg-rose-500/20 border border-rose-500/70 text-rose-900 dark:text-rose-200"
+                : arConn?.status === "pending" || isArSelected
+                ? "bg-[#F3F0FF] dark:bg-indigo-950/60 border border-[#6741D9] text-[#4C28B5] dark:text-indigo-200 ring-2 ring-[#6741D9]/25"
+                : "bg-stone-100/70 dark:bg-slate-700/50 hover:bg-stone-200/70 dark:hover:bg-slate-700 border border-stone-200/80 dark:border-slate-600/70 text-slate-800 dark:text-slate-100";
 
-          const isArSelected =
-            selectedAr === arCard.id || dragState?.sourceId === arCard.id;
-          const isTrSelected =
-            selectedTr === trCard.id || dragState?.sourceId === trCard.id;
+            const dotStyle =
+              arConn?.status === "correct"
+                ? "bg-emerald-500 ring-2 ring-emerald-500/30"
+                : arConn?.status === "wrong"
+                ? "bg-rose-500 ring-2 ring-rose-500/30"
+                : arConn?.status === "pending" || isArSelected
+                ? "bg-[#6741D9] ring-2 ring-[#6741D9]/30 scale-110"
+                : "bg-slate-500 dark:bg-slate-400";
 
-          const arBorderStyle =
-            arConn?.status === "correct"
-              ? "bg-emerald-50/90 dark:bg-emerald-950/30 border-emerald-500 text-emerald-900 dark:text-emerald-200"
-              : arConn?.status === "wrong"
-              ? "bg-rose-50/90 dark:bg-rose-950/30 border-rose-500 text-rose-900 dark:text-rose-200"
-              : arConn?.status === "pending" || isArSelected
-              ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5]"
-              : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#6741D9] text-[var(--foreground)]";
-
-          const trBorderStyle =
-            trConn?.status === "correct"
-              ? "bg-emerald-50/90 dark:bg-emerald-950/30 border-emerald-500 text-emerald-900 dark:text-emerald-200"
-              : trConn?.status === "wrong"
-              ? "bg-rose-50/90 dark:bg-rose-950/30 border-rose-500 text-rose-900 dark:text-rose-200"
-              : trConn?.status === "pending" || isTrSelected
-              ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5]"
-              : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#6741D9] text-[var(--foreground)]";
-
-          const arSocketColor =
-            arConn?.status === "correct"
-              ? "bg-emerald-500 border-emerald-700"
-              : arConn?.status === "wrong"
-              ? "bg-rose-500 border-rose-700"
-              : arConn?.status === "pending" || isArSelected
-              ? "bg-[#6741D9] border-[#4C28B5]"
-              : "bg-slate-500 border-slate-700";
-
-          const trSocketColor =
-            trConn?.status === "correct"
-              ? "bg-emerald-500 border-emerald-700"
-              : trConn?.status === "wrong"
-              ? "bg-rose-500 border-rose-700"
-              : trConn?.status === "pending" || isTrSelected
-              ? "bg-[#6741D9] border-[#4C28B5]"
-              : "bg-slate-500 border-slate-700";
-
-          return (
-            <div key={`${arCard.id}-${trCard.id}`} className="contents">
-              {/* SOL SÜTUN: ARAPÇA GRUBU (py-2 px-3 min-h-[44px] text-lg font-arabic) */}
-              <button
-                type="button"
+            return (
+              <div
+                key={arCard.id}
+                role="button"
+                tabIndex={0}
                 data-ar-card-id={arCard.id}
                 onPointerDown={(e) => handlePointerDownCard(e, arCard)}
                 onClick={() => handleCardSelect(arCard)}
-                className={`relative w-full h-full min-h-[44px] flex items-center justify-center text-center py-2 px-3 pr-4 rounded-xl border-2 border-b-3 transition-all cursor-pointer ${arBorderStyle}`}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleCardSelect(arCard);
+                  }
+                }}
+                className={`h-11 sm:h-12 px-2 sm:px-3 rounded-xl flex items-center justify-between gap-1.5 cursor-pointer transition-all ${rowStyle}`}
               >
-                <div className="flex items-center justify-center gap-1.5">
-                  <Volume2
-                    size={12}
-                    className="text-[#0CA678] opacity-75 shrink-0"
-                  />
-                  <span
-                    dir="rtl"
-                    className={`arabic font-arabic font-bold leading-snug line-clamp-2 ${
-                      arCard.isSentence
-                        ? "text-base sm:text-xl"
-                        : "text-lg sm:text-2xl"
-                    }`}
-                  >
-                    {formatAr(arCard.text)}
-                  </span>
-                </div>
+                {/* Sol: Sadece Seslendirme Butonu (Eşleştirmeyi tetiklemez) */}
+                <button
+                  type="button"
+                  title="Kelimeyi Dinle"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    playTTS(arCard.text, speechRate);
+                  }}
+                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-white/80 dark:bg-slate-800 border border-stone-200 dark:border-slate-600 flex items-center justify-center text-[#0CA678] hover:bg-emerald-50 dark:hover:bg-slate-700 shrink-0 cursor-pointer"
+                >
+                  <Volume2 size={13} />
+                </button>
 
-                {/* Sağ İç Kenar Soket Noktası */}
+                {/* Orta/Sağ: Arapça Kelime */}
+                <span
+                  dir="rtl"
+                  className={`arabic font-arabic font-bold leading-snug truncate flex-1 text-center ${
+                    arCard.isSentence
+                      ? "text-sm sm:text-lg"
+                      : "text-lg sm:text-xl"
+                  }`}
+                >
+                  {formatAr(arCard.text)}
+                </span>
+
+                {/* Sağ İç Kenar: Orta Koridora Bakan Bağlantı Noktası (■) */}
                 <span
                   ref={(el) => {
                     arSocketRefs.current[arCard.id] = el;
                   }}
-                  className={`absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border shadow-2xs transition-transform ${arSocketColor}`}
+                  className={`w-3 h-3 rounded-sm shrink-0 transition-all ${dotStyle}`}
                   aria-hidden="true"
                 />
-              </button>
+              </div>
+            );
+          })}
+        </div>
 
-              {/* SAĞ SÜTUN: TÜRKÇE GRUBU (py-2 px-3 min-h-[44px] text-xs md:text-sm font-medium) */}
-              <button
-                type="button"
+        {/* ORTA GENİŞ ÇİZGİ KORİDORU */}
+        <div
+          className="flex-1 min-w-[56px] sm:min-w-[96px] md:min-w-[140px]"
+          aria-hidden="true"
+        />
+
+        {/* SAĞ GRUP KUTUSU (TÜRKÇE) */}
+        <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[42%] sm:w-[39%] flex flex-col justify-between gap-2 z-10">
+          {trCards.map((trCard) => {
+            const trConn = connections.find((c) => c.trId === trCard.id);
+            const isTrSelected =
+              selectedTr === trCard.id || dragState?.sourceId === trCard.id;
+
+            const rowStyle =
+              trConn?.status === "correct"
+                ? "bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/70 text-emerald-900 dark:text-emerald-200"
+                : trConn?.status === "wrong"
+                ? "bg-rose-500/15 dark:bg-rose-500/20 border border-rose-500/70 text-rose-900 dark:text-rose-200"
+                : trConn?.status === "pending" || isTrSelected
+                ? "bg-[#F3F0FF] dark:bg-indigo-950/60 border border-[#6741D9] text-[#4C28B5] dark:text-indigo-200 ring-2 ring-[#6741D9]/25"
+                : "bg-stone-100/70 dark:bg-slate-700/50 hover:bg-stone-200/70 dark:hover:bg-slate-700 border border-stone-200/80 dark:border-slate-600/70 text-slate-700 dark:text-slate-200";
+
+            const dotStyle =
+              trConn?.status === "correct"
+                ? "bg-emerald-500 ring-2 ring-emerald-500/30"
+                : trConn?.status === "wrong"
+                ? "bg-rose-500 ring-2 ring-rose-500/30"
+                : trConn?.status === "pending" || isTrSelected
+                ? "bg-[#6741D9] ring-2 ring-[#6741D9]/30 scale-110"
+                : "bg-slate-500 dark:bg-slate-400";
+
+            return (
+              <div
+                key={trCard.id}
+                role="button"
+                tabIndex={0}
                 data-tr-card-id={trCard.id}
                 onPointerDown={(e) => handlePointerDownCard(e, trCard)}
                 onClick={() => handleCardSelect(trCard)}
-                className={`relative w-full h-full min-h-[44px] flex items-center justify-center text-center py-2 px-3 pl-4 rounded-xl border-2 border-b-3 transition-all text-xs md:text-sm font-medium leading-snug cursor-pointer ${trBorderStyle}`}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleCardSelect(trCard);
+                  }
+                }}
+                className={`h-11 sm:h-12 px-2 sm:px-3.5 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-all ${rowStyle}`}
               >
-                {/* Sol İç Kenar Soket Noktası */}
+                {/* Sol İç Kenar: Orta Koridora Bakan Bağlantı Noktası (■) */}
                 <span
                   ref={(el) => {
                     trSocketRefs.current[trCard.id] = el;
                   }}
-                  className={`absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border shadow-2xs transition-transform ${trSocketColor}`}
+                  className={`w-3 h-3 rounded-sm shrink-0 transition-all ${dotStyle}`}
                   aria-hidden="true"
                 />
 
-                <span className="line-clamp-2">{trCard.text}</span>
-              </button>
-            </div>
-          );
-        })}
+                {/* Sağ: Türkçe Anlamı */}
+                <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 line-clamp-2 flex-1 text-left leading-tight">
+                  {trCard.text}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* ALT PUAN VE SIFIRLAMA KONTROL ÇUBUĞU */}
-      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2">
-          <div className="bg-white dark:bg-[var(--background)] px-3 py-1 rounded-xl border border-[#E6D7BE] text-center">
-            <span className="block text-[10px] font-bold text-[var(--muted)]">
-              Bu Alıştırma Puanı
-            </span>
-            <span className="text-sm font-black text-[#087F5B] tabular-nums">
-              {exerciseScore}
-            </span>
+      {/* 3. ALT SONUÇ VE AKSİYON ŞERİDİ (النَّتِيجَة / Sonuç) — TEK EKRAN KOMPAKT BAR */}
+      <div className="border-t border-stone-200/80 dark:border-slate-700/80 mt-4 pt-3 transition-all duration-300">
+        {!isCompleted && !isGameOver ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* Sol: Bağlanan, Puan ve Sıfırla */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-slate-700 text-xs font-extrabold text-[var(--foreground)] tabular-nums">
+                Bağlanan: {connections.length} / {totalPairs}
+              </span>
+
+              <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-slate-700 text-xs font-extrabold text-[#087F5B] dark:text-emerald-400 tabular-nums">
+                Bu Alıştırma Puanı: {exerciseScore}
+              </span>
+
+              <button
+                type="button"
+                onClick={handleRepeatSameSet}
+                className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold border-b-2 border-amber-700 active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <RotateCcw size={13} />
+                <span>Sıfırla</span>
+              </button>
+
+              {feedbackMode === "end" && !isExamEvaluated && (
+                <button
+                  type="button"
+                  onClick={evaluateEndModeConnections}
+                  disabled={connections.length === 0}
+                  className="px-3 py-1 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] disabled:opacity-45 text-white text-xs font-extrabold border-b-2 border-[#3b1f8c] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Check size={13} />
+                  <span>Sonuçları Gör</span>
+                </button>
+              )}
+            </div>
+
+            {/* Sağ: النَّتِيجَة / Sonuç Göstergesi */}
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                Sonuç /{" "}
+                <span dir="rtl" className="arabic font-arabic text-base font-bold">
+                  {formatAr("النَّتِيجَة")}
+                </span>
+              </span>
+              <span className="px-2.5 py-1 rounded-xl bg-[#fdfcf7] dark:bg-slate-800 border border-stone-300 dark:border-slate-600 text-xs font-black text-[#6741D9] dark:text-indigo-300 tabular-nums">
+                {feedbackMode === "instant"
+                  ? `${correctConnectionsCount} / ${totalPairs}`
+                  : `${connections.length} / ${totalPairs}`}
+              </span>
+            </div>
           </div>
+        ) : (
+          /* OYUN TAMAMLANDIĞINDA TEK EKRAN GENİŞLEYEN SONUÇ VE AKSİYON BARI */
+          <div className="bg-[#fdfcf7] dark:bg-slate-800/90 rounded-2xl border-2 border-emerald-500/40 dark:border-emerald-500/30 p-3 sm:p-3.5 space-y-2.5 animate-in fade-in duration-200">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {/* Başlık & النَّتِيجَة */}
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    isGameOver && correctConnectionsCount < totalPairs
+                      ? "bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300"
+                      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                  }`}
+                >
+                  {isGameOver && correctConnectionsCount < totalPairs ? (
+                    <AlertCircle size={18} />
+                  ) : (
+                    <Trophy size={18} />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                      {isGameOver && correctConnectionsCount < totalPairs
+                        ? "Süre Doldu!"
+                        : "Eşleştirme Tamamlandı!"}
+                    </span>
+                    <span
+                      dir="rtl"
+                      className="arabic font-arabic text-base font-bold text-[#087F5B] dark:text-emerald-400"
+                    >
+                      ({formatAr("النَّتِيجَة")})
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-          <div className="bg-white dark:bg-[var(--background)] px-3 py-1 rounded-xl border border-[#E6D7BE] text-center">
-            <span className="block text-[10px] font-bold text-[var(--muted)]">
-              Toplam Puan
-            </span>
-            <span className="text-sm font-black text-[#6741D9] tabular-nums">
-              {totalCumulativeScore}
-            </span>
+              {/* Kompakt Sonuç Rozetleri */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-extrabold tabular-nums">
+                <span className="px-2.5 py-1 rounded-lg bg-[#F3F0FF] dark:bg-indigo-950/60 border border-[#6741D9]/40 text-[#6741D9] dark:text-indigo-300">
+                  Başarı: %{accuracyPct}
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300">
+                  Doğru: {correctConnectionsCount}/{totalPairs}
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300">
+                  Hatalı Deneme: {wrongAttemptsCount}
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300">
+                  Puan: {exerciseScore} (Toplam: {totalCumulativeScore})
+                </span>
+              </div>
+            </div>
+
+            {/* Kompakt Aksiyon Butonları */}
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-1 border-t border-dashed border-stone-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={handleRepeatSameSet}
+                className="px-3 py-1.5 bg-white dark:bg-[var(--background)] hover:bg-[#EFE3CE] text-[var(--foreground)] font-extrabold text-xs rounded-xl border border-[#E6D7BE] dark:border-slate-600 border-b-2 active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <RotateCcw size={14} className="text-[#6741D9]" />
+                <span>Tekrar Yap</span>
+              </button>
+
+              {wrongPairsHistory.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleRetryWrongPairs}
+                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl border-b-2 border-amber-700 active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Target size={14} />
+                  <span>
+                    Yanlışlarımı Tekrarla ({wrongPairsHistory.length})
+                  </span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  initNewSet();
+                }}
+                className="px-3.5 py-1.5 bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs rounded-xl border-b-2 border-[#087F5B] active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Play size={14} fill="currentColor" />
+                <span>Devam Et (Yeni Set)</span>
+              </button>
+
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    onClose();
+                  }}
+                  className="px-2.5 py-1.5 bg-white dark:bg-[var(--background)] hover:bg-rose-50 text-rose-700 font-extrabold text-xs rounded-xl border border-rose-200 border-b-2 active:translate-y-0.5 transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <X size={14} />
+                  <span>Kapat</span>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {feedbackMode === "end" && !isExamEvaluated && (
-            <button
-              type="button"
-              onClick={evaluateEndModeConnections}
-              disabled={connections.length === 0}
-              className="px-3.5 py-1.5 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] disabled:opacity-45 text-white text-xs font-extrabold border-b-3 border-[#3b1f8c] flex items-center gap-1.5 cursor-pointer"
-            >
-              <Check size={14} />
-              <span>Kontrol Et</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={handleRepeatSameSet}
-            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold border-b-3 border-amber-700 active:border-b-0 active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <RotateCcw size={14} />
-            <span>Alıştırmayı Sıfırla</span>
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );
