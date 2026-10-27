@@ -659,8 +659,8 @@ export default function MatchingGame({
 
           {/* Kalıcı Bağlantı Çizgileri */}
           {connections.map((conn) => {
-            const p1 = socketCoords.ar[conn.arId];
-            const p2 = socketCoords.tr[conn.trId];
+            const p1 = socketCoords.tr[conn.trId];
+            const p2 = socketCoords.ar[conn.arId];
             if (!p1 || !p2) return null;
 
             const strokeColor =
@@ -710,93 +710,7 @@ export default function MatchingGame({
           )}
         </svg>
 
-        {/* SOL GRUP KUTUSU (ARAPÇA) */}
-        <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[42%] sm:w-[39%] flex flex-col justify-between gap-2 z-10">
-          {arCards.map((arCard) => {
-            const arConn = connections.find((c) => c.arId === arCard.id);
-            const isArSelected =
-              selectedAr === arCard.id || dragState?.sourceId === arCard.id;
-
-            const rowStyle =
-              arConn?.status === "correct"
-                ? "bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/70 text-emerald-900 dark:text-emerald-200"
-                : arConn?.status === "wrong"
-                ? "bg-rose-500/15 dark:bg-rose-500/20 border border-rose-500/70 text-rose-900 dark:text-rose-200"
-                : arConn?.status === "pending" || isArSelected
-                ? "bg-[#F3F0FF] dark:bg-indigo-950/60 border border-[#6741D9] text-[#4C28B5] dark:text-indigo-200 ring-2 ring-[#6741D9]/25"
-                : "bg-stone-100/70 dark:bg-slate-700/50 hover:bg-stone-200/70 dark:hover:bg-slate-700 border border-stone-200/80 dark:border-slate-600/70 text-slate-800 dark:text-slate-100";
-
-            const dotStyle =
-              arConn?.status === "correct"
-                ? "bg-emerald-500 ring-2 ring-emerald-500/30"
-                : arConn?.status === "wrong"
-                ? "bg-rose-500 ring-2 ring-rose-500/30"
-                : arConn?.status === "pending" || isArSelected
-                ? "bg-[#6741D9] ring-2 ring-[#6741D9]/30 scale-110"
-                : "bg-slate-500 dark:bg-slate-400";
-
-            return (
-              <div
-                key={arCard.id}
-                role="button"
-                tabIndex={0}
-                data-ar-card-id={arCard.id}
-                onPointerDown={(e) => handlePointerDownCard(e, arCard)}
-                onClick={() => handleCardSelect(arCard)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleCardSelect(arCard);
-                  }
-                }}
-                className={`h-11 sm:h-12 px-2 sm:px-3 rounded-xl flex items-center justify-between gap-1.5 cursor-pointer transition-all ${rowStyle}`}
-              >
-                {/* Sol: Sadece Seslendirme Butonu (Eşleştirmeyi tetiklemez) */}
-                <button
-                  type="button"
-                  title="Kelimeyi Dinle"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    playTTS(arCard.text, speechRate);
-                  }}
-                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-white/80 dark:bg-slate-800 border border-stone-200 dark:border-slate-600 flex items-center justify-center text-[#0CA678] hover:bg-emerald-50 dark:hover:bg-slate-700 shrink-0 cursor-pointer"
-                >
-                  <Volume2 size={13} />
-                </button>
-
-                {/* Orta/Sağ: Arapça Kelime */}
-                <span
-                  dir="rtl"
-                  className={`arabic font-arabic font-bold leading-snug truncate flex-1 text-center ${
-                    arCard.isSentence
-                      ? "text-sm sm:text-lg"
-                      : "text-lg sm:text-xl"
-                  }`}
-                >
-                  {formatAr(arCard.text)}
-                </span>
-
-                {/* Sağ İç Kenar: Orta Koridora Bakan Bağlantı Noktası (■) */}
-                <span
-                  ref={(el) => {
-                    arSocketRefs.current[arCard.id] = el;
-                  }}
-                  className={`w-3 h-3 rounded-sm shrink-0 transition-all ${dotStyle}`}
-                  aria-hidden="true"
-                />
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ORTA GENİŞ ÇİZGİ KORİDORU */}
-        <div
-          className="flex-1 min-w-[56px] sm:min-w-[96px] md:min-w-[140px]"
-          aria-hidden="true"
-        />
-
-        {/* SAĞ GRUP KUTUSU (TÜRKÇE) */}
+        {/* SOL GRUP KUTUSU (TÜRKÇE — BAĞLANTI TUTAMACI SAĞ İÇ KENARDA) */}
         <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[42%] sm:w-[39%] flex flex-col justify-between gap-2 z-10">
           {trCards.map((trCard) => {
             const trConn = connections.find((c) => c.trId === trCard.id);
@@ -835,9 +749,14 @@ export default function MatchingGame({
                     handleCardSelect(trCard);
                   }
                 }}
-                className={`h-11 sm:h-12 px-2 sm:px-3.5 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-all ${rowStyle}`}
+                className={`h-12 sm:h-13 px-2.5 sm:px-3.5 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-all ${rowStyle}`}
               >
-                {/* Sol İç Kenar: Orta Koridora Bakan Bağlantı Noktası (■) */}
+                {/* Sol: Türkçe Anlamı */}
+                <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 line-clamp-2 flex-1 text-left leading-tight">
+                  {trCard.text}
+                </span>
+
+                {/* Sağ İç Kenar: Orta Koridora Bakan Bağlantı Noktası (■) */}
                 <span
                   ref={(el) => {
                     trSocketRefs.current[trCard.id] = el;
@@ -845,11 +764,92 @@ export default function MatchingGame({
                   className={`w-3 h-3 rounded-sm shrink-0 transition-all ${dotStyle}`}
                   aria-hidden="true"
                 />
+              </div>
+            );
+          })}
+        </div>
 
-                {/* Sağ: Türkçe Anlamı */}
-                <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 line-clamp-2 flex-1 text-left leading-tight">
-                  {trCard.text}
+        {/* ORTA GENİŞ ÇİZGİ KORİDORU */}
+        <div
+          className="flex-1 min-w-[56px] sm:min-w-[96px] md:min-w-[140px]"
+          aria-hidden="true"
+        />
+
+        {/* SAĞ GRUP KUTUSU (ARAPÇA — BAĞLANTI TUTAMACI SOL İÇ KENARDA) */}
+        <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[42%] sm:w-[39%] flex flex-col justify-between gap-2 z-10">
+          {arCards.map((arCard) => {
+            const arConn = connections.find((c) => c.arId === arCard.id);
+            const isArSelected =
+              selectedAr === arCard.id || dragState?.sourceId === arCard.id;
+
+            const rowStyle =
+              arConn?.status === "correct"
+                ? "bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/70 text-emerald-900 dark:text-emerald-200"
+                : arConn?.status === "wrong"
+                ? "bg-rose-500/15 dark:bg-rose-500/20 border border-rose-500/70 text-rose-900 dark:text-rose-200"
+                : arConn?.status === "pending" || isArSelected
+                ? "bg-[#F3F0FF] dark:bg-indigo-950/60 border border-[#6741D9] text-[#4C28B5] dark:text-indigo-200 ring-2 ring-[#6741D9]/25"
+                : "bg-stone-100/70 dark:bg-slate-700/50 hover:bg-stone-200/70 dark:hover:bg-slate-700 border border-stone-200/80 dark:border-slate-600/70 text-slate-800 dark:text-slate-100";
+
+            const dotStyle =
+              arConn?.status === "correct"
+                ? "bg-emerald-500 ring-2 ring-emerald-500/30"
+                : arConn?.status === "wrong"
+                ? "bg-rose-500 ring-2 ring-rose-500/30"
+                : arConn?.status === "pending" || isArSelected
+                ? "bg-[#6741D9] ring-2 ring-[#6741D9]/30 scale-110"
+                : "bg-slate-500 dark:bg-slate-400";
+
+            return (
+              <div
+                key={arCard.id}
+                role="button"
+                tabIndex={0}
+                data-ar-card-id={arCard.id}
+                onPointerDown={(e) => handlePointerDownCard(e, arCard)}
+                onClick={() => handleCardSelect(arCard)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleCardSelect(arCard);
+                  }
+                }}
+                className={`h-12 sm:h-13 px-2.5 sm:px-3.5 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-all ${rowStyle}`}
+              >
+                {/* Sol İç Kenar: Orta Koridora Bakan Bağlantı Noktası (■) */}
+                <span
+                  ref={(el) => {
+                    arSocketRefs.current[arCard.id] = el;
+                  }}
+                  className={`w-3 h-3 rounded-sm shrink-0 transition-all ${dotStyle}`}
+                  aria-hidden="true"
+                />
+
+                {/* Orta/Sağ: Arapça Kelime (Harekeli & Okunaklı Büyük Font) */}
+                <span
+                  dir="rtl"
+                  className={`arabic font-arabic font-bold leading-snug truncate flex-1 text-right ${
+                    arCard.isSentence
+                      ? "text-base sm:text-xl"
+                      : "text-xl sm:text-2xl"
+                  }`}
+                >
+                  {formatAr(arCard.text)}
                 </span>
+
+                {/* Sağ Dış Kenar: Sadece Seslendirme Butonu (Eşleştirmeyi tetiklemez) */}
+                <button
+                  type="button"
+                  title="Kelimeyi Dinle"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    playTTS(arCard.text, speechRate);
+                  }}
+                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-white/80 dark:bg-slate-800 border border-stone-200 dark:border-slate-600 flex items-center justify-center text-[#0CA678] hover:bg-emerald-50 dark:hover:bg-slate-700 shrink-0 cursor-pointer"
+                >
+                  <Volume2 size={13} />
+                </button>
               </div>
             );
           })}

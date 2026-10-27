@@ -224,16 +224,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
           });
         });
 
-      try {
-        await tryPlayUrl(url);
-      } catch (err) {
-        if (url.startsWith("/audio/dialogues/")) {
-          const altUrl = url.replace("/audio/dialogues/", "/mp3/");
-          await tryPlayUrl(altUrl);
-          return;
-        }
-        throw err;
-      }
+      await tryPlayUrl(url);
     },
 
     playTTS: async (text, lineId, rate, voice = "male") => {

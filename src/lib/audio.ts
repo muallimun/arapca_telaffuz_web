@@ -22,10 +22,7 @@ const TTS_CACHE_STORAGE_NAME = "arabic-neural-tts-cache-v2";
 export async function loadAudioManifest(): Promise<Record<string, string[]>> {
   if (audioManifest) return audioManifest;
   try {
-    let res = await fetch("/audio/manifest.json");
-    if (!res.ok) {
-      res = await fetch("/mp3/manifest.json");
-    }
+    const res = await fetch("/audio/manifest.json");
     if (!res.ok) {
       audioManifest = {};
       return {};
@@ -81,7 +78,7 @@ export function getMp3Path(dialogueId: string, sira: number): string {
 }
 
 export function getFallbackMp3Path(dialogueId: string, sira: number): string {
-  return `/mp3/${dialogueId}/${sira}.mp3`;
+  return `/audio/dialogues/${dialogueId}/${sira}.mp3`;
 }
 
 export function setActiveAudio(audio: HTMLAudioElement | null) {
@@ -387,22 +384,12 @@ function playSingleAudioUrl(url: string, rate: number = 1): Promise<void> {
 
 /**
  * Herhangi bir ses URL'sini (Yerel MP3 veya Neural TTS Blob URL) oynatır.
- * /audio/dialogues/{id}/{sira}.mp3 başarısız olursa /mp3/{id}/{sira}.mp3 yolunu dener.
  */
 export async function playAudioElement(
   url: string,
   rate: number = 1
 ): Promise<void> {
-  try {
-    await playSingleAudioUrl(url, rate);
-  } catch (err) {
-    if (url.startsWith("/audio/dialogues/")) {
-      const fallbackUrl = url.replace("/audio/dialogues/", "/mp3/");
-      await playSingleAudioUrl(fallbackUrl, rate);
-      return;
-    }
-    throw err;
-  }
+  await playSingleAudioUrl(url, rate);
 }
 
 /**
@@ -458,18 +445,13 @@ export async function speakHybrid(options: {
 
   await loadAudioManifest();
 
-  // Katman 1A: Diyalog satırı yerel MP3 kontrolü (/audio/dialogues -> /mp3 -> Neural TTS)
+  // Katman 1A: Diyalog satırı yerel MP3 kontrolü (/audio/dialogues -> Neural TTS)
   if (dialogueId && lineSira !== undefined && hasMp3(dialogueId, lineSira)) {
     try {
       await playAudioElement(getMp3Path(dialogueId, lineSira), rate);
       return;
     } catch {
-      try {
-        await playSingleAudioUrl(getFallbackMp3Path(dialogueId, lineSira), rate);
-        return;
-      } catch {
-        // MP3 yüklenemezse Katman 2 Neural TTS'e geç
-      }
+      // MP3 yüklenemezse Katman 2 Neural TTS'e geç
     }
   }
 
@@ -481,7 +463,7 @@ export async function speakHybrid(options: {
     audioManifest.words.includes(wordId)
   ) {
     try {
-      await playAudioElement(`/mp3/words/${wordId}.mp3`, rate);
+      await playAudioElement(`/audio/words/${wordId}.mp3`, rate);
       return;
     } catch {
       // Katman 2'ye geç

@@ -422,8 +422,74 @@ export function shapeArabic(
 }
 
 /**
+ * Misal fiil (ilk harfi و olan kökler) ism-i zaman/mekân ve mimli mastar (مَفْعِل / مَفْعَل)
+ * ile çoğul (مَوَاعِيد / مَوَاقِف) kalıplarını koruyarak Arapça kelimenin 3 harfli kökünü çıkarır.
+ * Örn: مَوْعِد (موعد) -> و ع د, مَوْقِف (موقف) -> و ق ف, مَوْضِع (موضع) -> و ض ع,
+ * مَوْسِم (موسم) -> و س م, مَوْطِن (موطن) -> و ط ن, مَوْرِد (مورد) -> و ر د, مَوَاعِيد -> و ع د.
+ */
+export function extractArabicRoot(word: string): string {
+  let core = normalizeForComparison(word).replace(/[^\u0600-\u06FF]/g, "");
+  if (core.length <= 2) return core;
+
+  // Yaygın önekleri (ال، وال، بال، كال، لل، و، ف، ب، ل) soy
+  const prefixes = ["وبال", "وال", "فال", "بال", "كال", "ولل", "لل", "ال", "و", "ف", "ب", "ل"];
+  for (const pref of prefixes) {
+    if (core.startsWith(pref) && core.length - pref.length >= 3) {
+      core = core.slice(pref.length);
+      break;
+    }
+  }
+
+  // Yaygın sonekleri (zamirler, çoğul ekleri, tâ-i merbûta/ه, tenvin elifi) soy
+  const suffixes = ["كم", "هم", "نا", "ها", "ات", "ون", "ين", "ان", "ه", "ك", "ي", "ا"];
+  for (const suff of suffixes) {
+    if (core.endsWith(suff) && core.length - suff.length >= 3) {
+      core = core.slice(0, -suff.length);
+      break;
+    }
+  }
+
+  // 1. Çoğul مَوَاعِيد / مَفَاعِيل kalıbı: م + و + ا + C2 + ي + C3 (6 harf) -> و + C2 + C3
+  const mawaa3iidMatch = core.match(/^موا([^\u0627\u0648\u064A])ي([^\u0627\u0648\u064A])$/);
+  if (mawaa3iidMatch) {
+    return `و${mawaa3iidMatch[1]}${mawaa3iidMatch[2]}`;
+  }
+
+  // 2. Çoğul مَوَاقِف / مَفَاعِل kalıbı: م + و + ا + C2 + C3 (5 harf) -> و + C2 + C3
+  const mawaa3ilMatch = core.match(/^موا([^\u0627\u0648\u064A])([^\u0627\u0648\u064A])$/);
+  if (mawaa3ilMatch) {
+    return `و${mawaa3ilMatch[1]}${mawaa3ilMatch[2]}`;
+  }
+
+  // 3. Tekil مَفْعِل / مَفْعَل (Misal fiil ism-i zaman/mekân): م + و + C2 + C3 (4 harf)
+  // Örn: موعد، موقف، موضع، موسم، موطن، مورد، مولد، موقع، موجز، موهبه، موعظه
+  const maw3ilMatch = core.match(/^مو([^\u0627\u0648\u064A])([^\u0627\u0648\u064A])$/);
+  if (maw3ilMatch) {
+    return `و${maw3ilMatch[1]}${maw3ilMatch[2]}`;
+  }
+
+  // 4. مَفْعُول (ism-i mef'ûl) kalıbı: م + C1 + C2 + و + C3 (5 harf) -> C1 + C2 + C3
+  const maf3uulMatch = core.match(/^م([^\u0627\u0648\u064A])([^\u0627\u0648\u064A])و([^\u0627\u0648\u064A])$/);
+  if (maf3uulMatch) {
+    return `${maf3uulMatch[1]}${maf3uulMatch[2]}${maf3uulMatch[3]}`;
+  }
+
+  // 5. مَفْعَل / مَفْعِل / مُفْعِل (4 harfli mimli türevler): م + C1 + C2 + C3 -> C1 + C2 + C3
+  if (core.startsWith("م") && core.length === 4) {
+    const withoutMim = core.slice(1);
+    if (!/[اوي]/.test(withoutMim)) {
+      return withoutMim;
+    }
+  }
+
+  // Genel ünsüz iskeleti
+  const skeleton = core.replace(/[اوىي]/g, "");
+  return skeleton.length >= 2 ? skeleton : core;
+}
+
+/**
  * Kelimenin kök ünsüz iskeletini (Consonant Skeleton) çıkarır.
- * İllet/uzatma harfleri (ا، و، ي، ى) çıkarılarak ünsüz iskeleti elde edilir.
+ * Misal fiil ism-i zaman/mekân (مَوْعِد -> وعد) kalıbını korur.
  */
 export function getConsonantSkeleton(word: string): string {
   const normalized = normalizeForComparison(word).replace(
@@ -431,6 +497,12 @@ export function getConsonantSkeleton(word: string): string {
     ""
   );
   if (normalized.length <= 2) return normalized;
+
+  // مَوْعِد / مَوْقِف / مَوَاعِيد gibi kalıplarda و kök harfidir, silinmez:
+  if (/^(ال|وال|بال|لل|و|ف|ب|ل)?موا?[^\u0627\u0648\u064A]ي?[^\u0627\u0648\u064A]/.test(normalized)) {
+    return extractArabicRoot(normalized);
+  }
+
   const skeleton = normalized.replace(/[اوىي]/g, "");
   return skeleton.length >= 2 ? skeleton : normalized;
 }

@@ -530,6 +530,62 @@ function matchNominalOrExactStem(
     }
   }
 
+  // 3. Müenneslik التاء المربوطة (ة -> ه) soyarak müzekker sıfat/isim eşleşmesi (ör: كبيرة -> كبير)
+  if (stem.endsWith("ه") && stem.length >= 4) {
+    const withoutTaMarbuta = stem.slice(0, -1);
+    if (dictIndex.has(withoutTaMarbuta)) {
+      return {
+        item: dictIndex.get(withoutTaMarbuta)!,
+        stage: "ta-marbuta",
+        extraNote: "ة (müenneslik eki)",
+      };
+    }
+    // Nisba müennes (ör: التركيه -> التركي / تركي)
+    if (withoutTaMarbuta.endsWith("ي") && withoutTaMarbuta.length >= 4) {
+      const withoutNisba = withoutTaMarbuta.slice(0, -1);
+      if (dictIndex.has(withoutNisba)) {
+        return {
+          item: dictIndex.get(withoutNisba)!,
+          stage: "ta-marbuta",
+          extraNote: "يَّة (nisbe ve müenneslik eki)",
+        };
+      }
+    }
+  }
+
+  // 4. Kurallı dişil çoğul (ات) soyarak tekil eşleşmesi (ör: صفحات -> صفحه)
+  if (stem.endsWith("ات") && stem.length >= 4) {
+    const singBase = stem.slice(0, -2);
+    if (dictIndex.has(singBase + "ه")) {
+      return {
+        item: dictIndex.get(singBase + "ه")!,
+        stage: "ta-marbuta",
+        extraNote: "ات (kurallı dişil çoğul eki)",
+      };
+    }
+    if (dictIndex.has(singBase)) {
+      return {
+        item: dictIndex.get(singBase)!,
+        stage: "ta-marbuta",
+        extraNote: "ات (kurallı dişil çoğul eki)",
+      };
+    }
+  }
+
+  // 5. Kurallı eril çoğul / ikil (ون / ين) soyarak tekil eşleşmesi (ör: جاهزون -> جاهز)
+  if ((stem.endsWith("ون") || stem.endsWith("ين")) && stem.length >= 5) {
+    const singBase = stem.slice(0, -2);
+    if (dictIndex.has(singBase)) {
+      return {
+        item: dictIndex.get(singBase)!,
+        stage: "ta-marbuta",
+        extraNote: stem.endsWith("ون")
+          ? "ونَ (kurallı eril çoğul eki)"
+          : "ينَ / يْنِ (çoğul / ikil eki)",
+      };
+    }
+  }
+
   const withTaMarbuta = stem + "ه";
   if (dictIndex.has(withTaMarbuta)) {
     return {
@@ -955,108 +1011,106 @@ export function analyzeAndMatchWord(rawWord: string): MorphologicalMatch | null 
     }
   }
 
-  // KURAL: Kelime "ة" (Tâ-i Merbûta) ile bitiyorsa ASLA fiil çekim çözümleyicisine girmez!
-  if (endsWithTaMarbuta) {
-    return null;
-  }
+  // KURAL: Kelime "ة" (Tâ-i Merbûta) ile bitiyorsa ASLA fiil çekim çözümleyicisine (Kademe 3) girmez!
+  if (!endsWithTaMarbuta) {
+    // Kademe 3: Fiil Çekim Kuralları (Doğrudan, Ön Ekli, Son Ekli, Ön+Son Ekli)
+    const directVerb = matchStemWithRules(normalized, false);
+    if (directVerb) {
+      return {
+        item: directVerb.item,
+        originalWord: cleanedRaw,
+        matchedStem: normalized,
+        morphologyNote: buildMorphologyNote(
+          directVerb.item,
+          undefined,
+          undefined,
+          directVerb.extraNote
+        ),
+        matchStage: directVerb.stage,
+      };
+    }
 
-  // Kademe 3: Fiil Çekim Kuralları (Doğrudan, Ön Ekli, Son Ekli, Ön+Son Ekli)
-  const directVerb = matchStemWithRules(normalized, false);
-  if (directVerb) {
-    return {
-      item: directVerb.item,
-      originalWord: cleanedRaw,
-      matchedStem: normalized,
-      morphologyNote: buildMorphologyNote(
-        directVerb.item,
-        undefined,
-        undefined,
-        directVerb.extraNote
-      ),
-      matchStage: directVerb.stage,
-    };
-  }
-
-  for (const pref of PREFIX_RULES) {
-    if (
-      normalized.startsWith(pref.raw) &&
-      normalized.length - pref.raw.length >= 2
-    ) {
-      const stem = normalized.slice(pref.raw.length);
-      const matched = matchStemWithRules(stem, false);
-      if (matched) {
-        return {
-          item: matched.item,
-          originalWord: cleanedRaw,
-          matchedStem: stem,
-          prefixLabel: pref.label,
-          morphologyNote: buildMorphologyNote(
-            matched.item,
-            pref.label,
-            undefined,
-            matched.extraNote
-          ),
-          matchStage:
-            matched.stage === "exact" ? "affix" : matched.stage,
-        };
+    for (const pref of PREFIX_RULES) {
+      if (
+        normalized.startsWith(pref.raw) &&
+        normalized.length - pref.raw.length >= 2
+      ) {
+        const stem = normalized.slice(pref.raw.length);
+        const matched = matchStemWithRules(stem, false);
+        if (matched) {
+          return {
+            item: matched.item,
+            originalWord: cleanedRaw,
+            matchedStem: stem,
+            prefixLabel: pref.label,
+            morphologyNote: buildMorphologyNote(
+              matched.item,
+              pref.label,
+              undefined,
+              matched.extraNote
+            ),
+            matchStage:
+              matched.stage === "exact" ? "affix" : matched.stage,
+          };
+        }
       }
     }
-  }
 
-  for (const suff of SUFFIX_RULES) {
-    if (
-      normalized.endsWith(suff.raw) &&
-      normalized.length - suff.raw.length >= 2
-    ) {
-      const stem = normalized.slice(0, -suff.raw.length);
-      const matched = matchStemWithRules(stem, false);
-      if (matched) {
-        const sLabel = getSuffixDisplayLabel(suff, matched.item);
-        return {
-          item: matched.item,
-          originalWord: cleanedRaw,
-          matchedStem: stem,
-          suffixLabel: sLabel,
-          morphologyNote: buildMorphologyNote(
-            matched.item,
-            undefined,
-            sLabel,
-            matched.extraNote
-          ),
-          matchStage:
-            matched.stage === "exact" ? "affix" : matched.stage,
-        };
+    for (const suff of SUFFIX_RULES) {
+      if (
+        normalized.endsWith(suff.raw) &&
+        normalized.length - suff.raw.length >= 2
+      ) {
+        const stem = normalized.slice(0, -suff.raw.length);
+        const matched = matchStemWithRules(stem, false);
+        if (matched) {
+          const sLabel = getSuffixDisplayLabel(suff, matched.item);
+          return {
+            item: matched.item,
+            originalWord: cleanedRaw,
+            matchedStem: stem,
+            suffixLabel: sLabel,
+            morphologyNote: buildMorphologyNote(
+              matched.item,
+              undefined,
+              sLabel,
+              matched.extraNote
+            ),
+            matchStage:
+              matched.stage === "exact" ? "affix" : matched.stage,
+          };
+        }
       }
     }
-  }
 
-  for (const pref of PREFIX_RULES) {
-    if (normalized.startsWith(pref.raw)) {
-      const afterPref = normalized.slice(pref.raw.length);
-      for (const suff of SUFFIX_RULES) {
-        if (
-          afterPref.endsWith(suff.raw) &&
-          afterPref.length - suff.raw.length >= 2
-        ) {
-          const stem = afterPref.slice(0, -suff.raw.length);
-          const matched = matchStemWithRules(stem, false);
-          if (matched) {
-            const sLabel = getSuffixDisplayLabel(suff, matched.item);
-            return {
-              item: matched.item,
-              originalWord: cleanedRaw,
-              matchedStem: stem,
-              prefixLabel: pref.label,
-              suffixLabel: sLabel,
-              morphologyNote: buildMorphologyNote(
-                matched.item,
-                pref.label,
-                sLabel,
-                matched.extraNote
-              ),
-              matchStage:
-                matched.stage === "exact" ? "affix" : matched.stage,
-            };
+    for (const pref of PREFIX_RULES) {
+      if (normalized.startsWith(pref.raw)) {
+        const afterPref = normalized.slice(pref.raw.length);
+        for (const suff of SUFFIX_RULES) {
+          if (
+            afterPref.endsWith(suff.raw) &&
+            afterPref.length - suff.raw.length >= 2
+          ) {
+            const stem = afterPref.slice(0, -suff.raw.length);
+            const matched = matchStemWithRules(stem, false);
+            if (matched) {
+              const sLabel = getSuffixDisplayLabel(suff, matched.item);
+              return {
+                item: matched.item,
+                originalWord: cleanedRaw,
+                matchedStem: stem,
+                prefixLabel: pref.label,
+                suffixLabel: sLabel,
+                morphologyNote: buildMorphologyNote(
+                  matched.item,
+                  pref.label,
+                  sLabel,
+                  matched.extraNote
+                ),
+                matchStage:
+                  matched.stage === "exact" ? "affix" : matched.stage,
+              };
+            }
           }
         }
       }
@@ -1074,43 +1128,71 @@ export function analyzeAndMatchWord(rawWord: string): MorphologicalMatch | null 
       break;
     }
   }
-  for (const suff of SUFFIX_RULES) {
-    if (
-      candidateCore.endsWith(suff.raw) &&
-      candidateCore.length - suff.raw.length >= 3
-    ) {
-      candidateCore = candidateCore.slice(0, -suff.raw.length);
-      break;
+  if (endsWithTaMarbuta && candidateCore.endsWith("ه") && candidateCore.length >= 4) {
+    candidateCore = candidateCore.slice(0, -1);
+  } else {
+    for (const suff of SUFFIX_RULES) {
+      if (
+        candidateCore.endsWith(suff.raw) &&
+        candidateCore.length - suff.raw.length >= 3
+      ) {
+        candidateCore = candidateCore.slice(0, -suff.raw.length);
+        break;
+      }
     }
   }
 
   const skeletonCandidates: string[] = [];
-  if (candidateCore.startsWith("است") && candidateCore.length >= 6) {
-    skeletonCandidates.push(candidateCore.slice(3));
+
+  // KURAL: مَفْعِل / مَفْعَل ve مَوَاعِيد vezinlerindeki Misal Fiil (فَاءُ الْفِعْل = و) İsm-i Zaman/Mekân Koruması
+  // مَوْعِد (موعد), مَوْقِف (موقف), مَوْضِع (موضع), مَوْسِم (موسم), مَوْطِن (موطن), مَوْرِد (مورد)
+  // Bu kelimelerde baştaki "م" harfi zâiddir, "و" ise kökün 1. harfidir. Asla "و" silinip "م ع د" (معدة) yapılamaz!
+  const mithalMafalMatch = candidateCore.match(
+    /^مو([^\u0627\u0648\u064A])([^\u0627\u0648\u064A])$/
+  );
+  const mithalPluralMatch = candidateCore.match(
+    /^موا([^\u0627\u0648\u064A])ي?([^\u0627\u0648\u064A])$/
+  );
+
+  if (mithalMafalMatch) {
+    skeletonCandidates.push(`و${mithalMafalMatch[1]}${mithalMafalMatch[2]}`);
+  } else if (mithalPluralMatch) {
+    skeletonCandidates.push(`و${mithalPluralMatch[1]}${mithalPluralMatch[2]}`);
+  } else {
+    if (candidateCore.startsWith("است") && candidateCore.length >= 6) {
+      skeletonCandidates.push(candidateCore.slice(3));
+    }
+    if (/^[انتي]ست/.test(candidateCore) && candidateCore.length >= 6) {
+      skeletonCandidates.push(candidateCore.slice(3));
+    }
+    if (candidateCore.startsWith("م") && candidateCore.length >= 4) {
+      skeletonCandidates.push(candidateCore.slice(1));
+      skeletonCandidates.push(candidateCore.slice(1).replace(/[اوي]/g, ""));
+    }
+    if (/^[انتي]/.test(candidateCore) && candidateCore.length === 4) {
+      skeletonCandidates.push(candidateCore.slice(1));
+    }
+    skeletonCandidates.push(candidateCore);
+    if (!candidateCore.startsWith("مو")) {
+      skeletonCandidates.push(candidateCore.replace(/[اوي]/g, ""));
+    }
   }
-  if (/^[انتي]ست/.test(candidateCore) && candidateCore.length >= 6) {
-    skeletonCandidates.push(candidateCore.slice(3));
-  }
-  if (candidateCore.startsWith("م") && candidateCore.length >= 4) {
-    skeletonCandidates.push(candidateCore.slice(1));
-  }
-  if (/^[انتي]/.test(candidateCore) && candidateCore.length === 4) {
-    skeletonCandidates.push(candidateCore.slice(1));
-  }
-  skeletonCandidates.push(candidateCore);
-  skeletonCandidates.push(candidateCore.replace(/[اوي]/g, ""));
 
   for (const skel of skeletonCandidates) {
     if (skel.length === 3 && rootIndex.has(skel)) {
       const rootItems = rootIndex.get(skel)!;
-      const bestItem = rootItems[0];
+      const nonProperItems = rootItems.filter(
+        (it) => getWordCategory(it) !== "ozel-isim"
+      );
+      const bestItem =
+        nonProperItems.length > 0 ? nonProperItems[0] : rootItems[0];
       return {
         item: bestItem,
         originalWord: cleanedRaw,
         matchedStem: skel,
-        morphologyNote: `Kök eşleşmesi (${bestItem.kok}) → ${formatPrimaryWord(
-          bestItem
-        )} (${bestItem.anlam_tr})`,
+        morphologyNote: `Kök eşleşmesi: ${formatPrimaryWord(bestItem)} (${
+          bestItem.anlam_tr
+        }) → (${bestItem.kok})`,
         matchStage: "root",
       };
     }

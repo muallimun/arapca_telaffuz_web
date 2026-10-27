@@ -202,7 +202,7 @@ export default function DictionaryPage() {
 
     try {
       if (manifest.words && manifest.words.includes(word.id) && !customArabic) {
-        await playAudio(`/mp3/words/${word.id}.mp3`, 0, rate);
+        await playAudio(`/audio/words/${word.id}.mp3`, 0, rate);
       } else {
         await playTTS(primaryArabic, rate);
       }

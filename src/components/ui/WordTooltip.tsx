@@ -364,8 +364,10 @@ export default function WordTooltip({
                 <span
                   dir="ltr"
                   onClick={(e) => e.stopPropagation()}
-                  style={
-                    tooltipPos.isMobile
+                  style={{
+                    fontFamily:
+                      "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                    ...(tooltipPos.isMobile
                       ? {
                           top:
                             tooltipPos.top !== undefined
@@ -389,120 +391,175 @@ export default function WordTooltip({
                             tooltipPos.left !== undefined
                               ? `${tooltipPos.left}px`
                               : undefined,
-                        }
-                  }
+                        }),
+                  }}
                   className={`${
                     tooltipPos.isMobile
                       ? "fixed left-3 right-3 mx-auto w-auto max-w-[360px]"
                       : "fixed w-80 max-w-[calc(100vw-2rem)]"
-                  } p-3.5 bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 ${
+                  } relative p-3.5 bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 ${
                     catStyle.popoverLeftBorder
-                  } rounded-2xl shadow-2xl text-left z-50 block space-y-2`}
+                  } rounded-2xl shadow-2xl text-left font-sans z-[100] block space-y-2`}
                 >
+                  {/* Sağ Üst Kapatma (X) Butonu — Metinle Çakışmaması İçin Absolute Konumlu */}
+                  <button
+                    type="button"
+                    aria-label="Kapat"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveIndex(null);
+                    }}
+                    className="absolute top-2.5 right-2.5 w-6 h-6 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer z-10"
+                  >
+                    <X size={12} />
+                  </button>
+
                   {/* Üst Satır: Tür Rozeti + Kök + Türkçe Anlam + Arapça Ana Kelime */}
-                  <span className="flex items-start justify-between gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
-                    <span className="space-y-1">
+                  <span className="flex items-start justify-between gap-2 pr-7 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
+                    <span className="space-y-1 min-w-0">
                       <span className="flex flex-wrap items-center gap-1.5">
                         <span
-                          className={`px-2 py-0.5 rounded-md border text-[10px] font-extrabold ${catStyle.badgeClass}`}
+                          className={`px-2 py-0.5 rounded-md border text-[10px] font-sans font-extrabold ${catStyle.badgeClass}`}
                         >
                           {catStyle.badgeText}
                         </span>
                         {dictItem.kok && dictItem.kok !== "-" && (
-                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--muted)]">
-                            KÖK: {dictItem.kok}
+                          <span
+                            dir="ltr"
+                            className="inline-flex items-center gap-1 text-[10px] font-sans font-extrabold tracking-wider text-[var(--muted)]"
+                          >
+                            <span>KÖK:</span>
+                            <span
+                              dir="rtl"
+                              className="arabic font-arabic text-xs font-bold text-[var(--foreground)]"
+                            >
+                              {dictItem.kok}
+                            </span>
                           </span>
                         )}
                       </span>
-                      <span className="block text-xs font-extrabold text-[var(--foreground)] leading-snug">
+                      <span className="block text-xs font-sans font-extrabold text-[var(--foreground)] leading-snug">
                         {dictItem.anlam_tr}
                       </span>
                     </span>
 
-                    <span className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-right">
-                        <span
-                          dir="rtl"
-                          className={`arabic text-2xl font-bold block leading-none ${catStyle.arabicAccent}`}
-                        >
-                          {formatAr(primaryAr)}
-                        </span>
-                        {coreWord !== primaryAr && (
-                          <span
-                            dir="rtl"
-                            className="text-xs md:text-sm font-medium text-[#6741D9] block mt-0.5"
-                          >
-                            Metinde:{" "}
-                            <strong className="arabic text-base md:text-lg font-arabic font-bold">
-                              {formatAr(coreWord)}
-                            </strong>
-                          </span>
-                        )}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveIndex(null);
-                        }}
-                        className="w-6 h-6 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+                    <span className="flex flex-col items-end shrink-0 text-right">
+                      <span
+                        dir="rtl"
+                        className={`arabic font-arabic text-2xl font-bold block leading-none ${catStyle.arabicAccent}`}
                       >
-                        <X size={12} />
-                      </button>
+                        {formatAr(primaryAr)}
+                      </span>
+                      {coreWord !== primaryAr && (
+                        <span
+                          dir="ltr"
+                          className="inline-flex items-center justify-end gap-1 text-xs md:text-sm font-sans font-medium text-[#6741D9] mt-1"
+                        >
+                          <span>Metinde:</span>
+                          <strong
+                            dir="rtl"
+                            className="arabic font-arabic text-base md:text-lg font-bold"
+                          >
+                            {formatAr(coreWord)}
+                          </strong>
+                        </span>
+                      )}
                     </span>
                   </span>
 
-                  {/* Morfolojik Çözümleme Notu (Ön ek + Gövde + Zamir/Ek) */}
+                  {/* Morfolojik Çözümleme Notu (Ön ek + Gövde + Zamir/Ek) — LTR / RTL İzoleli */}
                   {morphologyNote && (
-                    <span className="block bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border border-[#E6D7BE] text-[11px] font-bold text-[#4C28B5] dark:text-[#d0bfff]">
-                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-[#6741D9] block mb-0.5">
+                    <span
+                      dir="ltr"
+                      className="block bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border border-[#E6D7BE] text-[11px] font-sans font-bold text-[#4C28B5] dark:text-[#d0bfff] text-left"
+                    >
+                      <span className="inline-flex items-center gap-1 text-[10px] font-sans font-extrabold tracking-wider text-[#6741D9] block mb-0.5">
                         <Sparkles size={10} />
-                        <span>Morfolojik Çözümleme:</span>
+                        <span>MORFOLOJİK ÇÖZÜMLEME:</span>
                       </span>
-                      <span dir="rtl" className="block text-right leading-snug">
-                        {formatAr(morphologyNote)}
+                      <span
+                        dir="ltr"
+                        className="block text-left leading-relaxed font-sans"
+                      >
+                        {morphologyNote
+                          .split(
+                            /([\u0600-\u06FF\u0670]+(?:\s+[\u0600-\u06FF\u0670]+)*)/g
+                          )
+                          .map((part, pIdx) =>
+                            /[\u0600-\u06FF]/.test(part) ? (
+                              <span
+                                key={pIdx}
+                                dir="rtl"
+                                className="arabic font-arabic text-sm font-bold inline-block mx-0.5"
+                              >
+                                {formatAr(part)}
+                              </span>
+                            ) : (
+                              <span key={pIdx} className="font-sans">
+                                {part}
+                              </span>
+                            )
+                          )}
                       </span>
                     </span>
                   )}
 
                   {/* Sözlük Künyesi: Müfret/Cemi veya Mazi/Muzari/Masdar */}
-                  <span className="flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm font-medium py-1 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] text-[var(--muted)]">
+                  <span
+                    dir="ltr"
+                    className="flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm font-sans font-medium py-1 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] text-[var(--muted)]"
+                  >
                     {dictItem.mufret && (
-                      <span>
-                        Müfret:{" "}
-                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
+                      <span className="inline-flex items-center gap-1">
+                        <span>Müfret:</span>
+                        <strong
+                          dir="rtl"
+                          className="arabic font-arabic text-base md:text-lg font-bold text-[var(--foreground)]"
+                        >
                           {formatAr(dictItem.mufret)}
                         </strong>
                       </span>
                     )}
                     {dictItem.cemi && dictItem.cemi !== "-" && (
-                      <span>
-                        Cemî:{" "}
-                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
+                      <span className="inline-flex items-center gap-1">
+                        <span>Cemî:</span>
+                        <strong
+                          dir="rtl"
+                          className="arabic font-arabic text-base md:text-lg font-bold text-[var(--foreground)]"
+                        >
                           {formatAr(dictItem.cemi)}
                         </strong>
                       </span>
                     )}
                     {dictItem.mazi && (
-                      <span>
-                        Mâzî:{" "}
-                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
+                      <span className="inline-flex items-center gap-1">
+                        <span>Mâzî:</span>
+                        <strong
+                          dir="rtl"
+                          className="arabic font-arabic text-base md:text-lg font-bold text-[var(--foreground)]"
+                        >
                           {formatAr(dictItem.mazi)}
                         </strong>
                       </span>
                     )}
                     {dictItem.muzari && (
-                      <span>
-                        Muzâri:{" "}
-                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
+                      <span className="inline-flex items-center gap-1">
+                        <span>Muzâri:</span>
+                        <strong
+                          dir="rtl"
+                          className="arabic font-arabic text-base md:text-lg font-bold text-[var(--foreground)]"
+                        >
                           {formatAr(dictItem.muzari)}
                         </strong>
                       </span>
                     )}
                     {dictItem.masdar && (
-                      <span>
-                        Masdar:{" "}
-                        <strong className="arabic text-base md:text-lg font-arabic font-bold text-[var(--foreground)]">
+                      <span className="inline-flex items-center gap-1">
+                        <span>Masdar:</span>
+                        <strong
+                          dir="rtl"
+                          className="arabic font-arabic text-base md:text-lg font-bold text-[var(--foreground)]"
+                        >
                           {formatAr(dictItem.masdar)}
                         </strong>
                       </span>
@@ -510,11 +567,11 @@ export default function WordTooltip({
                   </span>
 
                   {/* Alt Aksiyon Butonları (Dinle | 🎤 Telaffuz | Kelime Kartı | Öğrendim) */}
-                  <span className="pt-1 flex flex-wrap items-center gap-1.5">
+                  <span className="pt-1 flex flex-wrap items-center gap-1.5 font-sans">
                     <button
                       type="button"
                       onClick={(e) => handlePlayWord(e)}
-                      className={`h-8 px-2.5 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1 border-b-3 transition-all cursor-pointer ${
+                      className={`h-8 px-2.5 rounded-xl text-[11px] font-sans font-extrabold flex items-center justify-center gap-1 border-b-3 transition-all cursor-pointer ${
                         isSpeaking
                           ? "bg-[#087F5B] text-white border-[#065F46]"
                           : "bg-[#0CA678] hover:bg-[#099268] text-white border-[#087F5B]"
@@ -539,7 +596,7 @@ export default function WordTooltip({
                           forms,
                         });
                       }}
-                      className="h-8 px-2.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 text-[11px] font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center justify-center gap-1 transition-all cursor-pointer"
+                      className="h-8 px-2.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 text-[11px] font-sans font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center justify-center gap-1 transition-all cursor-pointer"
                     >
                       <Mic size={12} />
                       <span>Telaffuz</span>
@@ -552,7 +609,7 @@ export default function WordTooltip({
                         playClick();
                         toggleFavoriteWord(dictItem);
                       }}
-                      className={`flex-1 h-8 px-2 rounded-xl border-2 border-b-3 text-[11px] font-extrabold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      className={`flex-1 h-8 px-2 rounded-xl border-2 border-b-3 text-[11px] font-sans font-extrabold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                         isFav
                           ? "bg-red-50 border-red-300 text-red-600"
                           : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--foreground)] hover:border-red-400"
