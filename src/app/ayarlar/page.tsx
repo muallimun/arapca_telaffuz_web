@@ -22,12 +22,20 @@ import {
   Flame,
   CheckCircle2,
   AlertTriangle,
+  HelpCircle,
+  Target,
+  Repeat,
+  Timer,
 } from "lucide-react";
 import {
   useSettings,
   ViewMode,
   SpeechRate,
   ArabicFontSizePreset,
+  WordTrackingStyle,
+  DialogueLoopCount,
+  SentenceLoopCount,
+  PauseBetweenLines,
 } from "@/store/settings";
 import { useSfxStore } from "@/store/sfxStore";
 import { useUserStore } from "@/store/userStore";
@@ -40,6 +48,8 @@ import {
   formatArabicText,
   getArabicFontConfig,
 } from "@/lib/arabicTextUtils";
+import { triggerGuideModal } from "@/components/ui/GuideAndInfoModal";
+import { triggerOnboardingTour } from "@/components/ui/OnboardingTourModal";
 
 export default function SettingsPage() {
   const {
@@ -62,6 +72,14 @@ export default function SettingsPage() {
     setTurkishFontSize,
     speechRate,
     setSpeechRate,
+    wordTrackingStyle,
+    setWordTrackingStyle,
+    dialogueLoopCount,
+    setDialogueLoopCount,
+    sentenceLoopCount,
+    setSentenceLoopCount,
+    pauseBetweenLines,
+    setPauseBetweenLines,
   } = useSettings();
 
   const { enabled: sfxEnabled, setEnabled: setSfxEnabled } = useSfxStore();
@@ -227,6 +245,50 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* 0. KULLANIM KILAVUZU, İKON REHBERİ & TANITIM TURU KARTI */}
+      <section className="bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] rounded-2xl border-2 border-[#6741D9] border-b-4 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+        <div className="flex items-start sm:items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#6741D9] text-white flex items-center justify-center shrink-0">
+            <HelpCircle size={20} />
+          </div>
+          <div>
+            <h2 className="text-sm sm:text-base font-extrabold text-[#4C28B5] dark:text-[#d0bfff]">
+              📖 Kullanım Kılavuzu, İkon Rehberi & Tanıtım Turu
+            </h2>
+            <p className="text-xs font-medium text-[var(--muted)]">
+              Uygulamadaki tüm ikonların anlamlarını, 5 adımlı verimli çalışma
+              yöntemini ve etkileşimli tanıtım turunu inceleyin
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              triggerGuideModal("quickstart");
+            }}
+            className="h-9 px-3.5 rounded-xl bg-white dark:bg-[var(--surface)] border-2 border-[#6741D9] border-b-3 text-xs font-extrabold text-[#4C28B5] dark:text-[#d0bfff] hover:bg-[#FDFBF7] flex items-center gap-1.5 cursor-pointer"
+          >
+            <BookOpen size={14} />
+            <span>Kılavuzu Aç</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              triggerOnboardingTour();
+            }}
+            className="h-9 px-3.5 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] text-white text-xs font-extrabold border-b-3 border-[#3b1f8c] flex items-center gap-1.5 cursor-pointer"
+          >
+            <Target size={14} />
+            <span>🎯 Tanıtım Turunu Başlat</span>
+          </button>
+        </div>
+      </section>
 
       {/* 1. ARAPÇA YAZI TİPİ (FONT) VE BOYUTU + CANLI TİPOGRAFİ ÖNİZLEME */}
       <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-6 space-y-4">
@@ -659,6 +721,178 @@ export default function SettingsPage() {
                 }`}
               >
                 {rate}x
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Satır 4B: Sesli Okuma Kelime Takibi (wordTrackingStyle) */}
+        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Target size={18} className="text-[#087F5B] shrink-0" />
+            <div>
+              <span className="block text-sm font-extrabold text-[var(--foreground)]">
+                🎯 Sesli Okuma Kelime Takibi
+              </span>
+              <span className="block text-xs text-[var(--muted)]">
+                Cümle dinlenirken okunan Arapça kelimenin canlı karaoke
+                renklendirmesi ve ok (▼) takibi
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 sm:flex items-center gap-1 self-start lg:self-auto w-full sm:w-auto">
+            {(
+              [
+                { id: "both", label: "Renk + Ok" },
+                { id: "highlight", label: "Sadece Renk" },
+                { id: "arrow", label: "Sadece Ok" },
+                { id: "off", label: "Kapalı" },
+              ] as { id: WordTrackingStyle; label: string }[]
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setWordTrackingStyle(opt.id);
+                }}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  wordTrackingStyle === opt.id
+                    ? "bg-[#0CA678] text-white font-semibold"
+                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Satır 4C: Tüm Diyalog Döngü Sayısı (dialogueLoopCount) */}
+        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Repeat size={18} className="text-[#6741D9] shrink-0" />
+            <div>
+              <span className="block text-sm font-extrabold text-[var(--foreground)]">
+                Tüm Diyalog Dinleme Döngüsü (Loop)
+              </span>
+              <span className="block text-xs text-[var(--muted)]">
+                &ldquo;Tümünü Dinle&rdquo; başlatıldığında diyaloğun kaç kez
+                baştan sona tekrarlanacağı
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1 self-start lg:self-auto">
+            {(
+              [
+                { id: 1, label: "1x (Tek)" },
+                { id: 2, label: "2x" },
+                { id: 3, label: "3x" },
+                { id: 5, label: "5x" },
+                { id: "infinite", label: "∞ Sonsuz" },
+              ] as { id: DialogueLoopCount; label: string }[]
+            ).map((opt) => (
+              <button
+                key={String(opt.id)}
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setDialogueLoopCount(opt.id);
+                }}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  dialogueLoopCount === opt.id
+                    ? "bg-[#6741D9] text-white font-semibold"
+                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Satır 4D: Tekli Cümle Tekrar Sayısı (sentenceLoopCount) */}
+        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Repeat size={18} className="text-[#087F5B] shrink-0" />
+            <div>
+              <span className="block text-sm font-extrabold text-[var(--foreground)]">
+                Tekli Cümle Tekrar Sayısı
+              </span>
+              <span className="block text-xs text-[var(--muted)]">
+                Cümle kartındaki 🔁 Tekrarla ikonuna basıldığında cümlenin kaç
+                kez üst üste okunacağı
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1 self-start lg:self-auto">
+            {(
+              [
+                { id: 2, label: "2x" },
+                { id: 3, label: "3x" },
+                { id: 5, label: "5x" },
+                { id: "infinite", label: "∞ Sonsuz" },
+              ] as { id: SentenceLoopCount; label: string }[]
+            ).map((opt) => (
+              <button
+                key={String(opt.id)}
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setSentenceLoopCount(opt.id);
+                }}
+                className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  sentenceLoopCount === opt.id
+                    ? "bg-[#0CA678] text-white font-semibold"
+                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Satır 4E: Cümleler Arası Bekleme / Gölgeleme Boşluğu (pauseBetweenLines) */}
+        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Timer size={18} className="text-[#087F5B] shrink-0" />
+            <div>
+              <span className="block text-sm font-extrabold text-[var(--foreground)]">
+                Cümleler Arası Gölgeleme Boşluğu
+              </span>
+              <span className="block text-xs text-[var(--muted)]">
+                Tüm diyaloğu dinlerken cümleyi sesli tekrar edebilmeniz için
+                bırakılacak bekleme süresi
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-1 sm:flex items-center gap-1 self-start lg:self-auto w-full sm:w-auto">
+            {(
+              [
+                { id: 0, label: "Yok (Akıcı)" },
+                { id: 2, label: "2 Saniye Bekle" },
+                { id: "auto", label: "Cümle Süresi Kadar Boşluk" },
+              ] as { id: PauseBetweenLines; label: string }[]
+            ).map((opt) => (
+              <button
+                key={String(opt.id)}
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setPauseBetweenLines(opt.id);
+                }}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  pauseBetweenLines === opt.id
+                    ? "bg-[#0CA678] text-white font-semibold"
+                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                }`}
+              >
+                {opt.label}
               </button>
             ))}
           </div>

@@ -20,12 +20,14 @@ import {
   Sun,
   Moon,
   Check,
+  HelpCircle,
 } from "lucide-react";
 import { useSfxStore } from "@/store/sfxStore";
 import { useSettings, ViewMode } from "@/store/settings";
 import { playClick, playSuccess } from "@/lib/sfxManager";
 import { usePwaInstall } from "@/lib/usePwaInstall";
 import { getArabicFontConfig } from "@/lib/arabicTextUtils";
+import { triggerGuideModal } from "@/components/ui/GuideAndInfoModal";
 
 const VIEW_MODE_LABELS: Record<ViewMode, string> = {
   stacked: "Alt Alta (Arapça + Türkçe)",
@@ -459,7 +461,24 @@ export default function Header() {
               </span>
             </button>
 
-            {/* 7. Tam Ekran */}
+            {/* 7. Kullanım Kılavuzu & İnfo [❓] */}
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                triggerGuideModal("quickstart");
+              }}
+              title="Kullanım Kılavuzu & Uygulama Bilgisi (İnfo)"
+              aria-label="Kullanım Kılavuzu & İnfo"
+              className="group relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 flex items-center justify-center text-[#6741D9] dark:text-[#d0bfff] hover:bg-[#e8e2ff] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+            >
+              <HelpCircle size={15} strokeWidth={2.4} />
+              <span className="hidden sm:block pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
+                Kılavuz & İnfo
+              </span>
+            </button>
+
+            {/* 8. Tam Ekran */}
             <button
               type="button"
               onClick={handleToggleFullscreen}
@@ -477,7 +496,7 @@ export default function Header() {
               </span>
             </button>
 
-            {/* 8. Ayarlar Kısayolu (Tablet/Mobil için) */}
+            {/* 9. Ayarlar Kısayolu (Tablet/Mobil için) */}
             <Link
               href="/ayarlar"
               onClick={() => playClick()}

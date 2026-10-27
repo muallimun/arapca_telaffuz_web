@@ -20,6 +20,9 @@ import {
   ArrowRight,
   MessageSquareQuote,
   BookOpen,
+  Play,
+  Target,
+  X,
 } from "lucide-react";
 import { useCountdown } from "@/lib/useTimer";
 import { speakHybrid, playTTS } from "@/lib/audio";
@@ -28,8 +31,9 @@ import { useUserStore } from "@/store/userStore";
 import { formatArabicText } from "@/lib/arabicTextUtils";
 
 export type QuizContentType = "words" | "sentences" | "mixed";
+export type FeedbackMode = "instant" | "end";
 
-interface QuizQuestionItem {
+export interface QuizQuestionItem {
   id: string;
   kind: "word" | "sentence";
   arabic: string;
@@ -43,23 +47,30 @@ interface Props {
   vocabulary: DictionaryItem[];
   dialogues?: Dialogue[];
   contentType?: QuizContentType;
+  feedbackMode?: FeedbackMode;
   timeLimit: number | null;
   questionCount?: number;
+  onClose?: () => void;
 }
 
 export default function MultipleChoice({
   vocabulary,
   dialogues = [],
   contentType = "words",
+  feedbackMode = "instant",
   timeLimit,
   questionCount = 10,
+  onClose,
 }: Props) {
   const fanfarePlayedRef = useRef(false);
   const [roundSeed, setRoundSeed] = useState(0);
+  const [customQuestions, setCustomQuestions] = useState<
+    QuizQuestionItem[] | null
+  >(null);
   const { speechRate, showHareke, arabicFont } = useSettings();
   const { addStudyMinutes } = useUserStore();
 
-  const questions: QuizQuestionItem[] = useMemo(() => {
+  const generatedQuestions: QuizQuestionItem[] = useMemo(() => {
     const wordPool: {
       id: string;
       arabic: string;
@@ -174,9 +185,13 @@ export default function MultipleChoice({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vocabulary, dialogues, contentType, questionCount, roundSeed]);
 
+  const questions = customQuestions || generatedQuestions;
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
-  const [score, setScore] = useState(0);
+  const [userAnswers, setUserAnswers] = useState<
+    Record<number, { chosen: string; isCorrect: boolean }>
+  >({});
   const [isFinished, setIsFinished] = useState(false);
   const [isTimeUp, setIsTimeUp] = useState(false);
 
@@ -188,8 +203,8 @@ export default function MultipleChoice({
   );
 
   useEffect(() => {
-    setSelected(null);
-  }, [currentIndex, questions]);
+    setSelected(userAnswers[currentIndex]?.chosen ?? null);
+  }, [currentIndex, userAnswers, questions]);
 
   useEffect(() => {
     if (isFinished && !fanfarePlayedRef.current) {
@@ -202,7 +217,7 @@ export default function MultipleChoice({
     }
   }, [isFinished, isTimeUp, addStudyMinutes]);
 
-  if (questions.length < 2) {
+  if (questions.length < 1) {
     return (
       <p className="text-center p-8 text-sm font-bold text-[var(--muted)]">
         Test oluşturmak için yeterli soru kaynağı bulunamadı.
@@ -216,6 +231,10 @@ export default function MultipleChoice({
     showHareke,
     arabicFont
   );
+
+  const correctCount = Object.values(userAnswers).filter(
+    (a) => a.isCorrect
+  ).length;
 
   const handleListenQuestion = () => {
     playClick();
@@ -231,13 +250,23 @@ export default function MultipleChoice({
   };
 
   const handleSelect = (text: string, isCorrect: boolean) => {
-    if (selected || isTimeUp) return;
+    if (isTimeUp) return;
+    if (feedbackMode === "instant" && selected) return;
+
     setSelected(text);
-    if (isCorrect) {
-      setScore((s) => s + 1);
-      playSuccess();
+    setUserAnswers((prev) => ({
+      ...prev,
+      [currentIndex]: { chosen: text, isCorrect },
+    }));
+
+    if (feedbackMode === "instant") {
+      if (isCorrect) {
+        playSuccess();
+      } else {
+        playError();
+      }
     } else {
-      playError();
+      playClick();
     }
   };
 
@@ -250,51 +279,219 @@ export default function MultipleChoice({
     }
   };
 
-  const restart = () => {
+  // 1) 🔄 Tekrar Yap (Aynı soruları karıştırarak baştan başlat)
+  const handleRepeatSameSet = () => {
     playClick();
     fanfarePlayedRef.current = false;
-    setRoundSeed((s) => s + 1);
+    const reshuffled = shuffleArray(
+      questions.map((q) => ({
+        ...q,
+        options: shuffleArray([...q.options]),
+      }))
+    );
+    setCustomQuestions(reshuffled);
     setCurrentIndex(0);
-    setScore(0);
+    setUserAnswers({});
+    setSelected(null);
     setIsFinished(false);
     setIsTimeUp(false);
+  };
+
+  // 2) ▶️ Devam Et (Yeni Set)
+  const handleStartNewSet = () => {
+    playClick();
+    fanfarePlayedRef.current = false;
+    setCustomQuestions(null);
+    setRoundSeed((s) => s + 1);
+    setCurrentIndex(0);
+    setUserAnswers({});
     setSelected(null);
+    setIsFinished(false);
+    setIsTimeUp(false);
+  };
+
+  // 3) 🎯 Yanlışlarımı Tekrarla
+  const wrongQuestions = questions.filter(
+    (_, idx) => !userAnswers[idx]?.isCorrect
+  );
+
+  const handleRetryWrongOnly = () => {
+    if (wrongQuestions.length === 0) return;
+    playClick();
+    fanfarePlayedRef.current = false;
+    const retryList = shuffleArray(
+      wrongQuestions.map((q) => ({
+        ...q,
+        options: shuffleArray([...q.options]),
+      }))
+    );
+    setCustomQuestions(retryList);
+    setCurrentIndex(0);
+    setUserAnswers({});
+    setSelected(null);
+    setIsFinished(false);
+    setIsTimeUp(false);
   };
 
   if (isFinished || isTimeUp) {
+    const wrongCount = questions.length - correctCount;
+    const pct = Math.round((correctCount / questions.length) * 100);
+    const totalPoints = correctCount * 10;
+
     return (
-      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-8 text-center space-y-5 max-w-lg mx-auto">
-        <div
-          className={`w-20 h-20 rounded-2xl border-2 border-b-4 flex items-center justify-center mx-auto ${
-            isFinished
-              ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
-              : "bg-red-50 border-red-300 text-red-600"
-          }`}
-        >
-          {isFinished ? <Trophy size={40} /> : <AlertCircle size={40} />}
+      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-6 sm:p-8 space-y-5 max-w-2xl mx-auto">
+        <div className="text-center space-y-3">
+          <div
+            className={`w-18 h-18 rounded-2xl border-2 border-b-4 flex items-center justify-center mx-auto ${
+              isFinished
+                ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
+                : "bg-red-50 border-red-300 text-red-600"
+            }`}
+          >
+            {isFinished ? <Trophy size={36} /> : <AlertCircle size={36} />}
+          </div>
+
+          <div className="space-y-1">
+            <h3 className="text-xl sm:text-2xl font-extrabold text-[var(--foreground)]">
+              {isFinished ? "Çoktan Seçmeli Test Tamamlandı!" : "Süre Doldu!"}
+            </h3>
+            <p className="text-xs font-semibold text-[var(--muted)]">
+              Toplam {questions.length} sorudan {correctCount} doğru,{" "}
+              {wrongCount} yanlış yanıt verdiniz
+            </p>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 text-center pt-1">
+            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-2.5 border border-[#E6D7BE]">
+              <span className="block text-[10px] font-bold text-[var(--muted)] uppercase">
+                Başarı
+              </span>
+              <span className="text-lg font-black text-[#6741D9] tabular-nums">
+                %{pct}
+              </span>
+            </div>
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 rounded-xl p-2.5 border border-emerald-300">
+              <span className="block text-[10px] font-bold text-emerald-700 uppercase">
+                Doğru
+              </span>
+              <span className="text-lg font-black text-emerald-700 tabular-nums">
+                {correctCount}
+              </span>
+            </div>
+            <div className="bg-rose-50 dark:bg-rose-950/40 rounded-xl p-2.5 border border-rose-300">
+              <span className="block text-[10px] font-bold text-rose-700 uppercase">
+                Yanlış
+              </span>
+              <span className="text-lg font-black text-rose-700 tabular-nums">
+                {wrongCount}
+              </span>
+            </div>
+            <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl p-2.5 border border-amber-300">
+              <span className="block text-[10px] font-bold text-amber-800 uppercase">
+                Puan
+              </span>
+              <span className="text-lg font-black text-amber-800 tabular-nums">
+                {totalPoints}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-1 border-b border-dashed border-[#E2D3B8] pb-4">
-          <h3 className="text-2xl font-extrabold text-[var(--foreground)]">
-            {isFinished ? "Çoktan Seçmeli Test Tamamlandı!" : "Süre Doldu!"}
-          </h3>
-          <p className="text-xs font-semibold text-[var(--muted)]">
-            Toplam {questions.length} sorudan {score} doğru yanıt verdiniz
-          </p>
+        {/* SORULARIN DOĞRU / YANLIŞ DÖKÜMÜ */}
+        <div className="space-y-2 max-h-64 overflow-y-auto pr-1 border-t border-b border-dashed border-[#E2D3B8] py-3">
+          <h4 className="text-xs font-extrabold uppercase tracking-wider text-[var(--muted)]">
+            Soru Dökümü ({questions.length} Soru)
+          </h4>
+          {questions.map((q, idx) => {
+            const ans = userAnswers[idx];
+            const isOk = ans?.isCorrect;
+            return (
+              <div
+                key={q.id + idx}
+                className={`p-2.5 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                  isOk
+                    ? "bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-300"
+                    : "bg-rose-50/70 dark:bg-rose-950/30 border-rose-300"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {isOk ? (
+                    <CheckCircle2
+                      size={16}
+                      className="text-emerald-600 shrink-0"
+                    />
+                  ) : (
+                    <XCircle size={16} className="text-rose-600 shrink-0" />
+                  )}
+                  <span
+                    dir="rtl"
+                    className="arabic text-lg font-bold text-[var(--foreground)]"
+                  >
+                    {formatArabicText(q.arabic, showHareke, arabicFont)}
+                  </span>
+                </div>
+                <div className="text-right text-[11px] font-bold">
+                  {!isOk && ans?.chosen && (
+                    <span className="text-rose-700 line-through block">
+                      Seçiminiz: {ans.chosen}
+                    </span>
+                  )}
+                  <span className="text-emerald-800 dark:text-emerald-300 block">
+                    Doğru: {q.turkish}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        <div className="text-4xl font-black tabular-nums text-[#087F5B]">
-          {score} / {questions.length}
-        </div>
+        {/* 4 AKSİYON BUTONU */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button
+            type="button"
+            onClick={handleRepeatSameSet}
+            className="py-3 px-4 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-4 font-extrabold text-xs text-[var(--foreground)] hover:border-[#6741D9] flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <RefreshCcw size={15} className="text-[#6741D9]" />
+            <span>🔄 Tekrar Yap</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={restart}
-          className="w-full py-3.5 px-6 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer"
-        >
-          <RefreshCcw size={17} />
-          <span>Yeni Test Başlat</span>
-        </button>
+          <button
+            type="button"
+            onClick={handleStartNewSet}
+            className="py-3 px-4 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-4 border-[#087F5B] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Play size={15} fill="currentColor" />
+            <span>▶️ Devam Et (Yeni Set)</span>
+          </button>
+
+          {wrongQuestions.length > 0 && (
+            <button
+              type="button"
+              onClick={handleRetryWrongOnly}
+              className="sm:col-span-2 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white border-b-4 border-amber-700 font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Target size={15} />
+              <span>
+                🎯 Yanlışlarımı Tekrarla ({wrongQuestions.length})
+              </span>
+            </button>
+          )}
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                onClose();
+              }}
+              className="sm:col-span-2 py-2.5 px-4 rounded-xl bg-slate-200/80 dark:bg-slate-800 text-[var(--muted)] hover:text-[var(--foreground)] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <X size={15} />
+              <span>✖️ Kapat / Alıştırma Merkezine Dön</span>
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -342,7 +539,9 @@ export default function MultipleChoice({
         )}
 
         <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-3 py-1 rounded-xl tabular-nums">
-          Doğru: {score}
+          {feedbackMode === "instant"
+            ? `Doğru: ${correctCount}`
+            : `Yanıtlanan: ${Object.keys(userAnswers).length}/${questions.length}`}
         </span>
       </div>
 
@@ -383,23 +582,31 @@ export default function MultipleChoice({
       {/* ŞIKLAR */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {currentQuestion.options.map((opt, idx) => {
-          const showCorrect = Boolean(selected) && opt.isCorrect;
-          const showWrong = selected === opt.text && !opt.isCorrect;
+          const isChosen = selected === opt.text;
+          const showCorrect =
+            feedbackMode === "instant" && Boolean(selected) && opt.isCorrect;
+          const showWrong =
+            feedbackMode === "instant" && isChosen && !opt.isCorrect;
+          const showNeutralSelected = feedbackMode === "end" && isChosen;
 
           return (
             <button
               key={idx}
               type="button"
               onClick={() => handleSelect(opt.text, opt.isCorrect)}
-              disabled={Boolean(selected) || isTimeUp}
+              disabled={
+                (feedbackMode === "instant" && Boolean(selected)) || isTimeUp
+              }
               className={`p-3.5 sm:p-4 rounded-2xl border-2 border-b-4 text-left font-extrabold text-xs sm:text-sm leading-snug transition-all flex items-center justify-between gap-2 cursor-pointer ${
                 !selected
                   ? "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#6741D9] text-[var(--foreground)]"
+                  : showNeutralSelected
+                  ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff] -translate-y-0.5 shadow-xs"
                   : showCorrect
                   ? "bg-emerald-50 border-[#0CA678] text-[#087F5B]"
                   : showWrong
                   ? "bg-rose-50 border-rose-400 text-rose-800"
-                  : "bg-[#F7EFE1]/50 border-[#E6D7BE] text-[var(--muted)] opacity-60"
+                  : "bg-[#F7EFE1]/50 border-[#E6D7BE] text-[var(--muted)] opacity-65"
               }`}
             >
               <span>{opt.text}</span>
@@ -408,6 +615,11 @@ export default function MultipleChoice({
               )}
               {showWrong && (
                 <XCircle size={20} className="text-rose-600 shrink-0" />
+              )}
+              {showNeutralSelected && (
+                <span className="px-2 py-0.5 rounded-md bg-[#6741D9] text-white text-[10px] font-extrabold shrink-0">
+                  Seçildi
+                </span>
               )}
             </button>
           );
@@ -422,7 +634,7 @@ export default function MultipleChoice({
         >
           <span>
             {currentIndex === questions.length - 1
-              ? "Sonuçları Gör"
+              ? "✅ Alıştırmayı Bitir ve Sonuçları Gör"
               : "Sonraki Soruya Geç"}
           </span>
           <ArrowRight size={18} />

@@ -466,3 +466,97 @@ export async function speakHybrid(options: {
   // Katman 2 & 3: Neural TTS -> Web Speech Fallback
   await playTTS(text, rate, voice);
 }
+
+export function getActiveAudio(): HTMLAudioElement | null {
+  return activeAudio;
+}
+
+export interface WordTimingSegment {
+  index: number;
+  word: string;
+  weight: number;
+  startRatio: number;
+  endRatio: number;
+}
+
+/**
+ * Fonetik Ağırlıklı Kelime Zamanlama Motoru:
+ * Harf sayısı + Med harfleri (ا، و، ي، ى، ٰ -> +1.5 ağırlık) + Şedde (\u0651 -> +1.2 ağırlık) + Noktalama duraksaması (، . ؟ ! ؛ : -> +2.0 ağırlık)
+ */
+export function calculateWordPhoneticWeights(sentence: string): {
+  segments: WordTimingSegment[];
+  totalWeight: number;
+  estimatedDurationSec: number;
+} {
+  const words = sentence.split(" ");
+  const rawWeights: { index: number; word: string; weight: number }[] = [];
+
+  words.forEach((word, index) => {
+    const trimmed = word.trim();
+    if (!trimmed) {
+      rawWeights.push({ index, word, weight: 0.2 });
+      return;
+    }
+
+    // Harf sayısı (Harekeler hariç temel Arapça harfler)
+    const baseLetters = (trimmed.match(/[\u0621-\u064A]/g) || []).length;
+    // Med harfleri (ا، و، ي، ى ve asâ/çeker \u0670 -> +1.5 ağırlık)
+    const maddCount = (trimmed.match(/[اويى\u0670]/g) || []).length;
+    // Şedde (\u0651 -> +1.2 ağırlık)
+    const shaddaCount = (trimmed.match(/\u0651/g) || []).length;
+    // Noktalama duraksaması (، . ؟ ! ؛ : -> +2.0 ağırlık)
+    const hasPunctPause = /[،.؟!؛:,?]/.test(trimmed);
+
+    const weight =
+      Math.max(1, baseLetters) +
+      maddCount * 1.5 +
+      shaddaCount * 1.2 +
+      (hasPunctPause ? 2.0 : 0);
+
+    rawWeights.push({ index, word, weight });
+  });
+
+  const totalWeight =
+    rawWeights.reduce((sum, item) => sum + item.weight, 0) || 1;
+
+  let cumulative = 0;
+  const segments: WordTimingSegment[] = rawWeights.map((item) => {
+    const startRatio = cumulative / totalWeight;
+    cumulative += item.weight;
+    const endRatio = cumulative / totalWeight;
+    return {
+      index: item.index,
+      word: item.word,
+      weight: item.weight,
+      startRatio,
+      endRatio,
+    };
+  });
+
+  // Ortalama konuşma hızı için tahmini süre (Web Speech API veya duration henüz yüklenmemişse)
+  const estimatedDurationSec = Math.max(1.2, totalWeight * 0.088);
+
+  return { segments, totalWeight, estimatedDurationSec };
+}
+
+export function getWordIndexAtProgress(
+  segments: WordTimingSegment[],
+  progressRatio: number
+): { wordIndex: number; wordProgress: number } {
+  if (segments.length === 0) {
+    return { wordIndex: 0, wordProgress: 0 };
+  }
+  const clamped = Math.max(0, Math.min(0.9999, progressRatio));
+  for (const seg of segments) {
+    if (clamped >= seg.startRatio && clamped <= seg.endRatio) {
+      const span = Math.max(0.0001, seg.endRatio - seg.startRatio);
+      const wordProgress = Math.max(
+        0,
+        Math.min(1, (clamped - seg.startRatio) / span)
+      );
+      return { wordIndex: seg.index, wordProgress };
+    }
+  }
+  const last = segments[segments.length - 1];
+  return { wordIndex: last.index, wordProgress: 1 };
+}

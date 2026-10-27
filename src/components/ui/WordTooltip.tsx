@@ -13,6 +13,9 @@ import { formatArabicText } from "@/lib/arabicTextUtils";
 
 interface Props {
   text: string;
+  isLineSpeaking?: boolean;
+  activeWordIndex?: number | null;
+  activeWordProgress?: number;
 }
 
 function buildWordForms(item: DictionaryItem): TargetForm[] {
@@ -84,8 +87,19 @@ function getCategoryStyle(category: WordCategory) {
   };
 }
 
-export default function WordTooltip({ text }: Props) {
-  const { showTooltips, showHareke, speechRate, arabicFont } = useSettings();
+export default function WordTooltip({
+  text,
+  isLineSpeaking = false,
+  activeWordIndex = null,
+  activeWordProgress = 0,
+}: Props) {
+  const {
+    showTooltips,
+    showHareke,
+    speechRate,
+    arabicFont,
+    wordTrackingStyle,
+  } = useSettings();
   const {
     toggleFavoriteWord,
     isWordFavorite,
@@ -121,9 +135,12 @@ export default function WordTooltip({ text }: Props) {
   const formatAr = (str: string) =>
     formatArabicText(str, showHareke, arabicFont);
 
-  if (!showTooltips) return <>{formatAr(text)}</>;
-
   const words = text.split(" ");
+
+  const showHighlight =
+    wordTrackingStyle === "both" || wordTrackingStyle === "highlight";
+  const showArrow =
+    wordTrackingStyle === "both" || wordTrackingStyle === "arrow";
 
   return (
     <>
@@ -137,17 +154,83 @@ export default function WordTooltip({ text }: Props) {
 
       <span ref={containerRef} className="inline">
         {words.map((word, index) => {
+          const isWordSpeaking =
+            isLineSpeaking &&
+            activeWordIndex === index &&
+            wordTrackingStyle !== "off";
+
+          const karaokeHighlightClass =
+            isWordSpeaking && showHighlight
+              ? "bg-emerald-500/20 dark:bg-emerald-400/25 text-emerald-800 dark:text-emerald-200 ring-2 ring-emerald-500/40 rounded-lg px-1 -mx-1"
+              : "";
+
+          const trackingArrowIndicator =
+            isWordSpeaking && showArrow ? (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none select-none absolute -top-3.5 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center animate-bounce"
+              >
+                <span className="text-[11px] leading-none font-black text-emerald-600 dark:text-amber-300 drop-shadow-[0_1px_2px_rgba(16,185,129,0.55)]">
+                  ▼
+                </span>
+              </span>
+            ) : null;
+
+          const bottomProgressLine =
+            isWordSpeaking && (showHighlight || showArrow) ? (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute -bottom-0.5 right-0 h-0.5 rounded-full bg-gradient-to-l from-emerald-500 via-teal-400 to-amber-400 transition-all duration-75"
+                style={{
+                  width: `${Math.max(18, Math.round(activeWordProgress * 100))}%`,
+                }}
+              />
+            ) : null;
+
+          if (!showTooltips) {
+            return (
+              <span
+                key={index}
+                className={`inline-block relative transition-all duration-150 mx-0.5 ${karaokeHighlightClass}`}
+              >
+                {trackingArrowIndicator}
+                {formatAr(word)}
+                {bottomProgressLine}
+              </span>
+            );
+          }
+
           const match = word.match(
             /^([.,!?؟،؛:"'()\[\]{}]*)([\u0600-\u06FF\u0670]+)([.,!?؟،؛:"'()\[\]{}]*)$/
           );
 
-          if (!match) return <span key={index}>{formatAr(word)} </span>;
+          if (!match) {
+            return (
+              <span
+                key={index}
+                className={`inline-block relative transition-all duration-150 mx-0.5 ${karaokeHighlightClass}`}
+              >
+                {trackingArrowIndicator}
+                {formatAr(word)}
+                {bottomProgressLine}
+              </span>
+            );
+          }
 
           const [, prefix, coreWord, suffix] = match;
           const analysis = analyzeAndMatchWord(coreWord);
 
           if (!analysis) {
-            return <span key={index}>{formatAr(word)} </span>;
+            return (
+              <span
+                key={index}
+                className={`inline-block relative transition-all duration-150 mx-0.5 ${karaokeHighlightClass}`}
+              >
+                {trackingArrowIndicator}
+                {formatAr(word)}
+                {bottomProgressLine}
+              </span>
+            );
           }
 
           const { item: dictItem, morphologyNote } = analysis;
@@ -204,18 +287,25 @@ export default function WordTooltip({ text }: Props) {
               : "left-1/2 -translate-x-1/2";
 
           return (
-            <span key={index} className="relative inline-block mx-0.5">
+            <span
+              key={index}
+              className="relative inline-block mx-0.5 transition-all duration-150"
+            >
+              {trackingArrowIndicator}
               {prefix}
               <button
                 type="button"
                 onClick={handleWordClick}
-                className={`cursor-pointer rounded-lg px-1 transition-all border-b-2 border-dashed ${
-                  isOpen
+                className={`relative cursor-pointer rounded-lg px-1 transition-all duration-150 border-b-2 border-dashed ${
+                  isWordSpeaking && showHighlight
+                    ? "bg-emerald-500/20 dark:bg-emerald-400/25 text-emerald-800 dark:text-emerald-200 ring-2 ring-emerald-500/40 border-emerald-500"
+                    : isOpen
                     ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] text-[#6741D9] dark:text-[#d0bfff] border-[#6741D9]"
                     : catStyle.underline
                 }`}
               >
                 {formatAr(coreWord)}
+                {bottomProgressLine}
               </button>
               {suffix}
 

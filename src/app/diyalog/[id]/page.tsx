@@ -72,7 +72,14 @@ export default function DialogueDetailPage({
   const router = useRouter();
   const dialogue = getDialogueById(resolvedParams.id);
 
-  const { stop, playAudio, playTTS, playingLineId } = useAudioStore();
+  const {
+    stop,
+    playAudio,
+    playTTS,
+    playingLineId,
+    activeWordIndex,
+    activeWordProgress,
+  } = useAudioStore();
   const {
     viewMode,
     setViewMode,
@@ -83,6 +90,10 @@ export default function DialogueDetailPage({
     turkishFontSize,
     speechRate,
     cycleSpeechRate,
+    dialogueLoopCount,
+    cycleDialogueLoopCount,
+    sentenceLoopCount,
+    pauseBetweenLines,
   } = useSettings();
 
   const {
@@ -109,7 +120,11 @@ export default function DialogueDetailPage({
   >({});
   const [flowMode, setFlowMode] = useState<FlowMode>("single");
   const [isPlayingAll, setIsPlayingAll] = useState(false);
+  const [dialogueLoopTurn, setDialogueLoopTurn] = useState<number>(1);
   const [loopingLineSira, setLoopingLineSira] = useState<number | null>(null);
+  const [sentenceLoopRemaining, setSentenceLoopRemaining] = useState<
+    number | "infinite" | null
+  >(null);
   const [autoShadowingFlow, setAutoShadowingFlow] = useState<boolean>(false);
 
   // Lightbox (Kapak Görseli Büyütme) ve PDF / Ders Notu Modal State
@@ -361,7 +376,9 @@ export default function DialogueDetailPage({
     line: DialogueLine,
     autoAdvance = false,
     isLooping = false,
-    inRoleplay = false
+    inRoleplay = false,
+    loopRemaining: number | "infinite" | null = null,
+    currentDlgTurn: number = 1
   ) => {
     const currentToken = playToken.current;
     const lineHasMp3 = hasMp3(dialogue.id, line.sira);
@@ -377,7 +394,7 @@ export default function DialogueDetailPage({
     }
 
     if (lineHasMp3 && lineAudioUrl) {
-      await playAudio(lineAudioUrl, line.sira, speechRate);
+      await playAudio(lineAudioUrl, line.sira, speechRate, line.arapca);
     } else {
       await playTTS(line.arapca, line.sira, speechRate, voice);
     }
@@ -388,12 +405,27 @@ export default function DialogueDetailPage({
       setRoleplaySpeakingLine(null);
     }
 
-    // 1. Eğer bu cümle için Tekrarla (Loop) aktifse 1 saniye bekleyip tekrar çal
+    // 1. Eğer bu cümle için Tekrarla (Loop) aktifse sentenceLoopCount sayısına göre tekrar çal
     if (isLooping) {
-      await new Promise((r) => setTimeout(r, 1000));
-      if (playToken.current !== currentToken) return;
-      await playSentence(line, false, true, false);
-      return;
+      const nextRem =
+        loopRemaining === "infinite"
+          ? "infinite"
+          : typeof loopRemaining === "number"
+          ? loopRemaining - 1
+          : 0;
+
+      if (nextRem === "infinite" || (typeof nextRem === "number" && nextRem > 0)) {
+        setSentenceLoopRemaining(nextRem);
+        await new Promise((r) => setTimeout(r, 900));
+        if (playToken.current !== currentToken) return;
+        await playSentence(line, false, true, false, nextRem, currentDlgTurn);
+        return;
+      } else {
+        setLoopingLineSira(null);
+        setSentenceLoopRemaining(null);
+        stop();
+        return;
+      }
     }
 
     // 2. Eğer "2. Telaffuz & Mahreç Stüdyosu" modunda Otomatik Gölgeleme Akışı açıksa
@@ -409,7 +441,17 @@ export default function DialogueDetailPage({
 
     // 3. Sıralı Oynatma (Sequential) veya Rol Yapma (Roleplay) aktifse sonraki cümleye geç
     if (autoAdvance) {
-      await new Promise((r) => setTimeout(r, 220));
+      const pauseSetting = useSettings.getState().pauseBetweenLines;
+      const lastDurSec = useAudioStore.getState().lastPlayedDurationSec || 2.5;
+      const waitMs = inRoleplay
+        ? 220
+        : pauseSetting === 2
+        ? 2000
+        : pauseSetting === "auto"
+        ? Math.min(8000, Math.max(1500, Math.round(lastDurSec * 1000)))
+        : 240;
+
+      await new Promise((r) => setTimeout(r, waitMs));
       if (playToken.current !== currentToken) return;
       const nextLine = dialogue.satirlar.find((s) => s.sira === line.sira + 1);
       if (nextLine) {
@@ -417,9 +459,35 @@ export default function DialogueDetailPage({
           await activateUserRoleplayTurn(nextLine);
           return;
         }
-        await playSentence(nextLine, true, false, inRoleplay);
+        await playSentence(
+          nextLine,
+          true,
+          false,
+          inRoleplay,
+          null,
+          currentDlgTurn
+        );
       } else {
+        // Diyalog sonuna gelindi: Eğer Rol Yapma değilse ve dialogueLoopCount > 1 veya infinite ise baştan başlat
+        const targetDlgLoops = useSettings.getState().dialogueLoopCount;
+        const shouldRepeatDialogue =
+          !inRoleplay &&
+          (targetDlgLoops === "infinite" ||
+            (typeof targetDlgLoops === "number" &&
+              currentDlgTurn < targetDlgLoops));
+
+        if (shouldRepeatDialogue) {
+          const nextTurn = currentDlgTurn + 1;
+          setDialogueLoopTurn(nextTurn);
+          await new Promise((r) => setTimeout(r, 750));
+          if (playToken.current !== currentToken) return;
+          const firstLine = dialogue.satirlar[0];
+          await playSentence(firstLine, true, false, false, null, nextTurn);
+          return;
+        }
+
         setIsPlayingAll(false);
+        setDialogueLoopTurn(1);
         setRoleplayActiveLine(null);
         setRoleplaySpeakingLine(null);
         setRoleplayTransitionNotice(false);
@@ -439,6 +507,7 @@ export default function DialogueDetailPage({
     stop();
     cleanupRoleplayMic();
     setLoopingLineSira(null);
+    setSentenceLoopRemaining(null);
     setRoleplayActiveLine(null);
     setRoleplaySpeakingLine(null);
     setRoleplayTransitionNotice(false);
@@ -446,10 +515,11 @@ export default function DialogueDetailPage({
 
     if (flowMode === "sequential") {
       setIsPlayingAll(true);
-      playSentence(line, true, false, false);
+      setDialogueLoopTurn(1);
+      playSentence(line, true, false, false, null, 1);
     } else {
       setIsPlayingAll(false);
-      playSentence(line, false, false, false);
+      playSentence(line, false, false, false, null, 1);
     }
   };
 
@@ -466,15 +536,19 @@ export default function DialogueDetailPage({
 
     if (loopingLineSira === line.sira) {
       setLoopingLineSira(null);
+      setSentenceLoopRemaining(null);
     } else {
+      const targetLoops = sentenceLoopCount;
       setLoopingLineSira(line.sira);
-      playSentence(line, false, true, false);
+      setSentenceLoopRemaining(targetLoops);
+      playSentence(line, false, true, false, targetLoops, 1);
     }
   };
 
   const handleTogglePlayAll = () => {
     playClick();
     setLoopingLineSira(null);
+    setSentenceLoopRemaining(null);
     cleanupRoleplayMic();
     setIsRoleplayRunning(false);
     setRoleplayActiveLine(null);
@@ -485,12 +559,14 @@ export default function DialogueDetailPage({
       playToken.current += 1;
       stop();
       setIsPlayingAll(false);
+      setDialogueLoopTurn(1);
     } else {
       setFlowMode("sequential");
       setIsPlayingAll(true);
+      setDialogueLoopTurn(1);
       playToken.current += 1;
       const firstLine = dialogue.satirlar[0];
-      playSentence(firstLine, true, false, false);
+      playSentence(firstLine, true, false, false, null, 1);
     }
   };
 
@@ -874,6 +950,52 @@ export default function DialogueDetailPage({
                     <Gauge size={13} className="text-[#0CA678]" />
                     <span className="tabular-nums">
                       {mounted ? `${speechRate}x` : "1x"}
+                    </span>
+                  </button>
+
+                  {/* Diyalog Döngü (Loop) İkon/Rozet Butonu: 1x -> 2x -> 3x -> 5x -> ∞ */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      cycleDialogueLoopCount();
+                      playClick();
+                    }}
+                    title={`Diyalog Döngüsü: ${
+                      !mounted || dialogueLoopCount === 1
+                        ? "1x (Tek Sefer)"
+                        : dialogueLoopCount === "infinite"
+                        ? "∞ (Sonsuz Döngü)"
+                        : `${dialogueLoopCount}x Tekrar`
+                    }`}
+                    aria-label="Diyalog Döngü Sayısı"
+                    className={`h-8 px-2.5 rounded-xl border flex items-center gap-1 text-xs font-extrabold transition-all cursor-pointer ${
+                      mounted && dialogueLoopCount !== 1
+                        ? "bg-[#6741D9] border-[#5230B5] text-white shadow-xs"
+                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#6741D9]"
+                    }`}
+                  >
+                    <Repeat
+                      size={13}
+                      className={
+                        isPlayingAll && mounted && dialogueLoopCount !== 1
+                          ? "animate-spin"
+                          : mounted && dialogueLoopCount !== 1
+                          ? "text-white"
+                          : "text-[#6741D9]"
+                      }
+                    />
+                    <span className="tabular-nums">
+                      {!mounted
+                        ? "1x"
+                        : dialogueLoopCount === "infinite"
+                        ? isPlayingAll
+                          ? `${dialogueLoopTurn}/∞`
+                          : "∞"
+                        : dialogueLoopCount === 1
+                        ? "1x"
+                        : isPlayingAll
+                        ? `${dialogueLoopTurn}/${dialogueLoopCount}`
+                        : `${dialogueLoopCount}x`}
                     </span>
                   </button>
                 </>
@@ -1433,20 +1555,35 @@ export default function DialogueDetailPage({
                     <button
                       type="button"
                       onClick={() => handleToggleLoopLine(line)}
-                      className={`group relative w-9 h-9 rounded-xl border-2 border-b-3 inline-flex items-center justify-center transition-all cursor-pointer ${
+                      className={`group relative h-9 min-w-9 px-2 rounded-xl border-2 border-b-3 inline-flex items-center justify-center gap-1 transition-all cursor-pointer ${
                         isLooping
                           ? "bg-[#6741D9] border-[#5230B5] text-white"
                           : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[#6741D9] hover:border-[#6741D9]"
                       }`}
-                      title="Cümleyi Döngüde Tekrarla"
+                      title={`Cümleyi Döngüde Tekrarla (${
+                        mounted && sentenceLoopCount === "infinite"
+                          ? "∞"
+                          : `${mounted ? sentenceLoopCount : 3}x`
+                      })`}
                       aria-label="Cümleyi Döngüde Tekrarla"
                     >
                       <Repeat
                         size={14}
                         className={isLooping ? "animate-spin" : ""}
                       />
+                      {isLooping && sentenceLoopRemaining !== null && (
+                        <span className="text-[10px] font-black tabular-nums">
+                          {sentenceLoopRemaining === "infinite"
+                            ? "∞"
+                            : `${sentenceLoopRemaining}x`}
+                        </span>
+                      )}
                       <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2.5 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-50 shadow-md">
-                        Cümleyi Döngüde Tekrarla
+                        Cümleyi Tekrarla (
+                        {mounted && sentenceLoopCount === "infinite"
+                          ? "∞"
+                          : `${mounted ? sentenceLoopCount : 3}x`}
+                        )
                       </span>
                     </button>
 
@@ -1505,7 +1642,12 @@ export default function DialogueDetailPage({
                       }}
                       className="order-1 md:order-2 arabic font-bold text-[var(--foreground)] text-right py-1.5"
                     >
-                      <WordTooltip text={getDisplayText(line.arapca)} />
+                      <WordTooltip
+                        text={getDisplayText(line.arapca)}
+                        isLineSpeaking={isPlaying}
+                        activeWordIndex={isPlaying ? activeWordIndex : null}
+                        activeWordProgress={isPlaying ? activeWordProgress : 0}
+                      />
                     </div>
                   </div>
                 ) : (
@@ -1535,7 +1677,12 @@ export default function DialogueDetailPage({
                         }}
                         className="arabic font-bold text-[var(--foreground)] text-right py-1.5"
                       >
-                        <WordTooltip text={getDisplayText(line.arapca)} />
+                        <WordTooltip
+                          text={getDisplayText(line.arapca)}
+                          isLineSpeaking={isPlaying}
+                          activeWordIndex={isPlaying ? activeWordIndex : null}
+                          activeWordProgress={isPlaying ? activeWordProgress : 0}
+                        />
                       </div>
                     ) : (
                       <div className="flex items-center justify-between gap-3 bg-white/80 dark:bg-[var(--background)] rounded-xl p-2 border border-[#E6D7BE]">

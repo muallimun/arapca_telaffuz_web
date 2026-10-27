@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
   playSuccess,
   playError,
@@ -18,44 +18,125 @@ import {
   Volume2,
   CheckCircle2,
   GripVertical,
+  Keyboard,
+  Lightbulb,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Play,
+  Target,
+  X,
+  Headphones,
+  Puzzle,
 } from "lucide-react";
 import { useCountdown } from "@/lib/useTimer";
-import { playTTS } from "@/lib/audio";
+import {
+  loadAudioManifest,
+  hasMp3,
+  getMp3Path,
+  VoiceOption,
+} from "@/lib/audio";
+import { useAudioStore } from "@/store/audioStore";
 import { useSettings } from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
-import { formatArabicText } from "@/lib/arabicTextUtils";
+import { formatArabicText, removeArabicHarakat } from "@/lib/arabicTextUtils";
+import ArabicVirtualKeyboard from "@/components/ui/ArabicVirtualKeyboard";
+import { FeedbackMode } from "./MultipleChoice";
+
+export type FillSubMode = "choices" | "dictation";
+
+export interface FillQuestionItem {
+  id: string;
+  sentenceWithBlank: string;
+  fullArabic: string;
+  correctWord: string;
+  options: string[];
+  turkce: string;
+  dialogueId: string;
+  lineSira: number;
+  voice: VoiceOption;
+}
 
 interface Props {
   dialogues: Dialogue[];
   vocabulary: DictionaryItem[];
+  feedbackMode?: FeedbackMode;
+  initialSubMode?: FillSubMode;
   timeLimit: number | null;
   questionCount?: number;
+  onClose?: () => void;
+}
+
+/**
+ * Akıllı Arapça İmla Normalizasyonu:
+ * Harekeleri, tatvili ve noktalama işaretlerini soyar;
+ * Elif (أ إ آ ٱ -> ا), Ye/Elif-i Maksure (ى -> ي) ve Te-i Merbuta (ة -> ه) varyasyonlarını eşitler.
+ */
+export function normalizeArabicSpelling(input: string): string {
+  return removeArabicHarakat(input)
+    .replace(/\u0640/g, "")
+    .replace(/[.,!?؟،؛:"'«»()[\]]/g, "")
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/ؤ/g, "و")
+    .replace(/ئ/g, "ي")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export default function FillInBlanks({
   dialogues,
   vocabulary,
+  feedbackMode = "instant",
+  initialSubMode = "choices",
   timeLimit,
   questionCount = 10,
+  onClose,
 }: Props) {
   const fanfarePlayedRef = useRef(false);
   const dropZoneRef = useRef<HTMLSpanElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const [subMode, setSubMode] = useState<FillSubMode>(initialSubMode);
   const [roundSeed, setRoundSeed] = useState(0);
+  const [customQuestions, setCustomQuestions] = useState<
+    FillQuestionItem[] | null
+  >(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [isTimeUp, setIsTimeUp] = useState(false);
+
+  // Instant mode & End mode state
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [userAnswers, setUserAnswers] = useState<
+    Record<number, { answer: string; isCorrect: boolean }>
+  >({});
+
+  // İmla (Dictation) modu state'leri
+  const [typedText, setTypedText] = useState<string>("");
+  const [showWordBank, setShowWordBank] = useState<boolean>(false);
+  const [showKeyboard, setShowKeyboard] = useState<boolean>(true);
+  const [autoAudio, setAutoAudio] = useState<boolean>(true);
+  const [hintCount, setHintCount] = useState<number>(0);
 
   // Sürükle-Bırak (Drag & Drop) State
   const [draggingWord, setDraggingWord] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
 
-  const { speechRate, showHareke } = useSettings();
+  const { speechRate, showHareke, arabicFont } = useSettings();
+  const { playAudio, playTTS } = useAudioStore();
   const { addStudyMinutes } = useUserStore();
-  const removeTashkeel = (t: string) => t.replace(/[\u064B-\u065F\u0670]/g, "");
-  const formatAr = (t: string) => formatArabicText(t, showHareke);
+  const formatAr = (t: string) => formatArabicText(t, showHareke, arabicFont);
+
+  useEffect(() => {
+    loadAudioManifest();
+  }, []);
+
+  useEffect(() => {
+    setSubMode(initialSubMode);
+  }, [initialSubMode]);
 
   const handleTimeout = () => setIsTimeUp(true);
   const timeLeft = useCountdown(
@@ -64,19 +145,12 @@ export default function FillInBlanks({
     !isFinished && !isTimeUp
   );
 
-  const questions = useMemo(() => {
-    const generated: {
-      sentenceWithBlank: string;
-      fullArabic: string;
-      correctWord: string;
-      options: string[];
-      turkce: string;
-    }[] = [];
+  const generatedQuestions: FillQuestionItem[] = useMemo(() => {
+    const generated: FillQuestionItem[] = [];
 
     const stripPunct = (w: string) =>
       w.replace(/[.,!?؟،؛:"'«»()]/g, "").trim();
 
-    // Vocabulary havuzundaki kelimelerin harekeli ve harekesiz formları
     const vocabFormsSet = new Set<string>();
     for (const v of vocabulary) {
       const rawForms = [v.mufret, v.cemi, v.mazi, v.muzari, v.masdar];
@@ -86,7 +160,7 @@ export default function FillInBlanks({
           const clean = stripPunct(part);
           if (clean.length > 1) {
             vocabFormsSet.add(clean);
-            vocabFormsSet.add(removeTashkeel(clean));
+            vocabFormsSet.add(removeArabicHarakat(clean));
           }
         }
       }
@@ -95,14 +169,12 @@ export default function FillInBlanks({
     for (const dlg of dialogues) {
       for (const line of dlg.satirlar) {
         const words = line.arapca.split(/\s+/);
-        const validCandidates = words.filter(
-          (w) => stripPunct(w).length > 2
-        );
+        const validCandidates = words.filter((w) => stripPunct(w).length > 2);
         if (validCandidates.length === 0) continue;
 
         const vocabMatchedCandidates = validCandidates.filter((w) => {
           const clean = stripPunct(w);
-          const bare = removeTashkeel(clean);
+          const bare = removeArabicHarakat(clean);
           const bareNoAl = bare.startsWith("ال") ? bare.slice(2) : bare;
           return (
             vocabFormsSet.has(clean) ||
@@ -125,20 +197,24 @@ export default function FillInBlanks({
             .slice(0, 3);
 
           if (distractorWords.length === 3) {
-            const allOptions = shuffleArray([
-              cleanTarget,
-              ...distractorWords,
-            ]);
+            const allOptions = shuffleArray([cleanTarget, ...distractorWords]);
             const sentenceWithBlank = line.arapca.replace(
               candidateWord,
               " [ ? ] "
             );
             generated.push({
+              id: `fill_${dlg.id}_${line.sira}`,
               sentenceWithBlank,
               fullArabic: line.arapca,
               correctWord: cleanTarget,
               options: allOptions,
               turkce: line.turkce,
+              dialogueId: dlg.id,
+              lineSira: line.sira,
+              voice:
+                line.cinsiyet === "K"
+                  ? "ar-SA-ZariyahNeural"
+                  : "ar-SA-HamedNeural",
             });
           }
         }
@@ -148,12 +224,46 @@ export default function FillInBlanks({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogues, vocabulary, questionCount, roundSeed]);
 
+  const questions = customQuestions || generatedQuestions;
+  const currentQ = questions[currentIndex];
+
+  const playQuestionSentence = useCallback(
+    (q: FillQuestionItem | undefined, customRate?: number) => {
+      if (!q) return;
+      const rateToUse = customRate ?? speechRate;
+      if (hasMp3(q.dialogueId, q.lineSira)) {
+        playAudio(getMp3Path(q.dialogueId, q.lineSira), q.lineSira, rateToUse);
+      } else {
+        playTTS(q.fullArabic, rateToUse, q.lineSira, q.voice);
+      }
+    },
+    [playAudio, playTTS, speechRate]
+  );
+
+  // Soru değiştiğinde state sıfırlama ve İmla modunda otomatik ses çalma
   useEffect(() => {
     setFeedback(null);
-    setSelectedWord(null);
+    const saved = userAnswers[currentIndex];
+    setSelectedWord(saved?.answer ?? null);
+    setTypedText(saved?.answer ?? "");
+    setHintCount(0);
     setDraggingWord(null);
     setIsDragOver(false);
-  }, [currentIndex]);
+
+    if (
+      subMode === "dictation" &&
+      autoAudio &&
+      !isFinished &&
+      !isTimeUp &&
+      questions[currentIndex]
+    ) {
+      const timer = setTimeout(() => {
+        playQuestionSentence(questions[currentIndex]);
+      }, 220);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, subMode, questions]);
 
   useEffect(() => {
     if (isFinished && !fanfarePlayedRef.current) {
@@ -166,7 +276,11 @@ export default function FillInBlanks({
     }
   }, [isFinished, isTimeUp, addStudyMinutes]);
 
-  if (questions.length === 0) {
+  const wordBankList = useMemo(() => {
+    return shuffleArray(questions.map((q) => q.correctWord));
+  }, [questions]);
+
+  if (questions.length === 0 || !currentQ) {
     return (
       <p className="text-center p-8 text-sm font-bold text-[var(--muted)]">
         Seçilen aralıkta boşluk doldurma sorusu üretilemedi.
@@ -174,14 +288,37 @@ export default function FillInBlanks({
     );
   }
 
-  const currentQ = questions[currentIndex];
+  const correctCount = Object.values(userAnswers).filter(
+    (a) => a.isCorrect
+  ).length;
 
+  // Seçmeli / Sürükle-Bırak Cevaplama
   const handleChooseOption = (word: string) => {
-    if (feedback === "correct" || isTimeUp) return;
+    if (isTimeUp) return;
+    if (feedbackMode === "instant" && feedback === "correct") return;
+
+    const isRight =
+      normalizeArabicSpelling(word) ===
+      normalizeArabicSpelling(currentQ.correctWord);
+
     setSelectedWord(word);
-    if (word === currentQ.correctWord) {
+
+    if (feedbackMode === "end") {
+      playClick();
+      setUserAnswers((prev) => ({
+        ...prev,
+        [currentIndex]: { answer: word, isCorrect: isRight },
+      }));
+      return;
+    }
+
+    // Instant mode
+    if (isRight) {
       setFeedback("correct");
-      setScore((s) => s + 1);
+      setUserAnswers((prev) => ({
+        ...prev,
+        [currentIndex]: { answer: currentQ.correctWord, isCorrect: true },
+      }));
       playSuccess();
       setTimeout(() => {
         if (currentIndex < questions.length - 1) {
@@ -189,9 +326,15 @@ export default function FillInBlanks({
         } else {
           setIsFinished(true);
         }
-      }, 1100);
+      }, 1050);
     } else {
       setFeedback("wrong");
+      setUserAnswers((prev) => ({
+        ...prev,
+        [currentIndex]: prev[currentIndex]?.isCorrect
+          ? prev[currentIndex]
+          : { answer: word, isCorrect: false },
+      }));
       playError();
       setTimeout(() => {
         setFeedback(null);
@@ -200,8 +343,75 @@ export default function FillInBlanks({
     }
   };
 
+  // İmla (Dictation) Cevaplama
+  const handleCheckDictation = () => {
+    if (isTimeUp || !typedText.trim()) return;
+    if (feedbackMode === "instant" && feedback === "correct") return;
+
+    const isRight =
+      normalizeArabicSpelling(typedText) ===
+      normalizeArabicSpelling(currentQ.correctWord);
+
+    if (feedbackMode === "end") {
+      playClick();
+      setUserAnswers((prev) => ({
+        ...prev,
+        [currentIndex]: { answer: typedText.trim(), isCorrect: isRight },
+      }));
+      if (currentIndex < questions.length - 1) {
+        setCurrentIndex((prev) => prev + 1);
+      } else {
+        setIsFinished(true);
+      }
+      return;
+    }
+
+    // Instant mode
+    if (isRight) {
+      setFeedback("correct");
+      setTypedText(currentQ.correctWord);
+      setUserAnswers((prev) => ({
+        ...prev,
+        [currentIndex]: { answer: currentQ.correctWord, isCorrect: true },
+      }));
+      playSuccess();
+      setTimeout(() => {
+        if (currentIndex < questions.length - 1) {
+          setCurrentIndex((prev) => prev + 1);
+        } else {
+          setIsFinished(true);
+        }
+      }, 1150);
+    } else {
+      setFeedback("wrong");
+      setUserAnswers((prev) => ({
+        ...prev,
+        [currentIndex]: prev[currentIndex]?.isCorrect
+          ? prev[currentIndex]
+          : { answer: typedText.trim(), isCorrect: false },
+      }));
+      playError();
+      setTimeout(() => {
+        setFeedback(null);
+      }, 950);
+    }
+  };
+
+  // Harf İpucu Al
+  const handleLetterHint = () => {
+    playClick();
+    const bareTarget = removeArabicHarakat(currentQ.correctWord);
+    const nextLen = Math.min(bareTarget.length, hintCount + 1);
+    setHintCount(nextLen);
+    setTypedText(bareTarget.slice(0, nextLen));
+    inputRef.current?.focus();
+  };
+
   // --- HTML5 DRAG & DROP HANDLERS ---
-  const handleDragStart = (e: React.DragEvent<HTMLButtonElement>, word: string) => {
+  const handleDragStart = (
+    e: React.DragEvent<HTMLButtonElement>,
+    word: string
+  ) => {
     if (feedback === "correct" || isTimeUp) return;
     setDraggingWord(word);
     e.dataTransfer.setData("text/plain", word);
@@ -216,9 +426,7 @@ export default function FillInBlanks({
   const handleDragOver = (e: React.DragEvent<HTMLSpanElement>) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    if (!isDragOver) {
-      setIsDragOver(true);
-    }
+    if (!isDragOver) setIsDragOver(true);
   };
 
   const handleDragEnter = (e: React.DragEvent<HTMLSpanElement>) => {
@@ -241,18 +449,20 @@ export default function FillInBlanks({
   };
 
   // --- MOBİL DOKUNMATİK SÜRÜKLE-BIRAK (TOUCH DRAG) ---
-  const handleTouchMove = (e: React.TouchEvent<HTMLButtonElement>, word: string) => {
+  const handleTouchMove = (
+    e: React.TouchEvent<HTMLButtonElement>,
+    word: string
+  ) => {
     if (feedback === "correct" || isTimeUp) return;
     const touch = e.touches[0];
     if (!touch) return;
-    if (draggingWord !== word) {
-      setDraggingWord(word);
-    }
+    if (draggingWord !== word) setDraggingWord(word);
     const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
     if (
       dropZoneRef.current &&
       targetEl &&
-      (dropZoneRef.current === targetEl || dropZoneRef.current.contains(targetEl))
+      (dropZoneRef.current === targetEl ||
+        dropZoneRef.current.contains(targetEl))
     ) {
       if (!isDragOver) setIsDragOver(true);
     } else if (isDragOver) {
@@ -260,7 +470,10 @@ export default function FillInBlanks({
     }
   };
 
-  const handleTouchEnd = (e: React.TouchEvent<HTMLButtonElement>, word: string) => {
+  const handleTouchEnd = (
+    e: React.TouchEvent<HTMLButtonElement>,
+    word: string
+  ) => {
     if (!draggingWord) return;
     const touch = e.changedTouches[0];
     if (touch && dropZoneRef.current) {
@@ -280,87 +493,352 @@ export default function FillInBlanks({
     setDraggingWord(null);
   };
 
-  const restart = () => {
+  // 4 Sonuç Ekranı Aksiyonu
+  const handleRepeatSameSet = () => {
     playClick();
     fanfarePlayedRef.current = false;
-    setRoundSeed((s) => s + 1);
+    setCustomQuestions(
+      shuffleArray(
+        questions.map((q) => ({
+          ...q,
+          options: shuffleArray([...q.options]),
+        }))
+      )
+    );
     setCurrentIndex(0);
-    setScore(0);
-    setIsFinished(false);
-    setIsTimeUp(false);
+    setUserAnswers({});
     setFeedback(null);
     setSelectedWord(null);
-    setDraggingWord(null);
-    setIsDragOver(false);
+    setTypedText("");
+    setIsFinished(false);
+    setIsTimeUp(false);
+  };
+
+  const handleStartNewSet = () => {
+    playClick();
+    fanfarePlayedRef.current = false;
+    setCustomQuestions(null);
+    setRoundSeed((s) => s + 1);
+    setCurrentIndex(0);
+    setUserAnswers({});
+    setFeedback(null);
+    setSelectedWord(null);
+    setTypedText("");
+    setIsFinished(false);
+    setIsTimeUp(false);
+  };
+
+  const wrongQuestions = questions.filter(
+    (_, idx) => !userAnswers[idx]?.isCorrect
+  );
+
+  const handleRetryWrongOnly = () => {
+    if (wrongQuestions.length === 0) return;
+    playClick();
+    fanfarePlayedRef.current = false;
+    setCustomQuestions(
+      shuffleArray(
+        wrongQuestions.map((q) => ({
+          ...q,
+          options: shuffleArray([...q.options]),
+        }))
+      )
+    );
+    setCurrentIndex(0);
+    setUserAnswers({});
+    setFeedback(null);
+    setSelectedWord(null);
+    setTypedText("");
+    setIsFinished(false);
+    setIsTimeUp(false);
   };
 
   if (isFinished || isTimeUp) {
+    const wrongCount = questions.length - correctCount;
+    const pct = Math.round((correctCount / questions.length) * 100);
+    const totalPoints = correctCount * 10;
+
     return (
-      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-8 text-center space-y-5 max-w-lg mx-auto">
-        <div
-          className={`w-20 h-20 rounded-2xl border-2 border-b-4 flex items-center justify-center mx-auto ${
-            isFinished
-              ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
-              : "bg-red-50 border-red-300 text-red-600"
-          }`}
-        >
-          {isFinished ? <Trophy size={40} /> : <AlertCircle size={40} />}
+      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-6 sm:p-8 space-y-5 max-w-2xl mx-auto">
+        <div className="text-center space-y-3">
+          <div
+            className={`w-18 h-18 rounded-2xl border-2 border-b-4 flex items-center justify-center mx-auto ${
+              isFinished
+                ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
+                : "bg-red-50 border-red-300 text-red-600"
+            }`}
+          >
+            {isFinished ? <Trophy size={36} /> : <AlertCircle size={36} />}
+          </div>
+
+          <div className="space-y-1">
+            <h3 className="text-xl sm:text-2xl font-extrabold text-[var(--foreground)]">
+              {isFinished ? "Boşluk Doldurma Tamamlandı!" : "Süre Doldu!"}
+            </h3>
+            <p className="text-xs font-semibold text-[var(--muted)]">
+              {questions.length} cümleden {correctCount} doğru, {wrongCount}{" "}
+              yanlış tamamladınız
+            </p>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 text-center pt-1">
+            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-2.5 border border-[#E6D7BE]">
+              <span className="block text-[10px] font-bold text-[var(--muted)] uppercase">
+                Başarı
+              </span>
+              <span className="text-lg font-black text-[#6741D9] tabular-nums">
+                %{pct}
+              </span>
+            </div>
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 rounded-xl p-2.5 border border-emerald-300">
+              <span className="block text-[10px] font-bold text-emerald-700 uppercase">
+                Doğru
+              </span>
+              <span className="text-lg font-black text-emerald-700 tabular-nums">
+                {correctCount}
+              </span>
+            </div>
+            <div className="bg-rose-50 dark:bg-rose-950/40 rounded-xl p-2.5 border border-rose-300">
+              <span className="block text-[10px] font-bold text-rose-700 uppercase">
+                Yanlış
+              </span>
+              <span className="text-lg font-black text-rose-700 tabular-nums">
+                {wrongCount}
+              </span>
+            </div>
+            <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl p-2.5 border border-amber-300">
+              <span className="block text-[10px] font-bold text-amber-800 uppercase">
+                Puan
+              </span>
+              <span className="text-lg font-black text-amber-800 tabular-nums">
+                {totalPoints}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-1 border-b border-dashed border-[#E2D3B8] pb-4">
-          <h3 className="text-2xl font-extrabold text-[var(--foreground)]">
-            {isFinished ? "Boşluk Doldurma Tamamlandı!" : "Süre Doldu!"}
-          </h3>
-          <p className="text-xs font-semibold text-[var(--muted)]">
-            {questions.length} cümleden {score} tanesini doğru tamamladınız
-          </p>
+        {/* SORU DÖKÜMÜ */}
+        <div className="space-y-2 max-h-64 overflow-y-auto pr-1 border-t border-b border-dashed border-[#E2D3B8] py-3">
+          <h4 className="text-xs font-extrabold uppercase tracking-wider text-[var(--muted)]">
+            Cümle Dökümü ({questions.length} Cümle)
+          </h4>
+          {questions.map((q, idx) => {
+            const ans = userAnswers[idx];
+            const isOk = ans?.isCorrect;
+            return (
+              <div
+                key={q.id + idx}
+                className={`p-2.5 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                  isOk
+                    ? "bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-300"
+                    : "bg-rose-50/70 dark:bg-rose-950/30 border-rose-300"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {isOk ? (
+                    <CheckCircle2
+                      size={16}
+                      className="text-emerald-600 shrink-0"
+                    />
+                  ) : (
+                    <XCircle size={16} className="text-rose-600 shrink-0" />
+                  )}
+                  <span
+                    dir="rtl"
+                    className="arabic text-lg font-bold text-[var(--foreground)]"
+                  >
+                    {formatAr(q.fullArabic)}
+                  </span>
+                </div>
+                <div className="text-right text-[11px] font-bold shrink-0">
+                  {!isOk && ans?.answer && (
+                    <span
+                      dir="rtl"
+                      className="arabic text-sm text-rose-700 line-through block"
+                    >
+                      Yanıtınız: {formatAr(ans.answer)}
+                    </span>
+                  )}
+                  <span
+                    dir="rtl"
+                    className="arabic text-base text-emerald-800 dark:text-emerald-300 block"
+                  >
+                    Doğru: {formatAr(q.correctWord)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        <div className="text-4xl font-black tabular-nums text-[#087F5B]">
-          {score} / {questions.length}
-        </div>
+        {/* 4 AKSİYON BUTONU */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button
+            type="button"
+            onClick={handleRepeatSameSet}
+            className="py-3 px-4 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-4 font-extrabold text-xs text-[var(--foreground)] hover:border-[#6741D9] flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <RefreshCcw size={15} className="text-[#6741D9]" />
+            <span>🔄 Tekrar Yap</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={restart}
-          className="w-full py-3.5 px-6 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer"
-        >
-          <RefreshCcw size={17} />
-          <span>Yeniden Oyna</span>
-        </button>
+          <button
+            type="button"
+            onClick={handleStartNewSet}
+            className="py-3 px-4 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-4 border-[#087F5B] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Play size={15} fill="currentColor" />
+            <span>▶️ Devam Et (Yeni Set)</span>
+          </button>
+
+          {wrongQuestions.length > 0 && (
+            <button
+              type="button"
+              onClick={handleRetryWrongOnly}
+              className="sm:col-span-2 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white border-b-4 border-amber-700 font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Target size={15} />
+              <span>
+                🎯 Yanlışlarımı Tekrarla ({wrongQuestions.length})
+              </span>
+            </button>
+          )}
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                onClose();
+              }}
+              className="sm:col-span-2 py-2.5 px-4 rounded-xl bg-slate-200/80 dark:bg-slate-800 text-[var(--muted)] hover:text-[var(--foreground)] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <X size={15} />
+              <span>✖️ Kapat / Alıştırma Merkezine Dön</span>
+            </button>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
-      {/* ÜST DURUM ÇUBUĞU */}
-      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-2.5 flex items-center justify-between gap-2">
-        <span className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] tabular-nums">
-          Cümle {currentIndex + 1} / {questions.length}
-        </span>
+    <div className="max-w-3xl mx-auto space-y-3.5">
+      {/* ÜST DURUM & ALT MOD SEÇİCİ ÇUBUĞU */}
+      <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] tabular-nums">
+            Cümle {currentIndex + 1} / {questions.length}
+          </span>
 
-        {timeLeft !== null && (
-          <div
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs sm:text-sm font-black tabular-nums ${
-              timeLeft <= 5
-                ? "bg-red-100 border-red-300 text-red-700 animate-pulse"
-                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-amber-700"
-            }`}
-          >
-            <Timer size={16} />
-            <span>{timeLeft} sn</span>
+          {/* Alt Yöntem Anahtarı: Seçmeli / Sürükle-Bırak vs Dinle & Boşluğu Yaz (İmla) */}
+          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-0.5 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setSubMode("choices");
+              }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
+                subMode === "choices"
+                  ? "bg-[#6741D9] text-white"
+                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <Puzzle size={12} />
+              <span>🧩 Seçmeli / Sürükle-Bırak</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setSubMode("dictation");
+              }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
+                subMode === "dictation"
+                  ? "bg-[#6741D9] text-white"
+                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <Headphones size={12} />
+              <span>🎧 Dinle & Boşluğu Yaz (İmla)</span>
+            </button>
           </div>
-        )}
+        </div>
 
-        <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-3 py-1 rounded-xl tabular-nums">
-          Doğru: {score}
-        </span>
+        <div className="flex items-center gap-2">
+          {timeLeft !== null && (
+            <div
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs sm:text-sm font-black tabular-nums ${
+                timeLeft <= 5
+                  ? "bg-red-100 border-red-300 text-red-700 animate-pulse"
+                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-amber-700"
+              }`}
+            >
+              <Timer size={16} />
+              <span>{timeLeft} sn</span>
+            </div>
+          )}
+
+          <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-3 py-1 rounded-xl tabular-nums">
+            {feedbackMode === "instant"
+              ? `Doğru: ${correctCount}`
+              : `Yanıtlanan: ${Object.keys(userAnswers).length}/${questions.length}`}
+          </span>
+        </div>
       </div>
+
+      {/* İMLA MODUNDA ÜST KELİME İPUCU ŞERİDİ (AÇILIR/KAPANIR) */}
+      {subMode === "dictation" && (
+        <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] px-3.5 py-2.5 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-extrabold text-[var(--foreground)]">
+              📝 Boşlukları uygun kelimelerle doldurunuz
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setShowWordBank((v) => !v);
+              }}
+              className="px-3 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] hover:border-[#6741D9] text-xs font-extrabold text-[#6741D9] flex items-center gap-1.5 cursor-pointer"
+            >
+              {showWordBank ? <EyeOff size={13} /> : <Eye size={13} />}
+              <span>
+                {showWordBank
+                  ? "Kelime Havuzunu Gizle"
+                  : "👁️ Kelime Havuzunu Göster"}
+              </span>
+            </button>
+          </div>
+
+          {showWordBank && (
+            <div
+              dir="rtl"
+              className="pt-2 border-t border-dashed border-[#E2D3B8] flex flex-wrap items-center justify-center gap-2"
+            >
+              {wordBankList.map((w, i) => (
+                <button
+                  key={`${w}-${i}`}
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setTypedText(w);
+                    inputRef.current?.focus();
+                  }}
+                  className="px-3 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#6741D9]/40 hover:border-[#6741D9] arabic text-xl font-bold text-[#4C28B5] dark:text-[#d0bfff] cursor-pointer"
+                >
+                  {formatAr(w)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* CÜMLE KARTI */}
       <div
-        className={`rounded-2xl border-2 border-b-4 p-5 sm:p-7 text-center space-y-4 transition-all ${
+        className={`rounded-2xl border-2 border-b-4 p-4 sm:p-6 text-center space-y-4 transition-all ${
           feedback === "correct"
             ? "bg-emerald-50 border-[#0CA678]"
             : feedback === "wrong"
@@ -370,21 +848,57 @@ export default function FillInBlanks({
       >
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-2.5 text-xs font-bold text-[var(--muted)]">
           <span>
-            💡 Kelimeye tıklayın veya cümledeki boşluğa sürükleyip bırakın
+            {subMode === "choices"
+              ? "💡 Kelimeye tıklayın veya cümledeki boşluğa sürükleyip bırakın"
+              : "🎧 Cümleyi dinleyin ve eksik Arapça kelimeyi boşluğa yazın (Harekeli veya harekesiz kabul edilir)"}
           </span>
-          <button
-            type="button"
-            onClick={() => {
-              playClick();
-              playTTS(currentQ.fullArabic, speechRate);
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0CA678] text-white font-bold border-b-2 border-[#087F5B] cursor-pointer"
-          >
-            <Volume2 size={14} />
-            <span>Cümleyi Dinle</span>
-          </button>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                playQuestionSentence(currentQ);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0CA678] text-white font-bold border-b-2 border-[#087F5B] cursor-pointer"
+            >
+              <Volume2 size={14} />
+              <span>🔊 Cümleyi Dinle</span>
+            </button>
+
+            {subMode === "dictation" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    playQuestionSentence(currentQ, 0.75);
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[var(--foreground)] font-extrabold cursor-pointer"
+                >
+                  <span>🐢 Yavaş (0.75x)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setAutoAudio((v) => !v);
+                  }}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border font-extrabold cursor-pointer ${
+                    autoAudio
+                      ? "bg-[#E6FCF5] border-[#0CA678] text-[#087F5B]"
+                      : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)]"
+                  }`}
+                >
+                  <span>🔄 Otomatik Ses: {autoAudio ? "Açık" : "Kapalı"}</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
+        {/* ARAPÇA CÜMLE VE BOŞLUK ALANI */}
         <div
           dir="rtl"
           className="arabic text-3xl sm:text-4xl leading-[2.1] font-bold text-[var(--foreground)] flex flex-wrap justify-center items-center gap-2 py-2"
@@ -393,81 +907,211 @@ export default function FillInBlanks({
             <span key={i} className="inline-flex items-center flex-wrap gap-2">
               <span>{formatAr(part)}</span>
               {i < arr.length - 1 && (
-                <span
-                  ref={dropZoneRef}
-                  onDragOver={handleDragOver}
-                  onDragEnter={handleDragEnter}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`inline-flex items-center justify-center min-w-[130px] px-4 py-1 rounded-xl border-2 border-dashed mx-1.5 transition-all select-none ${
-                    feedback === "correct"
-                      ? "border-[#0CA678] bg-[#0CA678] text-white scale-105"
-                      : feedback === "wrong" && selectedWord
-                      ? "border-rose-500 bg-rose-100 text-rose-800"
-                      : isDragOver
-                      ? "ring-4 ring-emerald-500/30 border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/60 text-[#087F5B] dark:text-[#20c997] scale-105"
-                      : "border-[#6741D9] bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] text-[#6741D9] dark:text-[#d0bfff]"
-                  }`}
-                >
-                  {feedback === "correct"
-                    ? formatAr(currentQ.correctWord)
-                    : feedback === "wrong" && selectedWord
-                    ? formatAr(selectedWord)
-                    : isDragOver && draggingWord
-                    ? formatAr(draggingWord)
-                    : "____"}
-                </span>
+                <>
+                  {subMode === "choices" ? (
+                    <span
+                      ref={dropZoneRef}
+                      onDragOver={handleDragOver}
+                      onDragEnter={handleDragEnter}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className={`inline-flex items-center justify-center min-w-[130px] px-4 py-1 rounded-xl border-2 border-dashed mx-1.5 transition-all select-none ${
+                        feedback === "correct"
+                          ? "border-[#0CA678] bg-[#0CA678] text-white scale-105"
+                          : feedback === "wrong" && selectedWord
+                          ? "border-rose-500 bg-rose-100 text-rose-800"
+                          : feedbackMode === "end" && selectedWord
+                          ? "border-[#6741D9] bg-[#6741D9] text-white"
+                          : isDragOver
+                          ? "ring-4 ring-emerald-500/30 border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/60 text-[#087F5B] dark:text-[#20c997] scale-105"
+                          : "border-[#6741D9] bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] text-[#6741D9] dark:text-[#d0bfff]"
+                      }`}
+                    >
+                      {feedback === "correct"
+                        ? formatAr(currentQ.correctWord)
+                        : selectedWord
+                        ? formatAr(selectedWord)
+                        : isDragOver && draggingWord
+                        ? formatAr(draggingWord)
+                        : "____"}
+                    </span>
+                  ) : (
+                    /* İMLA MODU: KLAVYELİ METİN KUTUSU + [⌨️] SANAL KLAVYE BUTONU */
+                    <span
+                      dir="rtl"
+                      className="inline-flex items-center gap-1.5 mx-1.5"
+                    >
+                      {feedback === "correct" ? (
+                        <span className="inline-flex items-center gap-1.5 px-4 py-1 rounded-xl bg-[#0CA678] text-white border-2 border-[#087F5B] scale-105">
+                          <CheckCircle2 size={18} />
+                          <span>{formatAr(currentQ.correctWord)}</span>
+                        </span>
+                      ) : (
+                        <>
+                          <input
+                            ref={inputRef}
+                            type="text"
+                            dir="rtl"
+                            value={typedText}
+                            onChange={(e) => setTypedText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleCheckDictation();
+                              }
+                            }}
+                            placeholder="........"
+                            aria-label="Eksik Arapça kelimeyi yazın"
+                            className={`w-40 sm:w-48 h-12 px-3 rounded-xl border-2 text-center arabic text-2xl sm:text-3xl font-bold focus:outline-none transition-all ${
+                              feedback === "wrong"
+                                ? "bg-rose-50 border-rose-500 text-rose-800"
+                                : "bg-white dark:bg-[var(--background)] border-[#6741D9] text-[#087F5B] dark:text-[#20c997] focus:ring-4 focus:ring-[#6741D9]/20"
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playClick();
+                              setShowKeyboard((v) => !v);
+                            }}
+                            title="Arapça Sanal Klavyeyi Aç/Kapat"
+                            className={`w-10 h-10 rounded-xl border-2 border-b-3 flex items-center justify-center transition-all cursor-pointer ${
+                              showKeyboard
+                                ? "bg-[#6741D9] border-[#5230B5] text-white"
+                                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#6741D9]"
+                            }`}
+                          >
+                            <Keyboard size={17} />
+                          </button>
+                        </>
+                      )}
+                    </span>
+                  )}
+                </>
               )}
             </span>
           ))}
         </div>
+
+        {/* İMLA MODU ALT KONTROLLERİ: [💡 Harf İpucu Al] ve [Kontrol Et / Kaydet] */}
+        {subMode === "dictation" && feedback !== "correct" && (
+          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={handleLetterHint}
+              className="h-9 px-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border-2 border-amber-300 border-b-3 text-amber-800 dark:text-amber-300 text-xs font-extrabold flex items-center gap-1.5 hover:bg-amber-100 cursor-pointer"
+            >
+              <Lightbulb size={14} />
+              <span>💡 Harf İpucu Al</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCheckDictation}
+              disabled={!typedText.trim()}
+              className="h-9 px-5 rounded-xl bg-[#0CA678] hover:bg-[#099268] disabled:opacity-50 text-white border-b-3 border-[#087F5B] text-xs font-extrabold flex items-center gap-1.5 cursor-pointer"
+            >
+              <CheckCircle2 size={14} />
+              <span>
+                {feedbackMode === "end"
+                  ? currentIndex === questions.length - 1
+                    ? "✅ Alıştırmayı Bitir ve Sonuçları Gör"
+                    : "Cevabı Kaydet ve İlerle"
+                  : "Kontrol Et"}
+              </span>
+            </button>
+          </div>
+        )}
 
         <p className="pt-2.5 border-t border-dashed border-[#E2D3B8] text-sm font-semibold text-[var(--muted)]">
           “{currentQ.turkce}”
         </p>
       </div>
 
-      {/* KELİME SEÇENEKLERİ (TIKLA VEYA SÜRÜKLE-BIRAK) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {currentQ.options.map((word, idx) => {
-          const isChosen = selectedWord === word;
-          const isRight = feedback === "correct" && word === currentQ.correctWord;
-          const isWrong = feedback === "wrong" && isChosen;
-          const isDragging = draggingWord === word;
+      {/* ALT BÖLÜM: SEÇMELİ MODDA 4 ŞIK, İMLA MODUNDA ENTEGRE ARAPÇA SANAL KLAVYE */}
+      {subMode === "choices" ? (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {currentQ.options.map((word, idx) => {
+              const isChosen = selectedWord === word;
+              const isRight =
+                feedbackMode === "instant" &&
+                feedback === "correct" &&
+                word === currentQ.correctWord;
+              const isWrong =
+                feedbackMode === "instant" && feedback === "wrong" && isChosen;
+              const isNeutralChosen = feedbackMode === "end" && isChosen;
+              const isDragging = draggingWord === word;
 
-          return (
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  draggable={feedback !== "correct" && !isTimeUp}
+                  onDragStart={(e) => handleDragStart(e, word)}
+                  onDragEnd={handleDragEnd}
+                  onTouchMove={(e) => handleTouchMove(e, word)}
+                  onTouchEnd={(e) => handleTouchEnd(e, word)}
+                  onClick={() => handleChooseOption(word)}
+                  className={`py-4 px-3 rounded-2xl border-2 border-b-4 arabic text-2xl sm:text-3xl font-bold transition-all flex items-center justify-center gap-2 cursor-grab active:cursor-grabbing ${
+                    isDragging ? "opacity-60 scale-95 border-[#6741D9]" : ""
+                  } ${
+                    isRight
+                      ? "bg-[#0CA678] border-[#087F5B] text-white"
+                      : isWrong
+                      ? "bg-rose-100 border-rose-400 text-rose-800"
+                      : isNeutralChosen
+                      ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5]"
+                      : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#6741D9] text-[var(--foreground)] active:border-b-2 active:translate-y-0.5"
+                  }`}
+                >
+                  <GripVertical
+                    size={15}
+                    className={`shrink-0 opacity-45 ${
+                      isRight ? "text-white" : "text-[var(--muted)]"
+                    }`}
+                  />
+                  <span dir="rtl">{formatAr(word)}</span>
+                  {isRight && <CheckCircle2 size={18} className="shrink-0" />}
+                  {isWrong && <XCircle size={18} className="shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+
+          {feedbackMode === "end" && selectedWord && (
             <button
-              key={idx}
               type="button"
-              draggable={feedback !== "correct" && !isTimeUp}
-              onDragStart={(e) => handleDragStart(e, word)}
-              onDragEnd={handleDragEnd}
-              onTouchMove={(e) => handleTouchMove(e, word)}
-              onTouchEnd={(e) => handleTouchEnd(e, word)}
-              onClick={() => handleChooseOption(word)}
-              className={`py-4 px-3 rounded-2xl border-2 border-b-4 arabic text-2xl sm:text-3xl font-bold transition-all flex items-center justify-center gap-2 cursor-grab active:cursor-grabbing ${
-                isDragging ? "opacity-60 scale-95 border-[#6741D9]" : ""
-              } ${
-                isRight
-                  ? "bg-[#0CA678] border-[#087F5B] text-white"
-                  : isWrong
-                  ? "bg-rose-100 border-rose-400 text-rose-800"
-                  : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#6741D9] text-[var(--foreground)] active:border-b-2 active:translate-y-0.5"
-              }`}
+              onClick={() => {
+                playClick();
+                if (currentIndex < questions.length - 1) {
+                  setCurrentIndex((prev) => prev + 1);
+                } else {
+                  setIsFinished(true);
+                }
+              }}
+              className="w-full py-3.5 px-6 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm rounded-2xl border-b-4 border-[#087F5B] flex items-center justify-center gap-2 cursor-pointer"
             >
-              <GripVertical
-                size={15}
-                className={`shrink-0 opacity-45 ${
-                  isRight ? "text-white" : "text-[var(--muted)]"
-                }`}
-              />
-              <span dir="rtl">{formatAr(word)}</span>
-              {isRight && <CheckCircle2 size={18} className="shrink-0" />}
-              {isWrong && <XCircle size={18} className="shrink-0" />}
+              <span>
+                {currentIndex === questions.length - 1
+                  ? "✅ Alıştırmayı Bitir ve Sonuçları Gör"
+                  : "Sonraki Cümleye Geç"}
+              </span>
+              <ArrowRight size={18} />
             </button>
-          );
-        })}
-      </div>
+          )}
+        </>
+      ) : (
+        showKeyboard && (
+          <ArabicVirtualKeyboard
+            onKeyPress={(ch) => setTypedText((prev) => prev + ch)}
+            onBackspace={() => setTypedText((prev) => prev.slice(0, -1))}
+            onClear={() => setTypedText("")}
+            onEnter={handleCheckDictation}
+            onClose={() => setShowKeyboard(false)}
+          />
+        )
+      )}
     </div>
   );
 }

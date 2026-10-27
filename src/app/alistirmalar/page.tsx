@@ -20,11 +20,16 @@ import { getDialogueVocabulary } from "@/lib/dict";
 import { DictionaryItem } from "@/types/data";
 import { useUserStore } from "@/store/userStore";
 
-import Flashcard from "@/components/exercises/Flashcard";
+import Flashcard, {
+  getShortDialogueSentences,
+} from "@/components/exercises/Flashcard";
 import MultipleChoice, {
+  FeedbackMode,
   QuizContentType,
 } from "@/components/exercises/MultipleChoice";
-import FillInBlanks from "@/components/exercises/FillInBlanks";
+import FillInBlanks, {
+  FillSubMode,
+} from "@/components/exercises/FillInBlanks";
 import MatchingGame from "@/components/exercises/MatchingGame";
 
 type ExerciseType =
@@ -47,6 +52,8 @@ export default function ExercisesPage() {
   const [contentType, setContentType] = useState<QuizContentType>("words");
   const [questionCount, setQuestionCount] = useState<10 | 20 | 30>(10);
   const [timeLimit, setTimeLimit] = useState<number | null>(null);
+  const [feedbackMode, setFeedbackMode] = useState<FeedbackMode>("instant");
+  const [fillSubMode, setFillSubMode] = useState<FillSubMode>("choices");
 
   const selectedDialogues = useMemo(() => {
     if (singleDialogueId !== "all") {
@@ -63,6 +70,10 @@ export default function ExercisesPage() {
       (sum, dlg) => sum + dlg.satirlar.length,
       0
     );
+  }, [selectedDialogues]);
+
+  const shortSentenceCountInPool = useMemo(() => {
+    return getShortDialogueSentences(selectedDialogues).length;
   }, [selectedDialogues]);
 
   const { combinedVocabulary, poolNotice } = useMemo(() => {
@@ -146,9 +157,9 @@ export default function ExercisesPage() {
   }[] = [
     {
       id: "flashcard",
-      title: "Kelime Kartları",
+      title: "Kelime & Cümle Kartları",
       arabicBadge: "البِطَاقَات",
-      subtitle: "Sesli Arapça-Türkçe 3B kelime kartlarıyla hızlı tekrar",
+      subtitle: "Sesli Arapça-Türkçe 3B kelime ve kısa cümle kartları",
       icon: BookOpen,
     },
     {
@@ -160,16 +171,16 @@ export default function ExercisesPage() {
     },
     {
       id: "fill-in-blanks",
-      title: "Boşluk Doldurma",
+      title: "Boşluk Doldurma & İmla",
       arabicBadge: "الفَرَاغَات",
-      subtitle: "Cümledeki eksik Arapça kelimeyi tıklayın veya sürükleyin",
+      subtitle: "Seçmeli sürükle-bırak veya dinleyip klavyeyle yazma",
       icon: PenTool,
     },
     {
       id: "matching",
-      title: "Kelime & Cümle Eşleştirme",
+      title: "Ok Çizerek Eşleştirme",
       arabicBadge: "المُطَابَقَة",
-      subtitle: "Arapça kelimeleri veya cümleleri Türkçesiyle eşleştirin",
+      subtitle: "Kelime ve cümleleri interaktif ok çizerek eşleştirin",
       icon: Link2,
     },
   ];
@@ -210,14 +221,18 @@ export default function ExercisesPage() {
     setIsPlaying(true);
   };
 
-  const supportsSentenceSource =
-    selectedType === "multiple-choice" || selectedType === "matching";
+  const effectiveSentenceCount =
+    selectedType === "flashcard"
+      ? shortSentenceCountInPool
+      : sentenceCountInPool;
 
   const activePoolCountLabel =
-    supportsSentenceSource && contentType === "sentences"
+    selectedType === "fill-in-blanks"
       ? `${sentenceCountInPool} Cümle`
-      : supportsSentenceSource && contentType === "mixed"
-      ? `${combinedVocabulary.length} Kelime + ${sentenceCountInPool} Cümle`
+      : contentType === "sentences"
+      ? `${effectiveSentenceCount} Cümle`
+      : contentType === "mixed"
+      ? `${combinedVocabulary.length} Kelime + ${effectiveSentenceCount} Cümle`
       : `${combinedVocabulary.length} Kelime`;
 
   return (
@@ -384,39 +399,109 @@ export default function ExercisesPage() {
               </div>
 
               {/* 3. İçerik Türü (Soru Kaynağı: Kelimeler | Cümleler | Karışık) */}
-              <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between sm:justify-start gap-1">
-                <span className="text-[11px] font-bold text-[var(--muted)] px-1.5 whitespace-nowrap">
-                  İçerik:
-                </span>
-                {(
-                  [
-                    { id: "words", label: "🔤 Kelimeler" },
-                    { id: "sentences", label: "💬 Cümleler" },
-                    { id: "mixed", label: "🔀 Karışık" },
-                  ] as { id: QuizContentType; label: string }[]
-                ).map((item) => {
-                  const active = contentType === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        playClick();
-                        setContentType(item.id);
-                      }}
-                      className={`flex-1 sm:flex-initial px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                        active
-                          ? "bg-[#6741D9] text-white font-bold shadow-2xs"
-                          : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
+              {selectedType !== "fill-in-blanks" && (
+                <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between sm:justify-start gap-1">
+                  <span className="text-[11px] font-bold text-[var(--muted)] px-1.5 whitespace-nowrap">
+                    İçerik:
+                  </span>
+                  {(
+                    [
+                      { id: "words", label: "🔤 Kelimeler" },
+                      { id: "sentences", label: "💬 Cümleler" },
+                      { id: "mixed", label: "🔀 Karışık" },
+                    ] as { id: QuizContentType; label: string }[]
+                  ).map((item) => {
+                    const active = contentType === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setContentType(item.id);
+                        }}
+                        className={`flex-1 sm:flex-initial px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                          active
+                            ? "bg-[#6741D9] text-white font-bold shadow-2xs"
+                            : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-              {/* 4. Soru Sayısı (10 | 20 | 30) */}
+              {/* Boşluk Doldurma Alt Mod Seçicisi */}
+              {selectedType === "fill-in-blanks" && (
+                <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between sm:justify-start gap-1">
+                  <span className="text-[11px] font-bold text-[var(--muted)] px-1.5 whitespace-nowrap">
+                    Mod:
+                  </span>
+                  {(
+                    [
+                      { id: "choices", label: "🧩 Seçmeli / Sürükle" },
+                      { id: "dictation", label: "🎧 Dinle & Yaz (İmla)" },
+                    ] as { id: FillSubMode; label: string }[]
+                  ).map((m) => {
+                    const active = fillSubMode === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setFillSubMode(m.id);
+                        }}
+                        className={`flex-1 sm:flex-initial px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                          active
+                            ? "bg-[#6741D9] text-white font-bold shadow-2xs"
+                            : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 4. Değerlendirme Zamanı Seçicisi (⚡ Hemen Göster | 🏁 Bitince Göster) */}
+              {selectedType !== "flashcard" && (
+                <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between sm:justify-start gap-1">
+                  <span className="text-[11px] font-bold text-[var(--muted)] px-1.5 whitespace-nowrap">
+                    Sonuçlar:
+                  </span>
+                  {(
+                    [
+                      { id: "instant", label: "⚡ Hemen Göster" },
+                      { id: "end", label: "🏁 Bitince Göster" },
+                    ] as { id: FeedbackMode; label: string }[]
+                  ).map((fb) => {
+                    const active = feedbackMode === fb.id;
+                    return (
+                      <button
+                        key={fb.id}
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setFeedbackMode(fb.id);
+                        }}
+                        className={`flex-1 sm:flex-initial px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                          active
+                            ? "bg-[#0CA678] text-white font-bold shadow-2xs"
+                            : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {fb.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 5. Soru Sayısı (10 | 20 | 30) */}
               <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-0.5">
                 {([10, 20, 30] as (10 | 20 | 30)[]).map((cnt) => (
                   <button
@@ -437,7 +522,7 @@ export default function ExercisesPage() {
                 ))}
               </div>
 
-              {/* 5. Süre (Süresiz | 60sn | 30sn) */}
+              {/* 6. Süre (Süresiz | 60sn | 30sn) */}
               <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-0.5">
                 <Timer size={12} className="text-[#6741D9] ml-1 shrink-0" />
                 {[
@@ -463,7 +548,7 @@ export default function ExercisesPage() {
                 ))}
               </div>
 
-              {/* 6. Sağ Uç / Alt Sticky: Vurgulu [▶ Alıştırmayı Başlat] Butonu */}
+              {/* 7. Sağ Uç / Alt Sticky: Vurgulu [▶ Alıştırmayı Başlat] Butonu */}
               <button
                 type="button"
                 onClick={handleStartExercise}
@@ -491,7 +576,10 @@ export default function ExercisesPage() {
           {selectedType === "flashcard" && (
             <Flashcard
               vocabulary={combinedVocabulary}
+              dialogues={selectedDialogues}
+              contentType={contentType}
               questionCount={questionCount}
+              onClose={() => setIsPlaying(false)}
             />
           )}
           {selectedType === "multiple-choice" && (
@@ -501,6 +589,8 @@ export default function ExercisesPage() {
               contentType={contentType}
               timeLimit={timeLimit}
               questionCount={questionCount}
+              feedbackMode={feedbackMode}
+              onClose={() => setIsPlaying(false)}
             />
           )}
           {selectedType === "fill-in-blanks" && (
@@ -509,6 +599,9 @@ export default function ExercisesPage() {
               vocabulary={combinedVocabulary}
               timeLimit={timeLimit}
               questionCount={questionCount}
+              feedbackMode={feedbackMode}
+              initialSubMode={fillSubMode}
+              onClose={() => setIsPlaying(false)}
             />
           )}
           {selectedType === "matching" && (
@@ -518,6 +611,8 @@ export default function ExercisesPage() {
               contentType={contentType}
               timeLimit={timeLimit}
               questionCount={questionCount}
+              feedbackMode={feedbackMode}
+              onClose={() => setIsPlaying(false)}
             />
           )}
         </div>

@@ -11,6 +11,7 @@ import {
   Rows2,
   AlignJustify,
   Sparkles,
+  BookOpen,
 } from "lucide-react";
 import { Dialogue } from "@/types/data";
 import { DialogueVocabularyEntry, getWordCategory } from "@/lib/dict";
@@ -31,6 +32,9 @@ interface DialoguePdfModalProps {
 }
 
 type TranslationLayout = "side-by-side" | "stacked" | "grouped-end";
+type SideBySideOrder = "ar-right" | "ar-left";
+type VocabPlacement = "same-page" | "new-page";
+type VocabLanguageMode = "both" | "ar-only" | "tr-only";
 
 export function stripHarakat(text: string): string {
   return removeArabicHarakat(text);
@@ -52,9 +56,18 @@ export default function DialoguePdfModal({
   const [includeVocabulary, setIncludeVocabulary] = useState<boolean>(true);
   const [includeWorksheet, setIncludeWorksheet] = useState<boolean>(false);
 
+  // Sözlük Kelime Tablosu Alt Seçenekleri
+  const [vocabPlacement, setVocabPlacement] =
+    useState<VocabPlacement>("same-page");
+  const [vocabLanguageMode, setVocabLanguageMode] =
+    useState<VocabLanguageMode>("both");
+
   // 2. Tercüme Yerleşimi (Radio Butonlar)
   const [translationLayout, setTranslationLayout] =
     useState<TranslationLayout>("side-by-side");
+  // Varsayılan: Sağ Sütun Arapça (%50 RTL), Sol Sütun Türkçe (%50 LTR)
+  const [sideBySideOrder, setSideBySideOrder] =
+    useState<SideBySideOrder>("ar-right");
 
   const printIframeRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -151,13 +164,26 @@ export default function DialoguePdfModal({
         </div>
       `;
     } else if (translationLayout === "side-by-side") {
-      // Yan Yana (İki Sütun: Sol Arapça %52 RTL, Sağ Türkçe %48 LTR)
+      // Yan Yana (İki Sütun):
+      // ar-right (Varsayılan): Sol Sütun Türkçe (%50 LTR) | Sağ Sütun Arapça (%50 RTL)
+      // ar-left: Sol Sütun Arapça (%50 RTL) | Sağ Sütun Türkçe (%50 LTR)
+      const isArRight = sideBySideOrder === "ar-right";
+
       dialogueBodyHtml = `
-        <table class="two-col-table">
+        <table class="two-col-table" dir="ltr">
           <thead>
             <tr>
-              <th style="width: 54%; text-align: right;" dir="rtl">النَّصُّ الْعَرَبِيُّ (Arapça Metin)</th>
-              <th style="width: 46%; text-align: left;">Türkçe Tercüme</th>
+              ${
+                isArRight
+                  ? `
+                <th style="width: 50%; text-align: left;" dir="ltr">Türkçe Tercüme</th>
+                <th style="width: 50%; text-align: right;" dir="rtl">النَّصُّ الْعَرَبِيُّ (Arapça Metin)</th>
+              `
+                  : `
+                <th style="width: 50%; text-align: right;" dir="rtl">النَّصُّ الْعَرَبِيُّ (Arapça Metin)</th>
+                <th style="width: 50%; text-align: left;" dir="ltr">Türkçe Tercüme</th>
+              `
+              }
             </tr>
           </thead>
           <tbody>
@@ -167,20 +193,31 @@ export default function DialoguePdfModal({
                 const badgeCls =
                   spIdx % 2 === 0 ? "sp-badge-emerald" : "sp-badge-indigo";
                 const rowBg = idx % 2 === 0 ? "#f8fafc" : "#ffffff";
-                return `
-                  <tr style="background: ${rowBg};">
-                    <td class="ar-cell" dir="rtl">
-                      <span class="speaker-ar ${badgeCls}">${formatAr(
+
+                const arCellHtml = `
+                  <td class="ar-cell" dir="rtl">
+                    <span class="speaker-ar ${badgeCls}">${formatAr(
                   line.konusmaci_ar
                 )}</span>
-                      <span class="ar-text">${formatAr(line.arapca)}</span>
-                    </td>
-                    <td class="tr-cell" dir="ltr">
-                      <span class="speaker-tr ${badgeCls}">${
+                    <span class="ar-text">${formatAr(line.arapca)}</span>
+                  </td>
+                `;
+                const trCellHtml = `
+                  <td class="tr-cell" dir="ltr">
+                    <span class="speaker-tr ${badgeCls}">${
                   line.konusmaci
                 }</span>
-                      <span class="tr-text">${line.turkce}</span>
-                    </td>
+                    <span class="tr-text">${line.turkce}</span>
+                  </td>
+                `;
+
+                return `
+                  <tr style="background: ${rowBg};">
+                    ${
+                      isArRight
+                        ? `${trCellHtml}${arCellHtml}`
+                        : `${arCellHtml}${trCellHtml}`
+                    }
                   </tr>
                 `;
               })
@@ -277,31 +314,53 @@ export default function DialoguePdfModal({
         const rootText =
           w.kok && w.kok !== "-" ? `Kök: ${formatAr(w.kok)}` : "";
 
+        const trDisplayHtml =
+          vocabLanguageMode === "ar-only"
+            ? `<div class="vocab-dotted-blank" title="Türkçe anlamı yazınız">&nbsp;</div>`
+            : `<div class="vocab-meaning">${w.anlam_tr}</div>`;
+
+        const arDisplayHtml =
+          vocabLanguageMode === "tr-only"
+            ? `<div class="vocab-dotted-blank-ar" dir="rtl" title="Arapça karşılığını yazınız">&nbsp;</div>`
+            : `<span class="vocab-ar">${formatAr(mainAr)}</span>`;
+
         return `
           <div class="vocab-grid-card">
             <div class="vocab-left">
               <div class="vocab-meta-row">
                 ${badgeHtml}
                 ${
-                  rootText
+                  rootText && vocabLanguageMode !== "tr-only"
                     ? `<span class="vocab-root" dir="rtl">${rootText}</span>`
                     : ""
                 }
               </div>
-              <div class="vocab-meaning">${w.anlam_tr}</div>
+              ${trDisplayHtml}
             </div>
             <div class="vocab-right" dir="rtl">
-              <span class="vocab-ar">${formatAr(mainAr)}</span>
+              ${arDisplayHtml}
             </div>
           </div>
         `;
       });
 
+      const pageBreakStyle =
+        vocabPlacement === "new-page"
+          ? "page-break-before: always; margin-top: 0; padding-top: 4px;"
+          : "margin-top: 20px; page-break-inside: avoid;";
+
+      const modeSubtitle =
+        vocabLanguageMode === "ar-only"
+          ? " • Kelime Anlam Testi (Türkçesini Yazınız)"
+          : vocabLanguageMode === "tr-only"
+          ? " • Arapça İmla Testi (Arapçasını Yazınız)"
+          : "";
+
       vocabSectionHtml = `
-        <div class="section-block" style="margin-top: 20px; page-break-inside: avoid;">
+        <div class="section-block" style="${pageBreakStyle}">
           <div class="section-title">📚 Diyalog Kelime Hazinesi (المفردات) — ${
             vocabEntries.length
-          } Kelime</div>
+          } Kelime${modeSubtitle}</div>
           <div class="vocab-two-col-grid">
             ${vocabCells.join("")}
           </div>
@@ -510,6 +569,7 @@ export default function DialoguePdfModal({
           .ar-cell {
             text-align: right;
             border-left: 1px dashed #cbd5e1;
+            border-right: 1px dashed #cbd5e1;
           }
           .tr-cell {
             text-align: left;
@@ -610,6 +670,7 @@ export default function DialoguePdfModal({
             padding: 6px 10px;
             background: #f8fafc;
             page-break-inside: avoid;
+            min-height: 48px;
           }
           .vocab-left {
             flex: 1;
@@ -653,6 +714,17 @@ export default function DialoguePdfModal({
             font-size: 11.5px;
             font-weight: 700;
             color: #1e293b;
+          }
+          .vocab-dotted-blank {
+            width: 92%;
+            height: 18px;
+            border-bottom: 1.5px dotted #64748b;
+            margin-top: 2px;
+          }
+          .vocab-dotted-blank-ar {
+            width: 110px;
+            height: 22px;
+            border-bottom: 1.5px dotted #64748b;
           }
           .vocab-right {
             text-align: right;
@@ -891,37 +963,156 @@ export default function DialoguePdfModal({
             </button>
 
             {/* Checkbox 3: Diyaloğa Ait Sözlük Kelimelerini (Kelime Tablosu) PDF'e Ekle (Opsiyonel) */}
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                setIncludeVocabulary((v) => !v);
-              }}
-              className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3 cursor-pointer ${
-                includeVocabulary
-                  ? "bg-[#F7EFE1] dark:bg-[var(--background)] border-[#0CA678]"
-                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)]"
-              }`}
-            >
-              <div className="mt-0.5 text-[#0CA678] shrink-0">
-                {includeVocabulary ? (
-                  <CheckSquare size={18} />
-                ) : (
-                  <Square size={18} className="text-[var(--muted)]" />
-                )}
-              </div>
-              <div className="space-y-0.5">
-                <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
-                  Diyaloğa Ait Sözlük Kelimelerini (Kelime Tablosu) PDF&apos;e
-                  Ekle (Opsiyonel)
-                </span>
-                <span className="block text-[11px] font-medium text-[var(--muted)]">
-                  Diyalog metninin altına &ldquo;📚 Diyalog Kelime Hazinesi
-                  (المفردات)&rdquo; başlığıyla {vocabEntries.length} kelimelik
-                  (Fiil / İsim / Edat rozetli) 2 sütunlu tablo ekler
-                </span>
-              </div>
-            </button>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setIncludeVocabulary((v) => !v);
+                }}
+                className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3 cursor-pointer ${
+                  includeVocabulary
+                    ? "bg-[#F7EFE1] dark:bg-[var(--background)] border-[#0CA678]"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)]"
+                }`}
+              >
+                <div className="mt-0.5 text-[#0CA678] shrink-0">
+                  {includeVocabulary ? (
+                    <CheckSquare size={18} />
+                  ) : (
+                    <Square size={18} className="text-[var(--muted)]" />
+                  )}
+                </div>
+                <div className="space-y-0.5">
+                  <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                    Diyaloğa Ait Sözlük Kelimelerini (Kelime Tablosu) PDF&apos;e
+                    Ekle (Opsiyonel)
+                  </span>
+                  <span className="block text-[11px] font-medium text-[var(--muted)]">
+                    Diyalog metninin altına &ldquo;📚 Diyalog Kelime Hazinesi
+                    (المفردات)&rdquo; başlığıyla {vocabEntries.length} kelimelik
+                    (Fiil / İsim / Edat rozetli) 2 sütunlu tablo ekler
+                  </span>
+                </div>
+              </button>
+
+              {/* Sözlük Kelime Tablosu Alt Seçenekleri (Aktifken Açılır) */}
+              {includeVocabulary && (
+                <div className="ml-3 sm:ml-6 p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#0CA678]/40 space-y-3">
+                  <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#087F5B]">
+                    <BookOpen size={14} />
+                    <span>Sözlük Kelime Tablosu Alt Ayarları</span>
+                  </div>
+
+                  {/* A) Sözlük Tablosu Konumu */}
+                  <div className="space-y-1.5">
+                    <span className="block text-[11px] font-extrabold text-[var(--foreground)]">
+                      A) Sözlük Tablosu Konumu:
+                    </span>
+                    <div className="space-y-1">
+                      {[
+                        {
+                          id: "same-page" as VocabPlacement,
+                          label:
+                            "Aynı Sayfada (Diyalog Metninin Hemen Altında)",
+                        },
+                        {
+                          id: "new-page" as VocabPlacement,
+                          label:
+                            "İkinci / Yeni Sayfada (Ayrı Çalışma Kağıdı Olarak)",
+                        },
+                      ].map((opt) => {
+                        const active = vocabPlacement === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => {
+                              playClick();
+                              setVocabPlacement(opt.id);
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
+                              active
+                                ? "bg-emerald-50/80 dark:bg-emerald-950/30 border-[#0CA678] text-[#087F5B] dark:text-emerald-300"
+                                : "border-[#E6D7BE] text-[var(--muted)] hover:text-[var(--foreground)]"
+                            }`}
+                          >
+                            <span
+                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                                active
+                                  ? "border-[#0CA678] bg-[#0CA678]"
+                                  : "border-[var(--muted)]"
+                              }`}
+                            >
+                              {active && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                              )}
+                            </span>
+                            <span>{opt.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* B) Sözlük Kelimelerinin Dil Görünümü */}
+                  <div className="space-y-1.5">
+                    <span className="block text-[11px] font-extrabold text-[var(--foreground)]">
+                      B) Sözlük Kelimelerinin Dil Görünümü (Test & Çalışma Modu):
+                    </span>
+                    <div className="space-y-1">
+                      {[
+                        {
+                          id: "both" as VocabLanguageMode,
+                          label:
+                            "Her İkisi de (Arapça Kelime + Türkçe Anlamı)",
+                        },
+                        {
+                          id: "ar-only" as VocabLanguageMode,
+                          label:
+                            "Sadece Arapça (Türkçe anlam sütunu noktalı boş — Kelime Testi)",
+                        },
+                        {
+                          id: "tr-only" as VocabLanguageMode,
+                          label:
+                            "Sadece Türkçe (Arapça kelime sütunu noktalı boş — İmla Testi)",
+                        },
+                      ].map((opt) => {
+                        const active = vocabLanguageMode === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => {
+                              playClick();
+                              setVocabLanguageMode(opt.id);
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
+                              active
+                                ? "bg-emerald-50/80 dark:bg-emerald-950/30 border-[#0CA678] text-[#087F5B] dark:text-emerald-300"
+                                : "border-[#E6D7BE] text-[var(--muted)] hover:text-[var(--foreground)]"
+                            }`}
+                          >
+                            <span
+                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                                active
+                                  ? "border-[#0CA678] bg-[#0CA678]"
+                                  : "border-[var(--muted)]"
+                              }`}
+                            >
+                              {active && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                              )}
+                            </span>
+                            <span>{opt.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Checkbox 4: Çalışma Sorularını / Boşluk Doldurma Etkinliğini PDF Sonuna Ekle (Opsiyonel) */}
             <button
@@ -971,7 +1162,9 @@ export default function DialoguePdfModal({
                 {
                   id: "side-by-side" as TranslationLayout,
                   title:
-                    "Yan Yana (İki Sütun: Sol Arapça %50 RTL, Sağ Türkçe %50 LTR)",
+                    sideBySideOrder === "ar-right"
+                      ? "Yan Yana (İki Sütun: Sağda Arapça %50 RTL, Solda Türkçe %50 LTR)"
+                      : "Yan Yana (İki Sütun: Solda Arapça %50 RTL, Sağda Türkçe %50 LTR)",
                   desc: "Karşılaştırmalı okuma ve ders takibi için en verimli A4 zebra tablo düzeni",
                   icon: Columns2,
                 },
@@ -992,45 +1185,97 @@ export default function DialoguePdfModal({
                 const selected = translationLayout === opt.id;
                 const Icon = opt.icon;
                 return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => {
-                      playClick();
-                      setTranslationLayout(opt.id);
-                    }}
-                    className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-center gap-3 cursor-pointer ${
-                      selected
-                        ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9]"
-                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)]"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                  <div key={opt.id} className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        setTranslationLayout(opt.id);
+                      }}
+                      className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-center gap-3 cursor-pointer ${
                         selected
-                          ? "border-[#6741D9] bg-[#6741D9]"
-                          : "border-[var(--muted)]"
+                          ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9]"
+                          : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)]"
                       }`}
                     >
-                      {selected && (
-                        <span className="w-2 h-2 rounded-full bg-white" />
-                      )}
-                    </div>
-                    <Icon
-                      size={17}
-                      className={
-                        selected ? "text-[#6741D9]" : "text-[var(--muted)]"
-                      }
-                    />
-                    <div>
-                      <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
-                        {opt.title}
-                      </span>
-                      <span className="block text-[11px] font-medium text-[var(--muted)]">
-                        {opt.desc}
-                      </span>
-                    </div>
-                  </button>
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          selected
+                            ? "border-[#6741D9] bg-[#6741D9]"
+                            : "border-[var(--muted)]"
+                        }`}
+                      >
+                        {selected && (
+                          <span className="w-2 h-2 rounded-full bg-white" />
+                        )}
+                      </div>
+                      <Icon
+                        size={17}
+                        className={
+                          selected ? "text-[#6741D9]" : "text-[var(--muted)]"
+                        }
+                      />
+                      <div>
+                        <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                          {opt.title}
+                        </span>
+                        <span className="block text-[11px] font-medium text-[var(--muted)]">
+                          {opt.desc}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Yan Yana Sütun Yönü Alt Seçicisi */}
+                    {opt.id === "side-by-side" && selected && (
+                      <div className="ml-3 sm:ml-6 p-3 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#6741D9]/35 space-y-1.5">
+                        <span className="block text-[11px] font-extrabold text-[#4C28B5] dark:text-[#d0bfff]">
+                          Yan Yana Sütun Yönü Seçimi:
+                        </span>
+                        {[
+                          {
+                            id: "ar-right" as SideBySideOrder,
+                            label:
+                              "Sağda Arapça (%50 RTL) — Solda Türkçe (%50 LTR) [Varsayılan]",
+                          },
+                          {
+                            id: "ar-left" as SideBySideOrder,
+                            label:
+                              "Solda Arapça (%50 RTL) — Sağda Türkçe (%50 LTR)",
+                          },
+                        ].map((dirOpt) => {
+                          const dirActive = sideBySideOrder === dirOpt.id;
+                          return (
+                            <button
+                              key={dirOpt.id}
+                              type="button"
+                              onClick={() => {
+                                playClick();
+                                setSideBySideOrder(dirOpt.id);
+                              }}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
+                                dirActive
+                                  ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff]"
+                                  : "border-[#E6D7BE] text-[var(--muted)] hover:text-[var(--foreground)]"
+                              }`}
+                            >
+                              <span
+                                className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                                  dirActive
+                                    ? "border-[#6741D9] bg-[#6741D9]"
+                                    : "border-[var(--muted)]"
+                                }`}
+                              >
+                                {dirActive && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                                )}
+                              </span>
+                              <span>{dirOpt.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -1072,4 +1317,3 @@ export default function DialoguePdfModal({
     </div>
   );
 }
-

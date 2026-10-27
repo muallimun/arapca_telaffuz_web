@@ -10,6 +10,10 @@ export type ViewMode = "stacked" | "columns" | "arabic-only" | "turkish-only";
 export type PreferredLevel = "Başlangıç" | "Orta" | "İleri";
 export type SpeechRate = 0.5 | 0.75 | 1 | 1.25;
 export type SttEngine = "whisper" | "webspeech";
+export type WordTrackingStyle = "both" | "highlight" | "arrow" | "off";
+export type DialogueLoopCount = 1 | 2 | 3 | 5 | "infinite";
+export type SentenceLoopCount = 2 | 3 | 5 | "infinite";
+export type PauseBetweenLines = 0 | 2 | "auto";
 export type { ArabicFontId, ArabicFontSizePreset };
 
 interface SettingsState {
@@ -25,6 +29,10 @@ interface SettingsState {
   speechRate: SpeechRate;
   preferredLevel: PreferredLevel;
   sttEngine: SttEngine;
+  wordTrackingStyle: WordTrackingStyle;
+  dialogueLoopCount: DialogueLoopCount;
+  sentenceLoopCount: SentenceLoopCount;
+  pauseBetweenLines: PauseBetweenLines;
 
   toggleTheme: () => void;
   setTheme: (theme: "light" | "dark") => void;
@@ -43,6 +51,11 @@ interface SettingsState {
   cycleSpeechRate: () => void;
   setPreferredLevel: (level: PreferredLevel) => void;
   setSttEngine: (engine: SttEngine) => void;
+  setWordTrackingStyle: (style: WordTrackingStyle) => void;
+  setDialogueLoopCount: (count: DialogueLoopCount) => void;
+  cycleDialogueLoopCount: () => void;
+  setSentenceLoopCount: (count: SentenceLoopCount) => void;
+  setPauseBetweenLines: (pause: PauseBetweenLines) => void;
 }
 
 function resolveSizeFromInput(size: number | ArabicFontSizePreset): {
@@ -76,6 +89,10 @@ export const useSettings = create<SettingsState>()(
       speechRate: 1,
       preferredLevel: "Başlangıç",
       sttEngine: "whisper",
+      wordTrackingStyle: "both",
+      dialogueLoopCount: 1,
+      sentenceLoopCount: 3,
+      pauseBetweenLines: 0,
 
       toggleTheme: () =>
         set((state) => ({ theme: state.theme === "light" ? "dark" : "light" })),
@@ -120,6 +137,17 @@ export const useSettings = create<SettingsState>()(
         }),
       setPreferredLevel: (level) => set({ preferredLevel: level }),
       setSttEngine: (engine) => set({ sttEngine: engine }),
+      setWordTrackingStyle: (style) => set({ wordTrackingStyle: style }),
+      setDialogueLoopCount: (count) => set({ dialogueLoopCount: count }),
+      cycleDialogueLoopCount: () =>
+        set((state) => {
+          const order: DialogueLoopCount[] = [1, 2, 3, 5, "infinite"];
+          const idx = order.indexOf(state.dialogueLoopCount);
+          const next = order[(idx + 1) % order.length];
+          return { dialogueLoopCount: next };
+        }),
+      setSentenceLoopCount: (count) => set({ sentenceLoopCount: count }),
+      setPauseBetweenLines: (pause) => set({ pauseBetweenLines: pause }),
     }),
     { name: "app-settings" }
   )

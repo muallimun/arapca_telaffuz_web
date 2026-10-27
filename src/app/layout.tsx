@@ -3,6 +3,8 @@ import Header from "@/components/layout/Header";
 import MobileNav from "@/components/layout/MobileNav";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import AudioStopper from "@/components/AudioStopper";
+import OnboardingTourModal from "@/components/ui/OnboardingTourModal";
+import GuideAndInfoModal from "@/components/ui/GuideAndInfoModal";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -86,6 +88,8 @@ export default function RootLayout({
       <body className="antialiased flex flex-col min-h-screen bg-[var(--background)] text-[var(--foreground)] overflow-x-hidden selection:bg-[#0CA678]/20">
         <ServiceWorkerRegister />
         <AudioStopper />
+        <OnboardingTourModal />
+        <GuideAndInfoModal />
         <Header />
         <main className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 md:py-6 pb-24 md:pb-10">
           {children}
