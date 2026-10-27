@@ -207,7 +207,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 print:hidden w-full bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b-2 border-[#E6D7BE] dark:border-[var(--border)]">
+      <header className="fixed top-0 left-0 right-0 z-40 print:hidden w-full bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b-2 border-[#E6D7BE] dark:border-[var(--border)] shadow-xs">
         <div className="max-w-6xl mx-auto px-2.5 sm:px-6 h-14 sm:h-15 flex items-center justify-between gap-1.5 sm:gap-2">
           {/* SOL: 3B Dokunsal Rozetli Gerçek Logo + Başlık */}
           <div className="flex items-center gap-2 min-w-0 shrink">
@@ -513,6 +513,11 @@ export default function Header() {
           </div>
         </div>
       </header>
+      {/* Sabit Header İçin Görünmez Yer Tutucu (Spacer) */}
+      <div
+        aria-hidden="true"
+        className="h-[58px] sm:h-[62px] w-full shrink-0 print:hidden"
+      />
 
       {/* iOS KURULUM REHBERİ MODALI */}
       {iosInstallOpen && (

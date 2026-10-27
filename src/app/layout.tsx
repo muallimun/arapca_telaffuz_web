@@ -86,7 +86,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased flex flex-col min-h-screen bg-[var(--background)] text-[var(--foreground)] overflow-x-hidden selection:bg-[#0CA678]/20">
+      <body className="antialiased flex flex-col min-h-screen bg-[var(--background)] text-[var(--foreground)] overflow-x-clip selection:bg-[#0CA678]/20">
         <ServiceWorkerRegister />
         <AudioStopper />
         <OnboardingTourModal />

@@ -59,11 +59,136 @@ function normalizeArabicToken(word: string): string {
 }
 
 /**
- * Harici paket gerektirmeyen, URL'yi deterministik 21x21 QR matrisine (Finder + Timing + Veri modülleri)
- * dönüştüren saf vektörel SVG QR Kod üreticisi (64x64px)
+ * Diyalog ID'sini kontrol ederek her zaman standart iki haneli
+ * https://app.muallimun.net/diyalog/dlg_XX ve app.muallimun.net/diyalog/dlg_XX
+ * adreslerini üretir.
  */
+export function buildDialogueQrUrl(
+  id: string | number,
+  fallbackRawNum?: number
+): {
+  dialogueUrl: string;
+  shortDisplayUrl: string;
+  normalizedSlug: string;
+} {
+  const rawStr = String(id ?? "").trim();
+  let normalizedSlug = "";
+
+  // Eğer zaten "dlg_02" veya "dlg_59" gibi en az 2 haneli dlg_XX formatındaysa doğrudan kullan
+  if (/^dlg_\d{2,}$/i.test(rawStr)) {
+    normalizedSlug = rawStr.toLowerCase();
+  } else {
+    // "dlg_2", "2", 2, 59 vb. durumlarda sayı kısmını ayıklayıp padStart(2, '0') ile tamamla
+    const digitsMatch = rawStr.match(/\d+/);
+    const num = digitsMatch
+      ? parseInt(digitsMatch[0], 10)
+      : fallbackRawNum || 1;
+    const padded = String(Math.max(1, num)).padStart(2, "0");
+    normalizedSlug = `dlg_${padded}`;
+  }
+
+  return {
+    dialogueUrl: `https://app.muallimun.net/diyalog/${normalizedSlug}`,
+    shortDisplayUrl: `app.muallimun.net/diyalog/${normalizedSlug}`,
+    normalizedSlug,
+  };
+}
+
+/**
+ * ISO/IEC 18004 Standartlarına %100 Uyumlu Gerçek Taranabilir QR Kod (Version 3-L, 29x29, Reed-Solomon GF(256))
+ * Telefon kamerasıyla okutulduğunda doğrudan https://app.muallimun.net/diyalog/dlg_XX adresini açar.
+ */
+function computeReedSolomonEC(data: number[], ecCount: number): number[] {
+  const gfExp = new Array<number>(512);
+  const gfLog = new Array<number>(256);
+  let x = 1;
+  for (let i = 0; i < 255; i++) {
+    gfExp[i] = x;
+    gfLog[x] = i;
+    x <<= 1;
+    if (x & 0x100) x ^= 0x11d;
+  }
+  for (let i = 255; i < 512; i++) {
+    gfExp[i] = gfExp[i - 255];
+  }
+
+  const gfMul = (a: number, b: number) =>
+    a === 0 || b === 0 ? 0 : gfExp[gfLog[a] + gfLog[b]];
+
+  // Generator polynomial g(x) = prod_{i=0..ecCount-1} (x - alpha^i)
+  let gen = [1];
+  for (let i = 0; i < ecCount; i++) {
+    const next = new Array<number>(gen.length + 1).fill(0);
+    for (let j = 0; j < gen.length; j++) {
+      next[j] ^= gen[j];
+      next[j + 1] ^= gfMul(gen[j], gfExp[i]);
+    }
+    gen = next;
+  }
+
+  const msg = [...data, ...new Array<number>(ecCount).fill(0)];
+  for (let i = 0; i < data.length; i++) {
+    const coef = msg[i];
+    if (coef !== 0) {
+      for (let j = 0; j < gen.length; j++) {
+        msg[i + j] ^= gfMul(gen[j], coef);
+      }
+    }
+  }
+
+  return msg.slice(data.length);
+}
+
 function generateQrSvgMarkup(urlText: string, size = 64): string {
-  const N = 21;
+  // Version 3-L: 29x29 matrix, 55 data codewords (up to 53 bytes in Byte mode), 15 EC codewords
+  const N = 29;
+  const DATA_CODEWORDS = 55;
+  const EC_CODEWORDS = 15;
+
+  const utf8Bytes = Array.from(new TextEncoder().encode(urlText)).slice(
+    0,
+    DATA_CODEWORDS - 2
+  );
+
+  // Bit buffer: Mode 0100 (4 bits) + Byte count (8 bits) + Payload + Terminator 0000
+  const bits: number[] = [];
+  const pushBits = (val: number, len: number) => {
+    for (let i = len - 1; i >= 0; i--) {
+      bits.push((val >> i) & 1);
+    }
+  };
+
+  pushBits(0b0100, 4);
+  pushBits(utf8Bytes.length, 8);
+  for (const b of utf8Bytes) pushBits(b, 8);
+  pushBits(0, Math.min(4, DATA_CODEWORDS * 8 - bits.length));
+  while (bits.length % 8 !== 0) bits.push(0);
+
+  const dataBytes: number[] = [];
+  for (let i = 0; i < bits.length; i += 8) {
+    let b = 0;
+    for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
+    dataBytes.push(b);
+  }
+
+  let padToggle = true;
+  while (dataBytes.length < DATA_CODEWORDS) {
+    dataBytes.push(padToggle ? 0xec : 0x11);
+    padToggle = !padToggle;
+  }
+
+  const ecBytes = computeReedSolomonEC(dataBytes, EC_CODEWORDS);
+  const allCodewords = [...dataBytes, ...ecBytes];
+  const fullBits: number[] = [];
+  for (const cw of allCodewords) pushBits.call(null, cw, 8);
+  // Pushall into fullBits
+  fullBits.length = 0;
+  for (const cw of allCodewords) {
+    for (let i = 7; i >= 0; i--) fullBits.push((cw >> i) & 1);
+  }
+  // Remainder bits for Version 3 (7 zero bits)
+  for (let i = 0; i < 7; i++) fullBits.push(0);
+
   const grid: boolean[][] = Array.from({ length: N }, () =>
     Array(N).fill(false)
   );
@@ -92,53 +217,91 @@ function generateQrSvgMarkup(urlText: string, size = 64): string {
   placeFinder(0, N - 7);
   placeFinder(N - 7, 0);
 
-  // Timing patterns
-  for (let i = 8; i < N - 8; i++) {
-    reserved[6][i] = true;
-    reserved[i][6] = true;
-    grid[6][i] = i % 2 === 0;
-    grid[i][6] = i % 2 === 0;
-  }
-
-  // Dark module
-  reserved[N - 8][8] = true;
-  grid[N - 8][8] = true;
-
-  // URL bit stream
-  const bytes: number[] = [];
-  for (let i = 0; i < urlText.length; i++) {
-    bytes.push(urlText.charCodeAt(i) & 0xff);
-  }
-  if (bytes.length === 0) bytes.push(0x6d, 0x75);
-
-  let bitIdx = 0;
-  for (let col = N - 1; col > 0; col -= 2) {
-    if (col === 6) col--;
-    for (let rowOffset = 0; rowOffset < N; rowOffset++) {
-      const r = ((col + 1) & 2) === 0 ? N - 1 - rowOffset : rowOffset;
-      for (let dc = 0; dc < 2; dc++) {
-        const c = col - dc;
-        if (!reserved[r][c]) {
-          const byteVal = bytes[Math.floor(bitIdx / 8) % bytes.length];
-          const bit = ((byteVal >> (7 - (bitIdx % 8))) & 1) === 1;
-          const mask = (r + c) % 2 === 0;
-          grid[r][c] = bit !== mask;
-          bitIdx++;
-        }
-      }
+  // Version 3 Alignment Pattern centered at (22, 22) -> top-left (20, 20)
+  for (let r = 20; r <= 24; r++) {
+    for (let c = 20; c <= 24; c++) {
+      reserved[r][c] = true;
+      const isBorder = r === 20 || r === 24 || c === 20 || c === 24;
+      const isCenter = r === 22 && c === 22;
+      grid[r][c] = isBorder || isCenter;
     }
   }
 
+  // Timing patterns
+  for (let i = 8; i < N - 8; i++) {
+    if (!reserved[6][i]) {
+      reserved[6][i] = true;
+      grid[6][i] = i % 2 === 0;
+    }
+    if (!reserved[i][6]) {
+      reserved[i][6] = true;
+      grid[i][6] = i % 2 === 0;
+    }
+  }
+
+  // Reserve Format Info & Dark Module
+  for (let i = 0; i < 9; i++) {
+    reserved[8][i] = true;
+    reserved[i][8] = true;
+  }
+  for (let i = 0; i < 8; i++) {
+    reserved[8][N - 1 - i] = true;
+    reserved[N - 1 - i][8] = true;
+  }
+  grid[N - 8][8] = true; // Dark module at (21, 8)
+
+  // Place data & EC bits in 2-column upward/downward zig-zag
+  let bitIdx = 0;
+  let upward = true;
+  for (let col = N - 1; col > 0; col -= 2) {
+    if (col === 6) col--;
+    for (let step = 0; step < N; step++) {
+      const r = upward ? N - 1 - step : step;
+      for (let dc = 0; dc < 2; dc++) {
+        const c = col - dc;
+        if (!reserved[r][c]) {
+          const dataBit =
+            bitIdx < fullBits.length ? fullBits[bitIdx] === 1 : false;
+          bitIdx++;
+          const mask0 = (r + c) % 2 === 0;
+          grid[r][c] = dataBit !== mask0;
+        }
+      }
+    }
+    upward = !upward;
+  }
+
+  // Write Format Information for Level L (01) + Mask 0 (000) -> BCH = 0x77C4
+  const formatBits = 0x77c4;
+  const fBit = (i: number) => ((formatBits >> i) & 1) === 1;
+
+  // Around top-left finder
+  for (let i = 0; i <= 5; i++) grid[8][i] = fBit(i);
+  grid[8][7] = fBit(6);
+  grid[8][8] = fBit(7);
+  grid[7][8] = fBit(8);
+  for (let i = 9; i <= 14; i++) grid[14 - i][8] = fBit(i);
+
+  // Top-right and bottom-left finders
+  for (let i = 0; i <= 7; i++) grid[8][N - 1 - i] = fBit(i);
+  for (let i = 8; i <= 14; i++) grid[N - 15 + i][8] = fBit(i);
+
+  const quietZone = 2;
+  const totalView = N + quietZone * 2;
   const rects: string[] = [];
   for (let r = 0; r < N; r++) {
     for (let c = 0; c < N; c++) {
       if (grid[r][c]) {
-        rects.push(`<rect x="${c}" y="${r}" width="1" height="1" fill="#0f172a" />`);
+        rects.push(
+          `<rect x="${c + quietZone}" y="${
+            r + quietZone
+          }" width="1" height="1" fill="#0f172a" />`
+        );
       }
     }
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${N} ${N}" width="${size}" height="${size}" shape-rendering="crispEdges" style="display:block;background:#ffffff;padding:3px;border:1.5px solid #cbd5e1;border-radius:8px;">${rects.join(
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalView} ${totalView}" width="${size}" height="${size}" shape-rendering="crispEdges" style="display:block;background:#ffffff;border:1.5px solid #cbd5e1;border-radius:8px;">${rects.join(
     ""
   )}</svg>`;
 }
@@ -333,14 +496,14 @@ export default function DialoguePdfModal({
     return items;
   }, [dialogue]);
 
-  const currentUrl =
-    typeof window !== "undefined"
-      ? window.location.href
-      : `https://www.muallimun.net/diyalog/${dialogue.id}`;
+  const { dialogueUrl, shortDisplayUrl } = useMemo(
+    () => buildDialogueQrUrl(dialogue.id, rawNum),
+    [dialogue.id, rawNum]
+  );
 
   const qrSvgMarkup = useMemo(
-    () => generateQrSvgMarkup(currentUrl, 64),
-    [currentUrl]
+    () => generateQrSvgMarkup(dialogueUrl, 64),
+    [dialogueUrl]
   );
 
   const effectiveImageMode: ImagePrintMode = imgError ? "hide" : imageMode;
@@ -688,10 +851,11 @@ export default function DialoguePdfModal({
 
     const qrBlockHtml = includeQrCode
       ? `
-        <div class="qr-code-container">
+        <a href="${dialogueUrl}" target="_blank" rel="noopener noreferrer" class="qr-code-container" title="${dialogueUrl}">
           ${qrSvgMarkup}
           <span class="qr-caption">Dinlemek için okutun</span>
-        </div>
+          <span class="qr-short-url">${shortDisplayUrl}</span>
+        </a>
       `
       : "";
 
@@ -793,12 +957,20 @@ export default function DialoguePdfModal({
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 3px;
+            gap: 2px;
+            text-decoration: none;
+            color: inherit;
           }
           .qr-caption {
             font-size: 8.5px;
             font-weight: 800;
             color: #087f5b;
+            white-space: nowrap;
+          }
+          .qr-short-url {
+            font-size: 8px;
+            color: #64748b;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             white-space: nowrap;
           }
           .badge-row {
@@ -1200,7 +1372,7 @@ export default function DialoguePdfModal({
           <span>Diyalog #${String(rawNum).padStart(2, "0")}: ${
       dialogue.baslik_tr
     } (${dialogue.seviye}) — Arapça Çalışma Kağıdı</span>
-          <span class="corporate-brand">www.muallimun.net</span>
+          <a href="https://www.muallimun.net" target="_blank" rel="noopener noreferrer" class="corporate-brand" style="text-decoration:none;">www.muallimun.net</a>
         </footer>
       </body>
       </html>
@@ -1653,14 +1825,23 @@ export default function DialoguePdfModal({
                     />
                   )}
                   {includeQrCode && (
-                    <div className="flex flex-col items-center gap-1 shrink-0">
+                    <a
+                      href={dialogueUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`${dialogueUrl} adresini aç`}
+                      className="flex flex-col items-center gap-0.5 shrink-0 group hover:opacity-90 transition-opacity"
+                    >
                       <div
                         dangerouslySetInnerHTML={{ __html: qrSvgMarkup }}
                       />
-                      <span className="text-[9px] font-extrabold text-[#087F5B] whitespace-nowrap">
+                      <span className="text-[9px] font-extrabold text-[#087F5B] whitespace-nowrap group-hover:underline">
                         Dinlemek için okutun
                       </span>
-                    </div>
+                      <span className="text-[9px] text-slate-500 font-mono whitespace-nowrap">
+                        {shortDisplayUrl}
+                      </span>
+                    </a>
                   )}
                 </div>
               )}
@@ -1857,9 +2038,14 @@ export default function DialoguePdfModal({
                 Diyalog #{String(rawNum).padStart(2, "0")}: {dialogue.baslik_tr} (
                 {dialogue.seviye}) — Arapça Çalışma Kağıdı
               </span>
-              <span className="font-extrabold text-xs text-[#087F5B] tracking-wide">
+              <a
+                href="https://www.muallimun.net"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-extrabold text-xs text-[#087F5B] tracking-wide hover:underline"
+              >
                 www.muallimun.net
-              </span>
+              </a>
             </footer>
           </div>
         </div>
