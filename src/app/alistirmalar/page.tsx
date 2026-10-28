@@ -298,7 +298,7 @@ export default function ExercisesPage() {
         <>
           {/* 1. ÜSTTE 2 SÜTUNLU (MOBİL) / 5'Lİ (MASAÜSTÜ) KOMPAKT ALIŞTIRMA TÜRÜ SEÇİM IZGARASI */}
           <section aria-label="Alıştırma Türü Seçimi">
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
               {exerciseCards.map((card) => {
                 const isSelected = selectedType === card.id;
                 const Icon = card.icon;
@@ -310,8 +310,15 @@ export default function ExercisesPage() {
                     onClick={() => {
                       playClick();
                       setSelectedType(card.id);
+                      if (card.id === "sentence-builder") {
+                        setContentType("sentences");
+                      }
                     }}
                     className={`relative text-left p-3 rounded-2xl border-2 border-b-4 transition-all flex flex-col justify-between min-h-[88px] sm:min-h-[96px] cursor-pointer ${
+                      card.id === "sentence-builder"
+                        ? "col-span-2 sm:col-span-1"
+                        : ""
+                    } ${
                       isSelected
                         ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] -translate-y-0.5 shadow-xs"
                         : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#cbb692]"

@@ -67,6 +67,9 @@ export default function ShareAchievementModal({
   const renderCardToCanvas = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (typeof document !== "undefined" && "fonts" in document) {
+      await document.fonts.ready;
+    }
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -184,7 +187,7 @@ export default function ShareAchievementModal({
     // Arapça Başlık (varsa)
     if (arabicTitle) {
       ctx.fillStyle = "#087F5B";
-      ctx.font = "bold 46px 'Noto Naskh Arabic', 'Amiri', system-ui, serif";
+      ctx.font = "bold 46px 'Arakom', 'Noto Naskh Arabic', 'Amiri', system-ui, serif";
       ctx.fillText(arabicTitle, W / 2, 448);
     }
 
@@ -419,15 +422,15 @@ export default function ShareAchievementModal({
         {/* Gizli Yüksek Çözünürlüklü Canvas + Canlı Önizleme */}
         <canvas ref={canvasRef} className="hidden" />
 
-        <div className="relative rounded-2xl overflow-hidden border-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] shadow-inner aspect-square max-h-[340px] mx-auto flex items-center justify-center">
+        <div className="relative rounded-2xl overflow-hidden border-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] shadow-inner max-h-[38vh] sm:max-h-[48vh] w-auto mx-auto flex items-center justify-center">
           {previewDataUrl ? (
             <img
               src={previewDataUrl}
               alt="Başarı Kartı Önizleme"
-              className="w-full h-full object-contain"
+              className="max-h-[38vh] sm:max-h-[48vh] w-auto mx-auto object-contain"
             />
           ) : (
-            <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted)] py-12">
+            <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted)] py-12 px-6">
               <Sparkles size={16} className="animate-spin text-[#0CA678]" />
               <span>Başarı kartı hazırlanıyor...</span>
             </div>

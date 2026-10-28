@@ -28,6 +28,9 @@ import {
   Calendar,
   ExternalLink,
   Globe,
+  Maximize2,
+  Trophy,
+  Timer,
 } from "lucide-react";
 import { playClick } from "@/lib/sfxManager";
 import { triggerOnboardingTour } from "./OnboardingTourModal";
@@ -182,22 +185,33 @@ export default function GuideAndInfoModal() {
 
                 <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
                   <h3 className="text-xs sm:text-sm font-extrabold text-[#6741D9]">
-                    2. 4 Çalışma Modu & Ok Takibi
+                    2. Diyalog, Sözlük & ✨ Kalıp İfadeler
                   </h3>
                   <p className="text-xs text-[var(--muted)] leading-relaxed">
                     Dinle & İncele (canlı kelime/ok takibi + döngü), Telaffuz
-                    Stüdyosu, Otomatik Mikrofonlu Rol Yapma ve Diyalog Sözlüğü.
+                    Stüdyosu, Otomatik Mikrofonlu Rol Yapma ve Diyalog Sözlüğü.{" "}
+                    <strong className="text-[var(--foreground)]">
+                      ✨ Kalıp İfadeler (التعبيرات الاصطلاحية):
+                    </strong>{" "}
+                    Her diyalogda geçen deyim ve kalıp ifadeleri harfiyen ve
+                    deyimsel anlamlarıyla inceleyip sesli telaffuz pratiği yapın.
                   </p>
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
                   <h3 className="text-xs sm:text-sm font-extrabold text-amber-700">
-                    3. İnteraktif Alıştırma Merkezi
+                    3. İnteraktif Alıştırma Merkezi (5 Mod)
                   </h3>
                   <p className="text-xs text-[var(--muted)] leading-relaxed">
                     3B Kelime/Cümle Kartları, Çoktan Seçmeli Test, Sürükle-Bırak
                     ve Dinle-Yaz (Klavyeli İmla) Boşluk Doldurma, Ok Çizimli
-                    Eşleştirme.
+                    Eşleştirme ve{" "}
+                    <strong className="text-[var(--foreground)]">
+                      🧩 Dinle ve Sırala (Cümle Kurma):
+                    </strong>{" "}
+                    Diyalog cümlelerini dinleyip karışık verilen Arapça
+                    kelimeleri sağdan sola (RTL) doğru sırayla dizerek cümle
+                    kurma ve sentaks (nahiv) becerinizi geliştirin.
                   </p>
                 </div>
 
@@ -209,6 +223,17 @@ export default function GuideAndInfoModal() {
                     İki sütunlu tercüme (Sağda Arapça / Solda Türkçe), noktalı
                     boşluklu Kelime/İmla Testi tablosu ve Boşluk Doldurma çalışma
                     kağıdı.
+                  </p>
+                </div>
+
+                <div className="sm:col-span-2 p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
+                  <h3 className="text-xs sm:text-sm font-extrabold text-amber-800 dark:text-amber-300">
+                    5. 🏆 Başarı Kartı Paylaşımı
+                  </h3>
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">
+                    Tamamladığınız diyalog ve alıştırma sonuçlarınızı tek tıkla
+                    görsel başarı kartı (PNG) olarak indirip WhatsApp veya
+                    Telegram&apos;da paylaşın.
                   </p>
                 </div>
               </div>
@@ -324,6 +349,21 @@ export default function GuideAndInfoModal() {
                       label: "✅ Tamamlandı / Öğrendim",
                       desc: "Diyaloğu veya kelimeyi öğrenildi olarak işaretler.",
                     },
+                    {
+                      icon: Maximize2,
+                      label: "⛶ Tam Ekran (Maximize2 / Minimize2)",
+                      desc: "Uygulamayı mobil ve masaüstünde tam ekran (odaklanma) moduna alır.",
+                    },
+                    {
+                      icon: Timer,
+                      label: "🎙️ Gölgeleme Boşluğu",
+                      desc: "Diyalog seçenekleri (...) menüsünden cümleler arası tekrar boşluğu bırakır.",
+                    },
+                    {
+                      icon: Trophy,
+                      label: "🏆 Başarı Kartı Paylaş",
+                      desc: "Diyalog ve alıştırma sonunda başarı kartınızı PNG olarak indirir/paylaşır.",
+                    },
                   ].map((item, i) => {
                     const Icon = item.icon;
                     return (
@@ -381,7 +421,7 @@ export default function GuideAndInfoModal() {
                 {
                   step: "5",
                   title: "İnteraktif Alıştırma & A4 PDF ile Pekiştirin",
-                  desc: "Alıştırma Merkezi'nde Ok Çizimli Eşleştirme ve Dinle-Yaz İmla testlerini çözün; diyaloğun A4 PDF çıktısını alıp kağıt üzerinde kelime testiyle öğreniminizi kalıcı hale getirin.",
+                  desc: "Alıştırma Merkezi'nde Ok Çizimli Eşleştirme ve Dinle-Yaz İmla testlerini çözün; Dinle ve Sırala (Cümle Kurma) ile Arapça kelime dizilimini pekiştirin ve Başarı Kartınızı oluşturun; ayrıca diyaloğun A4 PDF çıktısını alıp kağıt üzerinde kelime testiyle öğreniminizi kalıcı hale getirin.",
                 },
               ].map((item) => (
                 <div

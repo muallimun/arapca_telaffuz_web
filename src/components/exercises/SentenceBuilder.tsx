@@ -68,19 +68,21 @@ function shuffleArray<T>(arr: T[]): T[] {
   return copy;
 }
 
+function stripPunctuationFromWord(word: string): string {
+  return word.replace(/[.,،؛؟?!()"'«»\-–—:…]/g, "").trim();
+}
+
 function normalizeWordForCompare(word: string): string {
-  return word
+  return stripPunctuationFromWord(word)
     .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
-    .replace(/[.,،؛؟?!()"'«»\-–—:]/g, "")
     .replace(/[أإآٱ]/g, "ا")
     .trim();
 }
 
 function tokenizeArabicSentence(sentence: string): string[] {
   return sentence
-    .replace(/[.,،؛؟?!()"'«»]/g, " ")
     .split(/\s+/)
-    .map((w) => w.trim())
+    .map((w) => stripPunctuationFromWord(w))
     .filter((w) => w.length > 0);
 }
 
@@ -832,7 +834,7 @@ export default function SentenceBuilder({
                   type="button"
                   onClick={() => handleRemoveFromPlaced(tok)}
                   title="Geri kelime havuzuna göndermek için dokunun"
-                  className={`px-3.5 py-2 text-lg sm:text-xl font-arabic arabic font-bold rounded-xl border-2 border-b-4 active:translate-y-0.5 transition-all cursor-pointer ${tokenColor}`}
+                  className={`min-h-[42px] px-3.5 py-2 text-lg sm:text-xl font-arabic arabic font-bold select-none active:scale-95 transition-transform rounded-xl border-2 border-b-4 cursor-pointer ${tokenColor}`}
                 >
                   {formatAr(tok.text)}
                 </button>
@@ -934,7 +936,7 @@ export default function SentenceBuilder({
                 key={tok.tokenId}
                 type="button"
                 onClick={() => handleSelectFromPool(tok)}
-                className="px-3.5 py-2 text-lg sm:text-xl font-arabic arabic font-bold rounded-xl bg-white dark:bg-[var(--surface)] hover:bg-[#F3F0FF] text-[var(--foreground)] border-2 border-[#E6D7BE] dark:border-slate-600 border-b-4 hover:border-[#6741D9] active:border-b-2 active:translate-y-0.5 transition-all cursor-pointer shadow-2xs"
+                className="min-h-[42px] px-3.5 py-2 text-lg sm:text-xl font-arabic arabic font-bold select-none active:scale-95 transition-transform rounded-xl bg-white dark:bg-[var(--surface)] hover:bg-[#F3F0FF] text-[var(--foreground)] border-2 border-[#E6D7BE] dark:border-slate-600 border-b-4 hover:border-[#6741D9] cursor-pointer shadow-2xs"
               >
                 {formatAr(tok.text)}
               </button>

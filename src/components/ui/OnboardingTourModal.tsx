@@ -18,6 +18,8 @@ import {
   PenTool,
   Link2,
   CheckSquare,
+  ListOrdered,
+  Trophy,
 } from "lucide-react";
 import { playClick, playSuccess } from "@/lib/sfxManager";
 import { formatArabicText } from "@/lib/arabicTextUtils";
@@ -248,6 +250,18 @@ export default function OnboardingTourModal() {
               </span>
             </div>
           </div>
+
+          <div className="p-2.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/40 text-[11px] text-[var(--foreground)] space-y-1">
+            <span className="font-extrabold text-[#4C28B5] dark:text-[#d0bfff] block">
+              ✨ Kalıp İfadeler & 🎙️ Gölgeleme Boşluğu:
+            </span>
+            <p className="text-[var(--muted)] leading-snug">
+              Diyalog altındaki <strong>✨ Kalıp İfadeler</strong> kutusuyla
+              deyimlerin harfiyen/deyimsel anlamlarını dinleyin; cümleler arası{" "}
+              <strong>🎙️ Şimdi yüksek sesle tekrar edin (Gölgeleme Boşluğu)</strong>{" "}
+              sayacıyla akıcı konuşma pratiği yapın.
+            </p>
+          </div>
         </div>
       ),
     },
@@ -313,9 +327,9 @@ export default function OnboardingTourModal() {
     },
     {
       badge: "ADIM 5 / 6 — ALIŞTIRMA MERKEZİ",
-      title: "4 İnteraktif Alıştırma & Sınav Modu",
+      title: "5 İnteraktif Alıştırma & Sınav Modu",
       subtitle:
-        "İster '⚡ Hemen Göster' ister '🏁 Bitince Göster (Sınav Modu)' ile kelime ve cümleleri pekiştirin:",
+        "Artık 5 farklı interaktif mod! İster '⚡ Hemen Göster' ister '🏁 Bitince Göster (Sınav Modu)' ile kelime ve cümleleri pekiştirin:",
       visual: (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div className="p-3 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] flex items-start gap-2.5">
@@ -373,14 +387,29 @@ export default function OnboardingTourModal() {
               </span>
             </div>
           </div>
+
+          <div className="sm:col-span-2 p-3 rounded-2xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] flex items-start gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#6741D9] text-white flex items-center justify-center shrink-0">
+              <ListOrdered size={16} />
+            </div>
+            <div>
+              <span className="block text-xs font-extrabold text-[#4C28B5] dark:text-[#d0bfff]">
+                🧩 Dinle ve Sırala (Cümle Kurma)
+              </span>
+              <span className="block text-[11px] text-[var(--muted)]">
+                Cümleyi dinleyin, kelimelere dokunarak sağdan sola doğru Arapça
+                cümleyi inşa edin.
+              </span>
+            </div>
+          </div>
         </div>
       ),
     },
     {
-      badge: "ADIM 6 / 6 — PDF DERS NOTU & TİPOGRAFİ",
-      title: "Kurumsal A4 PDF Çıktısı & 5 Seçkin Arapça Font",
+      badge: "ADIM 6 / 6 — PDF DERS NOTU, TİPOGRAFİ & BAŞARI KARTI",
+      title: "Kurumsal A4 PDF, 5 Arapça Font & Başarı Kartı",
       subtitle:
-        "Her diyaloğu çalışma kağıdı olarak yazdırabilir ve gözünüze en uygun hattı seçebilirsiniz:",
+        "Her diyaloğu çalışma kağıdı olarak yazdırabilir, hattı seçebilir ve başarı karnenizi paylaşabilirsiniz:",
       visual: (
         <div className="space-y-3">
           <div className="p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#0CA678] flex items-start gap-3">
@@ -395,6 +424,22 @@ export default function OnboardingTourModal() {
                 Harekeli/Harekesiz, Sağda Arapça – Solda Türkçe iki sütunlu
                 tablo, noktalı boşluklu Kelime/İmla Testi tablosu ve Boşluk
                 Doldurma çalışma kağıdı üretimi.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border-2 border-amber-400 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+              <Trophy size={18} />
+            </div>
+            <div>
+              <span className="block text-xs font-extrabold text-amber-900 dark:text-amber-200">
+                🏆 Başarı Kartını Paylaş / İndir
+              </span>
+              <p className="text-[11px] font-medium text-[var(--muted)] leading-snug">
+                Diyalog ve alıştırma sonunda oluşan görsel çalışma karnenizi tek
+                tıkla PNG olarak indirip öğretmeniniz veya arkadaşlarınızla
+                paylaşın.
               </p>
             </div>
           </div>
@@ -433,11 +478,11 @@ export default function OnboardingTourModal() {
       onClick={handleComplete}
     >
       <div
-        className="w-full max-w-lg bg-[#FDFBF7] dark:bg-[var(--surface)] rounded-3xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-lg bg-[#FDFBF7] dark:bg-[var(--surface)] rounded-3xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ÜST BAR */}
-        <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-5 py-3.5 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-2">
+        <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-5 py-3.5 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-2 shrink-0">
           <span className="px-2.5 py-1 rounded-lg bg-[#6741D9] text-white text-[10px] font-extrabold tracking-wider uppercase">
             {current.badge}
           </span>
@@ -453,7 +498,7 @@ export default function OnboardingTourModal() {
         </div>
 
         {/* GÖVDE */}
-        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+        <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto flex-1">
           <div className="space-y-1">
             <h2 className="text-lg sm:text-xl font-extrabold text-[var(--foreground)] leading-snug">
               {current.title}
@@ -467,7 +512,7 @@ export default function OnboardingTourModal() {
         </div>
 
         {/* ALT NAVİGASYON VE İLERLEME NOKTALARI */}
-        <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-5 py-3.5 border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-3">
+        <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-5 py-3.5 border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-3 shrink-0">
           {/* İlerleme Noktaları */}
           <div className="flex items-center gap-1.5">
             {steps.map((_, idx) => (
