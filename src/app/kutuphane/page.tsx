@@ -19,6 +19,7 @@ import {
 import { diyaloglar } from "@/lib/data";
 import { Level, DictionaryItem } from "@/types/data";
 import { extractDialogueVocabulary, cleanArabicText } from "@/lib/dict";
+import { normalizeArabicText } from "@/lib/arabicTextUtils";
 import { useUserStore } from "@/store/userStore";
 import { useSettings } from "@/store/settings";
 import { playClick } from "@/lib/sfxManager";
@@ -72,10 +73,11 @@ export default function LibraryPage() {
   const getDisplayArabic = (text: string) =>
     !mounted || showHareke ? text : removeTashkeel(text);
 
-  // Diyalog Filtreleme
+  // Diyalog Filtreleme (Harekesiz / Fonetik Arapça Arama Desteği ile)
   const filteredDialogues = useMemo(() => {
     const q = search.trim().toLowerCase();
     const cleanQ = cleanArabicText(search.trim());
+    const normQ = normalizeArabicText(search.trim());
 
     return diyaloglar.filter((dlg) => {
       // 1. Arama Sorgusu
@@ -83,12 +85,14 @@ export default function LibraryPage() {
         const matchTr = dlg.baslik_tr.toLowerCase().includes(q);
         const matchAr =
           dlg.baslik_ar.includes(search.trim()) ||
-          cleanArabicText(dlg.baslik_ar).includes(cleanQ);
+          (cleanQ.length > 0 && cleanArabicText(dlg.baslik_ar).includes(cleanQ)) ||
+          (normQ.length > 0 && normalizeArabicText(dlg.baslik_ar).includes(normQ));
         const matchId = dlg.id.replace("dlg_", "").includes(q);
         const matchLines = dlg.satirlar.some(
           (s) =>
             s.turkce.toLowerCase().includes(q) ||
-            cleanArabicText(s.arapca).includes(cleanQ)
+            (cleanQ.length > 0 && cleanArabicText(s.arapca).includes(cleanQ)) ||
+            (normQ.length > 0 && normalizeArabicText(s.arapca).includes(normQ))
         );
         if (!matchTr && !matchAr && !matchId && !matchLines) return false;
       }

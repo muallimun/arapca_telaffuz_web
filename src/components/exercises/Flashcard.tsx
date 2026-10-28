@@ -107,6 +107,14 @@ export default function Flashcard({
     loadAudioManifest();
   }, []);
 
+  const itemsSignature = useMemo(
+    () =>
+      `${vocabulary.map((v) => v.id).join("|")}::${idioms
+        .map((i) => i.id)
+        .join("|")}::${dialogues.map((d) => d.id).join("|")}`,
+    [vocabulary, idioms, dialogues]
+  );
+
   const fullPool = useMemo(() => {
     const formatCatLabel = (tur: string) => {
       const t = (tur || "").toLowerCase();
@@ -172,12 +180,16 @@ export default function Flashcard({
     }
     return wordCards;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vocabulary, idioms, dialogues, contentType, questionCount, roundSeed]);
+  }, [itemsSignature, contentType, questionCount, roundSeed]);
+
+  const shuffledPool = useMemo(() => {
+    return shuffleArray(fullPool).slice(0, questionCount);
+  }, [fullPool, questionCount]);
 
   const deck = useMemo(() => {
     if (customDeck && customDeck.length > 0) return customDeck;
-    return shuffleArray(fullPool).slice(0, questionCount);
-  }, [customDeck, fullPool, questionCount]);
+    return shuffledPool;
+  }, [customDeck, shuffledPool]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);

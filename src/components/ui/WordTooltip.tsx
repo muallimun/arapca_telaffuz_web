@@ -147,8 +147,11 @@ export default function WordTooltip({
     const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
     const vh = typeof window !== "undefined" ? window.innerHeight : 768;
     const safeMargin = 12;
-    const tooltipWidth = Math.min(336, vw - safeMargin * 2);
-    const estimatedHeight = 255;
+    const actualPopoverWidth = popoverRef.current?.offsetWidth;
+    const tooltipWidth = actualPopoverWidth
+      ? Math.min(actualPopoverWidth, vw - safeMargin * 2)
+      : Math.min(336, vw - safeMargin * 2);
+    const estimatedHeight = popoverRef.current?.offsetHeight || 255;
 
     const spaceBelow = vh - rect.bottom - 72;
     const spaceAbove = rect.top - 56;
@@ -184,6 +187,17 @@ export default function WordTooltip({
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (activeIndex !== null && activeWordElRef.current) {
+      const raf = requestAnimationFrame(() => {
+        if (activeWordElRef.current) {
+          computePosition(activeWordElRef.current);
+        }
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [activeIndex, computePosition]);
 
   useEffect(() => {
     if (activeIndex === null) return;

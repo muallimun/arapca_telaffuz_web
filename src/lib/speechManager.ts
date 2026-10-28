@@ -15,6 +15,7 @@ export interface SttCallbacks {
     finalTranscript?: string,
     rawInterim?: string
   ) => void;
+  backupTranscript?: string;
 }
 
 export class HybridSpeechManager {
@@ -161,24 +162,27 @@ export class HybridSpeechManager {
     }
 
     const activeWorker = this.worker;
+    callbacks?.onStatusChange?.(
+      "🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor..."
+    );
+
     return new Promise<string>((resolve, reject) => {
       const timeout = setTimeout(() => {
         activeWorker.removeEventListener("message", handleMessage);
-        reject(new Error("Whisper zaman aşımı"));
-      }, 45000);
+        callbacks?.onStatusChange?.("");
+        reject(new Error("Whisper zaman aşımı (15000ms)"));
+      }, 15000);
 
       const handleMessage = (event: MessageEvent<WhisperWorkerResponse>) => {
         const { status, data, text, device, error } = event.data;
         if (status === "progress") {
           const pct = Math.round(data?.progress || 0);
           callbacks?.onStatusChange?.(
-            `Yapay Zeka Modeli İndiriliyor (${device?.toUpperCase() || "WASM"}): %${pct}`
+            `🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor... (${device?.toUpperCase() || "WASM"} %${pct})`
           );
-        } else if (status === "loading") {
-          callbacks?.onStatusChange?.("Whisper Yapay Zeka Motoru Hazırlanıyor...");
-        } else if (status === "transcribing") {
+        } else if (status === "loading" || status === "transcribing") {
           callbacks?.onStatusChange?.(
-            `Sesiniz Analiz Ediliyor (${device?.toUpperCase() || "WASM"})...`
+            "🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor..."
           );
         } else if (status === "completed") {
           clearTimeout(timeout);
@@ -203,14 +207,18 @@ export class HybridSpeechManager {
   }
 
   /**
-   * Çift Motorlu Hibrit Çözümleme (Seçili motor + Otomatik Fallback)
+   * Çift Motorlu Hibrit Çözümleme (Seçili motor + Paralel Web Speech Yedeklemesi)
    */
   public async transcribeHybrid(
     preferredEngine: SttEngineType,
     audioData16kHz: Float32Array,
     callbacks?: SttCallbacks
   ): Promise<{ text: string; usedEngine: SttEngineType }> {
-    const capturedWebSpeech = this.getCapturedWebSpeechText();
+    const capturedWebSpeech = (
+      this.getCapturedWebSpeechText() ||
+      callbacks?.backupTranscript ||
+      ""
+    ).trim();
 
     if (preferredEngine === "whisper") {
       try {
@@ -221,17 +229,31 @@ export class HybridSpeechManager {
         if (whisperText && /[\u0600-\u06FF]/.test(whisperText)) {
           return { text: whisperText, usedEngine: "whisper" };
         }
-        // Whisper boş veya Arapça dışı döndüyse Web Speech yakalamasına bak
-        if (capturedWebSpeech && /[\u0600-\u06FF]/.test(capturedWebSpeech)) {
-          return { text: capturedWebSpeech, usedEngine: "webspeech" };
+        // Whisper boş veya Arapça dışı döndüyse arka planda yakalanan Web Speech metnini kontrol et
+        const latestBackup = (
+          this.getCapturedWebSpeechText() ||
+          callbacks?.backupTranscript ||
+          capturedWebSpeech
+        ).trim();
+        if (latestBackup && /[\u0600-\u06FF]/.test(latestBackup)) {
+          return { text: latestBackup, usedEngine: "webspeech" };
         }
-        return { text: whisperText || capturedWebSpeech, usedEngine: "whisper" };
+        return { text: whisperText || latestBackup, usedEngine: "whisper" };
       } catch {
-        // Fallback -> Web Speech
-        callbacks?.onStatusChange?.(
-          "Yapay zeka motoru yanıt vermedi, Hızlı Tarayıcı Motoru kullanılıyor..."
-        );
-        return { text: capturedWebSpeech, usedEngine: "webspeech" };
+        // Whisper zaman aşımı (15000ms) veya hata durumunda: saf DSP'ye düşmeden önce paralel Web Speech yedeğini kullan
+        const latestBackup = (
+          this.getCapturedWebSpeechText() ||
+          callbacks?.backupTranscript ||
+          capturedWebSpeech
+        ).trim();
+        if (latestBackup) {
+          callbacks?.onStatusChange?.(
+            "Yapay zeka modeli zaman aşımına uğradı, paralel Hızlı Tarayıcı Motoru sonucu kullanılıyor..."
+          );
+          return { text: latestBackup, usedEngine: "webspeech" };
+        }
+        callbacks?.onStatusChange?.("");
+        return { text: "", usedEngine: "whisper" };
       }
     } else {
       // Tercih edilen motor: Hızlı Tarayıcı Motoru (Web Speech API)
@@ -240,13 +262,17 @@ export class HybridSpeechManager {
       }
       // Web Speech boş döndüyse kısa bir bekleme sonrası tekrar kontrol et, yine boşsa Whisper'a düş!
       await new Promise((r) => setTimeout(r, 450));
-      const retryWebSpeech = this.getCapturedWebSpeechText();
+      const retryWebSpeech = (
+        this.getCapturedWebSpeechText() ||
+        callbacks?.backupTranscript ||
+        ""
+      ).trim();
       if (retryWebSpeech && /[\u0600-\u06FF]/.test(retryWebSpeech)) {
         return { text: retryWebSpeech, usedEngine: "webspeech" };
       }
 
       callbacks?.onStatusChange?.(
-        "Tarayıcı motoru ses algılayamadı, Yapay Zeka (Whisper) devreye giriyor..."
+        "🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor..."
       );
       try {
         const whisperText = await this.transcribeWithWhisper(

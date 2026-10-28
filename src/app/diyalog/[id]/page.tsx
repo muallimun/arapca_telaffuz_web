@@ -218,6 +218,7 @@ export default function DialogueDetailPage({
     null
   );
   const roleplayTurnRafRef = useRef<number | null>(null);
+  const roleplaySessionTokenRef = useRef<number>(0);
 
   useEffect(() => {
     if (!roleplayCompletedBanner) return;
@@ -231,6 +232,8 @@ export default function DialogueDetailPage({
   }, [roleplayCompletedBanner]);
 
   const cleanupRoleplayMic = () => {
+    roleplaySessionTokenRef.current += 1;
+    roleplayFinishingRef.current = true;
     if (roleplayTurnTimerRef.current !== null) {
       clearTimeout(roleplayTurnTimerRef.current);
       roleplayTurnTimerRef.current = null;
@@ -240,13 +243,31 @@ export default function DialogueDetailPage({
       roleplayTurnRafRef.current = null;
     }
     if (roleplayRecorderRef.current) {
+      const rec = roleplayRecorderRef.current;
+      roleplayRecorderRef.current = null;
       try {
-        roleplayRecorderRef.current.killStreamImmediately();
-        roleplayRecorderRef.current.stop().catch(() => {});
+        rec.getStream()?.getTracks().forEach((t) => t.stop());
       } catch {
         // ignore
       }
-      roleplayRecorderRef.current = null;
+      try {
+        rec.killStreamImmediately();
+      } catch {
+        // ignore
+      }
+      try {
+        const ctx = rec.getAudioContext();
+        if (ctx && ctx.state !== "closed") {
+          void ctx.close().catch(() => {});
+        }
+      } catch {
+        // ignore
+      }
+      try {
+        rec.stop().catch(() => {});
+      } catch {
+        // ignore
+      }
     }
     roleplaySpeechRef.current?.stopLiveWebSpeech();
     roleplayFinalTranscriptRef.current = "";
@@ -256,6 +277,21 @@ export default function DialogueDetailPage({
     setRoleplayInterimText("");
     setRoleplayRemainingPct(100);
   };
+
+  // Sekme (studyMode) değiştiğinde veya başka bir diyaloğa geçildiğinde aktif rol yapma mikrofonunu derhal kapat
+  useEffect(() => {
+    if (studyMode !== "roleplay") {
+      cleanupRoleplayMic();
+      setIsRoleplayRunning(false);
+      setRoleplayActiveLine(null);
+      setRoleplaySpeakingLine(null);
+      setRoleplayTransitionNotice(false);
+    }
+    return () => {
+      cleanupRoleplayMic();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studyMode, resolvedParams.id]);
 
   useEffect(() => {
     setMounted(true);
@@ -423,6 +459,7 @@ export default function DialogueDetailPage({
   const activateUserRoleplayTurn = async (line: DialogueLine) => {
     stop();
     cleanupRoleplayMic();
+    const mySessionToken = roleplaySessionTokenRef.current;
     roleplayFinishingRef.current = false;
     setRoleplayTransitionNotice(false);
     setRoleplaySpeakingLine(null);
@@ -475,14 +512,29 @@ export default function DialogueDetailPage({
           void finishUserRoleplayTurn(line, false);
         },
       });
-      if (!roleplayFinishingRef.current) {
+      if (
+        !roleplayFinishingRef.current &&
+        mySessionToken === roleplaySessionTokenRef.current
+      ) {
         roleplayRecorderRef.current = recSession;
       } else {
+        try {
+          recSession.getStream()?.getTracks().forEach((t) => t.stop());
+        } catch {
+          // ignore
+        }
         recSession.killStreamImmediately();
       }
     } catch {
       // Mikrofon izni verilmediyse veya açılamadıysa sayaç yine çalışır, ses olmadığı için %0 kaydedilir
       roleplayRecorderRef.current = null;
+    }
+
+    if (
+      roleplayFinishingRef.current ||
+      mySessionToken !== roleplaySessionTokenRef.current
+    ) {
+      return;
     }
 
     const startAt = performance.now();

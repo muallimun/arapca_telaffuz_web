@@ -104,6 +104,14 @@ export default function MultipleChoice({
   const { speechRate, showHareke, arabicFont } = useSettings();
   const { addStudyMinutes, addMistake, removeMistake } = useUserStore();
 
+  const itemsSignature = useMemo(
+    () =>
+      `${vocabulary.map((v) => v.id).join("|")}::${idioms
+        .map((i) => i.id)
+        .join("|")}::${dialogues.map((d) => d.id).join("|")}`,
+    [vocabulary, idioms, dialogues]
+  );
+
   const generatedQuestions: QuizQuestionItem[] = useMemo(() => {
     const wordPool: {
       id: string;
@@ -274,9 +282,13 @@ export default function MultipleChoice({
       .slice(0, questionCount)
       .map(buildWordQuestion);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vocabulary, idioms, dialogues, contentType, questionCount, roundSeed]);
+  }, [itemsSignature, contentType, questionCount, roundSeed]);
 
   const questions = customQuestions || generatedQuestions;
+  const questionsSignature = useMemo(
+    () => questions.map((q) => q.id).join("|"),
+    [questions]
+  );
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -300,7 +312,8 @@ export default function MultipleChoice({
 
   useEffect(() => {
     setSelected(userAnswers[currentIndex]?.chosen ?? null);
-  }, [currentIndex, userAnswers, questions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, questionsSignature]);
 
   useEffect(() => {
     if (isFinished && !fanfarePlayedRef.current) {

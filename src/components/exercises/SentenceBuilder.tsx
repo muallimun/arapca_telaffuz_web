@@ -75,7 +75,7 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 function stripPunctuationFromWord(word: string): string {
-  return word.replace(/[.,،؛؟?!()"'«»\-–—:…]/g, "").trim();
+  return word.replace(/[.,،؛؟?!()"'«»[\]{}\-–—:…]/g, "").trim();
 }
 
 function normalizeWordForCompare(word: string): string {
@@ -106,6 +106,7 @@ export default function SentenceBuilder({
   const { showHareke, arabicFont, speechRate } = useSettings();
   const { addStudyMinutes, addMistake, removeMistake } = useUserStore();
   const wrongAttemptedQuestionsRef = useRef<Set<string>>(new Set());
+  const lastLoadedQuestionKeyRef = useRef<string>("");
 
   const [roundSeed, setRoundSeed] = useState(0);
   const [customQuestions, setCustomQuestions] = useState<
@@ -137,6 +138,14 @@ export default function SentenceBuilder({
   const [shareOpen, setShareOpen] = useState(false);
 
   const fanfarePlayedRef = useRef(false);
+
+  const itemsSignature = useMemo(
+    () =>
+      `${dialogues.map((d) => d.id).join("|")}::${idioms
+        .map((i) => i.id)
+        .join("|")}`,
+    [dialogues, idioms]
+  );
 
   // Diyaloglardan veya kalıp ifadelerden cümle kurmaya uygun soruları seç
   const generatedQuestions = useMemo(() => {
@@ -210,7 +219,7 @@ export default function SentenceBuilder({
     }
     return shuffleArray(candidates).slice(0, questionCount);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogues, idioms, contentType, questionCount, roundSeed]);
+  }, [itemsSignature, contentType, questionCount, roundSeed]);
 
   const questions = customQuestions || generatedQuestions;
   const currentQ = questions[currentIndex];
@@ -241,9 +250,15 @@ export default function SentenceBuilder({
   // Soru değiştiğinde kelimeleri karıştır ve state'i hazırla
   useEffect(() => {
     if (!currentQ) return;
+    const questionKey = `${currentIndex}_${currentQ.id}_${roundSeed}_${
+      customQuestions ? "custom" : "gen"
+    }`;
+    if (lastLoadedQuestionKeyRef.current === questionKey) return;
+    lastLoadedQuestionKeyRef.current = questionKey;
+
     const baseTokens: WordToken[] = currentQ.words.map((w, idx) => ({
       tokenId: `${currentQ.id}_w_${idx}`,
-      text: w,
+      text: stripPunctuationFromWord(w),
       originalIndex: idx,
     }));
 
@@ -268,7 +283,7 @@ export default function SentenceBuilder({
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, currentQ?.id, roundSeed]);
+  }, [currentIndex, currentQ?.id, roundSeed, customQuestions]);
 
   // Geri sayım sayacı
   useEffect(() => {

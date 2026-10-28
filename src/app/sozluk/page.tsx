@@ -29,7 +29,11 @@ import { useUserStore } from "@/store/userStore";
 import { useSettings } from "@/store/settings";
 import { playClick } from "@/lib/sfxManager";
 import ShadowingModal from "@/components/ui/ShadowingModal";
-import { formatArabicText, splitMixedBidiText } from "@/lib/arabicTextUtils";
+import {
+  formatArabicText,
+  splitMixedBidiText,
+  normalizeArabicText,
+} from "@/lib/arabicTextUtils";
 import {
   ArabicIdiom,
   getCombinedIdiomsCatalog,
@@ -335,10 +339,11 @@ export default function DictionaryPage() {
       );
     }
 
-    // 3. Arapça (çekimli/yalın) veya Türkçe Anlık Arama
+    // 3. Arapça (çekimli/yalın/harekesiz/fonetik) veya Türkçe Anlık Arama
     if (search.trim()) {
       const qLower = search.trim().toLowerCase();
       const qCleanAr = cleanArabicText(search.trim());
+      const qNormAr = normalizeArabicText(search.trim());
       const morphMatched = analyzeAndMatchWord(search.trim());
 
       result = result.filter((word) => {
@@ -362,8 +367,16 @@ export default function DictionaryPage() {
         const matchesArabicClean =
           qCleanAr.length > 0 &&
           rawArFields.some((f) => cleanArabicText(f).includes(qCleanAr));
+        const matchesArabicNorm =
+          qNormAr.length > 0 &&
+          rawArFields.some((f) => normalizeArabicText(f).includes(qNormAr));
 
-        return matchesTurkish || matchesArabicRaw || matchesArabicClean;
+        return (
+          matchesTurkish ||
+          matchesArabicRaw ||
+          matchesArabicClean ||
+          matchesArabicNorm
+        );
       });
     }
 

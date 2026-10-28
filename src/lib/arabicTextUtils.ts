@@ -219,3 +219,24 @@ export function normalizeArabicForPronunciation(text: string): string {
     .join(" ");
 }
 
+/**
+ * Sözlük, Kütüphane ve Alıştırma Aramaları İçin Fonetik / Harekesiz Arapça Normalizasyonu:
+ * Hareke (َ ُ ِ ّ ْ ً ٌ ٍ ٰ), tatweel (ـ), hemzeli elif (أ إ آ ٱ -> ا),
+ * ؤ -> و, ئ -> ي, ة -> ه ve ى -> ي farklarını ortadan kaldırır.
+ */
+export function normalizeArabicText(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
+    .replace(/[\u0640\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, "")
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ؤ/g, "و")
+    .replace(/ئ/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/[.,،؛؟?!:"'«»()\[\]{}…\-–—/\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+

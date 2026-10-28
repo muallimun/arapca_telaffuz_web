@@ -1699,6 +1699,7 @@ export default function DialoguePdfModal({
       </html>
     `;
 
+    setMobileTab("preview");
     const iframe = printIframeRef.current;
     if (iframe) {
       const doc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -2265,7 +2266,7 @@ export default function DialoguePdfModal({
 
         {/* CANLI A4 ÇALIŞMA KAĞIDI ÖNİZLEME ALANI */}
         <div
-          className={`flex-1 overflow-y-auto p-2.5 sm:p-6 bg-[#EFE6D5]/70 dark:bg-black/40 ${
+          className={`flex-1 overflow-y-auto p-2.5 sm:p-6 bg-[#EFE6D5]/70 dark:bg-black/40 print:block! ${
             mobileTab === "preview" ? "block" : "hidden md:block"
           }`}
         >

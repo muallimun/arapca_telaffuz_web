@@ -205,6 +205,8 @@ export default function ShadowingModal({
   const rafIdRef = useRef<number | null>(null);
   const finalTranscriptRef = useRef<string>("");
   const interimTranscriptRef = useRef<string>("");
+  const backupBrowserTranscriptRef = useRef<string>("");
+  const resultsSectionRef = useRef<HTMLDivElement | null>(null);
   const userAudioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const refAudioBufferRef = useRef<AudioBuffer | null>(null);
 
@@ -275,6 +277,19 @@ export default function ShadowingModal({
       if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
     };
   }, [userAudioUrl]);
+
+  // Kayıt ve analiz tamamlandığında mobil ekranlarda sonuç ve mahreç kartlarına otomatik kaydır
+  useEffect(() => {
+    if (!isRecording && !isAnalyzing && evaluation) {
+      const timer = setTimeout(() => {
+        resultsSectionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isRecording, isAnalyzing, evaluation]);
 
   // Referans ses zarfını (48 bar) ve süresini hazırla (2 Aşamalı Fallback: 1. refAudioUrl -> 2. /api/tts -> 3. Math.sin tahmini)
   useEffect(() => {
@@ -478,6 +493,7 @@ export default function ShadowingModal({
     setUserBars(DEFAULT_BARS);
     finalTranscriptRef.current = "";
     interimTranscriptRef.current = "";
+    backupBrowserTranscriptRef.current = "";
 
     try {
       // Paralel olarak Web Speech API'yi başlat (hem hızlı motor hem de Whisper fallback için)
@@ -490,6 +506,14 @@ export default function ShadowingModal({
             interimTranscriptRef.current = interimPart.trim();
           } else if (combined && !finalTranscriptRef.current) {
             interimTranscriptRef.current = combined.trim();
+          }
+          const latestBackup = (
+            finalTranscriptRef.current +
+            " " +
+            interimTranscriptRef.current
+          ).trim() || combined.trim();
+          if (latestBackup) {
+            backupBrowserTranscriptRef.current = latestBackup;
           }
           setLiveInterimText(combined);
         },
@@ -577,7 +601,17 @@ export default function ShadowingModal({
       " " +
       interimTranscriptRef.current
     ).trim();
-    const bestWebSpeechText = fullSpokenText || stoppedWebSpeechText;
+    const bestWebSpeechText =
+      fullSpokenText ||
+      stoppedWebSpeechText ||
+      backupBrowserTranscriptRef.current.trim();
+    backupBrowserTranscriptRef.current = bestWebSpeechText;
+
+    if (sttEngine === "whisper") {
+      setWhisperStatus(
+        "🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor..."
+      );
+    }
 
     try {
       const recorded = await activeSession.stop();
@@ -595,7 +629,7 @@ export default function ShadowingModal({
 
       if (speechManagerRef.current) {
         // Eğer kayıt çok kısaysa (< 0.4 sn) veya tamamen sessizse ve Web Speech de boşsa Whisper'ı boşuna çalıştırma
-        if (recorded.isSilent && !bestWebSpeechText) {
+        if (recorded.isSilent && !backupBrowserTranscriptRef.current) {
           recognizedText = "";
         } else {
           const hybridRes = await speechManagerRef.current.transcribeHybrid(
@@ -605,14 +639,31 @@ export default function ShadowingModal({
               : recorded.samples16kHz,
             {
               onStatusChange: (st) => setWhisperStatus(st),
+              backupTranscript: backupBrowserTranscriptRef.current,
             }
           );
-          recognizedText = (hybridRes.text || "").trim() || bestWebSpeechText;
-          usedEngine = hybridRes.usedEngine;
+          const candidateWhisperOrHybrid = (hybridRes.text || "").trim();
+          if (
+            candidateWhisperOrHybrid &&
+            /[\u0600-\u06FF]/.test(candidateWhisperOrHybrid)
+          ) {
+            recognizedText = candidateWhisperOrHybrid;
+            usedEngine = hybridRes.usedEngine;
+          } else if (
+            backupBrowserTranscriptRef.current &&
+            /[\u0600-\u06FF]/.test(backupBrowserTranscriptRef.current)
+          ) {
+            recognizedText = backupBrowserTranscriptRef.current;
+            usedEngine = "webspeech";
+          } else {
+            recognizedText =
+              candidateWhisperOrHybrid || backupBrowserTranscriptRef.current;
+            usedEngine = hybridRes.usedEngine;
+          }
         }
         setUsedEngineBadge(usedEngine);
       } else {
-        recognizedText = bestWebSpeechText;
+        recognizedText = backupBrowserTranscriptRef.current;
       }
 
       // E. Sessiz Kayıt / Düşük Ses Kontrolü:
@@ -1101,7 +1152,7 @@ export default function ShadowingModal({
 
               {/* Alt / Sağ Bölüm (İnce Kesikli Çizgiyle Ayrılmış): Sizin Ses Ritminiz (16kHz) */}
               <div className="space-y-1.5 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pt-2 sm:border-t-0 sm:border-l sm:pl-3.5 sm:pt-0">
-                <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center justify-between gap-1 flex-wrap">
                   <span className="text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center gap-1">
                     <Mic size={14} className="shrink-0" />
                     <span>
@@ -1110,9 +1161,16 @@ export default function ShadowingModal({
                         : "Sizin Ses Ritminiz (16kHz)"}
                     </span>
                   </span>
-                  <span className="text-[11px] font-bold text-[var(--muted)] tabular-nums">
-                    {userDuration > 0 ? `${userDuration.toFixed(1)} sn` : "0.0 sn"}
-                  </span>
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    {evaluation && !isRecording && !isAnalyzing && (
+                      <span className="px-2 py-0.5 rounded-lg bg-[#0CA678] text-white text-[10px] font-extrabold tabular-nums shadow-2xs">
+                        🎯 Genel Puan: %{fluencyScore ?? evaluation.overallScore}
+                      </span>
+                    )}
+                    <span className="text-[11px] font-bold text-[var(--muted)] tabular-nums">
+                      {userDuration > 0 ? `${userDuration.toFixed(1)} sn` : "0.0 sn"}
+                    </span>
+                  </div>
                 </div>
 
                 {/* 48 Bar Canlı RMS / Kullanıcı Zarfı */}
@@ -1186,7 +1244,7 @@ export default function ShadowingModal({
 
           {/* DEĞERLENDİRME SONUÇLARI */}
           {evaluation && (
-            <div className="space-y-3.5">
+            <div ref={resultsSectionRef} className="space-y-3.5">
               {/* 16kHz DSP Akustik Dalga & Ritim Eşleştirmesi Bilgi Notu */}
               {dspFallbackNotice && (
                 <div className="bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 text-xs font-extrabold text-[#4C28B5] dark:text-[#d0bfff]">

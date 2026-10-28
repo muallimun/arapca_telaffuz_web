@@ -134,11 +134,13 @@ export default function FillInBlanks({
 
   // İmla (Dictation) modu state'leri
   const [typedText, setTypedText] = useState<string>("");
+  const [spellingNote, setSpellingNote] = useState<string | null>(null);
   const [showWordBank, setShowWordBank] = useState<boolean>(false);
   const [showKeyboard, setShowKeyboard] = useState<boolean>(true);
   const [useDeviceKeyboard, setUseDeviceKeyboard] = useState<boolean>(false);
   const [autoAudio, setAutoAudio] = useState<boolean>(true);
   const [hintCount, setHintCount] = useState<number>(0);
+  const lastQuestionKeyRef = useRef<string>("");
 
   // Sürükle-Bırak (Drag & Drop) State
   const [draggingWord, setDraggingWord] = useState<string | null>(null);
@@ -164,16 +166,52 @@ export default function FillInBlanks({
     !isFinished && !isTimeUp
   );
 
+  const itemsSignature = useMemo(
+    () =>
+      `${dialogues.map((d) => d.id).join("|")}::${vocabulary
+        .map((v) => v.id)
+        .join("|")}::${idioms.map((i) => i.id).join("|")}`,
+    [dialogues, vocabulary, idioms]
+  );
+
   const generatedQuestions: FillQuestionItem[] = useMemo(() => {
     const generated: FillQuestionItem[] = [];
 
     const stripPunct = (w: string) =>
-      w.replace(/[.,!?؟،؛:"'«»()]/g, "").trim();
+      w.replace(/[.,!?؟،؛:"'«»()[\]…]/g, "").trim();
+
+    const splitWordPunctuation = (rawToken: string) => {
+      const m = rawToken.match(
+        /^([.,!?؟،؛:"'«»()[\]…]*)([\s\S]*?)([.,!?؟،؛:"'«»()[\]…]*)$/
+      );
+      if (!m) {
+        const clean = stripPunct(rawToken);
+        return { leadingPunct: "", coreWord: clean, trailingPunct: "" };
+      }
+      return {
+        leadingPunct: m[1] || "",
+        coreWord: stripPunct(m[2] || ""),
+        trailingPunct: m[3] || "",
+      };
+    };
+
+    const replaceTokenKeepingPunctuation = (
+      sentence: string,
+      rawToken: string
+    ) => {
+      const { leadingPunct, trailingPunct } = splitWordPunctuation(rawToken);
+      return sentence.replace(
+        rawToken,
+        `${leadingPunct} [ ? ] ${trailingPunct}`
+      );
+    };
 
     const vocabDistractorPool = Array.from(
       new Set([
         ...vocabulary
-          .map((v) => (v.mufret || v.mazi || "").split("/")[0].trim())
+          .map((v) =>
+            stripPunct((v.mufret || v.mazi || "").split("/")[0].trim())
+          )
           .filter(Boolean),
         ...idioms
           .flatMap((idm) => idm.arabic.split(/\s+/))
@@ -195,7 +233,8 @@ export default function FillInBlanks({
         const matchedLineWord = lineWords.find((lw) => {
           const cleanLw = normalizeArabicSpelling(lw);
           return idiomWords.some(
-            (iw) => normalizeArabicSpelling(iw) === cleanLw && cleanLw.length >= 2
+            (iw) =>
+              normalizeArabicSpelling(iw) === cleanLw && cleanLw.length >= 2
           );
         });
         const targetRaw =
@@ -205,13 +244,18 @@ export default function FillInBlanks({
         const cleanTarget = stripPunct(targetRaw);
         const distractors = shuffleArray(
           vocabDistractorPool.filter(
-            (w) => normalizeArabicSpelling(w) !== normalizeArabicSpelling(cleanTarget)
+            (w) =>
+              normalizeArabicSpelling(w) !==
+              normalizeArabicSpelling(cleanTarget)
           )
         ).slice(0, 3);
         if (distractors.length === 3) {
           generated.push({
             id: `fill_idm_dlg_${ext.id}_${ext.lineNumber}`,
-            sentenceWithBlank: ext.lineArabic.replace(targetRaw, " [ ? ] "),
+            sentenceWithBlank: replaceTokenKeepingPunctuation(
+              ext.lineArabic,
+              targetRaw
+            ),
             fullArabic: ext.lineArabic,
             correctWord: cleanTarget,
             options: shuffleArray([cleanTarget, ...distractors]),
@@ -232,13 +276,18 @@ export default function FillInBlanks({
         const cleanTarget = stripPunct(chosenWord);
         const distractors = shuffleArray(
           vocabDistractorPool.filter(
-            (w) => normalizeArabicSpelling(w) !== normalizeArabicSpelling(cleanTarget)
+            (w) =>
+              normalizeArabicSpelling(w) !==
+              normalizeArabicSpelling(cleanTarget)
           )
         ).slice(0, 3);
         if (distractors.length === 3) {
           generated.push({
             id: `fill_idm_${idm.id}`,
-            sentenceWithBlank: idm.arabic.replace(chosenWord, " [ ? ] "),
+            sentenceWithBlank: replaceTokenKeepingPunctuation(
+              idm.arabic,
+              chosenWord
+            ),
             fullArabic: idm.arabic,
             correctWord: cleanTarget,
             options: shuffleArray([cleanTarget, ...distractors]),
@@ -298,14 +347,19 @@ export default function FillInBlanks({
         if (candidateWord) {
           const cleanTarget = stripPunct(candidateWord);
           const distractorWords = shuffleArray(vocabDistractorPool)
-            .filter((w) => w && w !== cleanTarget)
+            .filter(
+              (w) =>
+                w &&
+                normalizeArabicSpelling(w) !==
+                  normalizeArabicSpelling(cleanTarget)
+            )
             .slice(0, 3);
 
           if (distractorWords.length === 3) {
             const allOptions = shuffleArray([cleanTarget, ...distractorWords]);
-            const sentenceWithBlank = line.arapca.replace(
-              candidateWord,
-              " [ ? ] "
+            const sentenceWithBlank = replaceTokenKeepingPunctuation(
+              line.arapca,
+              candidateWord
             );
             generated.push({
               id: `fill_${dlg.id}_${line.sira}`,
@@ -327,7 +381,7 @@ export default function FillInBlanks({
     }
     return shuffleArray(generated).slice(0, questionCount);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogues, vocabulary, idioms, contentType, questionCount, roundSeed]);
+  }, [itemsSignature, contentType, questionCount, roundSeed]);
 
   const questions = customQuestions || generatedQuestions;
   const currentQ = questions[currentIndex];
@@ -347,12 +401,19 @@ export default function FillInBlanks({
 
   // Soru değiştiğinde state sıfırlama ve İmla modunda otomatik ses çalma
   useEffect(() => {
+    const qKey = `${currentIndex}_${subMode}_${currentQ?.id || ""}_${roundSeed}_${
+      customQuestions ? "custom" : "gen"
+    }`;
+    if (lastQuestionKeyRef.current === qKey) return;
+    lastQuestionKeyRef.current = qKey;
+
     const saved = userAnswers[currentIndex];
     setFeedback(
       feedbackMode === "instant" && saved?.isCorrect ? "correct" : null
     );
     setSelectedWord(saved?.answer ?? null);
     setTypedText(saved?.answer ?? "");
+    setSpellingNote(null);
     setHintCount(0);
     setDraggingWord(null);
     setIsDragOver(false);
@@ -370,7 +431,7 @@ export default function FillInBlanks({
       return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, subMode, questions]);
+  }, [currentIndex, subMode, currentQ?.id, roundSeed, customQuestions]);
 
   useEffect(() => {
     if (isFinished && !fanfarePlayedRef.current) {
@@ -474,8 +535,9 @@ export default function FillInBlanks({
     if (isTimeUp || !typedText.trim()) return;
     if (feedbackMode === "instant" && feedback === "correct") return;
 
+    const rawTyped = typedText.trim();
     const isRight =
-      normalizeArabicSpelling(typedText) ===
+      normalizeArabicSpelling(rawTyped) ===
       normalizeArabicSpelling(currentQ.correctWord);
 
     syncMistakeBook(currentQ, isRight);
@@ -484,7 +546,7 @@ export default function FillInBlanks({
       playClick();
       setUserAnswers((prev) => ({
         ...prev,
-        [currentIndex]: { answer: typedText.trim(), isCorrect: isRight },
+        [currentIndex]: { answer: rawTyped, isCorrect: isRight },
       }));
       if (currentIndex < questions.length - 1) {
         setCurrentIndex((prev) => prev + 1);
@@ -496,6 +558,11 @@ export default function FillInBlanks({
 
     // Instant mode
     if (isRight) {
+      const hasSpellingOrHarakatVariation =
+        rawTyped !== currentQ.correctWord.trim();
+      setSpellingNote(
+        hasSpellingOrHarakatVariation ? currentQ.correctWord : null
+      );
       setFeedback("correct");
       setTypedText(currentQ.correctWord);
       setUserAnswers((prev) => ({
@@ -503,20 +570,24 @@ export default function FillInBlanks({
         [currentIndex]: { answer: currentQ.correctWord, isCorrect: true },
       }));
       playSuccess();
-      setTimeout(() => {
-        if (currentIndex < questions.length - 1) {
-          setCurrentIndex((prev) => prev + 1);
-        } else {
-          setIsFinished(true);
-        }
-      }, 1150);
+      setTimeout(
+        () => {
+          if (currentIndex < questions.length - 1) {
+            setCurrentIndex((prev) => prev + 1);
+          } else {
+            setIsFinished(true);
+          }
+        },
+        hasSpellingOrHarakatVariation ? 1750 : 1150
+      );
     } else {
+      setSpellingNote(null);
       setFeedback("wrong");
       setUserAnswers((prev) => ({
         ...prev,
         [currentIndex]: prev[currentIndex]?.isCorrect
           ? prev[currentIndex]
-          : { answer: typedText.trim(), isCorrect: false },
+          : { answer: rawTyped, isCorrect: false },
       }));
       playError();
       setTimeout(() => {
@@ -525,13 +596,28 @@ export default function FillInBlanks({
     }
   };
 
-  // Harf İpucu Al
+  // Harf İpucu Al (Mevcut doğru harfleri koruyarak sıradaki harfi ekler)
   const handleLetterHint = () => {
     playClick();
     const bareTarget = removeArabicHarakat(currentQ.correctWord);
-    const nextLen = Math.min(bareTarget.length, hintCount + 1);
+    const bareTargetChars = Array.from(bareTarget);
+    const bareTyped = removeArabicHarakat(typedText.trim());
+    const bareTypedChars = Array.from(bareTyped);
+
+    let matchedPrefixLen = 0;
+    while (
+      matchedPrefixLen < bareTypedChars.length &&
+      matchedPrefixLen < bareTargetChars.length &&
+      normalizeArabicSpelling(bareTypedChars[matchedPrefixLen]) ===
+        normalizeArabicSpelling(bareTargetChars[matchedPrefixLen])
+    ) {
+      matchedPrefixLen++;
+    }
+
+    const baseLen = Math.max(matchedPrefixLen, hintCount);
+    const nextLen = Math.min(bareTargetChars.length, baseLen + 1);
     setHintCount(nextLen);
-    setTypedText(bareTarget.slice(0, nextLen));
+    setTypedText(bareTargetChars.slice(0, nextLen).join(""));
     inputRef.current?.focus();
   };
 
@@ -1433,6 +1519,21 @@ export default function FillInBlanks({
             </span>
           ))}
         </div>
+
+        {/* PEDAGOJİK İMLA VE HEMZE/HAREKE NOTU */}
+        {subMode === "dictation" && feedback === "correct" && spellingNote && (
+          <div className="mx-auto max-w-xl rounded-xl bg-emerald-100/90 dark:bg-emerald-950/60 border border-emerald-400 px-3 py-2 text-xs sm:text-sm font-bold text-emerald-900 dark:text-emerald-200 flex flex-wrap items-center justify-center gap-1.5 animate-in fade-in duration-150">
+            <span>
+              ✅ Doğru! İmla Notu: Kelimenin tam harekeli ve hemzeli yazılışı:
+            </span>
+            <bdi
+              dir="rtl"
+              className="arabic text-xl sm:text-2xl font-extrabold text-[#087F5B] dark:text-emerald-300 px-1.5"
+            >
+              {formatAr(spellingNote)}
+            </bdi>
+          </div>
+        )}
 
         {/* TÜRKÇE ANLAM İPUCU VE İMLA HARF İPUCU TEK KOMPAKT SATIRDA */}
         <div className="mt-1.5 pt-2 border-t border-dashed border-[#E2D3B8] flex flex-wrap items-center justify-between gap-2">
