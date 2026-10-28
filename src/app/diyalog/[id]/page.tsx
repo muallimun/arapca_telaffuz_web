@@ -23,6 +23,7 @@ import {
   Maximize2,
   MoreHorizontal,
   X,
+  Share2,
 } from "lucide-react";
 import { diyaloglar, getDialogueById } from "@/lib/data";
 import {
@@ -33,7 +34,12 @@ import {
   speakHybrid,
 } from "@/lib/audio";
 import { useAudioStore } from "@/store/audioStore";
-import { useSettings, ViewMode, WordTrackingStyle } from "@/store/settings";
+import {
+  useSettings,
+  ViewMode,
+  WordTrackingStyle,
+  PauseBetweenLines,
+} from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
 import {
   playClick,
@@ -46,11 +52,16 @@ import WordTooltip from "@/components/ui/WordTooltip";
 import ShadowingButton from "@/components/ui/ShadowingButton";
 import ShadowingModal from "@/components/ui/ShadowingModal";
 import DialoguePdfModal from "@/components/ui/DialoguePdfModal";
+import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
 import {
   getDialogueVocabulary,
   DialogueVocabularyEntry,
   getWordCategory,
 } from "@/lib/dict";
+import {
+  extractDialogueIdioms,
+  ExtractedDialogueIdiom,
+} from "@/lib/arabicIdioms";
 import { DialogueLine, DictionaryItem } from "@/types/data";
 import {
   start16kHzRecorder,
@@ -85,6 +96,9 @@ export default function DialogueDetailPage({
     playingLineId,
     activeWordIndex,
     activeWordProgress,
+    isShadowingPause,
+    shadowingPauseMs,
+    setShadowingPause,
   } = useAudioStore();
   const {
     viewMode,
@@ -101,6 +115,8 @@ export default function DialogueDetailPage({
     cycleDialogueLoopCount,
     wordTrackingStyle,
     setWordTrackingStyle,
+    pauseBetweenLines,
+    setPauseBetweenLines,
   } = useSettings();
 
   const {
@@ -133,10 +149,16 @@ export default function DialogueDetailPage({
     number | "infinite" | null
   >(null);
   const [autoShadowingFlow, setAutoShadowingFlow] = useState<boolean>(false);
+  const [shadowingPauseLineSira, setShadowingPauseLineSira] = useState<
+    number | null
+  >(null);
+  const [shadowingPauseRemainingPct, setShadowingPauseRemainingPct] =
+    useState<number>(100);
 
-  // Lightbox (Kapak Görseli Büyütme), PDF Modal ve "⋯" Diğer Menüsü State
+  // Lightbox (Kapak Görseli Büyütme), PDF Modal, Paylaşım Modalı ve "⋯" Diğer Menüsü State
   const [isLightboxOpen, setIsLightboxOpen] = useState<boolean>(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState<boolean>(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState<boolean>(false);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -267,6 +289,31 @@ export default function DialogueDetailPage({
     }
   }, [playingLineId, roleplayActiveLine, roleplaySpeakingLine]);
 
+  // Gölgeleme Boşluğu (Shadowing Pause) görsel geri sayım animasyonu
+  useEffect(() => {
+    if (!isShadowingPause || shadowingPauseMs <= 0) {
+      setShadowingPauseRemainingPct(100);
+      return;
+    }
+    const startAt = performance.now();
+    let rafId: number | null = null;
+
+    const tick = () => {
+      const elapsed = performance.now() - startAt;
+      const ratio = Math.max(0, 1 - elapsed / shadowingPauseMs);
+      setShadowingPauseRemainingPct(Math.round(ratio * 100));
+      if (ratio > 0) {
+        rafId = requestAnimationFrame(tick);
+      }
+    };
+
+    setShadowingPauseRemainingPct(100);
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [isShadowingPause, shadowingPauseMs]);
+
   if (!dialogue) return notFound();
 
   const currentIndex = diyaloglar.findIndex((d) => d.id === dialogue.id);
@@ -276,6 +323,9 @@ export default function DialogueDetailPage({
 
   const dialogueVocabEntries: DialogueVocabularyEntry[] = getDialogueVocabulary(
     dialogue.id
+  );
+  const dialogueIdioms: ExtractedDialogueIdiom[] = extractDialogueIdioms(
+    dialogue.satirlar
   );
 
   const speakers = Array.from(
@@ -496,6 +546,8 @@ export default function DialogueDetailPage({
     if (autoAdvance) {
       const pauseSetting = useSettings.getState().pauseBetweenLines;
       const lastDurSec = useAudioStore.getState().lastPlayedDurationSec || 2.5;
+      const isShadowWait =
+        !inRoleplay && (pauseSetting === 2 || pauseSetting === "auto");
       const waitMs = inRoleplay
         ? 220
         : pauseSetting === 2
@@ -504,7 +556,18 @@ export default function DialogueDetailPage({
         ? Math.min(8000, Math.max(1500, Math.round(lastDurSec * 1000)))
         : 240;
 
+      if (isShadowWait) {
+        setShadowingPauseLineSira(line.sira);
+        setShadowingPause(true, waitMs);
+      }
+
       await new Promise((r) => setTimeout(r, waitMs));
+
+      if (isShadowWait) {
+        setShadowingPause(false, 0);
+        setShadowingPauseLineSira(null);
+      }
+
       if (playToken.current !== currentToken) return;
       const nextLine = dialogue.satirlar.find((s) => s.sira === line.sira + 1);
       if (nextLine) {
@@ -777,6 +840,25 @@ export default function DialogueDetailPage({
           onClose={() => setIsPdfModalOpen(false)}
         />
       )}
+
+      {/* BAŞARI KARTINI PAYLAŞ / İNDİR MODALI */}
+      <ShareAchievementModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        title={dialogue.baslik_tr}
+        arabicTitle={getDisplayText(dialogue.baslik_ar)}
+        subtitle={`Diyalog #${String(rawNum).padStart(2, "0")} • ${dialogue.satirlar.length} Cümle • ${dialogueVocabEntries.length} Kelime`}
+        levelLabel={dialogue.seviye}
+        scorePercent={(() => {
+          const vals = Object.values(roleplayLineScores);
+          return vals.length > 0
+            ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
+            : 95;
+        })()}
+        pointsText={`${dialogue.satirlar.length} Cümle`}
+        wordsCount={dialogueVocabEntries.length}
+        badgeType="dialogue"
+      />
 
       {/* TAM EKRAN DİYALOG GÖRSELİ ÖNİZLEME (LIGHTBOX MODAL) */}
       {isLightboxOpen && (
@@ -1267,6 +1349,42 @@ export default function DialogueDetailPage({
                     </div>
                   </div>
 
+                  {/* Cümleler Arası Gölgeleme Boşluğu Hızlı Seçici */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-extrabold uppercase text-[var(--muted)] block">
+                      Cümleler Arası Gölgeleme Boşluğu
+                    </span>
+                    <div className="grid grid-cols-3 gap-1.5 bg-white dark:bg-[var(--background)] rounded-xl p-1.5 border border-[#E6D7BE] dark:border-[var(--border)]">
+                      {(
+                        [
+                          { id: 0, label: "Yok (Akıcı)" },
+                          { id: 2, label: "2 Sn Bekle" },
+                          { id: "auto", label: "Cümle Süresi" },
+                        ] as { id: PauseBetweenLines; label: string }[]
+                      ).map((pOpt) => {
+                        const active =
+                          (mounted ? pauseBetweenLines : 0) === pOpt.id;
+                        return (
+                          <button
+                            key={String(pOpt.id)}
+                            type="button"
+                            onClick={() => {
+                              playClick();
+                              setPauseBetweenLines(pOpt.id);
+                            }}
+                            className={`py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold whitespace-nowrap transition-all cursor-pointer ${
+                              active
+                                ? "bg-[#0CA678] text-white"
+                                : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                            }`}
+                          >
+                            {pOpt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* 🔁 Tekrar/Döngü Seçimi, ♡ Favori ve ✓ Tamamlandı */}
                   <div className="grid grid-cols-3 gap-1.5 pt-1">
                     <button
@@ -1450,6 +1568,17 @@ export default function DialogueDetailPage({
                       )}
                       <button
                         type="button"
+                        onClick={() => {
+                          playClick();
+                          setIsShareModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold border-b-2 border-amber-700 cursor-pointer flex items-center gap-1"
+                      >
+                        <Share2 size={13} />
+                        <span>🏆 Başarı Kartını Paylaş / İndir</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={handleToggleRoleplay}
                         className="px-3 py-1.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white text-xs font-extrabold border-b-2 border-[#087F5B] cursor-pointer"
                       >
@@ -1466,7 +1595,102 @@ export default function DialogueDetailPage({
 
       {/* DİYALOG SATIRLARI VEYA MORFOLOJİK DİYALOG SÖZLÜĞÜ */}
       {studyMode === "vocabulary" ? (
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <div className="space-y-4">
+          {/* BU DİYALOGDAKİ KALIP İFADELER (التعبيرات الاصطلاحية) BÖLÜMÜ */}
+          {dialogueIdioms.length > 0 && (
+            <section className="rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-xl bg-[#6741D9] text-white text-xs font-extrabold">
+                    ✨ Kalıp İfadeler ({dialogueIdioms.length})
+                  </span>
+                  <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
+                    Bu Diyalogdaki Kalıp İfadeler{" "}
+                    <bdi
+                      dir="rtl"
+                      className="arabic font-arabic text-base sm:text-lg text-[#087F5B] dark:text-[#20c997]"
+                    >
+                      (التعبيرات الاصطلاحية)
+                    </bdi>
+                  </h2>
+                </div>
+                <span className="text-[11px] font-semibold text-[var(--muted)]">
+                  Deyimsel anlam, kullanım notu ve sesli telaffuz
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {dialogueIdioms.map((idm) => (
+                  <div
+                    key={idm.id}
+                    className="rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-l-4 border-l-[#6741D9] p-3.5 flex flex-col justify-between space-y-2.5"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/30 text-[10px] font-extrabold text-[#6741D9] dark:text-[#d0bfff]">
+                          Cümle #{idm.lineNumber} • Kalıp İfade
+                        </span>
+                        <span
+                          dir="rtl"
+                          className="arabic font-arabic text-2xl sm:text-3xl font-bold text-[#087F5B] dark:text-[#20c997] text-right leading-snug"
+                        >
+                          {getDisplayText(idm.arabic)}
+                        </span>
+                      </div>
+
+                      <p className="text-sm font-extrabold text-[var(--foreground)]">
+                        {idm.meaningTr}
+                      </p>
+
+                      <p className="text-[11px] font-semibold text-[var(--muted)]">
+                        <strong className="text-[var(--foreground)]">
+                          Kelime Anlamı:
+                        </strong>{" "}
+                        {idm.literalTr}
+                      </p>
+
+                      <div className="rounded-xl bg-[#F7EFE1]/80 dark:bg-[var(--surface)] px-2.5 py-1.5 border border-[#E6D7BE] text-[11px] font-semibold text-[var(--foreground)] leading-snug">
+                        💡 <strong>Kullanım İpucu:</strong> {idm.usageNote}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          void speakHybrid({
+                            text: idm.arabic,
+                            rate: speechRate,
+                          });
+                        }}
+                        className="flex-1 h-9 px-3 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] hover:border-[#0CA678] border-2 border-[#E6D7BE] border-b-3 text-xs font-extrabold text-[var(--foreground)] flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Volume2 size={14} className="text-[#0CA678]" />
+                        <span>🔊 Dinle</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          openShadowingCoach({
+                            text: idm.arabic,
+                          });
+                        }}
+                        className="flex-1 h-9 px-3 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] hover:bg-[#e8e2ff] border-2 border-[#6741D9] border-b-3 text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Mic size={14} />
+                        <span>🎙️ Telaffuz Et</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {dialogueVocabEntries.map((entry: DialogueVocabularyEntry) => {
             const word = entry.item;
             const isFavWord = mounted && isWordFavorite(word.id);
@@ -1716,7 +1940,8 @@ export default function DialogueDetailPage({
               </div>
             );
           })}
-        </section>
+          </section>
+        </div>
       ) : (
         <section className="space-y-2.5">
           {dialogue.satirlar.map((line) => {
@@ -2123,6 +2348,26 @@ export default function DialogueDetailPage({
                   </>
                 )}
 
+                {/* CÜMLELER ARASI GÖLGELEME BOŞLUĞU: "ŞİMDİ TEKRAR EDİN" GERİ SAYIM ÇUBUĞU */}
+                {isShadowingPause && shadowingPauseLineSira === line.sira && (
+                  <div className="mt-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border-2 border-[#0CA678] px-3 py-2 space-y-1.5 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-extrabold text-[#087F5B] dark:text-[#20c997] flex items-center gap-1.5">
+                        <span>🎙️ Şimdi yüksek sesle tekrar edin...</span>
+                      </span>
+                      <span className="text-[11px] font-extrabold text-[#087F5B] dark:text-emerald-300 tabular-nums">
+                        {((shadowingPauseMs * shadowingPauseRemainingPct) / 100000).toFixed(1)} sn
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-emerald-200/70 dark:bg-emerald-900 overflow-hidden">
+                      <div
+                        className="h-full bg-[#0CA678] rounded-full transition-none"
+                        style={{ width: `${shadowingPauseRemainingPct}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Rol Yapma Modunda Sıra Kullanıcıdaysa Canlı Mikrofon ve Otomatik Geçiş Rehberi */}
                 {isWaitingUser && (
                   <div className="mt-2.5 p-2.5 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-emerald-500 space-y-2">
@@ -2196,24 +2441,120 @@ export default function DialogueDetailPage({
         </section>
       )}
 
-      {/* BÖLÜM 5: ALT TAMAMLAMA CTA VE ÖNCEKİ/SONRAKİ DİYALOG GEÇİŞİ */}
+      {/* DİYALOG CÜMLELERİNİN ALTINDAKİ KALIP İFADELER KART BÖLÜMÜ (Dinle/Telaffuz/Rol Yapma Modlarında) */}
+      {studyMode !== "vocabulary" && dialogueIdioms.length > 0 && (
+        <section className="rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3.5 sm:p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
+            <h2 className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] flex items-center gap-1.5 flex-wrap">
+              <span>✨ Bu Diyalogdaki Kalıp İfadeler</span>
+              <bdi
+                dir="rtl"
+                className="arabic font-arabic text-base text-[#087F5B] dark:text-[#20c997]"
+              >
+                (التعبيرات الاصطلاحية)
+              </bdi>
+            </h2>
+            <span className="px-2 py-0.5 rounded-lg bg-[#6741D9]/15 text-[#6741D9] dark:text-[#d0bfff] text-[11px] font-extrabold">
+              {dialogueIdioms.length} Kalıp İfade
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {dialogueIdioms.map((idm) => (
+              <div
+                key={idm.id}
+                className="rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] border-l-4 border-l-[#6741D9] p-3 flex flex-col justify-between gap-2"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[10px] font-extrabold text-[#6741D9] bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] px-2 py-0.5 rounded-md">
+                      Cümle #{idm.lineNumber}
+                    </span>
+                    <span
+                      dir="rtl"
+                      className="arabic font-arabic text-xl sm:text-2xl font-bold text-[#087F5B] dark:text-[#20c997] text-right leading-snug"
+                    >
+                      {getDisplayText(idm.arabic)}
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                    {idm.meaningTr}
+                  </p>
+                  <p className="text-[11px] font-medium text-[var(--muted)] leading-snug">
+                    💡 {idm.usageNote}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      void speakHybrid({
+                        text: idm.arabic,
+                        rate: speechRate,
+                      });
+                    }}
+                    className="flex-1 h-8 px-2.5 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] hover:border-[#0CA678] border border-[#E6D7BE] text-[11px] font-extrabold text-[var(--foreground)] flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Volume2 size={13} className="text-[#0CA678]" />
+                    <span>🔊 Dinle</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      openShadowingCoach({
+                        text: idm.arabic,
+                      });
+                    }}
+                    className="flex-1 h-8 px-2.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] hover:bg-[#e8e2ff] border border-[#6741D9]/50 text-[11px] font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <Mic size={13} />
+                    <span>🎙️ Telaffuz Et</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* BÖLÜM 5: ALT TAMAMLAMA CTA, BAŞARI KARTI PAYLAŞIMI VE ÖNCEKİ/SONRAKİ DİYALOG GEÇİŞİ */}
       <section className="space-y-3 pt-2">
-        <button
-          type="button"
-          onClick={handleCompleteAndContinue}
-          className="w-full py-3.5 px-6 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm sm:text-base rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
-        >
-          <CheckCircle2 size={20} className="shrink-0 w-5 h-5" />
-          <span>
-            {isCompleted
-              ? nextDialogue
-                ? `Sonraki Diyaloğa Geç (${nextDialogue.baslik_tr})`
-                : "Diyalog Kütüphanesine Dön"
-              : nextDialogue
-              ? `Diyaloğu Tamamla ve Sonrakine Geç (${nextDialogue.baslik_tr})`
-              : "Diyaloğu Tamamlandı Olarak İşaretle"}
-          </span>
-        </button>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <button
+            type="button"
+            onClick={handleCompleteAndContinue}
+            className="sm:col-span-2 py-3.5 px-5 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm sm:text-base rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+          >
+            <CheckCircle2 size={20} className="shrink-0 w-5 h-5" />
+            <span>
+              {isCompleted
+                ? nextDialogue
+                  ? `Sonraki Diyaloğa Geç (${nextDialogue.baslik_tr})`
+                  : "Diyalog Kütüphanesine Dön"
+                : nextDialogue
+                ? `Diyaloğu Tamamla ve Sonrakine Geç (${nextDialogue.baslik_tr})`
+                : "Diyaloğu Tamamlandı Olarak İşaretle"}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              if (!isCompleted) {
+                toggleCompletedDialogue(dialogue.id);
+              }
+              setIsShareModalOpen(true);
+            }}
+            className="py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold text-xs sm:text-sm rounded-2xl border-b-4 border-amber-800 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+          >
+            <Share2 size={17} className="shrink-0" />
+            <span>🏆 Başarı Kartını Paylaş / İndir</span>
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {prevDialogue ? (

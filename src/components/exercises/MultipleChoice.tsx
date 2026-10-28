@@ -26,12 +26,14 @@ import {
   X,
   ListChecks,
   Eye,
+  Share2,
 } from "lucide-react";
 import { useCountdown } from "@/lib/useTimer";
 import { speakHybrid, playTTS } from "@/lib/audio";
 import { useSettings } from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
 import { formatArabicText } from "@/lib/arabicTextUtils";
+import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
 
 export type QuizContentType = "words" | "sentences" | "mixed";
 export type FeedbackMode = "instant" | "end";
@@ -217,6 +219,7 @@ export default function MultipleChoice({
   >({});
   const [isFinished, setIsFinished] = useState(false);
   const [isTimeUp, setIsTimeUp] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [resultViewMode, setResultViewMode] = useState<"summary" | "review">(
     "summary"
   );
@@ -680,6 +683,31 @@ export default function MultipleChoice({
             </div>
           </div>
         )}
+
+        {/* BAŞARI KARTINI PAYLAŞ / İNDİR */}
+        <ShareAchievementModal
+          isOpen={shareOpen}
+          onClose={() => setShareOpen(false)}
+          title="Çoktan Seçmeli Kelime & Cümle Testi"
+          subtitle={`${questions.length} Sorudan ${correctCount} Doğru Yanıt`}
+          levelLabel="A1-B2"
+          scorePercent={pct}
+          pointsText={`${totalPoints} Puan`}
+          wordsCount={questions.length}
+          badgeType="exercise"
+        />
+
+        <button
+          type="button"
+          onClick={() => {
+            playClick();
+            setShareOpen(true);
+          }}
+          className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white border-b-4 border-amber-800 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+        >
+          <Share2 size={16} />
+          <span>🏆 Başarı Kartını Paylaş / İndir</span>
+        </button>
 
         {/* 4 AKSİYON BUTONU (ÇİFT İKON / EMOJİ TEMİZLENDİ) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

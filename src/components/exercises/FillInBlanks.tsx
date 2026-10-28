@@ -30,6 +30,7 @@ import {
   Headphones,
   Puzzle,
   ListChecks,
+  Share2,
 } from "lucide-react";
 import { useCountdown } from "@/lib/useTimer";
 import {
@@ -43,6 +44,7 @@ import { useSettings } from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
 import { formatArabicText, removeArabicHarakat } from "@/lib/arabicTextUtils";
 import ArabicVirtualKeyboard from "@/components/ui/ArabicVirtualKeyboard";
+import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
 import { FeedbackMode } from "./MultipleChoice";
 
 export type FillSubMode = "choices" | "dictation";
@@ -108,6 +110,7 @@ export default function FillInBlanks({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [isTimeUp, setIsTimeUp] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   // Instant mode & End mode state
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
@@ -594,6 +597,17 @@ export default function FillInBlanks({
 
     return (
       <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-5 sm:p-7 space-y-4 max-w-2xl mx-auto">
+        <ShareAchievementModal
+          isOpen={shareOpen}
+          onClose={() => setShareOpen(false)}
+          title="Boşluk Doldurma & İmla Alıştırması"
+          subtitle={`${questions.length} Cümleden ${correctCount} Doğru Tamamlama`}
+          levelLabel="A1-B2"
+          scorePercent={pct}
+          pointsText={`${totalPoints} Puan`}
+          wordsCount={questions.length}
+          badgeType="exercise"
+        />
         <div className="text-center space-y-3">
           <div
             className={`w-16 h-16 rounded-2xl border-2 border-b-4 flex items-center justify-center mx-auto ${
@@ -910,6 +924,19 @@ export default function FillInBlanks({
             </div>
           </div>
         )}
+
+        {/* BAŞARI KARTINI PAYLAŞ / İNDİR BUTONU */}
+        <button
+          type="button"
+          onClick={() => {
+            playClick();
+            setShareOpen(true);
+          }}
+          className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white border-b-4 border-amber-800 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+        >
+          <Share2 size={16} />
+          <span>🏆 Başarı Kartını Paylaş / İndir</span>
+        </button>
 
         {/* 4 AKSİYON BUTONU (ÇİFT İKON / EMOJİ TEMİZLENDİ) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

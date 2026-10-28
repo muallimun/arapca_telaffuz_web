@@ -19,12 +19,14 @@ import {
   Play,
   Target,
   X,
+  Share2,
 } from "lucide-react";
 import { useCountdown } from "@/lib/useTimer";
 import { playTTS } from "@/lib/audio";
 import { useSettings } from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
 import { formatArabicText } from "@/lib/arabicTextUtils";
+import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
 import { FeedbackMode, QuizContentType } from "./MultipleChoice";
 
 interface Props {
@@ -102,6 +104,7 @@ export default function MatchingGame({
   const [isExamEvaluated, setIsExamEvaluated] = useState(false);
   const [showEndBar, setShowEndBar] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   // SVG Board & Socket Refs for coordinate calculation
   const boardRef = useRef<HTMLDivElement | null>(null);
@@ -961,7 +964,30 @@ export default function MatchingGame({
             </div>
 
             {/* Kompakt Aksiyon Butonları */}
+            <ShareAchievementModal
+              isOpen={shareOpen}
+              onClose={() => setShareOpen(false)}
+              title="Ok Çizerek Eşleştirme Alıştırması"
+              subtitle={`${totalPairs} Eşleştirmeden ${correctConnectionsCount} Doğru`}
+              levelLabel="A1-B2"
+              scorePercent={accuracyPct}
+              pointsText={`${exerciseScore} Puan`}
+              wordsCount={totalPairs}
+              badgeType="exercise"
+            />
             <div className="flex flex-wrap items-center justify-end gap-2 pt-1 border-t border-dashed border-stone-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setShareOpen(true);
+                }}
+                className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold text-xs rounded-xl border-b-2 border-amber-800 active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Share2 size={14} />
+                <span>🏆 Başarı Kartını Paylaş / İndir</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleRepeatSameSet}

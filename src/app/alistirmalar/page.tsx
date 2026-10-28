@@ -13,6 +13,7 @@ import {
   Info,
   Layers,
   Timer,
+  ListOrdered,
 } from "lucide-react";
 import { playClick } from "@/lib/sfxManager";
 import { diyaloglar, sozluk } from "@/lib/data";
@@ -31,12 +32,14 @@ import FillInBlanks, {
   FillSubMode,
 } from "@/components/exercises/FillInBlanks";
 import MatchingGame from "@/components/exercises/MatchingGame";
+import SentenceBuilder from "@/components/exercises/SentenceBuilder";
 
 type ExerciseType =
   | "flashcard"
   | "multiple-choice"
   | "fill-in-blanks"
-  | "matching";
+  | "matching"
+  | "sentence-builder";
 
 export default function ExercisesPage() {
   const [selectedType, setSelectedType] = useState<ExerciseType>("flashcard");
@@ -183,6 +186,13 @@ export default function ExercisesPage() {
       subtitle: "Kelime ve cümleleri interaktif ok çizerek eşleştirin",
       icon: Link2,
     },
+    {
+      id: "sentence-builder",
+      title: "Cümle Kurma (Kelime Sıralama)",
+      arabicBadge: "تَرْتِيبُ الْجُمَل",
+      subtitle: "Dinlediğiniz diyalog cümlesinin kelimelerini sağdan sola sıralayın",
+      icon: ListOrdered,
+    },
   ];
 
   const rangeOptions = [
@@ -227,7 +237,7 @@ export default function ExercisesPage() {
       : sentenceCountInPool;
 
   const activePoolCountLabel =
-    selectedType === "fill-in-blanks"
+    selectedType === "fill-in-blanks" || selectedType === "sentence-builder"
       ? `${sentenceCountInPool} Cümle`
       : contentType === "sentences"
       ? `${effectiveSentenceCount} Cümle`
@@ -286,9 +296,9 @@ export default function ExercisesPage() {
 
       {!isPlaying ? (
         <>
-          {/* 1. ÜSTTE 2x2 (MOBİL) / 4'LÜ (MASAÜSTÜ) KOMPAKT ALIŞTIRMA TÜRÜ SEÇİM IZGARASI */}
+          {/* 1. ÜSTTE 2 SÜTUNLU (MOBİL) / 5'Lİ (MASAÜSTÜ) KOMPAKT ALIŞTIRMA TÜRÜ SEÇİM IZGARASI */}
           <section aria-label="Alıştırma Türü Seçimi">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
               {exerciseCards.map((card) => {
                 const isSelected = selectedType === card.id;
                 const Icon = card.icon;
@@ -399,7 +409,8 @@ export default function ExercisesPage() {
               </div>
 
               {/* 3. İçerik Türü (Soru Kaynağı: Kelimeler | Cümleler | Karışık) */}
-              {selectedType !== "fill-in-blanks" && (
+              {selectedType !== "fill-in-blanks" &&
+                selectedType !== "sentence-builder" && (
                 <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1.5 h-auto border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between sm:justify-start gap-1.5">
                   <span className="text-[11px] font-bold text-[var(--muted)] px-1 whitespace-nowrap">
                     İçerik:
@@ -621,6 +632,15 @@ export default function ExercisesPage() {
               contentType={contentType}
               timeLimit={timeLimit}
               questionCount={questionCount}
+              feedbackMode={feedbackMode}
+              onClose={() => setIsPlaying(false)}
+            />
+          )}
+          {selectedType === "sentence-builder" && (
+            <SentenceBuilder
+              dialogues={selectedDialogues}
+              questionCount={questionCount}
+              timeLimit={timeLimit}
               feedbackMode={feedbackMode}
               onClose={() => setIsPlaying(false)}
             />

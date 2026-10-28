@@ -18,6 +18,9 @@ interface AudioState {
   activeWordIndex: number | null;
   activeWordProgress: number;
   lastPlayedDurationSec: number;
+  isShadowingPause: boolean;
+  shadowingPauseMs: number;
+  setShadowingPause: (isPaused: boolean, durationMs?: number) => void;
   playAudio: (
     url: string,
     lineId: number,
@@ -106,6 +109,15 @@ export const useAudioStore = create<AudioState>((set, get) => {
     activeWordIndex: null,
     activeWordProgress: 0,
     lastPlayedDurationSec: 2.5,
+    isShadowingPause: false,
+    shadowingPauseMs: 0,
+
+    setShadowingPause: (isPaused: boolean, durationMs = 0) => {
+      set({
+        isShadowingPause: isPaused,
+        shadowingPauseMs: isPaused ? durationMs : 0,
+      });
+    },
 
     setPlaybackRate: (rate: number) => {
       setActiveAudioPlaybackRate(rate);
@@ -130,6 +142,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
         playingLineId: null,
         activeWordIndex: null,
         activeWordProgress: 0,
+        isShadowingPause: false,
+        shadowingPauseMs: 0,
       });
 
       if (currentResolve) {
@@ -145,6 +159,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
         currentResolve();
         currentResolve = null;
       }
+      set({ isShadowingPause: false, shadowingPauseMs: 0 });
       void requestWakeLock("audio");
 
       const startedAt =
@@ -241,7 +256,11 @@ export const useAudioStore = create<AudioState>((set, get) => {
         currentResolve = null;
       }
       void requestWakeLock("audio");
-      set({ playingLineId: lineId });
+      set({
+        playingLineId: lineId,
+        isShadowingPause: false,
+        shadowingPauseMs: 0,
+      });
 
       const startedAt =
         typeof performance !== "undefined" ? performance.now() : Date.now();
