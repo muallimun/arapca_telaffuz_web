@@ -26,6 +26,7 @@ import {
   getCombinedIdiomsCatalog,
   extractDialoguesIdioms,
 } from "@/lib/arabicIdioms";
+import { resolveMistakesPool } from "@/lib/mistakeUtils";
 
 import Flashcard, {
   getShortDialogueSentences,
@@ -52,7 +53,8 @@ function ExercisesPageContent() {
   const [selectedType, setSelectedType] = useState<ExerciseType>("flashcard");
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const { favoriteWords, weakWords } = useUserStore();
+  const { favoriteWords, weakWords, mistakeIds, clearMistakes } =
+    useUserStore();
 
   // Kompakt Ayar Barı State
   const [rangePreset, setRangePreset] = useState<string>("all-dict");
@@ -65,27 +67,37 @@ function ExercisesPageContent() {
   const [feedbackMode, setFeedbackMode] = useState<FeedbackMode>("instant");
   const [fillSubMode, setFillSubMode] = useState<FillSubMode>("choices");
 
-  // Diyalog sayfasından "?source=idioms&dialogueId=dlg_XX" ile gelindiğinde otomatik seç
+  // Diyalog sayfasından "?source=idioms&dialogueId=dlg_XX" veya "?source=mistakes" ile gelindiğinde otomatik seç
   useEffect(() => {
     const sourceParam = searchParams.get("source");
     const dlgParam = searchParams.get("dialogueId");
     if (sourceParam === "idioms") {
       setContentType("idioms");
+    } else if (sourceParam === "mistakes") {
+      setRangePreset("mistakes");
     }
     if (dlgParam && diyaloglar.some((d) => d.id === dlgParam)) {
       setSingleDialogueId(dlgParam);
     }
   }, [searchParams]);
 
+  const mistakesResolved = useMemo(
+    () => resolveMistakesPool(mistakeIds),
+    [mistakeIds]
+  );
+
   const selectedDialogues = useMemo(() => {
     if (singleDialogueId !== "all") {
       return diyaloglar.filter((dlg) => dlg.id === singleDialogueId);
+    }
+    if (rangePreset === "mistakes" && mistakesResolved.dialogues.length > 0) {
+      return mistakesResolved.dialogues;
     }
     return diyaloglar.filter((dlg) => {
       const num = parseInt(dlg.id.replace("dlg_", ""), 10);
       return num >= startNum && num <= endNum;
     });
-  }, [singleDialogueId, startNum, endNum]);
+  }, [singleDialogueId, rangePreset, mistakesResolved.dialogues, startNum, endNum]);
 
   const sentenceCountInPool = useMemo(() => {
     return selectedDialogues.reduce(
@@ -104,6 +116,11 @@ function ExercisesPageContent() {
     if (singleDialogueId !== "all") {
       const dlgExtracted = extractDialoguesIdioms(selectedDialogues);
       return dlgExtracted.length > 0 ? dlgExtracted : allCatalog;
+    }
+    if (rangePreset === "mistakes") {
+      return mistakesResolved.idioms.length > 0
+        ? mistakesResolved.idioms
+        : allCatalog;
     }
     if (rangePreset === "1-15") {
       const extracted = extractDialoguesIdioms(selectedDialogues);
@@ -127,7 +144,7 @@ function ExercisesPageContent() {
       return Array.from(map.values());
     }
     return allCatalog;
-  }, [singleDialogueId, rangePreset, selectedDialogues]);
+  }, [singleDialogueId, rangePreset, selectedDialogues, mistakesResolved.idioms]);
 
   const { combinedVocabulary, poolNotice } = useMemo(() => {
     if (singleDialogueId !== "all") {
@@ -136,6 +153,34 @@ function ExercisesPageContent() {
           (e) => e.item
         ),
         poolNotice: null as string | null,
+      };
+    }
+
+    if (rangePreset === "mistakes") {
+      if (mistakeIds.length === 0) {
+        return {
+          combinedVocabulary: [],
+          poolNotice: null,
+        };
+      }
+      if (mistakesResolved.words.length >= 4) {
+        return {
+          combinedVocabulary: mistakesResolved.words,
+          poolNotice: null,
+        };
+      }
+      const padded = [
+        ...mistakesResolved.words,
+        ...sozluk
+          .filter((w) => !mistakesResolved.words.some((mw) => mw.id === w.id))
+          .slice(0, Math.max(4, 8 - mistakesResolved.words.length)),
+      ];
+      return {
+        combinedVocabulary: padded,
+        poolNotice:
+          mistakesResolved.words.length > 0
+            ? `Hata defterinizde ${mistakesResolved.words.length} kelime/ifade bulunduğu için şık havuzu genel sözlükle desteklendi. İlk denemede doğru bildikleriniz hata defterinden otomatik silinir.`
+            : `Hata defterinizdeki diyalog cümleleriyle pratik yapabilirsiniz. İlk denemede doğru bildikleriniz hata defterinden otomatik silinir.`,
       };
     }
 
@@ -199,6 +244,8 @@ function ExercisesPageContent() {
     selectedDialogues,
     favoriteWords,
     weakWords,
+    mistakeIds.length,
+    mistakesResolved.words,
   ]);
 
   const exerciseCards: {
@@ -247,12 +294,18 @@ function ExercisesPageContent() {
 
   const rangeOptions = [
     { id: "all-dict", label: `Tüm Sözlük (${sozluk.length})`, s: 1, e: 60 },
+    {
+      id: "mistakes",
+      label: `⚡ Zorlandıklarım / Hata Defteri (${mistakeIds.length})`,
+      s: 1,
+      e: 60,
+    },
     { id: "1-15", label: "Başlangıç Kuru (1-15)", s: 1, e: 15 },
     { id: "16-35", label: "Orta Kur (16-35)", s: 16, e: 35 },
     { id: "36-60", label: "İleri Kur (36-60)", s: 36, e: 60 },
     {
       id: "favorites",
-      label: `Favori Kelimelerim (${favoriteWords.length})`,
+      label: `Favorilerim / Kaydedilenler (${favoriteWords.length})`,
       s: 1,
       e: 60,
     },
@@ -263,6 +316,11 @@ function ExercisesPageContent() {
       e: 60,
     },
   ];
+
+  const isMistakesEmpty =
+    singleDialogueId === "all" &&
+    rangePreset === "mistakes" &&
+    mistakeIds.length === 0;
 
   const handlePoolSelectChange = (presetId: string) => {
     playClick();
@@ -640,18 +698,60 @@ function ExercisesPageContent() {
                 type="button"
                 onClick={handleStartExercise}
                 disabled={
-                  combinedVocabulary.length < 4 &&
-                  sentenceCountInPool < 4 &&
-                  idiomsPool.length < 1
+                  isMistakesEmpty ||
+                  (combinedVocabulary.length < 4 &&
+                    sentenceCountInPool < 4 &&
+                    idiomsPool.length < 1)
                 }
                 className="col-span-2 sm:col-span-1 sm:ml-auto w-full sm:w-auto h-10 px-5 bg-[#0CA678] hover:bg-[#099268] disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm rounded-xl border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-sm shrink-0 cursor-pointer whitespace-nowrap sticky bottom-2 z-20"
               >
                 <Play size={15} fill="currentColor" />
-                <span>Alıştırmayı Başlat ({activePoolCountLabel})</span>
+                <span className="truncate">
+                  Alıştırmayı Başlat ({activePoolCountLabel})
+                </span>
               </button>
             </div>
 
-            {poolNotice && (
+            {isMistakesEmpty && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/50 rounded-xl px-4 py-3 border-2 border-[#0CA678]/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-extrabold text-[#087F5B] dark:text-[#20c997]">
+                <div className="flex items-center gap-2 text-center sm:text-left">
+                  <Check size={16} className="shrink-0 text-[#0CA678]" />
+                  <span>
+                    Harika! Şu an hata defterinizde zorlandığınız bir kelime veya cümle bulunmuyor.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handlePoolSelectChange("all-dict")}
+                  className="px-3 py-1.5 rounded-lg bg-[#0CA678] text-white text-xs font-extrabold shrink-0 cursor-pointer"
+                >
+                  Tüm Sözlüğe Geç
+                </button>
+              </div>
+            )}
+
+            {!isMistakesEmpty &&
+              singleDialogueId === "all" &&
+              rangePreset === "mistakes" &&
+              mistakeIds.length > 0 && (
+                <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl px-3.5 py-2 border border-amber-300 dark:border-amber-700/60 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-amber-900 dark:text-amber-200">
+                  <span>
+                    ⚡ Akıllı Hata Defterinizde <strong>{mistakeIds.length}</strong> öğe kayıtlı. İlk denemede doğru cevapladığınız sorular listeden otomatik çıkarılır.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      clearMistakes();
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-amber-400 text-[11px] font-extrabold text-amber-800 dark:text-amber-300 hover:bg-amber-100 cursor-pointer shrink-0"
+                  >
+                    Defteri Temizle
+                  </button>
+                </div>
+              )}
+
+            {poolNotice && !isMistakesEmpty && (
               <div className="bg-white dark:bg-[var(--background)] rounded-xl px-3 py-1.5 border border-[#E6D7BE] flex items-center gap-2 text-xs font-semibold text-[#6741D9] dark:text-[#d0bfff]">
                 <Info size={14} className="shrink-0" />
                 <span>{poolNotice}</span>
@@ -669,6 +769,7 @@ function ExercisesPageContent() {
               dialogues={selectedDialogues}
               contentType={contentType}
               questionCount={questionCount}
+              isMistakesMode={rangePreset === "mistakes"}
               onClose={() => setIsPlaying(false)}
             />
           )}
@@ -681,6 +782,7 @@ function ExercisesPageContent() {
               timeLimit={timeLimit}
               questionCount={questionCount}
               feedbackMode={feedbackMode}
+              isMistakesMode={rangePreset === "mistakes"}
               onClose={() => setIsPlaying(false)}
             />
           )}
@@ -694,6 +796,7 @@ function ExercisesPageContent() {
               questionCount={questionCount}
               feedbackMode={feedbackMode}
               initialSubMode={fillSubMode}
+              isMistakesMode={rangePreset === "mistakes"}
               onClose={() => setIsPlaying(false)}
             />
           )}
@@ -706,6 +809,7 @@ function ExercisesPageContent() {
               timeLimit={timeLimit}
               questionCount={questionCount}
               feedbackMode={feedbackMode}
+              isMistakesMode={rangePreset === "mistakes"}
               onClose={() => setIsPlaying(false)}
             />
           )}
@@ -717,6 +821,7 @@ function ExercisesPageContent() {
               questionCount={questionCount}
               timeLimit={timeLimit}
               feedbackMode={feedbackMode}
+              isMistakesMode={rangePreset === "mistakes"}
               onClose={() => setIsPlaying(false)}
             />
           )}

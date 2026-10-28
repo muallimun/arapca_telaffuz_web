@@ -114,13 +114,13 @@ export default function RootLayout({
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1.5 sm:gap-2.5">
             <a
               href="https://t.me/muallimun"
               target="_blank"
               rel="noopener noreferrer"
               title="Telegram Kanalımıza Katılın"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 hover:border-sky-300 transition-all shadow-xs"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 hover:border-sky-300 transition-all shadow-xs"
             >
               <svg
                 className="w-3.5 h-3.5 fill-current shrink-0"
@@ -137,7 +137,7 @@ export default function RootLayout({
               target="_blank"
               rel="noopener noreferrer"
               title="WhatsApp Kanalımızı Takip Edin"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 transition-all shadow-xs"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 transition-all shadow-xs"
             >
               <svg
                 className="w-3.5 h-3.5 fill-current shrink-0"
@@ -150,10 +150,27 @@ export default function RootLayout({
             </a>
 
             <a
+              href="https://www.youtube.com/@MuallimunNet"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="YouTube Kanalımıza Abone Olun"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:border-red-300 transition-all shadow-xs"
+            >
+              <svg
+                className="w-3.5 h-3.5 fill-current shrink-0"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+              </svg>
+              <span>YouTube</span>
+            </a>
+
+            <a
               href="https://muallimun.net"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#087F5B] dark:text-[#20c997] hover:text-[#0CA678] transition-colors bg-white dark:bg-[var(--background)] rounded-full border border-[#E6D7BE] dark:border-[var(--border)] shadow-xs"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold text-[#087F5B] dark:text-[#20c997] hover:text-[#0CA678] transition-colors bg-white dark:bg-[var(--background)] rounded-full border border-[#E6D7BE] dark:border-[var(--border)] shadow-xs"
             >
               <span>muallimun.net</span>
             </a>

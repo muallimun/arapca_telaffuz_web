@@ -6,6 +6,7 @@ import { useSettings, SpeechRate } from "@/store/settings";
 import { useAudioStore } from "@/store/audioStore";
 import { sozluk } from "@/lib/data";
 import { analyzeAndMatchWord } from "@/lib/dict";
+import { normalizeToCanonicalMistakeId } from "@/lib/mistakeUtils";
 import {
   playTTS,
   playAudioElement,
@@ -68,6 +69,7 @@ export interface TargetForm {
 
 interface Props {
   text: string;
+  itemId?: string;
   refAudioUrl?: string;
   forms?: TargetForm[];
   voice?: VoiceOption;
@@ -79,6 +81,7 @@ const DEFAULT_BARS = Array(48).fill(0.08);
 
 export default function ShadowingModal({
   text,
+  itemId,
   refAudioUrl,
   forms,
   voice = "male",
@@ -93,6 +96,9 @@ export default function ShadowingModal({
 
   const {
     addWeakWord,
+    addMistake,
+    removeMistake,
+    isMistake,
     recordPronunciationScore,
     pronunciationScores,
   } = useUserStore();
@@ -657,6 +663,18 @@ export default function ShadowingModal({
     );
     setAdaptiveResult(coaching);
 
+    // Akıllı Hata Defteri (Spaced Repetition): <%70 ise ekle, >=%85 ise çıkar
+    const canonicalTargetId = normalizeToCanonicalMistakeId(itemId, activeText);
+    if (result.overallScore < 70) {
+      if (canonicalTargetId) {
+        addMistake(canonicalTargetId);
+      }
+    } else if (result.overallScore >= 85) {
+      if (canonicalTargetId && isMistake(canonicalTargetId)) {
+        removeMistake(canonicalTargetId);
+      }
+    }
+
     result.words.forEach((w) => {
       if (w.status !== "correct" && w.targetWord && w.targetWord.length > 1) {
         const morphMatch = analyzeAndMatchWord(w.targetWord);
@@ -670,6 +688,9 @@ export default function ShadowingModal({
           );
         if (dictWord) {
           addWeakWord(dictWord);
+          if (result.overallScore < 70) {
+            addMistake(dictWord.id);
+          }
         }
       }
     });

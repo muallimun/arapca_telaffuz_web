@@ -34,6 +34,7 @@ import ShadowingModal from "@/components/ui/ShadowingModal";
 import { formatArabicText } from "@/lib/arabicTextUtils";
 import { QuizContentType } from "./MultipleChoice";
 import { ArabicIdiom } from "@/lib/arabicIdioms";
+import { normalizeToCanonicalMistakeId } from "@/lib/mistakeUtils";
 
 export interface FlashcardItem {
   id: string;
@@ -56,6 +57,7 @@ interface Props {
   dialogues?: Dialogue[];
   contentType?: QuizContentType;
   questionCount?: number;
+  isMistakesMode?: boolean;
   onClose?: () => void;
 }
 
@@ -93,6 +95,7 @@ export default function Flashcard({
   dialogues = [],
   contentType = "words",
   questionCount = 20,
+  isMistakesMode = false,
   onClose,
 }: Props) {
   const [roundSeed, setRoundSeed] = useState(0);
@@ -185,6 +188,9 @@ export default function Flashcard({
     isWordFavorite,
     toggleLearnedWord,
     isWordLearned,
+    addMistake,
+    removeMistake,
+    isMistake,
     addStudyMinutes,
   } = useUserStore();
   const { speechRate, showHareke, arabicFont } = useSettings();
@@ -363,7 +369,15 @@ export default function Flashcard({
   const currentWord = currentCard.wordItem;
   const isFav = currentWord ? isWordFavorite(currentWord.id) : false;
   const isLearned = currentWord ? isWordLearned(currentWord.id) : false;
-  const isMarkedHard = hardItems.some((h) => h.id === currentCard.id);
+  const canonicalCardMistakeId = normalizeToCanonicalMistakeId(
+    currentWord?.id || currentCard.id,
+    currentCard.arabic
+  );
+  const isInMistakes = canonicalCardMistakeId
+    ? isMistake(canonicalCardMistakeId)
+    : false;
+  const isMarkedHard =
+    hardItems.some((h) => h.id === currentCard.id) || isInMistakes;
 
   const primaryArabic = currentCard.arabic;
   const cleanArabic = primaryArabic.split("/")[0].trim();
@@ -571,6 +585,12 @@ export default function Flashcard({
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleLearnedWord(currentWord.id);
+                    if (
+                      (!isLearned && isMistakesMode && canonicalCardMistakeId) ||
+                      (!isLearned && isInMistakes && canonicalCardMistakeId)
+                    ) {
+                      removeMistake(canonicalCardMistakeId);
+                    }
                     playClick();
                   }}
                   className={`px-2.5 py-1 rounded-xl border-2 border-b-3 text-xs font-bold flex items-center gap-1 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
@@ -588,11 +608,19 @@ export default function Flashcard({
                   onClick={(e) => {
                     e.stopPropagation();
                     playClick();
-                    setHardItems((prev) =>
-                      prev.some((h) => h.id === currentCard.id)
-                        ? prev.filter((h) => h.id !== currentCard.id)
-                        : [...prev, currentCard]
-                    );
+                    if (isMarkedHard) {
+                      setHardItems((prev) =>
+                        prev.filter((h) => h.id !== currentCard.id)
+                      );
+                      if (canonicalCardMistakeId) {
+                        removeMistake(canonicalCardMistakeId);
+                      }
+                    } else {
+                      setHardItems((prev) => [...prev, currentCard]);
+                      if (canonicalCardMistakeId) {
+                        addMistake(canonicalCardMistakeId);
+                      }
+                    }
                   }}
                   className={`px-2.5 py-1 rounded-xl border-2 border-b-3 text-xs font-bold flex items-center gap-1 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                     isMarkedHard
@@ -601,7 +629,9 @@ export default function Flashcard({
                   }`}
                 >
                   <Target size={13} />
-                  <span>{isMarkedHard ? "Tekrar Listesinde" : "Tekrara Ekle"}</span>
+                  <span>
+                    {isMarkedHard ? "Hata Defterinde" : "Tekrara Ekle"}
+                  </span>
                 </button>
               )}
             </div>

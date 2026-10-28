@@ -36,6 +36,7 @@ import { useUserStore } from "@/store/userStore";
 import { formatArabicText } from "@/lib/arabicTextUtils";
 import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
 import { ArabicIdiom } from "@/lib/arabicIdioms";
+import { normalizeToCanonicalMistakeId } from "@/lib/mistakeUtils";
 
 export type QuizContentType = "words" | "idioms" | "sentences" | "mixed";
 export type FeedbackMode = "instant" | "end";
@@ -79,6 +80,7 @@ interface Props {
   feedbackMode?: FeedbackMode;
   timeLimit: number | null;
   questionCount?: number;
+  isMistakesMode?: boolean;
   onClose?: () => void;
 }
 
@@ -90,15 +92,17 @@ export default function MultipleChoice({
   feedbackMode = "instant",
   timeLimit,
   questionCount = 10,
+  isMistakesMode = false,
   onClose,
 }: Props) {
   const fanfarePlayedRef = useRef(false);
+  const wrongAttemptedQuestionsRef = useRef<Set<string>>(new Set());
   const [roundSeed, setRoundSeed] = useState(0);
   const [customQuestions, setCustomQuestions] = useState<
     QuizQuestionItem[] | null
   >(null);
   const { speechRate, showHareke, arabicFont } = useSettings();
-  const { addStudyMinutes } = useUserStore();
+  const { addStudyMinutes, addMistake, removeMistake } = useUserStore();
 
   const generatedQuestions: QuizQuestionItem[] = useMemo(() => {
     const wordPool: {
@@ -344,6 +348,23 @@ export default function MultipleChoice({
   const handleSelect = (text: string, isCorrect: boolean) => {
     if (isTimeUp) return;
     if (feedbackMode === "instant" && selected) return;
+
+    const hadPreviousAttempt =
+      wrongAttemptedQuestionsRef.current.has(currentQuestion.id) ||
+      userAnswers[currentIndex] !== undefined;
+    const canonicalId = normalizeToCanonicalMistakeId(
+      currentQuestion.wordId || currentQuestion.id,
+      currentQuestion.arabic
+    );
+
+    if (!isCorrect) {
+      wrongAttemptedQuestionsRef.current.add(currentQuestion.id);
+      if (canonicalId) {
+        addMistake(canonicalId);
+      }
+    } else if (isMistakesMode && !hadPreviousAttempt && canonicalId) {
+      removeMistake(canonicalId);
+    }
 
     setSelected(text);
     setUserAnswers((prev) => ({

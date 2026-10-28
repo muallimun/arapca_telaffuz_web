@@ -49,6 +49,7 @@ interface UserState {
   favoriteWords: DictionaryItem[];
   learnedWords: string[];
   weakWords: DictionaryItem[];
+  mistakeIds: string[];
   pronunciationScores: number[];
   studyMinutes: number;
   streakDays: number;
@@ -61,6 +62,10 @@ interface UserState {
   toggleLearnedWord: (id: string) => void;
   addWeakWord: (word: DictionaryItem) => void;
   removeWeakWord: (id: string) => void;
+  addMistake: (id: string) => void;
+  removeMistake: (id: string) => void;
+  clearMistakes: () => void;
+  isMistake: (id: string) => boolean;
   recordPronunciationScore: (score: number) => void;
   addStudyMinutes: (minutes: number) => void;
   setDailyGoalMinutes: (minutes: number) => void;
@@ -83,6 +88,7 @@ export const useUserStore = create<UserState>()(
       favoriteWords: [],
       learnedWords: [],
       weakWords: [],
+      mistakeIds: [],
       pronunciationScores: [],
       studyMinutes: 0,
       streakDays: 1,
@@ -173,6 +179,52 @@ export const useUserStore = create<UserState>()(
           weakWords: state.weakWords.filter((w) => w.id !== id),
         })),
 
+      addMistake: (id) =>
+        set((state) => {
+          const cleanId = (id || "").trim();
+          if (!cleanId || state.mistakeIds.includes(cleanId)) return state;
+          return { mistakeIds: [cleanId, ...state.mistakeIds] };
+        }),
+
+      removeMistake: (id) =>
+        set((state) => {
+          const cleanId = (id || "").trim();
+          if (!cleanId) return state;
+          const stripped = cleanId.replace(
+            /^(word_|idiom_|idm_|mc_w_|mc_idm_|mc_sent_|mg_w_|mg_idm_|mg_s_|sb_idm_|sb_)/,
+            ""
+          );
+          return {
+            mistakeIds: state.mistakeIds.filter(
+              (m) =>
+                m !== cleanId &&
+                m !== stripped &&
+                m !== `idiom_${stripped}` &&
+                m !== `word_${stripped}` &&
+                m !== `sent_${stripped}`
+            ),
+          };
+        }),
+
+      clearMistakes: () => set({ mistakeIds: [] }),
+
+      isMistake: (id) => {
+        const cleanId = (id || "").trim();
+        if (!cleanId) return false;
+        const stripped = cleanId.replace(
+          /^(word_|idiom_|idm_|mc_w_|mc_idm_|mc_sent_|mg_w_|mg_idm_|mg_s_|sb_idm_|sb_)/,
+          ""
+        );
+        const list = get().mistakeIds;
+        return (
+          list.includes(cleanId) ||
+          list.includes(stripped) ||
+          list.includes(`idiom_${stripped}`) ||
+          list.includes(`word_${stripped}`) ||
+          list.includes(`sent_${stripped}`)
+        );
+      },
+
       recordPronunciationScore: (score) =>
         set((state) => {
           const today = getTodayDateString();
@@ -218,6 +270,7 @@ export const useUserStore = create<UserState>()(
           favoriteWords: state.favoriteWords,
           learnedWords: state.learnedWords,
           weakWords: state.weakWords,
+          mistakeIds: state.mistakeIds,
           pronunciationScores: state.pronunciationScores,
           studyMinutes: state.studyMinutes,
           streakDays: state.streakDays,
@@ -247,6 +300,9 @@ export const useUserStore = create<UserState>()(
             weakWords: Array.isArray(parsed.weakWords)
               ? parsed.weakWords
               : state.weakWords,
+            mistakeIds: Array.isArray(parsed.mistakeIds)
+              ? parsed.mistakeIds
+              : state.mistakeIds,
             pronunciationScores: Array.isArray(parsed.pronunciationScores)
               ? parsed.pronunciationScores
               : state.pronunciationScores,
@@ -280,6 +336,7 @@ export const useUserStore = create<UserState>()(
           favoriteWords: [],
           learnedWords: [],
           weakWords: [],
+          mistakeIds: [],
           pronunciationScores: [],
           studyMinutes: 0,
           streakDays: 1,

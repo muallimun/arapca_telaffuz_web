@@ -47,6 +47,7 @@ import ArabicVirtualKeyboard from "@/components/ui/ArabicVirtualKeyboard";
 import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
 import { FeedbackMode, QuizContentType } from "./MultipleChoice";
 import { ArabicIdiom, extractDialoguesIdioms } from "@/lib/arabicIdioms";
+import { normalizeToCanonicalMistakeId } from "@/lib/mistakeUtils";
 
 export type FillSubMode = "choices" | "dictation";
 
@@ -71,6 +72,7 @@ interface Props {
   initialSubMode?: FillSubMode;
   timeLimit: number | null;
   questionCount?: number;
+  isMistakesMode?: boolean;
   onClose?: () => void;
 }
 
@@ -101,9 +103,11 @@ export default function FillInBlanks({
   initialSubMode = "choices",
   timeLimit,
   questionCount = 10,
+  isMistakesMode = false,
   onClose,
 }: Props) {
   const fanfarePlayedRef = useRef(false);
+  const wrongAttemptedQuestionsRef = useRef<Set<string>>(new Set());
   const dropZoneRef = useRef<HTMLSpanElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -142,7 +146,7 @@ export default function FillInBlanks({
 
   const { speechRate, showHareke, arabicFont } = useSettings();
   const { playAudio, playTTS } = useAudioStore();
-  const { addStudyMinutes } = useUserStore();
+  const { addStudyMinutes, addMistake, removeMistake } = useUserStore();
   const formatAr = (t: string) => formatArabicText(t, showHareke, arabicFont);
 
   useEffect(() => {
@@ -395,6 +399,24 @@ export default function FillInBlanks({
     (a) => a.isCorrect
   ).length;
 
+  const syncMistakeBook = (q: FillQuestionItem, isRight: boolean) => {
+    const canonicalSentId = normalizeToCanonicalMistakeId(q.id, q.fullArabic);
+    const canonicalWordId = normalizeToCanonicalMistakeId(
+      undefined,
+      q.correctWord
+    );
+    const hadPreviousAttempt = wrongAttemptedQuestionsRef.current.has(q.id);
+
+    if (!isRight) {
+      wrongAttemptedQuestionsRef.current.add(q.id);
+      if (canonicalSentId) addMistake(canonicalSentId);
+      if (canonicalWordId) addMistake(canonicalWordId);
+    } else if (isMistakesMode && !hadPreviousAttempt && hintCount === 0) {
+      if (canonicalSentId) removeMistake(canonicalSentId);
+      if (canonicalWordId) removeMistake(canonicalWordId);
+    }
+  };
+
   // Seçmeli / Sürükle-Bırak Cevaplama
   const handleChooseOption = (word: string) => {
     if (isTimeUp) return;
@@ -404,6 +426,7 @@ export default function FillInBlanks({
       normalizeArabicSpelling(word) ===
       normalizeArabicSpelling(currentQ.correctWord);
 
+    syncMistakeBook(currentQ, isRight);
     setSelectedWord(word);
 
     if (feedbackMode === "end") {
@@ -454,6 +477,8 @@ export default function FillInBlanks({
     const isRight =
       normalizeArabicSpelling(typedText) ===
       normalizeArabicSpelling(currentQ.correctWord);
+
+    syncMistakeBook(currentQ, isRight);
 
     if (feedbackMode === "end") {
       playClick();

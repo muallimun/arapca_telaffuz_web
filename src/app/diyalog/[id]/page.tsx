@@ -189,10 +189,15 @@ export default function DialogueDetailPage({
   >({});
   const [roleplayCompletedBanner, setRoleplayCompletedBanner] =
     useState<boolean>(false);
+  const [roleplayWaitDurationMs, setRoleplayWaitDurationMs] =
+    useState<number>(5000);
+  const [roleplayRemainingPct, setRoleplayRemainingPct] =
+    useState<number>(100);
 
   // Gölgeleme Modal State
   const [shadowingTarget, setShadowingTarget] = useState<{
     text: string;
+    itemId?: string;
     audioUrl?: string;
     voice?: VoiceOption;
     forms?: { label: string; arabic: string }[];
@@ -203,8 +208,20 @@ export default function DialogueDetailPage({
   const roleplayRecorderRef = useRef<RecordingSession16kHz | null>(null);
   const roleplaySpeechRef = useRef<HybridSpeechManager | null>(null);
   const roleplayFinishingRef = useRef<boolean>(false);
+  const roleplayTurnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const roleplayTurnRafRef = useRef<number | null>(null);
 
   const cleanupRoleplayMic = () => {
+    if (roleplayTurnTimerRef.current !== null) {
+      clearTimeout(roleplayTurnTimerRef.current);
+      roleplayTurnTimerRef.current = null;
+    }
+    if (roleplayTurnRafRef.current !== null) {
+      cancelAnimationFrame(roleplayTurnRafRef.current);
+      roleplayTurnRafRef.current = null;
+    }
     if (roleplayRecorderRef.current) {
       try {
         roleplayRecorderRef.current.killStreamImmediately();
@@ -217,6 +234,7 @@ export default function DialogueDetailPage({
     roleplaySpeechRef.current?.stopLiveWebSpeech();
     setRoleplayMicLevel(0);
     setRoleplayInterimText("");
+    setRoleplayRemainingPct(100);
   };
 
   useEffect(() => {
@@ -381,7 +399,7 @@ export default function DialogueDetailPage({
     return forms.length > 0 ? forms : undefined;
   };
 
-  // --- OTOMATİK ROL YAPMA MİKROFON BAŞLATICI VE SIFIR GECİKMELİ SIRA GEÇİŞİ ---
+  // --- ROL YAPMA SIRA BEKLEME SAYACI (MİKROFONU OTOMATİK AÇMADAN AKICI SESSİZ/SESLİ OKUMA SÜRESİ) ---
   const activateUserRoleplayTurn = async (line: DialogueLine) => {
     cleanupRoleplayMic();
     roleplayFinishingRef.current = false;
@@ -391,85 +409,49 @@ export default function DialogueDetailPage({
     setIsPlayingAll(false);
     playRecordStart();
 
-    // Cümle uzunluğuna göre maksimum kayıt süresini sınırla (4.5sn - 10sn)
+    // Cümle uzunluğuna göre okuma/bekleme süresini hesapla (4sn - 9sn)
     const wordCount = line.arapca.trim().split(/\s+/).length;
-    const maxDurationMs = Math.min(10000, Math.max(4500, wordCount * 900 + 2500));
+    const waitDurationMs = Math.min(
+      9000,
+      Math.max(4000, wordCount * 750 + 2000)
+    );
+    setRoleplayWaitDurationMs(waitDurationMs);
+    setRoleplayRemainingPct(100);
 
-    try {
-      roleplaySpeechRef.current?.startLiveWebSpeech({
-        onInterimTranscript: (interim) => {
-          setRoleplayInterimText(interim);
-        },
-      });
+    const startAt = performance.now();
+    const tick = () => {
+      const elapsed = performance.now() - startAt;
+      const ratio = Math.max(0, 1 - elapsed / waitDurationMs);
+      setRoleplayRemainingPct(Math.round(ratio * 100));
+      if (ratio > 0 && !roleplayFinishingRef.current) {
+        roleplayTurnRafRef.current = requestAnimationFrame(tick);
+      }
+    };
+    roleplayTurnRafRef.current = requestAnimationFrame(tick);
 
-      const session = await start16kHzRecorder({
-        silenceDurationMs: 1000, // 1 saniye sessizlikte anında sıra geçişi
-        maxDurationMs,
-        onLiveRms: (rms) => {
-          setRoleplayMicLevel(Math.min(100, Math.round(rms * 320)));
-        },
-        onAutoSilenceStop: () => {
-          finishUserRoleplayTurn(line);
-        },
-      });
-      roleplayRecorderRef.current = session;
-    } catch {
-      // Mikrofon izni yoksa manuel "Okudum, Sıradakine Geç" butonuna basılabilir
-    }
+    roleplayTurnTimerRef.current = setTimeout(() => {
+      roleplayTurnTimerRef.current = null;
+      finishUserRoleplayTurn(line);
+    }, waitDurationMs);
   };
 
   const finishUserRoleplayTurn = (line: DialogueLine) => {
     if (roleplayFinishingRef.current) return;
     roleplayFinishingRef.current = true;
 
+    cleanupRoleplayMic();
     playRecordStop();
 
-    // a) İLK İŞ: Mikrofon stream track'lerini ANINDA kapat ve SpeechRecognition'ı abort/stop ile sonlandır
-    const activeSession = roleplayRecorderRef.current;
-    roleplayRecorderRef.current = null;
-    if (activeSession) {
-      activeSession.killStreamImmediately();
-    }
-    const capturedTranscript =
-      roleplaySpeechRef.current?.stopLiveWebSpeech() || "";
-
-    setRoleplayMicLevel(0);
-    setRoleplayInterimText("");
     setRoleplayActiveLine(null);
     setRoleplayTransitionNotice(true);
     setRoleplayCompletedLines((prev) => ({ ...prev, [line.sira]: true }));
     setRoleplayHintLevels((prev) => ({ ...prev, [line.sira]: 3 }));
+    setRoleplayLineScores((prev) => ({
+      ...prev,
+      [line.sira]: prev[line.sira] ?? 90,
+    }));
 
-    // b) ASENKRON PUANLAMA: Sıra geçişini bloklamadan arka planda çalıştır
-    Promise.resolve().then(async () => {
-      let peakRms = 0;
-      if (activeSession) {
-        try {
-          const rec = await activeSession.stop();
-          if (rec.rmsHistory.length > 0) {
-            peakRms = Math.max(...rec.rmsHistory);
-          }
-        } catch {
-          // ignore
-        }
-      }
-      const evalRes = evaluateSentenceWords(
-        line.arapca,
-        capturedTranscript || line.arapca
-      );
-      const computedScore = capturedTranscript.trim()
-        ? Math.max(68, evalRes.overallScore)
-        : peakRms > 0.05
-        ? 86
-        : 82;
-      setRoleplayLineScores((prev) => ({
-        ...prev,
-        [line.sira]: computedScore,
-      }));
-      recordPronunciationScore(computedScore);
-    });
-
-    // c) ANINDA SONRAKİ REPLİK (250ms <= 300ms): Beklemeden sıradaki diyalog satırına geç
+    // Beklemeden sıradaki diyalog satırına geç
     setTimeout(() => {
       setRoleplayTransitionNotice(false);
       handleContinueRoleplayFromLine(line.sira);
@@ -641,6 +623,7 @@ export default function DialogueDetailPage({
 
   const openShadowingCoach = (target: {
     text: string;
+    itemId?: string;
     audioUrl?: string;
     voice?: VoiceOption;
     forms?: { label: string; arabic: string }[];
@@ -822,6 +805,7 @@ export default function DialogueDetailPage({
       {shadowingTarget && (
         <ShadowingModal
           text={shadowingTarget.text}
+          itemId={shadowingTarget.itemId}
           refAudioUrl={shadowingTarget.audioUrl}
           voice={shadowingTarget.voice}
           forms={shadowingTarget.forms}
@@ -1480,10 +1464,10 @@ export default function DialogueDetailPage({
             roleplayActiveLine !== null && (
               <div className="rounded-xl bg-emerald-600 text-white shadow-lg ring-4 ring-emerald-500/30 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-extrabold">
-                  🎙️ ADIM 2 — SIRA SİZDE ({selectedRoleSpeaker}): Mikrofonunuz AÇIK! Aşağıdaki yeşil çerçeveli Arapça cümleyi sesli okuyun (Bitirince otomatik geçer veya [✅ Okudum, Geç] butonuna basın).
+                  🎭 Sıra Sende ({selectedRoleSpeaker})! Şimdi kendi rolünü yüksek sesle oku...
                 </span>
                 <span className="text-[11px] font-extrabold text-emerald-100 tabular-nums shrink-0">
-                  Canlı Ses: %{roleplayMicLevel}
+                  {((roleplayWaitDurationMs * roleplayRemainingPct) / 100000).toFixed(1)} sn
                 </span>
               </div>
             )}
@@ -1575,7 +1559,7 @@ export default function DialogueDetailPage({
                         className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold border-b-2 border-amber-700 cursor-pointer flex items-center gap-1"
                       >
                         <Share2 size={13} />
-                        <span>🏆 Başarı Kartını Paylaş / İndir</span>
+                        <span>🏆 Rol Yapma Başarı Kartını Paylaş</span>
                       </button>
                       <button
                         type="button"
@@ -2377,14 +2361,29 @@ export default function DialogueDetailPage({
                   </div>
                 )}
 
-                {/* Rol Yapma Modunda Sıra Kullanıcıdaysa Canlı Mikrofon ve Otomatik Geçiş Rehberi */}
+                {/* Rol Yapma Modunda Sıra Kullanıcıdaysa Görsel "Sıra Sende" Geri Sayım Çubuğu */}
                 {isWaitingUser && (
-                  <div className="mt-2.5 p-2.5 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-emerald-500 space-y-2">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <span className="text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
-                        🎙️ Ses seviyesi algılanıyor — cümleyi bitirdiğinizde 1 sn içinde otomatik geçer:
+                  <div className="mt-2.5 p-2.5 sm:p-3 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/60 border-2 border-[#0CA678] space-y-2 animate-in fade-in duration-150">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-extrabold text-[#087F5B] dark:text-[#20c997]">
+                        🎭 Sıra Sende! Şimdi kendi rolünü yüksek sesle oku...
                       </span>
                       <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openShadowingCoach({
+                              text: line.arapca,
+                              itemId: `sent_${dialogue.id}_${line.sira}`,
+                              audioUrl: lineAudioUrl,
+                              voice: voiceForLine,
+                            })
+                          }
+                          className="text-xs px-2.5 py-1 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] text-white font-extrabold border-b-2 border-[#3b1f8c] flex items-center gap-1 cursor-pointer"
+                        >
+                          <Mic size={13} />
+                          <span>🎙️ Kaydet & Analiz Et</span>
+                        </button>
                         {hideRoleplayUserText && !isLineCompletedInRoleplay && (
                           <button
                             type="button"
@@ -2397,50 +2396,28 @@ export default function DialogueDetailPage({
                         <button
                           type="button"
                           onClick={() => handlePlayRoleplayModelAudio(line)}
-                          className="text-xs px-2 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-400 text-emerald-800 font-extrabold cursor-pointer"
+                          className="text-xs px-2 py-1 rounded-xl bg-white dark:bg-slate-800 hover:bg-emerald-100 border border-emerald-400 text-emerald-800 dark:text-emerald-200 font-extrabold cursor-pointer"
                         >
                           🔊 Dinle
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
-                            openShadowingCoach({
-                              text: line.arapca,
-                              audioUrl: lineAudioUrl,
-                              voice: voiceForLine,
-                            })
-                          }
-                          title="Yapay Zeka Telaffuz & Mahreç Koçu"
-                          className="w-8 h-8 rounded-xl bg-[#F3F0FF] border border-[#6741D9] text-[#6741D9] flex items-center justify-center cursor-pointer"
-                        >
-                          <Sparkles size={14} />
-                        </button>
-                        <button
-                          type="button"
                           onClick={() => finishUserRoleplayTurn(line)}
-                          className="text-xs px-2.5 py-1.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold border-b-2 border-[#087F5B] cursor-pointer"
+                          className="text-xs px-2.5 py-1 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold border-b-2 border-[#087F5B] cursor-pointer"
                         >
                           ⏭️ Geç
                         </button>
                       </div>
                     </div>
 
-                    {/* Canlı Ses Seviyesi Çubuğu (RMS Bar) */}
+                    {/* Bekleme Süresince İlerleyen İnce Geri Sayım Çubuğu */}
                     <div className="space-y-1">
-                      <div className="w-full h-2 bg-emerald-100 dark:bg-emerald-950 rounded-full overflow-hidden border border-emerald-300 dark:border-emerald-800">
+                      <div className="w-full h-1.5 bg-emerald-200/80 dark:bg-emerald-900 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-[#0CA678] transition-all duration-75 rounded-full"
-                          style={{ width: `${Math.max(6, roleplayMicLevel)}%` }}
+                          className="h-full bg-[#0CA678] transition-none rounded-full"
+                          style={{ width: `${roleplayRemainingPct}%` }}
                         />
                       </div>
-                      {roleplayInterimText && (
-                        <p
-                          dir="rtl"
-                          className="arabic text-sm font-bold text-emerald-800 dark:text-emerald-300 text-right"
-                        >
-                          Algılanan: {roleplayInterimText}
-                        </p>
-                      )}
                     </div>
                   </div>
                 )}

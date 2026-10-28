@@ -34,6 +34,7 @@ import {
 import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
 import { ArabicIdiom, extractDialoguesIdioms } from "@/lib/arabicIdioms";
 import { QuizContentType } from "./MultipleChoice";
+import { normalizeToCanonicalMistakeId } from "@/lib/mistakeUtils";
 
 export interface SentenceBuilderQuestion {
   id: string;
@@ -60,6 +61,7 @@ interface SentenceBuilderProps {
   questionCount?: 10 | 20 | 30;
   timeLimit?: number | null;
   feedbackMode?: "instant" | "end";
+  isMistakesMode?: boolean;
   onClose?: () => void;
 }
 
@@ -97,11 +99,13 @@ export default function SentenceBuilder({
   questionCount = 10,
   timeLimit = null,
   feedbackMode = "instant",
+  isMistakesMode = false,
   onClose,
 }: SentenceBuilderProps) {
   const { playAudio, playTTS, stop } = useAudioStore();
   const { showHareke, arabicFont, speechRate } = useSettings();
-  const { addStudyMinutes } = useUserStore();
+  const { addStudyMinutes, addMistake, removeMistake } = useUserStore();
+  const wrongAttemptedQuestionsRef = useRef<Set<string>>(new Set());
 
   const [roundSeed, setRoundSeed] = useState(0);
   const [customQuestions, setCustomQuestions] = useState<
@@ -319,6 +323,21 @@ export default function SentenceBuilder({
         normalizeWordForCompare(currentQ.words[idx])
     );
 
+    const canonicalId = normalizeToCanonicalMistakeId(
+      currentQ.id,
+      currentQ.fullArabic
+    );
+    const hadPreviousAttempt = wrongAttemptedQuestionsRef.current.has(
+      currentQ.id
+    );
+
+    if (!isRight) {
+      wrongAttemptedQuestionsRef.current.add(currentQ.id);
+      if (canonicalId) addMistake(canonicalId);
+    } else if (isMistakesMode && !hadPreviousAttempt && canonicalId) {
+      removeMistake(canonicalId);
+    }
+
     setUserAnswers((prev) => ({
       ...prev,
       [currentIndex]: {
@@ -444,6 +463,13 @@ export default function SentenceBuilder({
 
   const handleShowCorrectAnswer = () => {
     playClick();
+    wrongAttemptedQuestionsRef.current.add(currentQ.id);
+    const canonicalId = normalizeToCanonicalMistakeId(
+      currentQ.id,
+      currentQ.fullArabic
+    );
+    if (canonicalId) addMistake(canonicalId);
+
     const ordered: WordToken[] = currentQ.words.map((w, idx) => ({
       tokenId: `${currentQ.id}_ans_${idx}`,
       text: w,
