@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   playSuccess,
   playError,
@@ -101,7 +101,7 @@ export default function MatchingGame({
   useEffect(() => {
     connectionsRef.current = connections;
   }, [connections]);
-  const wrongTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const ignoreNextClickRef = useRef(false);
   // Track any pairs that had at least one wrong attempt
   const [wrongPairsHistory, setWrongPairsHistory] = useState<PairDefinition[]>(
     []
@@ -236,55 +236,50 @@ export default function MatchingGame({
     buildPairPoolRef.current = buildPairPool;
   }, [buildPairPool]);
 
-  const clearWrongTimers = useCallback(() => {
-    wrongTimersRef.current.forEach((t) => clearTimeout(t));
-    wrongTimersRef.current = [];
+  // Stable ID signature so parent re-renders with new array references never reset the board
+  const itemsSignature = useMemo(() => {
+    const vIds = vocabulary.map((i) => i.id).join("|");
+    const iIds = idioms.map((i) => i.id).join("|");
+    const dIds = dialogues.map((i) => i.id).join("|");
+    return `${contentType}::${vIds}::${iIds}::${dIds}`;
+  }, [vocabulary, idioms, dialogues, contentType]);
+
+  const lastInitializedSignatureRef = useRef<string | null>(null);
+
+  const setupBoardFromPairs = useCallback((chosenPairs: PairDefinition[]) => {
+    fanfarePlayedRef.current = false;
+    setCurrentPairs(chosenPairs);
+
+    const nextAr: MatchCardItem[] = chosenPairs.map((p) => ({
+      id: `ar-${p.matchId}`,
+      text: p.arText,
+      type: "ar",
+      matchId: p.matchId,
+      isSentence: p.isSentence,
+    }));
+
+    const nextTr: MatchCardItem[] = chosenPairs.map((p) => ({
+      id: `tr-${p.matchId}`,
+      text: p.trText,
+      type: "tr",
+      matchId: p.matchId,
+      isSentence: p.isSentence,
+    }));
+
+    setArCards(shuffleArray(nextAr));
+    setTrCards(shuffleArray(nextTr));
+    setConnections([]);
+    connectionsRef.current = [];
+    setWrongPairsHistory([]);
+    setWrongAttemptsCount(0);
+    wrongAttemptedMatchIdsRef.current.clear();
+    setExerciseScore(0);
+    setSelectedAr(null);
+    setSelectedTr(null);
+    setIsExamEvaluated(false);
+    setShowEndBar(false);
+    setIsGameOver(false);
   }, []);
-
-  useEffect(() => {
-    return () => {
-      clearWrongTimers();
-    };
-  }, [clearWrongTimers]);
-
-  const setupBoardFromPairs = useCallback(
-    (chosenPairs: PairDefinition[]) => {
-      clearWrongTimers();
-      fanfarePlayedRef.current = false;
-      setCurrentPairs(chosenPairs);
-
-      const nextAr: MatchCardItem[] = chosenPairs.map((p) => ({
-        id: `ar-${p.matchId}`,
-        text: p.arText,
-        type: "ar",
-        matchId: p.matchId,
-        isSentence: p.isSentence,
-      }));
-
-      const nextTr: MatchCardItem[] = chosenPairs.map((p) => ({
-        id: `tr-${p.matchId}`,
-        text: p.trText,
-        type: "tr",
-        matchId: p.matchId,
-        isSentence: p.isSentence,
-      }));
-
-      setArCards(shuffleArray(nextAr));
-      setTrCards(shuffleArray(nextTr));
-      setConnections([]);
-      connectionsRef.current = [];
-      setWrongPairsHistory([]);
-      setWrongAttemptsCount(0);
-      wrongAttemptedMatchIdsRef.current.clear();
-      setExerciseScore(0);
-      setSelectedAr(null);
-      setSelectedTr(null);
-      setIsExamEvaluated(false);
-      setShowEndBar(false);
-      setIsGameOver(false);
-    },
-    [clearWrongTimers]
-  );
 
   const initNewSet = useCallback(() => {
     const chosen = buildPairPoolRef.current();
@@ -292,8 +287,11 @@ export default function MatchingGame({
   }, [setupBoardFromPairs]);
 
   useEffect(() => {
-    initNewSet();
-  }, [initNewSet]);
+    if (lastInitializedSignatureRef.current !== itemsSignature) {
+      lastInitializedSignatureRef.current = itemsSignature;
+      initNewSet();
+    }
+  }, [itemsSignature, initNewSet]);
 
   // Measure socket coordinates relative to boardRef
   const updateSocketCoordinates = useCallback(() => {
@@ -414,7 +412,7 @@ export default function MatchingGame({
       }
 
       setConnections((prev) => {
-        // Keep all previous 'correct' connections intact; only replace non-correct connections on trId/arId
+        // Keep all previous 'correct' connections intact; only replace non-correct connections attached to trId or arId
         const lockedStill = prev.some(
           (c) =>
             c.status === "correct" && (c.trId === trId || c.arId === arId)
@@ -424,7 +422,7 @@ export default function MatchingGame({
         const filtered = prev.filter(
           (c) =>
             c.status === "correct" ||
-            (c.trId !== trId && c.arId !== arId && c.status !== "wrong")
+            (c.trId !== trId && c.arId !== arId)
         );
         const next: ArrowConnection[] = [
           ...filtered,
@@ -439,18 +437,6 @@ export default function MatchingGame({
         connectionsRef.current = next;
         return next;
       });
-
-      // In instant mode, if wrong, show red line for 700ms then remove ONLY wrong lines
-      if (!isMatch) {
-        const timer = setTimeout(() => {
-          setConnections((prev) => {
-            const next = prev.filter((c) => c.status !== "wrong");
-            connectionsRef.current = next;
-            return next;
-          });
-        }, 700);
-        wrongTimersRef.current.push(timer);
-      }
     } else {
       // End mode: store as pending connection, keeping any locked correct connections intact
       playClick();
@@ -568,6 +554,7 @@ export default function MatchingGame({
   };
 
   const handleCardSelect = (card: MatchCardItem) => {
+    if (ignoreNextClickRef.current) return;
     if (isGameOver || isExamEvaluated) return;
 
     // Check if already locked as correct
@@ -615,6 +602,14 @@ export default function MatchingGame({
       return;
     }
 
+    // If the user already selected a card on the opposite side via click, let onClick complete the pair cleanly
+    if (
+      (card.type === "ar" && selectedTr) ||
+      (card.type === "tr" && selectedAr)
+    ) {
+      return;
+    }
+
     const board = boardRef.current;
     if (!board) return;
     updateSocketCoordinates();
@@ -658,6 +653,33 @@ export default function MatchingGame({
     );
   };
 
+  const findCardAttributeAtPoint = (
+    attrName: "data-ar-card-id" | "data-tr-card-id",
+    clientX: number,
+    clientY: number
+  ): string | null => {
+    const targetEl = document.elementFromPoint(clientX, clientY);
+    const closestCard = targetEl?.closest(`[${attrName}]`) as HTMLElement | null;
+    const directAttr = closestCard?.getAttribute(attrName);
+    if (directAttr) return directAttr;
+
+    const board = boardRef.current;
+    if (!board) return null;
+    const cards = board.querySelectorAll<HTMLElement>(`[${attrName}]`);
+    for (const el of Array.from(cards)) {
+      const rect = el.getBoundingClientRect();
+      if (
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom
+      ) {
+        return el.getAttribute(attrName);
+      }
+    }
+    return null;
+  };
+
   const handleBoardPointerUp = (e: React.PointerEvent) => {
     if (!dragState) return;
     const currentDrag = dragState;
@@ -667,28 +689,35 @@ export default function MatchingGame({
     const dy = currentDrag.currentPoint.y - currentDrag.startPoint.y;
     const dist = Math.hypot(dx, dy);
 
-    // If user barely moved pointer, let onClick handle tap-to-connect
+    // If user barely moved pointer or released on the same card, cancel drag and let normal onClick handle selection
     if (dist < 18) return;
 
-    const targetEl = document.elementFromPoint(e.clientX, e.clientY);
-    if (!targetEl) return;
-
     if (currentDrag.sourceType === "tr") {
-      const arCardEl = targetEl.closest(
-        "[data-ar-card-id]"
-      ) as HTMLElement | null;
-      const targetArId = arCardEl?.getAttribute("data-ar-card-id");
+      const targetArId = findCardAttributeAtPoint(
+        "data-ar-card-id",
+        e.clientX,
+        e.clientY
+      );
       if (targetArId) {
+        ignoreNextClickRef.current = true;
+        setTimeout(() => {
+          ignoreNextClickRef.current = false;
+        }, 150);
         const arObj = arCards.find((c) => c.id === targetArId);
         if (arObj) playTTS(arObj.text, speechRate);
         createConnection(currentDrag.sourceId, targetArId);
       }
     } else {
-      const trCardEl = targetEl.closest(
-        "[data-tr-card-id]"
-      ) as HTMLElement | null;
-      const targetTrId = trCardEl?.getAttribute("data-tr-card-id");
+      const targetTrId = findCardAttributeAtPoint(
+        "data-tr-card-id",
+        e.clientX,
+        e.clientY
+      );
       if (targetTrId) {
+        ignoreNextClickRef.current = true;
+        setTimeout(() => {
+          ignoreNextClickRef.current = false;
+        }, 150);
         createConnection(targetTrId, currentDrag.sourceId);
       }
     }
@@ -1030,6 +1059,17 @@ export default function MatchingGame({
                 <span>Sıfırla</span>
               </button>
 
+              {connections.some((c) => c.status === "wrong") && (
+                <button
+                  type="button"
+                  onClick={handleFixWrongConnectionsInPlace}
+                  className="px-3 py-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold border-b-2 border-rose-800 active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RotateCcw size={13} />
+                  <span>🔄 Yanlışları Düzelt</span>
+                </button>
+              )}
+
               {feedbackMode === "end" && !isExamEvaluated && (
                 <button
                   type="button"
@@ -1139,7 +1179,7 @@ export default function MatchingGame({
                   className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl border-b-2 border-rose-800 active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <RotateCcw size={14} />
-                  <span>🔄 Yanlışları Temizle ve Düzelt</span>
+                  <span>🔄 Yanlışları Düzelt</span>
                 </button>
               )}
 
