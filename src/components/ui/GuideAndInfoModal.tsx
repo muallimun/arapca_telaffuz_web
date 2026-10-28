@@ -31,9 +31,11 @@ import {
   Maximize2,
   Trophy,
   Timer,
+  Share2,
 } from "lucide-react";
 import { playClick } from "@/lib/sfxManager";
 import { triggerOnboardingTour } from "./OnboardingTourModal";
+import { triggerShareAppModal } from "@/lib/shareApp";
 
 type GuideTab = "quickstart" | "icons" | "pedagogy" | "about" | "apps";
 
@@ -270,6 +272,29 @@ export default function GuideAndInfoModal() {
                   Keşfet
                 </span>
               </button>
+
+              {/* Arkadaşına Öner / Paylaş Kartı */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#0CA678]/10 via-emerald-500/10 to-[#6741D9]/15 border-2 border-[#0CA678]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-emerald-300 block">
+                    📲 Arkadaşına Öner &amp; Öğrencilerinle Paylaş
+                  </span>
+                  <p className="text-[11px] sm:text-xs text-[var(--muted)]">
+                    Uygulamayı WhatsApp, Telegram veya tek tıkla bağlantı kopyalayarak çalışma gruplarınızla paylaşın.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    triggerShareAppModal();
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white text-xs font-extrabold border-b-3 border-[#087F5B] flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <Share2 size={14} />
+                  <span>Arkadaşına Öner / Paylaş</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -541,6 +566,29 @@ export default function GuideAndInfoModal() {
                   Keşfet
                 </span>
               </button>
+
+              {/* Hakkında Sekmesi Altı Arkadaşına Öner / Paylaş Kartı */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#0CA678]/10 via-emerald-500/10 to-[#6741D9]/15 border-2 border-[#0CA678]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-emerald-300 block">
+                    📲 Meslektaşlarınıza ve Öğrencilerinize Önerin
+                  </span>
+                  <p className="text-[11px] sm:text-xs text-[var(--muted)]">
+                    Bu ücretsiz Arapça eğitim platformunu tek tıkla WhatsApp veya Telegram&apos;da paylaşarak daha fazla kişiye ulaşmasına destek olun.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    triggerShareAppModal();
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white text-xs font-extrabold border-b-3 border-[#087F5B] flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <Share2 size={14} />
+                  <span>Arkadaşına Öner / Paylaş</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -766,8 +814,20 @@ export default function GuideAndInfoModal() {
           </div>
         </div>
 
-        {/* ALT KAPAT BUTONU */}
-        <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-5 py-3 border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-end shrink-0">
+        {/* ALT PAYLAŞ & KAPAT BUTONLARI */}
+        <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-5 py-3 border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center justify-end gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              triggerShareAppModal();
+            }}
+            className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white text-xs font-extrabold border-b-3 border-[#4C28B5] flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <Share2 size={14} />
+            <span>📲 Uygulamayı Paylaş</span>
+          </button>
+
           <button
             type="button"
             onClick={() => {

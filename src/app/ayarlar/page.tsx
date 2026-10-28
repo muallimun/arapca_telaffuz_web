@@ -25,6 +25,7 @@ import {
   Target,
   Repeat,
   Timer,
+  Share2,
 } from "lucide-react";
 import {
   useSettings,
@@ -49,6 +50,7 @@ import {
 } from "@/lib/arabicTextUtils";
 import { triggerGuideModal } from "@/components/ui/GuideAndInfoModal";
 import { triggerOnboardingTour } from "@/components/ui/OnboardingTourModal";
+import { triggerShareAppModal } from "@/lib/shareApp";
 
 type SettingsCategory = "all" | "appearance" | "audio" | "data";
 
@@ -1171,6 +1173,33 @@ export default function SettingsPage() {
               )}
             </div>
           )}
+
+          {/* 2B. Uygulamayı Arkadaşına Öner & Paylaş */}
+          <div className="bg-white dark:bg-[var(--background)] p-3.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <Share2 size={18} className="text-[#0CA678] shrink-0 mt-0.5" />
+              <div>
+                <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                  📲 Uygulamayı Arkadaşına Öner &amp; Paylaş
+                </span>
+                <span className="block text-[11px] text-[var(--muted)]">
+                  Uygulamayı WhatsApp, Telegram veya tek tıkla bağlantı kopyalayarak arkadaşlarınız ve öğrencilerinizle paylaşın
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                triggerShareAppModal();
+              }}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white border-b-3 border-[#087F5B] text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all shrink-0 cursor-pointer"
+            >
+              <Share2 size={14} />
+              <span>Uygulamayı Paylaş</span>
+            </button>
+          </div>
 
           {/* 3. Veri Yönetimi ve Yedekleme */}
           <div className="bg-white dark:bg-[var(--background)] p-3.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col gap-3">

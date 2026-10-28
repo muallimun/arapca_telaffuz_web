@@ -7,6 +7,9 @@ import OnboardingTourModal from "@/components/ui/OnboardingTourModal";
 import GuideAndInfoModal from "@/components/ui/GuideAndInfoModal";
 import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
 import AppIntroSplash from "@/components/ui/AppIntroSplash";
+import ShareAppModal, {
+  FooterShareButton,
+} from "@/components/ui/ShareAppModal";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -128,6 +131,7 @@ export default function RootLayout({
         <AudioStopper />
         <OnboardingTourModal />
         <GuideAndInfoModal />
+        <ShareAppModal />
         <Header />
         <main className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 md:py-6">
           {children}
@@ -209,6 +213,8 @@ export default function RootLayout({
             >
               <span>muallimun.net</span>
             </a>
+
+            <FooterShareButton />
           </div>
         </footer>
       </body>
