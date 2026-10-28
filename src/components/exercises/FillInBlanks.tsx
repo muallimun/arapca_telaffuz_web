@@ -1271,7 +1271,7 @@ export default function FillInBlanks({
 
       {/* CÜMLE KARTI */}
       <div
-        className={`rounded-2xl border-2 border-b-4 p-4 sm:p-6 text-center space-y-4 transition-all ${
+        className={`rounded-2xl border-2 border-b-4 p-3 sm:p-5 text-center space-y-2.5 sm:space-y-3.5 transition-all ${
           feedback === "correct"
             ? "bg-emerald-50 border-[#0CA678]"
             : feedback === "wrong"
@@ -1279,11 +1279,11 @@ export default function FillInBlanks({
             : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
         }`}
       >
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-2.5 text-xs font-bold text-[var(--muted)]">
-          <span>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-2 text-xs font-bold text-[var(--muted)]">
+          <span className="text-[11px] sm:text-xs">
             {subMode === "choices"
               ? "💡 Kelimeye tıklayın veya cümledeki boşluğa sürükleyip bırakın"
-              : "🎧 Cümleyi dinleyin ve eksik Arapça kelimeyi boşluğa yazın (Harekeli veya harekesiz kabul edilir)"}
+              : "🎧 Cümleyi dinleyin ve eksik Arapça kelimeyi boşluğa yazın"}
           </span>
 
           <div className="flex flex-wrap items-center gap-1.5">
@@ -1293,9 +1293,9 @@ export default function FillInBlanks({
                 playClick();
                 playQuestionSentence(currentQ);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0CA678] text-white font-bold border-b-2 border-[#087F5B] cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0CA678] text-white font-bold border-b-2 border-[#087F5B] cursor-pointer"
             >
-              <Volume2 size={14} />
+              <Volume2 size={13} />
               <span>Cümleyi Dinle</span>
             </button>
 
@@ -1307,9 +1307,9 @@ export default function FillInBlanks({
                     playClick();
                     playQuestionSentence(currentQ, 0.75);
                   }}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[var(--foreground)] font-extrabold cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[var(--foreground)] font-extrabold cursor-pointer"
                 >
-                  <span>🐢 Yavaş (0.75x)</span>
+                  <span>🐢 0.75x</span>
                 </button>
 
                 <button
@@ -1318,13 +1318,13 @@ export default function FillInBlanks({
                     playClick();
                     setAutoAudio((v) => !v);
                   }}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border font-extrabold cursor-pointer ${
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-xl border font-extrabold cursor-pointer ${
                     autoAudio
                       ? "bg-[#E6FCF5] border-[#0CA678] text-[#087F5B]"
                       : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)]"
                   }`}
                 >
-                  <span>🔄 Otomatik Ses: {autoAudio ? "Açık" : "Kapalı"}</span>
+                  <span>🔄 Oto Ses: {autoAudio ? "Açık" : "Kapalı"}</span>
                 </button>
               </>
             )}
@@ -1334,7 +1334,7 @@ export default function FillInBlanks({
         {/* ARAPÇA CÜMLE VE BOŞLUK ALANI */}
         <div
           dir="rtl"
-          className="arabic text-3xl sm:text-4xl leading-[2.1] font-bold text-[var(--foreground)] flex flex-wrap justify-center items-center gap-2 py-2"
+          className="arabic text-2xl sm:text-4xl leading-[1.9] sm:leading-[2.1] font-bold text-[var(--foreground)] flex flex-wrap justify-center items-center gap-2 py-1"
         >
           {currentQ.sentenceWithBlank.split("[ ? ]").map((part, i, arr) => (
             <span key={i} className="inline-flex items-center flex-wrap gap-2">
@@ -1400,7 +1400,7 @@ export default function FillInBlanks({
                             }}
                             placeholder="........"
                             aria-label="Eksik Arapça kelimeyi yazın"
-                            className={`w-40 sm:w-48 h-12 px-3 rounded-xl border-2 text-center arabic text-2xl sm:text-3xl font-bold focus:outline-none transition-all ${
+                            className={`w-36 sm:w-48 h-11 sm:h-12 px-3 rounded-xl border-2 text-center arabic text-2xl sm:text-3xl font-bold focus:outline-none transition-all ${
                               feedback === "wrong"
                                 ? "bg-rose-50 border-rose-500 text-rose-800"
                                 : "bg-white dark:bg-[var(--background)] border-[#6741D9] text-[#087F5B] dark:text-[#20c997] focus:ring-4 focus:ring-[#6741D9]/20"
@@ -1417,13 +1417,13 @@ export default function FillInBlanks({
                               });
                             }}
                             title="Arapça Sanal Klavyeyi Aç/Kapat"
-                            className={`w-10 h-10 rounded-xl border-2 border-b-3 flex items-center justify-center transition-all cursor-pointer ${
+                            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl border-2 border-b-3 flex items-center justify-center transition-all cursor-pointer ${
                               showKeyboard && !useDeviceKeyboard
                                 ? "bg-[#6741D9] border-[#5230B5] text-white"
                                 : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#6741D9]"
                             }`}
                           >
-                            <Keyboard size={17} />
+                            <Keyboard size={16} />
                           </button>
                         </>
                       )}
@@ -1435,42 +1435,46 @@ export default function FillInBlanks({
           ))}
         </div>
 
-        {/* İMLA MODU ALT KONTROLLERİ: [💡 Harf İpucu Al] ve [Kontrol Et / Kaydet] */}
-        {subMode === "dictation" && feedback !== "correct" && (
-          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
-            <button
-              type="button"
-              onClick={handleLetterHint}
-              className="h-9 px-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border-2 border-amber-300 border-b-3 text-amber-800 dark:text-amber-300 text-xs font-extrabold flex items-center gap-1.5 hover:bg-amber-100 cursor-pointer"
-            >
-              <Lightbulb size={14} />
-              <span>💡 Harf İpucu Al</span>
-            </button>
+        {/* TÜRKÇE ANLAM İPUCU VE İMLA HARF İPUCU TEK KOMPAKT SATIRDA */}
+        <div className="mt-1.5 pt-2 border-t border-dashed border-[#E2D3B8] flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs sm:text-sm font-semibold text-[var(--muted)] flex-1 text-center sm:text-left">
+            “{currentQ.turkce}”
+          </p>
 
-            <button
-              type="button"
-              onClick={handleCheckDictation}
-              disabled={!typedText.trim()}
-              className="h-9 px-5 rounded-xl bg-[#0CA678] hover:bg-[#099268] disabled:opacity-50 text-white border-b-3 border-[#087F5B] text-xs font-extrabold flex items-center gap-1.5 cursor-pointer"
-            >
-              <CheckCircle2 size={14} />
-              <span>
-                {feedbackMode === "end"
-                  ? currentIndex === questions.length - 1
-                    ? "✅ Alıştırmayı Bitir ve Sonuçları Gör"
-                    : "Cevabı Kaydet ve İlerle"
-                  : "Kontrol Et"}
-              </span>
-            </button>
-          </div>
-        )}
+          {subMode === "dictation" && feedback !== "correct" && (
+            <div className="flex items-center gap-2 shrink-0 mx-auto sm:mx-0">
+              <button
+                type="button"
+                onClick={handleLetterHint}
+                className="h-8 px-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border-2 border-amber-300 border-b-3 text-amber-800 dark:text-amber-300 text-xs font-extrabold flex items-center gap-1 hover:bg-amber-100 cursor-pointer"
+              >
+                <Lightbulb size={13} />
+                <span>💡 Harf İpucu</span>
+              </button>
 
-        <p className="pt-2.5 border-t border-dashed border-[#E2D3B8] text-sm font-semibold text-[var(--muted)]">
-          “{currentQ.turkce}”
-        </p>
+              {!showKeyboard && (
+                <button
+                  type="button"
+                  onClick={handleCheckDictation}
+                  disabled={!typedText.trim()}
+                  className="h-8 px-3.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] disabled:opacity-50 text-white border-b-3 border-[#087F5B] text-xs font-extrabold flex items-center gap-1 cursor-pointer"
+                >
+                  <CheckCircle2 size={13} />
+                  <span>
+                    {feedbackMode === "end"
+                      ? currentIndex === questions.length - 1
+                        ? "✅ Bitir & Sonuçlar"
+                        : "Kaydet & İlerle"
+                      : "Kontrol Et"}
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ALT BÖLÜM: SEÇMELİ MODDA 4 ŞIK, İMLA MODUNDA ENTEGRE ARAPÇA SANAL KLAVYE */}
+      {/* ALT BÖLÜM: SEÇMELİ MODDA 4 ŞIK, İMLA MODUNDA CÜMLENİN HEMEN ALTINDA ARAPÇA SANAL KLAVYE */}
       {subMode === "choices" ? (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -1522,27 +1526,29 @@ export default function FillInBlanks({
           </div>
         </>
       ) : showKeyboard ? (
-        <ArabicVirtualKeyboard
-          onKeyPress={(ch) => setTypedText((prev) => prev + ch)}
-          onBackspace={() => setTypedText((prev) => prev.slice(0, -1))}
-          onClear={() => setTypedText("")}
-          onEnter={handleCheckDictation}
-          onClose={() => {
-            setShowKeyboard(false);
-            setUseDeviceKeyboard(true);
-            setTimeout(() => inputRef.current?.focus(), 40);
-          }}
-          useDeviceKeyboard={useDeviceKeyboard}
-          onToggleDeviceKeyboard={() => {
-            setUseDeviceKeyboard((prev) => {
-              const next = !prev;
+        <div className="mt-2">
+          <ArabicVirtualKeyboard
+            onKeyPress={(ch) => setTypedText((prev) => prev + ch)}
+            onBackspace={() => setTypedText((prev) => prev.slice(0, -1))}
+            onClear={() => setTypedText("")}
+            onEnter={handleCheckDictation}
+            onClose={() => {
+              setShowKeyboard(false);
+              setUseDeviceKeyboard(true);
               setTimeout(() => inputRef.current?.focus(), 40);
-              return next;
-            });
-          }}
-        />
+            }}
+            useDeviceKeyboard={useDeviceKeyboard}
+            onToggleDeviceKeyboard={() => {
+              setUseDeviceKeyboard((prev) => {
+                const next = !prev;
+                setTimeout(() => inputRef.current?.focus(), 40);
+                return next;
+              });
+            }}
+          />
+        </div>
       ) : (
-        <div className="flex justify-end">
+        <div className="flex justify-end mt-1.5">
           <button
             type="button"
             onClick={() => {
@@ -1552,7 +1558,7 @@ export default function FillInBlanks({
             }}
             className="px-3 py-1.5 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#6741D9]/40 text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] hover:border-[#6741D9] flex items-center gap-1.5 cursor-pointer"
           >
-            <span>⌨️ Cihaz Klavyesi / Sanal Klavye</span>
+            <span>⌨️ Sanal Klavyeyi Aç</span>
           </button>
         </div>
       )}

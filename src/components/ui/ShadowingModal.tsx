@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useUserStore } from "@/store/userStore";
 import { useSettings, SpeechRate } from "@/store/settings";
 import { useAudioStore } from "@/store/audioStore";
-import { sozluk } from "@/lib/data";
+import { diyaloglar, sozluk } from "@/lib/data";
 import { analyzeAndMatchWord } from "@/lib/dict";
+import { getCombinedIdiomsCatalog } from "@/lib/arabicIdioms";
 import { normalizeToCanonicalMistakeId } from "@/lib/mistakeUtils";
 import {
   playTTS,
@@ -70,6 +71,7 @@ export interface TargetForm {
 
 interface Props {
   text: string;
+  turkishText?: string;
   itemId?: string;
   refAudioUrl?: string;
   forms?: TargetForm[];
@@ -82,6 +84,7 @@ const DEFAULT_BARS = Array(48).fill(0.08);
 
 export default function ShadowingModal({
   text,
+  turkishText,
   itemId,
   refAudioUrl,
   forms,
@@ -94,6 +97,52 @@ export default function ShadowingModal({
     forms?.[0]?.label || ""
   );
   const [isMicroDrill, setIsMicroDrill] = useState<boolean>(false);
+  const [expandedTipId, setExpandedTipId] = useState<string | null>(null);
+
+  const resolvedTurkishMeaning = useMemo(() => {
+    if (turkishText && !isMicroDrill) return turkishText;
+    const normActive = normalizeArabicForPronunciation(activeText);
+    if (!normActive) return "";
+
+    for (const dlg of diyaloglar) {
+      for (const line of dlg.satirlar) {
+        if (
+          line.arapca.trim() === activeText.trim() ||
+          normalizeArabicForPronunciation(line.arapca) === normActive
+        ) {
+          return line.turkce;
+        }
+      }
+    }
+
+    for (const w of sozluk) {
+      const muf = (w.mufret || "").split("/")[0].trim();
+      const cem = (w.cemi || "").split("/")[0].trim();
+      const maz = (w.mazi || "").split("/")[0].trim();
+      const muz = (w.muzari || "").split("/")[0].trim();
+      const mas = (w.masdar || "").split("/")[0].trim();
+      if (
+        (itemId && w.id === itemId) ||
+        [muf, cem, maz, muz, mas].some(
+          (f) => f && normalizeArabicForPronunciation(f) === normActive
+        )
+      ) {
+        return w.anlam_tr;
+      }
+    }
+
+    const allIdioms = getCombinedIdiomsCatalog();
+    for (const idm of allIdioms) {
+      if (
+        normalizeArabicForPronunciation(idm.arabic) === normActive ||
+        idm.arabic.trim() === activeText.trim()
+      ) {
+        return idm.meaningTr;
+      }
+    }
+
+    return "";
+  }, [activeText, turkishText, itemId, isMicroDrill]);
 
   const {
     addWeakWord,
@@ -890,246 +939,230 @@ export default function ShadowingModal({
           )}
 
           {/* HEDEF ARAPÇA METİN KARTI + PROAKTİF MAHREÇ VE HAREKE REHBERİ */}
-          <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-5 text-center space-y-3">
+          <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3 sm:p-4 text-center space-y-2">
             {activeFormLabel && (
-              <span className="text-[11px] uppercase font-extrabold text-[#087F5B]">
+              <span className="text-[11px] uppercase font-extrabold text-[#087F5B] block">
                 {activeFormLabel}
               </span>
             )}
             <p
               dir="rtl"
-              className="arabic text-3xl sm:text-4xl font-bold text-[var(--foreground)] leading-relaxed"
+              className="arabic font-arabic text-2xl sm:text-3xl font-bold text-[var(--foreground)] leading-relaxed"
             >
               {activeText}
             </p>
 
+            {resolvedTurkishMeaning && (
+              <p className="text-xs sm:text-sm font-semibold text-[var(--muted)] leading-snug">
+                “{resolvedTurkishMeaning}”
+              </p>
+            )}
+
             {/* KAYIT AKTİFKEN DİKKAT ÇEKİCİ "ŞİMDİ YÜKSEK SESLE OKUYUN" UYARI BANDI */}
             {isRecording && (
-              <div className="rounded-xl bg-gradient-to-r from-[#0CA678] via-emerald-600 to-rose-600 text-white px-4 py-2.5 shadow-lg border-2 border-white/40 animate-pulse flex items-center justify-center gap-2 text-xs sm:text-sm font-black tracking-wide">
-                <Mic size={18} className="shrink-0 animate-bounce" />
-                <span>MİKROFON AÇIK — ŞİMDİ YÜKSEK SESLE OKUYUN!</span>
+              <div className="rounded-xl bg-gradient-to-r from-[#0CA678] via-emerald-600 to-rose-600 text-white px-3.5 py-2 shadow-lg border-2 border-white/40 animate-pulse flex items-center justify-center gap-2 text-xs sm:text-sm font-black tracking-wide">
+                <Mic size={16} className="shrink-0 animate-bounce" />
+                <span>🎙️ MİKROFON AÇIK — ŞİMDİ YÜKSEK SESLE OKUYUN!</span>
               </div>
             )}
 
-            {/* Proaktif Mahreç ve Hareke Rehberi (Konuşma Öncesi) */}
-            {proactiveGuide && (
-              <div className="pt-2.5 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] space-y-2 text-left">
-                <div className="flex flex-wrap gap-1.5 justify-center">
-                  {proactiveGuide.details.map((det) => (
-                    <span
-                      key={det.id}
-                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997]"
-                    >
-                      {det.badge} ({det.lettersFound.join("، ")})
+            {/* Proaktif Mahreç ve Hareke Rehberi (Tek Satırlık Tıklanabilir Rozetler) */}
+            {proactiveGuide &&
+              (proactiveGuide.details.length > 0 ||
+                proactiveGuide.shaddaCount > 0 ||
+                proactiveGuide.medCount > 0 ||
+                proactiveGuide.tanvinCount > 0) && (
+                <div className="pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] space-y-1.5 text-left">
+                  <div className="flex flex-wrap gap-1.5 justify-center">
+                    {proactiveGuide.details.map((det) => {
+                      const isExpanded = expandedTipId === det.id;
+                      return (
+                        <button
+                          key={det.id}
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            setExpandedTipId((prev) =>
+                              prev === det.id ? null : det.id
+                            );
+                          }}
+                          title="Mahreç ipucunu görmek için dokunun"
+                          className={`px-2.5 py-0.5 rounded-lg border text-[11px] font-extrabold transition-all cursor-pointer ${
+                            isExpanded
+                              ? "bg-[#0CA678] border-[#087F5B] text-white"
+                              : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#087F5B] dark:text-[#20c997] hover:border-[#0CA678]"
+                          }`}
+                        >
+                          {det.badge} ({det.lettersFound.join("، ")})
+                        </button>
+                      );
+                    })}
+                    {proactiveGuide.shaddaCount > 0 && (
+                      <span className="px-2.5 py-0.5 rounded-lg bg-[#F3F0FF] border border-[#6741D9]/40 text-[11px] font-extrabold text-[#6741D9]">
+                        ّ Şedde: {proactiveGuide.shaddaCount}
+                      </span>
+                    )}
+                    {proactiveGuide.medCount > 0 && (
+                      <span className="px-2.5 py-0.5 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[11px] font-extrabold text-[var(--foreground)]">
+                        ⏳ Med: {proactiveGuide.medCount}
+                      </span>
+                    )}
+                    {proactiveGuide.tanvinCount > 0 && (
+                      <span className="px-2.5 py-0.5 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[11px] font-extrabold text-[var(--muted)]">
+                        ً Tenvin: {proactiveGuide.tanvinCount}
+                      </span>
+                    )}
+                  </div>
+
+                  {expandedTipId &&
+                    proactiveGuide.details
+                      .filter((det) => det.id === expandedTipId)
+                      .map((det) => (
+                        <div
+                          key={det.id}
+                          className="bg-white/90 dark:bg-[var(--background)] rounded-xl px-3 py-2 border border-[#E6D7BE] text-[11px] flex items-start justify-between gap-2 animate-in fade-in duration-150"
+                        >
+                          <p className="text-[var(--muted)] font-semibold leading-snug">
+                            <strong className="text-[var(--foreground)]">
+                              {det.badge}:
+                            </strong>{" "}
+                            {det.advice}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedTipId(null)}
+                            className="text-[var(--muted)] hover:text-[var(--foreground)] shrink-0 cursor-pointer"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      ))}
+                </div>
+              )}
+          </div>
+
+          {/* BİRLEŞTİRİLMİŞ RİTİM & DALGA FORMU KARTI (REFERANS + SİZİN SESİNİZ TEK KARTTA) */}
+          <div
+            className={`rounded-2xl border-2 border-b-4 p-3 sm:p-4 transition-all ${
+              isRecording
+                ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9]"
+                : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
+            }`}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
+              {/* Üst / Sol Bölüm: Referans Ses Ritmi + Küçük Hız Seçici */}
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <span className="text-xs font-extrabold text-[#087F5B] flex items-center gap-1">
+                    <Volume2 size={14} />
+                    <span>🔊 Referans Ses Ritmi</span>
+                  </span>
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <span className="text-[11px] font-bold text-[var(--muted)] tabular-nums">
+                      {refDuration > 0 ? `${refDuration.toFixed(1)} sn` : "Hazır"}
                     </span>
-                  ))}
-                  {proactiveGuide.shaddaCount > 0 && (
-                    <span className="px-2.5 py-1 rounded-lg bg-[#F3F0FF] border border-[#6741D9]/40 text-[11px] font-extrabold text-[#6741D9]">
-                      ّ Şedde: {proactiveGuide.shaddaCount}
-                    </span>
-                  )}
-                  {proactiveGuide.medCount > 0 && (
-                    <span className="px-2.5 py-1 rounded-lg bg-white border border-[#E6D7BE] text-[11px] font-extrabold text-[var(--foreground)]">
-                      ⏳ Med Uzatması: {proactiveGuide.medCount}
-                    </span>
-                  )}
-                  {proactiveGuide.tanvinCount > 0 && (
-                    <span className="px-2.5 py-1 rounded-lg bg-white border border-[#E6D7BE] text-[11px] font-extrabold text-[var(--muted)]">
-                      ً Tenvin: {proactiveGuide.tanvinCount}
-                    </span>
-                  )}
+                    <div className="bg-white dark:bg-[var(--background)] rounded-lg p-0.5 border border-[#E6D7BE] flex items-center gap-0.5">
+                      {([0.5, 0.75, 1, 1.25] as SpeechRate[]).map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            setSpeechRate(r);
+                          }}
+                          className={`px-1.5 py-0.5 rounded-md text-[10px] tabular-nums transition-all cursor-pointer ${
+                            speechRate === r
+                              ? "bg-[#0CA678] text-white font-bold"
+                              : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {r}x
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
-                {proactiveGuide.details.length > 0 && !evaluation && (
-                  <div className="bg-white/80 dark:bg-[var(--background)] rounded-xl p-2.5 border border-[#E6D7BE] space-y-1 text-[11px]">
-                    {proactiveGuide.details.map((det) => (
-                      <p
-                        key={det.id}
-                        className="text-[var(--muted)] font-semibold leading-snug"
-                      >
-                        <strong className="text-[var(--foreground)]">
-                          {det.badge}:
-                        </strong>{" "}
-                        {det.advice}
-                      </p>
-                    ))}
+                {/* 48 Bar Referans Zarfı */}
+                <div className="w-full h-10 sm:h-12 bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border border-[#E6D7BE] flex items-end justify-between gap-0.5">
+                  {refBars.map((val, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        height: `${Math.max(12, Math.round(val * 100))}%`,
+                      }}
+                      className={`flex-1 rounded-full transition-all ${
+                        isPlayingRef ? "bg-[#0CA678]" : "bg-[#0CA678]/65"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Alt / Sağ Bölüm (İnce Kesikli Çizgiyle Ayrılmış): Sizin Ses Ritminiz (16kHz) */}
+              <div className="space-y-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pt-2.5 sm:border-t-0 sm:border-l sm:pl-3.5 sm:pt-0">
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center gap-1">
+                    <Mic size={14} />
+                    <span>
+                      {isRecording
+                        ? "🎙️ 16kHz Kaydediliyor..."
+                        : "🎙️ Sizin Ses Ritminiz (16kHz)"}
+                    </span>
+                  </span>
+                  <span className="text-[11px] font-bold text-[var(--muted)] tabular-nums">
+                    {userDuration > 0 ? `${userDuration.toFixed(1)} sn` : "0.0 sn"}
+                  </span>
+                </div>
+
+                {/* 48 Bar Canlı RMS / Kullanıcı Zarfı */}
+                <div
+                  className={`w-full h-10 sm:h-12 bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border flex items-end justify-between gap-0.5 transition-all ${
+                    isRecording
+                      ? "border-[#0CA678] ring-2 ring-[#0CA678]/30"
+                      : "border-[#E6D7BE]"
+                  }`}
+                >
+                  {userBars.map((val, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        height: `${Math.max(12, Math.round(val * 100))}%`,
+                      }}
+                      className={`flex-1 rounded-full transition-all duration-75 ${
+                        isRecording
+                          ? val > 0.12
+                            ? "bg-[#0CA678]"
+                            : "bg-[#6741D9]"
+                          : userAudioUrl
+                          ? "bg-[#6741D9]/80"
+                          : "bg-[#E6D7BE]"
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {isRecording && liveInterimText && (
+                  <div className="text-[11px] font-bold text-[#4C28B5] dark:text-[#d0bfff] flex items-center justify-center gap-1.5 truncate">
+                    <span className="w-2 h-2 rounded-full bg-[#0CA678] animate-ping shrink-0" />
+                    <span dir="rtl" className="arabic truncate">
+                      Algılanan: {liveInterimText}
+                    </span>
                   </div>
                 )}
               </div>
+            </div>
+
+            {userAudioUrl && (
+              <audio
+                ref={userAudioPlayerRef}
+                src={userAudioUrl}
+                playsInline
+                preload="auto"
+                onEnded={() => setIsPlayingUser(false)}
+                className="hidden"
+              />
             )}
-          </div>
-
-          {/* HIZ KONTROLÜ SATIRI (0.5x | 0.75x | 1.0x | 1.25x) */}
-          <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-extrabold text-[var(--foreground)] flex items-center gap-1.5">
-              <Gauge size={15} className="text-[#087F5B]" />
-              <span>Referans Dinleme Hızı:</span>
-            </span>
-            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] flex items-center gap-1">
-              {([0.5, 0.75, 1, 1.25] as SpeechRate[]).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => {
-                    playClick();
-                    setSpeechRate(r);
-                  }}
-                  className={`px-2.5 py-1 rounded-lg text-xs tabular-nums transition-all cursor-pointer ${
-                    speechRate === r
-                      ? "bg-[#0CA678] text-white font-semibold"
-                      : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  {r}x
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ÇİFT DALGA FORMU (DUAL RMS ENVELOPE): DOĞAL SES REFERANSI VE 16kHz KULLANICI KAYDI */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {/* Referans Doğal Ses */}
-            <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 rounded-2xl p-3.5 flex flex-col justify-between space-y-2.5">
-              <div className="flex items-center justify-between border-b border-dashed border-[#E2D3B8] pb-2">
-                <span className="text-xs font-extrabold text-[#087F5B] flex items-center gap-1.5">
-                  <Volume2 size={15} />
-                  <span>Doğal Referans Ses</span>
-                </span>
-                <span className="text-xs font-bold text-[var(--muted)] tabular-nums">
-                  {refDuration > 0 ? `${refDuration.toFixed(1)} sn` : "Hazır"}
-                </span>
-              </div>
-
-              {/* 48 Bar Referans Zarfı */}
-              <div className="w-full h-12 bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border border-[#E6D7BE] flex items-end justify-between gap-0.5">
-                {refBars.map((val, i) => (
-                  <div
-                    key={i}
-                    style={{ height: `${Math.max(12, Math.round(val * 100))}%` }}
-                    className={`flex-1 rounded-full transition-all ${
-                      isPlayingRef ? "bg-[#0CA678]" : "bg-[#0CA678]/65"
-                    }`}
-                  />
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={playReference}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white text-xs font-bold border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                {isPlayingRef ? (
-                  <Square size={13} fill="currentColor" />
-                ) : (
-                  <Play size={13} fill="currentColor" />
-                )}
-                <span>
-                  {isPlayingRef
-                    ? "Çalıyor..."
-                    : `Doğru Okunuşu Dinle (${speechRate}x)`}
-                </span>
-              </button>
-            </div>
-
-            {/* Öğrenci 16kHz Ses Kaydı */}
-            <div
-              className={`rounded-2xl border-2 border-b-4 p-3.5 flex flex-col justify-between space-y-2.5 transition-all ${
-                isRecording
-                  ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9]"
-                  : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
-              }`}
-            >
-              <div className="flex items-center justify-between border-b border-dashed border-[#E2D3B8] pb-2">
-                <span className="text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center gap-1.5">
-                  <Mic size={15} />
-                  <span>
-                    {isRecording
-                      ? "16kHz Kaydediliyor... Konuşun"
-                      : "Sizin Telaffuzunuz (16kHz WAV)"}
-                  </span>
-                </span>
-                {userDuration > 0 && (
-                  <span className="text-xs font-bold text-[var(--muted)] tabular-nums">
-                    {userDuration.toFixed(1)} sn
-                  </span>
-                )}
-              </div>
-
-              {/* 48 Bar Canlı RMS / Kullanıcı Zarfı */}
-              <div
-                className={`w-full h-12 bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border flex items-end justify-between gap-0.5 transition-all ${
-                  isRecording
-                    ? "border-[#0CA678] ring-2 ring-[#0CA678]/30"
-                    : "border-[#E6D7BE]"
-                }`}
-              >
-                {userBars.map((val, i) => (
-                  <div
-                    key={i}
-                    style={{ height: `${Math.max(12, Math.round(val * 100))}%` }}
-                    className={`flex-1 rounded-full transition-all duration-75 ${
-                      isRecording
-                        ? val > 0.12
-                          ? "bg-[#0CA678]"
-                          : "bg-[#6741D9]"
-                        : userAudioUrl
-                        ? "bg-[#6741D9]/80"
-                        : "bg-[#E6D7BE]"
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {userAudioUrl && !isRecording ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={playUserWav}
-                    className="flex-1 py-2.5 px-3 rounded-xl bg-[#6741D9] text-white text-xs font-bold border-b-3 border-[#5230B5] flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    {isPlayingUser ? (
-                      <Square size={13} fill="currentColor" />
-                    ) : (
-                      <Play size={13} fill="currentColor" />
-                    )}
-                    <span>Sesimi Dinle (.wav)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={downloadWav}
-                    className="py-2.5 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-[var(--foreground)] hover:border-[#0CA678] cursor-pointer"
-                    title="16-bit PCM .wav Ses Kaydını İndir"
-                  >
-                    <Download size={14} />
-                  </button>
-                  <audio
-                    ref={userAudioPlayerRef}
-                    src={userAudioUrl}
-                    playsInline
-                    preload="auto"
-                    onEnded={() => setIsPlayingUser(false)}
-                    className="hidden"
-                  />
-                </div>
-              ) : isRecording ? (
-                <div className="w-full py-2.5 px-3 rounded-xl bg-[#6741D9]/15 dark:bg-[#6741D9]/25 border border-[#6741D9]/40 text-xs font-extrabold text-[#4C28B5] dark:text-[#d0bfff] flex items-center justify-center gap-1.5 truncate">
-                  <span className="w-2 h-2 rounded-full bg-[#0CA678] animate-ping shrink-0" />
-                  {liveInterimText ? (
-                    <span dir="rtl" className="arabic text-xs font-bold truncate">
-                      Algılanan: {liveInterimText}
-                    </span>
-                  ) : (
-                    <span className="truncate">
-                      🗣️ Şimdi Arapça cümleyi yüksek sesle okuyun...
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <div className="w-full py-2.5 px-3 rounded-xl bg-white/60 dark:bg-[var(--background)]/60 border border-dashed border-[#E6D7BE] text-[11px] font-semibold text-center text-[var(--muted)] truncate">
-                  Aşağıdaki &lsquo;Kayda Başla&rsquo; butonuna basıp okuyun
-                </div>
-              )}
-            </div>
           </div>
 
           {/* ANALİZ DURUMU */}
@@ -1454,19 +1487,20 @@ export default function ShadowingModal({
           )}
         </div>
 
-        {/* ALT AKSİYON BAR */}
-        <div className="p-3.5 bg-[#F7EFE1] dark:bg-[var(--surface)] border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+        {/* ALT KONTROL VE DİNLEME BUTONLARI BARI (ÜSTTE TAM GENİŞLİK KAYIT, ALTTA DİNLEME VE TAMAMLA) */}
+        <div className="p-3 sm:p-3.5 bg-[#F7EFE1] dark:bg-[var(--surface)] border-t-2 border-[#E6D7BE] dark:border-[var(--border)] space-y-2 shrink-0">
+          {/* 1. Satır: Birincil Aksiyon Butonu (Üstte Tam Genişlik) */}
           {!isRecording && !userAudioUrl && (
             <button
               type="button"
               onClick={startRecording}
-              className="flex-1 py-3 px-6 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2.5 sm:py-3 px-5 bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Mic size={18} />
+              <Mic size={17} />
               <span>
                 {isMicroDrill
-                  ? "Seçili Kelimeyi Mikrofonla Kaydet (16kHz)"
-                  : "Mikrofonla Kayda Başla (16kHz)"}
+                  ? "🎙️ Seçili Kelimeyi Mikrofonla Kaydet (16kHz)"
+                  : "🎙️ Mikrofonla Kayda Başla (16kHz)"}
               </span>
             </button>
           )}
@@ -1475,10 +1509,10 @@ export default function ShadowingModal({
             <button
               type="button"
               onClick={stopRecording}
-              className="flex-1 py-3 px-6 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-2xl border-b-4 border-red-800 animate-pulse flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2.5 sm:py-3 px-5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs sm:text-sm rounded-2xl border-b-4 border-red-800 animate-pulse flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Square size={16} fill="currentColor" />
-              <span>Kaydı Tamamla ve Analiz Et</span>
+              <Square size={15} fill="currentColor" />
+              <span>⏹️ Kaydı Tamamla ve Analiz Et</span>
             </button>
           )}
 
@@ -1486,26 +1520,71 @@ export default function ShadowingModal({
             <button
               type="button"
               onClick={startRecording}
-              className="flex-1 py-3 px-5 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2.5 sm:py-3 px-5 bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <RotateCcw size={16} />
-              <span>Tekrar Kaydet ve Dene</span>
+              <span>🎙️ Tekrar Kaydet ve Dene (16kHz)</span>
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={() => {
-              playClick();
-              handleClose();
-            }}
-            className="py-3 px-5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-4 text-xs font-extrabold text-[var(--foreground)] hover:bg-[#FDFBF7] cursor-pointer"
-          >
-            <span className="inline-flex items-center gap-1">
-              <CheckCircle2 size={15} className="text-[#0CA678]" />
-              Tamamla
-            </span>
-          </button>
+          {/* 2. Satır: İkincil Dinleme Satırı (Hemen Altında Yan Yana) */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={playReference}
+              className="flex-1 py-2 px-3 rounded-xl bg-white dark:bg-[var(--background)] hover:bg-emerald-50 dark:hover:bg-slate-800 border-2 border-[#0CA678] border-b-3 text-[#087F5B] dark:text-[#20c997] text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              {isPlayingRef ? (
+                <Square size={13} fill="currentColor" />
+              ) : (
+                <Volume2 size={14} />
+              )}
+              <span className="truncate">
+                {isPlayingRef
+                  ? "Çalıyor..."
+                  : `🔊 Referansı Dinle (${speechRate}x)`}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={playUserWav}
+              disabled={!userAudioUrl || isRecording}
+              className="flex-1 py-2 px-3 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] hover:bg-[#e5dbff] disabled:opacity-45 border-2 border-[#6741D9] border-b-3 text-[#4C28B5] dark:text-[#d0bfff] text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              {isPlayingUser ? (
+                <Square size={13} fill="currentColor" />
+              ) : (
+                <Play size={13} fill="currentColor" />
+              )}
+              <span className="truncate">🎧 Sesimi Dinle (.wav)</span>
+            </button>
+
+            {userAudioUrl && !isRecording && (
+              <button
+                type="button"
+                onClick={downloadWav}
+                className="py-2 px-2.5 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-[var(--foreground)] hover:border-[#0CA678] cursor-pointer shrink-0"
+                title="16-bit PCM .wav Ses Kaydını İndir"
+              >
+                <Download size={14} />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                handleClose();
+              }}
+              className="py-2 px-3.5 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:bg-[#FDFBF7] cursor-pointer shrink-0"
+            >
+              <span className="inline-flex items-center gap-1">
+                <CheckCircle2 size={14} className="text-[#0CA678]" />
+                <span>Tamamla</span>
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

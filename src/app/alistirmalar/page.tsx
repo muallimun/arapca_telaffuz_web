@@ -19,7 +19,7 @@ import {
 import { playClick } from "@/lib/sfxManager";
 import { diyaloglar, sozluk } from "@/lib/data";
 import { getDialogueVocabulary } from "@/lib/dict";
-import { DictionaryItem } from "@/types/data";
+import { Dialogue, DictionaryItem } from "@/types/data";
 import { useUserStore } from "@/store/userStore";
 import {
   ArabicIdiom,
@@ -52,6 +52,12 @@ function ExercisesPageContent() {
   const searchParams = useSearchParams();
   const [selectedType, setSelectedType] = useState<ExerciseType>("flashcard");
   const [isPlaying, setIsPlaying] = useState(false);
+  const [frozenPools, setFrozenPools] = useState<{
+    vocabulary: DictionaryItem[];
+    idioms: ArabicIdiom[];
+    dialogues: Dialogue[];
+    isMistakesMode: boolean;
+  } | null>(null);
 
   const { favoriteWords, weakWords, mistakeIds, clearMistakes } =
     useUserStore();
@@ -341,11 +347,23 @@ function ExercisesPageContent() {
       idiomsPool.length < 1
     )
       return;
+    setFrozenPools({
+      vocabulary: [...combinedVocabulary],
+      idioms: [...idiomsPool],
+      dialogues: [...selectedDialogues],
+      isMistakesMode: rangePreset === "mistakes",
+    });
     setIsPlaying(true);
   };
 
+  const handleCloseExercise = () => {
+    setIsPlaying(false);
+    setFrozenPools(null);
+  };
+
   const effectiveSentenceCount =
-    selectedType === "flashcard"
+    selectedType === "flashcard" ||
+    (selectedType === "matching" && shortSentenceCountInPool >= 5)
       ? shortSentenceCountInPool
       : sentenceCountInPool;
 
@@ -370,7 +388,7 @@ function ExercisesPageContent() {
               type="button"
               onClick={() => {
                 playClick();
-                setIsPlaying(false);
+                handleCloseExercise();
               }}
               className="h-9 px-3 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center gap-1.5 text-xs font-extrabold text-[var(--foreground)] hover:bg-[#EFE3CE] cursor-pointer shrink-0"
             >
@@ -764,65 +782,75 @@ function ExercisesPageContent() {
         <div className="space-y-4">
           {selectedType === "flashcard" && (
             <Flashcard
-              vocabulary={combinedVocabulary}
-              idioms={idiomsPool}
-              dialogues={selectedDialogues}
+              vocabulary={frozenPools?.vocabulary ?? combinedVocabulary}
+              idioms={frozenPools?.idioms ?? idiomsPool}
+              dialogues={frozenPools?.dialogues ?? selectedDialogues}
               contentType={contentType}
               questionCount={questionCount}
-              isMistakesMode={rangePreset === "mistakes"}
-              onClose={() => setIsPlaying(false)}
+              isMistakesMode={
+                frozenPools?.isMistakesMode ?? (rangePreset === "mistakes")
+              }
+              onClose={handleCloseExercise}
             />
           )}
           {selectedType === "multiple-choice" && (
             <MultipleChoice
-              vocabulary={combinedVocabulary}
-              idioms={idiomsPool}
-              dialogues={selectedDialogues}
+              vocabulary={frozenPools?.vocabulary ?? combinedVocabulary}
+              idioms={frozenPools?.idioms ?? idiomsPool}
+              dialogues={frozenPools?.dialogues ?? selectedDialogues}
               contentType={contentType}
               timeLimit={timeLimit}
               questionCount={questionCount}
               feedbackMode={feedbackMode}
-              isMistakesMode={rangePreset === "mistakes"}
-              onClose={() => setIsPlaying(false)}
+              isMistakesMode={
+                frozenPools?.isMistakesMode ?? (rangePreset === "mistakes")
+              }
+              onClose={handleCloseExercise}
             />
           )}
           {selectedType === "fill-in-blanks" && (
             <FillInBlanks
-              dialogues={selectedDialogues}
-              vocabulary={combinedVocabulary}
-              idioms={idiomsPool}
+              dialogues={frozenPools?.dialogues ?? selectedDialogues}
+              vocabulary={frozenPools?.vocabulary ?? combinedVocabulary}
+              idioms={frozenPools?.idioms ?? idiomsPool}
               contentType={contentType}
               timeLimit={timeLimit}
               questionCount={questionCount}
               feedbackMode={feedbackMode}
               initialSubMode={fillSubMode}
-              isMistakesMode={rangePreset === "mistakes"}
-              onClose={() => setIsPlaying(false)}
+              isMistakesMode={
+                frozenPools?.isMistakesMode ?? (rangePreset === "mistakes")
+              }
+              onClose={handleCloseExercise}
             />
           )}
           {selectedType === "matching" && (
             <MatchingGame
-              vocabulary={combinedVocabulary}
-              idioms={idiomsPool}
-              dialogues={selectedDialogues}
+              vocabulary={frozenPools?.vocabulary ?? combinedVocabulary}
+              idioms={frozenPools?.idioms ?? idiomsPool}
+              dialogues={frozenPools?.dialogues ?? selectedDialogues}
               contentType={contentType}
               timeLimit={timeLimit}
               questionCount={questionCount}
               feedbackMode={feedbackMode}
-              isMistakesMode={rangePreset === "mistakes"}
-              onClose={() => setIsPlaying(false)}
+              isMistakesMode={
+                frozenPools?.isMistakesMode ?? (rangePreset === "mistakes")
+              }
+              onClose={handleCloseExercise}
             />
           )}
           {selectedType === "sentence-builder" && (
             <SentenceBuilder
-              dialogues={selectedDialogues}
-              idioms={idiomsPool}
+              dialogues={frozenPools?.dialogues ?? selectedDialogues}
+              idioms={frozenPools?.idioms ?? idiomsPool}
               contentType={contentType}
               questionCount={questionCount}
               timeLimit={timeLimit}
               feedbackMode={feedbackMode}
-              isMistakesMode={rangePreset === "mistakes"}
-              onClose={() => setIsPlaying(false)}
+              isMistakesMode={
+                frozenPools?.isMistakesMode ?? (rangePreset === "mistakes")
+              }
+              onClose={handleCloseExercise}
             />
           )}
         </div>

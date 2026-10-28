@@ -13,7 +13,10 @@ export default function ScrollToTopButton() {
       const isAtFooter =
         window.innerHeight + scrollY >=
         document.documentElement.scrollHeight - 90;
-      setVisible(scrollY > 300 && !isAtFooter);
+      const isVirtualKeyboardOpen = Boolean(
+        document.querySelector('[data-virtual-keyboard="true"]')
+      );
+      setVisible(scrollY > 300 && !isAtFooter && !isVirtualKeyboardOpen);
     };
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
