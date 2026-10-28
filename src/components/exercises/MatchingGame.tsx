@@ -97,6 +97,10 @@ export default function MatchingGame({
 
   // Active arrow connections between trId and arId
   const [connections, setConnections] = useState<ArrowConnection[]>([]);
+  const connectionsRef = useRef<ArrowConnection[]>([]);
+  useEffect(() => {
+    connectionsRef.current = connections;
+  }, [connections]);
   const wrongTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   // Track any pairs that had at least one wrong attempt
   const [wrongPairsHistory, setWrongPairsHistory] = useState<PairDefinition[]>(
@@ -268,6 +272,7 @@ export default function MatchingGame({
       setArCards(shuffleArray(nextAr));
       setTrCards(shuffleArray(nextTr));
       setConnections([]);
+      connectionsRef.current = [];
       setWrongPairsHistory([]);
       setWrongAttemptsCount(0);
       wrongAttemptedMatchIdsRef.current.clear();
@@ -373,18 +378,18 @@ export default function MatchingGame({
     });
   };
 
-  // Connect a Turkish card and an Arabic card
-  const connectPair = (trId: string, arId: string) => {
+  // Centralized function for both click-to-match and pointer/mouse drag-and-drop
+  const createConnection = (trId: string, arId: string) => {
     if (isGameOver || isExamEvaluated) return;
     const trMatchId = trId.replace("tr-", "");
     const arMatchId = arId.replace("ar-", "");
 
-    // Do not allow overriding an already locked correct card in either mode
-    const lockedCorrect = connections.some(
+    // Never allow overriding an already locked correct card in either mode
+    const isAlreadyLocked = connectionsRef.current.some(
       (c) =>
         c.status === "correct" && (c.trId === trId || c.arId === arId)
     );
-    if (lockedCorrect) return;
+    if (isAlreadyLocked) return;
 
     if (feedbackMode === "instant") {
       const isMatch = trMatchId === arMatchId;
@@ -409,13 +414,19 @@ export default function MatchingGame({
       }
 
       setConnections((prev) => {
-        // Remove any previous non-correct connection attached to trId or arId
+        // Keep all previous 'correct' connections intact; only replace non-correct connections on trId/arId
+        const lockedStill = prev.some(
+          (c) =>
+            c.status === "correct" && (c.trId === trId || c.arId === arId)
+        );
+        if (lockedStill) return prev;
+
         const filtered = prev.filter(
           (c) =>
             c.status === "correct" ||
-            (c.trId !== trId && c.arId !== arId)
+            (c.trId !== trId && c.arId !== arId && c.status !== "wrong")
         );
-        return [
+        const next: ArrowConnection[] = [
           ...filtered,
           {
             trId,
@@ -425,30 +436,37 @@ export default function MatchingGame({
             status: isMatch ? "correct" : "wrong",
           },
         ];
+        connectionsRef.current = next;
+        return next;
       });
 
-      // In instant mode, if wrong, show in red for 700ms then automatically remove ONLY this wrong line
+      // In instant mode, if wrong, show red line for 700ms then remove ONLY wrong lines
       if (!isMatch) {
         const timer = setTimeout(() => {
-          setConnections((prev) =>
-            prev.filter(
-              (c) =>
-                !(c.trId === trId && c.arId === arId && c.status === "wrong")
-            )
-          );
+          setConnections((prev) => {
+            const next = prev.filter((c) => c.status !== "wrong");
+            connectionsRef.current = next;
+            return next;
+          });
         }, 700);
         wrongTimersRef.current.push(timer);
       }
     } else {
-      // End mode: store as pending connection, replacing any existing non-correct connection for trId or arId
+      // End mode: store as pending connection, keeping any locked correct connections intact
       playClick();
       setConnections((prev) => {
+        const lockedStill = prev.some(
+          (c) =>
+            c.status === "correct" && (c.trId === trId || c.arId === arId)
+        );
+        if (lockedStill) return prev;
+
         const filtered = prev.filter(
           (c) =>
             c.status === "correct" ||
             (c.trId !== trId && c.arId !== arId)
         );
-        return [
+        const next: ArrowConnection[] = [
           ...filtered,
           {
             trId,
@@ -458,6 +476,8 @@ export default function MatchingGame({
             status: "pending",
           },
         ];
+        connectionsRef.current = next;
+        return next;
       });
     }
 
@@ -467,14 +487,15 @@ export default function MatchingGame({
 
   const evaluateEndModeConnections = () => {
     playClick();
+    const currentConns = connectionsRef.current;
     let gained = 0;
     let wrongs = 0;
     const previouslyCorrectIds = new Set(
-      connections
+      currentConns
         .filter((c) => c.status === "correct")
         .map((c) => c.trMatchId)
     );
-    const evaluated: ArrowConnection[] = connections.map((c) => {
+    const evaluated: ArrowConnection[] = currentConns.map((c) => {
       const isOk = c.trMatchId === c.arMatchId;
       if (isOk) {
         if (!previouslyCorrectIds.has(c.trMatchId)) {
@@ -516,8 +537,9 @@ export default function MatchingGame({
       }
     });
 
-    setWrongAttemptsCount((prev) => prev + wrongs + (totalPairs - evaluated.length));
+    connectionsRef.current = evaluated;
     setConnections(evaluated);
+    setWrongAttemptsCount((prev) => prev + wrongs + (totalPairs - evaluated.length));
     setExerciseScore((s) => s + gained);
     setTotalCumulativeScore((s) => s + gained);
     setIsExamEvaluated(true);
@@ -533,7 +555,11 @@ export default function MatchingGame({
   // In end mode, remove only the wrong connections while keeping the green/correct ones locked
   const handleFixWrongConnectionsInPlace = () => {
     playClick();
-    setConnections((prev) => prev.filter((c) => c.status === "correct"));
+    setConnections((prev) => {
+      const next = prev.filter((c) => c.status !== "wrong");
+      connectionsRef.current = next;
+      return next;
+    });
     setIsExamEvaluated(false);
     setShowEndBar(false);
     setIsGameOver(false);
@@ -546,7 +572,7 @@ export default function MatchingGame({
 
     // Check if already locked as correct
     if (
-      connections.some(
+      connectionsRef.current.some(
         (c) =>
           c.status === "correct" &&
           (c.trId === card.id || c.arId === card.id)
@@ -558,7 +584,7 @@ export default function MatchingGame({
     if (card.type === "ar") {
       playTTS(card.text, speechRate);
       if (selectedTr) {
-        connectPair(selectedTr, card.id);
+        createConnection(selectedTr, card.id);
       } else {
         playClick();
         setSelectedAr((prev) => (prev === card.id ? null : card.id));
@@ -566,7 +592,7 @@ export default function MatchingGame({
     } else {
       playClick();
       if (selectedAr) {
-        connectPair(card.id, selectedAr);
+        createConnection(card.id, selectedAr);
       } else {
         setSelectedTr((prev) => (prev === card.id ? null : card.id));
       }
@@ -580,7 +606,7 @@ export default function MatchingGame({
   ) => {
     if (isGameOver || isExamEvaluated) return;
     if (
-      connections.some(
+      connectionsRef.current.some(
         (c) =>
           c.status === "correct" &&
           (c.trId === card.id || c.arId === card.id)
@@ -655,7 +681,7 @@ export default function MatchingGame({
       if (targetArId) {
         const arObj = arCards.find((c) => c.id === targetArId);
         if (arObj) playTTS(arObj.text, speechRate);
-        connectPair(currentDrag.sourceId, targetArId);
+        createConnection(currentDrag.sourceId, targetArId);
       }
     } else {
       const trCardEl = targetEl.closest(
@@ -663,7 +689,7 @@ export default function MatchingGame({
       ) as HTMLElement | null;
       const targetTrId = trCardEl?.getAttribute("data-tr-card-id");
       if (targetTrId) {
-        connectPair(targetTrId, currentDrag.sourceId);
+        createConnection(targetTrId, currentDrag.sourceId);
       }
     }
   };
@@ -702,12 +728,12 @@ export default function MatchingGame({
       : 0;
 
   return (
-    <div className="max-w-4xl mx-auto bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3 sm:p-5 shadow-xs">
+    <div className="max-w-4xl mx-auto mt-1 pt-3 sm:pt-4 bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3 sm:p-5 shadow-xs">
       {/* 1. ÜST YÖNERGE BAŞLIĞI (ÇİFT DİLLİ KOMPAKT BAŞLIK) */}
-      <div className="relative text-center pb-3 mb-3 border-b border-stone-200/80 dark:border-slate-700/80">
+      <div className="relative text-center pt-1 pb-3 mb-3 border-b border-stone-200/80 dark:border-slate-700/80">
         <p
           dir="rtl"
-          className="arabic font-arabic text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 leading-snug"
+          className="arabic font-arabic text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 leading-relaxed"
         >
           {formatAr("صِلْ كُلَّ عُنْصُرٍ بِمَا يُنَاسِبُهُ.")}
         </p>
@@ -836,7 +862,7 @@ export default function MatchingGame({
         </svg>
 
         {/* SOL GRUP KUTUSU (TÜRKÇE — BAĞLANTI TUTAMACI SAĞ İÇ KENARDA) */}
-        <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[45%] sm:w-[40%] flex flex-col justify-between gap-2 z-10">
+        <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[46%] sm:w-[40%] flex flex-col justify-between gap-2 z-10">
           {trCards.map((trCard) => {
             const trConn = connections.find((c) => c.trId === trCard.id);
             const isTrSelected =
@@ -874,10 +900,10 @@ export default function MatchingGame({
                     handleCardSelect(trCard);
                   }
                 }}
-                className={`h-auto min-h-[54px] px-2.5 py-2 sm:px-3.5 sm:py-2.5 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-all ${rowStyle}`}
+                className={`h-auto min-h-[58px] py-2.5 px-2.5 sm:px-3.5 rounded-xl flex items-center justify-between gap-1.5 cursor-pointer transition-all ${rowStyle}`}
               >
-                {/* Sol: Türkçe Anlamı */}
-                <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 break-words leading-snug line-clamp-3 flex-1 min-w-0 text-left">
+                {/* Sol: Türkçe Anlamı (Kesilmeden Tam Görünür) */}
+                <span className="flex-1 min-w-0 text-left text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 leading-snug break-words">
                   {trCard.text}
                 </span>
 
@@ -886,7 +912,7 @@ export default function MatchingGame({
                   ref={(el) => {
                     trSocketRefs.current[trCard.id] = el;
                   }}
-                  className={`w-3 h-3 rounded-sm shrink-0 transition-all ${dotStyle}`}
+                  className={`w-3.5 h-3.5 rounded-sm shrink-0 transition-all ${dotStyle}`}
                   aria-hidden="true"
                 />
               </div>
@@ -896,12 +922,12 @@ export default function MatchingGame({
 
         {/* ORTA ÇİZGİ KORİDORU */}
         <div
-          className="flex-1 min-w-[24px] sm:min-w-[84px] md:min-w-[128px]"
+          className="flex-1 min-w-[20px] sm:min-w-[84px] md:min-w-[128px]"
           aria-hidden="true"
         />
 
         {/* SAĞ GRUP KUTUSU (ARAPÇA — BAĞLANTI TUTAMACI SOL İÇ KENARDA) */}
-        <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[45%] sm:w-[40%] flex flex-col justify-between gap-2 z-10">
+        <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[46%] sm:w-[40%] flex flex-col justify-between gap-2 z-10">
           {arCards.map((arCard) => {
             const arConn = connections.find((c) => c.arId === arCard.id);
             const isArSelected =
@@ -939,24 +965,24 @@ export default function MatchingGame({
                     handleCardSelect(arCard);
                   }
                 }}
-                className={`h-auto min-h-[54px] px-2.5 py-2 sm:px-3.5 sm:py-2.5 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-all ${rowStyle}`}
+                className={`h-auto min-h-[58px] py-2.5 px-2.5 sm:px-3.5 rounded-xl flex items-center justify-between gap-1.5 cursor-pointer transition-all ${rowStyle}`}
               >
                 {/* Sol İç Kenar: Orta Koridora Bakan Bağlantı Noktası (■) */}
                 <span
                   ref={(el) => {
                     arSocketRefs.current[arCard.id] = el;
                   }}
-                  className={`w-3 h-3 rounded-sm shrink-0 transition-all ${dotStyle}`}
+                  className={`w-3.5 h-3.5 rounded-sm shrink-0 transition-all ${dotStyle}`}
                   aria-hidden="true"
                 />
 
                 {/* Orta/Sağ: Arapça Kelime/Cümle (Harekeli & Tam Görünür, Kesilmez) */}
                 <span
                   dir="rtl"
-                  className={`arabic font-arabic font-bold break-words leading-snug line-clamp-3 flex-1 min-w-0 text-right ${
+                  className={`flex-1 min-w-0 text-right arabic font-arabic font-bold leading-relaxed break-words ${
                     arCard.isSentence
-                      ? "text-sm sm:text-lg"
-                      : "text-lg sm:text-2xl"
+                      ? "text-base sm:text-lg"
+                      : "text-base sm:text-xl"
                   }`}
                 >
                   {formatAr(arCard.text)}
@@ -971,7 +997,7 @@ export default function MatchingGame({
                     e.stopPropagation();
                     playTTS(arCard.text, speechRate);
                   }}
-                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-white/80 dark:bg-slate-800 border border-stone-200 dark:border-slate-600 flex items-center justify-center text-[#0CA678] hover:bg-emerald-50 dark:hover:bg-slate-700 shrink-0 cursor-pointer"
+                  className="w-6 h-6 rounded-lg bg-white/80 dark:bg-slate-800 border border-stone-200 dark:border-slate-600 flex items-center justify-center text-[#0CA678] hover:bg-emerald-50 dark:hover:bg-slate-700 shrink-0 cursor-pointer"
                 >
                   <Volume2 size={13} />
                 </button>
@@ -1113,7 +1139,7 @@ export default function MatchingGame({
                   className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl border-b-2 border-rose-800 active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <RotateCcw size={14} />
-                  <span>🔄 Yanlışları Düzelt</span>
+                  <span>🔄 Yanlışları Temizle ve Düzelt</span>
                 </button>
               )}
 

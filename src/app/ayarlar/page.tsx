@@ -500,11 +500,11 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Canlı Tipografi Önizleme Kutusu (Kompakt py-3 px-4) */}
+            {/* Canlı Tipografi Önizleme Kutusu (Diyalog Görünüm Düzeni ile Canlı Senkronize) */}
             <div className="pt-1.5 space-y-1.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-extrabold uppercase tracking-wider text-[#087F5B] dark:text-[#20c997]">
-                  Canlı Tipografi Önizleme Kutusu (Lafzatullah &amp; Hareke Testi)
+                  Canlı Tipografi Önizleme Kutusu ({viewModes.find((m) => m.id === viewMode)?.label || "Alt Alta Görünüm"})
                 </span>
                 <button
                   type="button"
@@ -519,30 +519,88 @@ export default function SettingsPage() {
                 </button>
               </div>
 
-              <div className="bg-white dark:bg-[var(--background)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] py-3 px-4 space-y-2 shadow-2xs">
-                {viewMode !== "turkish-only" && (
-                  <p
-                    dir="rtl"
-                    style={{
-                      fontFamily: activeFontCfg.cssFamily,
-                      fontSize: `${Math.round(
-                        arabicFontSize * activeFontCfg.scale
-                      )}px`,
-                      lineHeight: activeFontCfg.lineHeight,
-                    }}
-                    className="arabic font-bold text-[var(--foreground)]"
-                  >
-                    {sampleArabic}
-                  </p>
-                )}
-                {viewMode !== "arabic-only" && (
-                  <p
-                    style={{ fontSize: `${turkishFontSize}px` }}
-                    className="font-semibold text-[var(--muted)] border-t border-dashed border-[#E2D3B8] pt-1.5"
-                  >
-                    “Anneciğim seni Allah&apos;a emanet ediyorum; babacığım seni
-                    de Allah&apos;a emanet ediyorum.”
-                  </p>
+              <div className="bg-white dark:bg-[var(--background)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] py-3 px-4 shadow-2xs">
+                {viewMode === "columns" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    <p
+                      dir="ltr"
+                      style={{ fontSize: `${turkishFontSize}px` }}
+                      className="font-semibold text-[var(--muted)] text-left md:border-r md:border-dashed md:border-[#E2D3B8] dark:md:border-[var(--border-dashed)] md:pr-4 order-2 md:order-1"
+                    >
+                      “Anneciğim seni Allah&apos;a emanet ediyorum; babacığım seni
+                      de Allah&apos;a emanet ediyorum.”
+                    </p>
+                    <p
+                      dir="rtl"
+                      style={{
+                        fontFamily: activeFontCfg.cssFamily,
+                        fontSize: `${Math.round(
+                          arabicFontSize * activeFontCfg.scale
+                        )}px`,
+                        lineHeight: activeFontCfg.lineHeight,
+                      }}
+                      className="arabic font-bold text-[var(--foreground)] text-right order-1 md:order-2"
+                    >
+                      {sampleArabic}
+                    </p>
+                  </div>
+                ) : viewMode === "arabic-only" ? (
+                  <div className="space-y-1.5">
+                    <p
+                      dir="rtl"
+                      style={{
+                        fontFamily: activeFontCfg.cssFamily,
+                        fontSize: `${Math.round(
+                          arabicFontSize * activeFontCfg.scale
+                        )}px`,
+                        lineHeight: activeFontCfg.lineHeight,
+                      }}
+                      className="arabic font-bold text-[var(--foreground)] text-right"
+                    >
+                      {sampleArabic}
+                    </p>
+                    <p className="text-[11px] font-medium text-[var(--muted)] italic border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pt-1">
+                      Türkçe çeviri gizlendi (Sadece Arapça modu)
+                    </p>
+                  </div>
+                ) : viewMode === "turkish-only" ? (
+                  <div className="space-y-1.5">
+                    <p
+                      dir="ltr"
+                      style={{ fontSize: `${turkishFontSize}px` }}
+                      className="font-semibold text-[var(--muted)] text-left"
+                    >
+                      “Anneciğim seni Allah&apos;a emanet ediyorum; babacığım seni
+                      de Allah&apos;a emanet ediyorum.”
+                    </p>
+                    <p className="text-[11px] font-medium text-[var(--muted)] italic border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pt-1">
+                      Arapça metin gizlendi (Sadece Türkçe modu)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p
+                      dir="rtl"
+                      style={{
+                        fontFamily: activeFontCfg.cssFamily,
+                        fontSize: `${Math.round(
+                          arabicFontSize * activeFontCfg.scale
+                        )}px`,
+                        lineHeight: activeFontCfg.lineHeight,
+                      }}
+                      className="arabic font-bold text-[var(--foreground)] text-right"
+                    >
+                      {sampleArabic}
+                    </p>
+                    <p
+                      dir="ltr"
+                      style={{ fontSize: `${turkishFontSize}px` }}
+                      className="font-semibold text-[var(--muted)] text-left border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pt-1.5"
+                    >
+                      “Anneciğim seni Allah&apos;a emanet ediyorum; babacığım seni
+                      de Allah&apos;a emanet ediyorum.”
+                    </p>
+                  </div>
                 )}
               </div>
             </div>

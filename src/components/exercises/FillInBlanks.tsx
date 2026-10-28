@@ -1221,8 +1221,8 @@ export default function FillInBlanks({
         </div>
       </div>
 
-      {/* İMLA MODUNDA ÜST KELİME İPUCU ŞERİDİ (AÇILIR/KAPANIR) */}
-      {subMode === "dictation" && (
+      {/* SEÇMELİ MODDA ÜST KELİME HAVUZU ŞERİDİ (İMLA MODUNDA GİZLİ) */}
+      {subMode === "choices" && (
         <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] px-3.5 py-2.5 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-extrabold text-[var(--foreground)]">
@@ -1240,7 +1240,7 @@ export default function FillInBlanks({
               <span>
                 {showWordBank
                   ? "Kelime Havuzunu Gizle"
-                  : "👁️ Kelime Havuzunu Göster"}
+                  : "Kelime Havuzunu Göster"}
               </span>
             </button>
           </div>
@@ -1256,8 +1256,7 @@ export default function FillInBlanks({
                   type="button"
                   onClick={() => {
                     playClick();
-                    setTypedText(w);
-                    inputRef.current?.focus();
+                    handleChooseOption(w);
                   }}
                   className="px-3 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#6741D9]/40 hover:border-[#6741D9] arabic text-xl font-bold text-[#4C28B5] dark:text-[#d0bfff] cursor-pointer"
                 >
@@ -1398,9 +1397,9 @@ export default function FillInBlanks({
                                 handleCheckDictation();
                               }
                             }}
-                            placeholder="........"
+                            placeholder="....."
                             aria-label="Eksik Arapça kelimeyi yazın"
-                            className={`w-36 sm:w-48 h-11 sm:h-12 px-3 rounded-xl border-2 text-center arabic text-2xl sm:text-3xl font-bold focus:outline-none transition-all ${
+                            className={`w-28 sm:w-40 inline-flex h-10 sm:h-11 px-2.5 rounded-xl border-2 text-center arabic text-xl sm:text-3xl font-bold focus:outline-none transition-all ${
                               feedback === "wrong"
                                 ? "bg-rose-50 border-rose-500 text-rose-800"
                                 : "bg-white dark:bg-[var(--background)] border-[#6741D9] text-[#087F5B] dark:text-[#20c997] focus:ring-4 focus:ring-[#6741D9]/20"
@@ -1449,7 +1448,7 @@ export default function FillInBlanks({
                 className="h-8 px-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border-2 border-amber-300 border-b-3 text-amber-800 dark:text-amber-300 text-xs font-extrabold flex items-center gap-1 hover:bg-amber-100 cursor-pointer"
               >
                 <Lightbulb size={13} />
-                <span>💡 Harf İpucu</span>
+                <span>Harf İpucu</span>
               </button>
 
               {!showKeyboard && (
