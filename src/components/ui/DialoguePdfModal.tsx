@@ -44,6 +44,8 @@ type TranslationLayout = "side-by-side" | "stacked" | "grouped-end";
 type SideBySideOrder = "ar-right" | "ar-left";
 type VocabPlacement = "same-page" | "new-page";
 type VocabLanguageMode = "both" | "ar-only" | "tr-only";
+type FitMode = "auto" | "normal" | "compact";
+type DensityLevel = "normal" | "compact" | "tight";
 
 export function stripHarakat(text: string): string {
   return removeArabicHarakat(text);
@@ -365,6 +367,11 @@ export default function DialoguePdfModal({
     useState<SideBySideOrder>("ar-right");
   const [showAdvancedLayout, setShowAdvancedLayout] = useState<boolean>(false);
 
+  // Otomatik Sığdırma (Auto-Fit) Motoru State'leri
+  const [fitMode, setFitMode] = useState<FitMode>("auto");
+  const [activeDensity, setActiveDensity] = useState<DensityLevel>("normal");
+  const a4PageRef = useRef<HTMLDivElement | null>(null);
+
   const hasAnyBlankActivity =
     clozeMode ||
     translationMode === "dotted" ||
@@ -382,6 +389,79 @@ export default function DialoguePdfModal({
       setIncludeAnswerKey(true);
     }
   }, [hasAnyBlankActivity]);
+
+  // İçerik veya mizanpaj ayarları değiştiğinde fitMode'a göre başlangıç yoğunluğunu sıfırla
+  useEffect(() => {
+    if (fitMode === "normal") {
+      setActiveDensity("normal");
+    } else if (fitMode === "compact") {
+      setActiveDensity("compact");
+    } else {
+      // "auto" modunda önce normal yüksekliği ölçmek için "normal" ile başla
+      setActiveDensity("normal");
+    }
+  }, [
+    fitMode,
+    dialogue.id,
+    imageMode,
+    translationMode,
+    clozeMode,
+    includeHarakat,
+    includeQrCode,
+    includeVocabulary,
+    includeIdioms,
+    idiomsBlankMode,
+    includeWorksheet,
+    includeStudentHeader,
+    includeAnswerKey,
+    vocabPlacement,
+    vocabLanguageMode,
+    translationLayout,
+    translationPageBreak,
+    sideBySideOrder,
+    arabicFont,
+  ]);
+
+  // Sayfa Taşma Tespiti (useEffect + ResizeObserver): 1080px / sayfa sınırını 10px–230px aşan sarkmaları kademeli sıkıştır
+  useEffect(() => {
+    if (fitMode !== "auto") return;
+    const el = a4PageRef.current;
+    if (!el) return;
+
+    const PAGE_HEIGHT = 1080;
+    const evaluateOverflow = () => {
+      const target = a4PageRef.current;
+      if (!target) return;
+      const scrollH = target.scrollHeight;
+      if (scrollH <= PAGE_HEIGHT) return;
+
+      const remainder = scrollH % PAGE_HEIGHT;
+      // 1 tam sayfayı veya 2 tam sayfayı 10px ile 230px (~1-6 satır / %1-%22) arasında aşıyorsa sıkıştır
+      if (activeDensity === "normal" && remainder >= 10 && remainder <= 230) {
+        setActiveDensity("compact");
+      } else if (
+        activeDensity === "compact" &&
+        remainder >= 1 &&
+        remainder <= 230
+      ) {
+        setActiveDensity("tight");
+      }
+    };
+
+    const rafId = requestAnimationFrame(evaluateOverflow);
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => {
+        evaluateOverflow();
+      });
+      observer.observe(el);
+    }
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      if (observer) observer.disconnect();
+    };
+  }, [fitMode, activeDensity, mobileTab]);
 
   const printIframeRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -1633,9 +1713,61 @@ export default function DialoguePdfModal({
             color: #087f5b;
             letter-spacing: 0.03em;
           }
+          /* Otomatik Sığdırma (Auto-Fit) Kademeli Sıkıştırma Sınıfları */
+          body.density-compact .header-card,
+          body.density-tight .header-card {
+            padding: 9px 12px;
+            margin-bottom: 8px;
+          }
+          body.density-compact .two-col-table td,
+          body.density-compact .stacked-card,
+          body.density-compact .line-row {
+            padding: 5px 9px;
+          }
+          body.density-compact .ar-sentence {
+            line-height: 1.6;
+          }
+          body.density-compact .section-block,
+          body.density-compact .vocab-section,
+          body.density-compact .idioms-section {
+            margin-top: 10px;
+          }
+          body.density-compact .vocab-grid-card,
+          body.density-compact .idioms-table td,
+          body.density-compact .idioms-table th {
+            padding: 4px 8px;
+          }
+          body.density-tight .two-col-table td,
+          body.density-tight .stacked-card,
+          body.density-tight .line-row {
+            padding: 3.5px 8px;
+          }
+          body.density-tight .ar-sentence {
+            line-height: 1.52;
+            font-size: ${Math.round(19 * fontConfig.scale)}px;
+          }
+          body.density-tight .tr-cell,
+          body.density-tight .tr-subrow,
+          body.density-tight .end-tr-item {
+            font-size: 11.2px;
+          }
+          body.density-tight .section-block,
+          body.density-tight .vocab-section,
+          body.density-tight .idioms-section {
+            margin-top: 7px;
+          }
+          body.density-tight .vocab-grid-card,
+          body.density-tight .idioms-table td,
+          body.density-tight .idioms-table th {
+            padding: 3px 7px;
+          }
+          body.density-tight .corporate-footer {
+            margin-top: 8px;
+            padding-top: 6px;
+          }
         </style>
       </head>
-      <body>
+      <body class="density-${activeDensity}">
         <div class="header-card">
           <div class="header-left">
             <div class="badge-row">
@@ -1903,6 +2035,38 @@ export default function DialoguePdfModal({
                     className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
                       translationMode === opt.id
                         ? "bg-[#6741D9] text-white shadow-xs"
+                        : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* PDF-AUTO-FIT: Sayfaya Sığdır Seçici */}
+            <div className="flex flex-wrap items-center gap-1 bg-[#F7EFE1] dark:bg-[var(--background)] px-2 py-1 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
+              <span className="text-[11px] font-extrabold text-[var(--foreground)]">
+                📐 Sayfaya Sığdır:
+              </span>
+              <div className="flex flex-wrap items-center gap-1">
+                {(
+                  [
+                    { id: "auto", label: "⚡ Otomatik" },
+                    { id: "normal", label: "Normal" },
+                    { id: "compact", label: "Sıkılaştır" },
+                  ] as { id: FitMode; label: string }[]
+                ).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setFitMode(opt.id);
+                    }}
+                    className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                      fitMode === opt.id
+                        ? "bg-[#0CA678] text-white shadow-xs"
                         : "text-[var(--muted)] hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -2323,18 +2487,40 @@ export default function DialoguePdfModal({
             mobileTab === "preview" ? "block" : "hidden md:block"
           }`}
         >
-          <div className="max-w-[780px] w-full mx-auto bg-white text-slate-900 light rounded-2xl border-2 border-[#CBD5E1] shadow-lg p-3.5 sm:p-7 space-y-4 overflow-x-hidden">
+          <div
+            ref={a4PageRef}
+            className={`max-w-[780px] w-full mx-auto bg-white text-slate-900 light rounded-2xl border-2 border-[#CBD5E1] shadow-lg overflow-x-hidden transition-all ${
+              activeDensity === "tight"
+                ? "p-3 sm:p-5 space-y-2 text-[95%]"
+                : activeDensity === "compact"
+                ? "p-3 sm:p-5 space-y-2.5"
+                : "p-3.5 sm:p-7 space-y-4"
+            }`}
+          >
             {/* Önizleme Rozeti (print:hidden) */}
             <div className="print:hidden flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-slate-500 border-b border-slate-200 pb-2">
-              <span className="flex items-center gap-1.5 text-[#087F5B]">
-                <Eye size={14} />
-                <span>Canlı A4 Çalışma Kağıdı Önizlemesi</span>
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="flex items-center gap-1.5 text-[#087F5B]">
+                  <Eye size={14} />
+                  <span>Canlı A4 Çalışma Kağıdı Önizlemesi</span>
+                </span>
+                {activeDensity !== "normal" && (
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold">
+                    ✨ Sarkan satırlar otomatik daraltılarak sayfaya sığdırıldı
+                  </span>
+                )}
+              </div>
               <span>Vektörel A4 Çıktı • {fontConfig.name.split(" (")[0]}</span>
             </div>
 
             {/* A4 ÜST BAŞLIK KARTI */}
-            <div className="border-2 border-[#0CA678] border-b-4 rounded-2xl p-3.5 sm:p-4 bg-[#FDFBF7] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div
+              className={`border-2 border-[#0CA678] border-b-4 rounded-2xl bg-[#FDFBF7] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                activeDensity !== "normal"
+                  ? "p-3 mb-2.5"
+                  : "p-3.5 sm:p-5 mb-5"
+              }`}
+            >
               <div className="flex-1 min-w-0 space-y-1.5 w-full">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="px-2 py-0.5 rounded-md bg-[#0CA678] text-white text-[10px] font-extrabold">
@@ -2475,7 +2661,13 @@ export default function DialoguePdfModal({
                     <div
                       key={line.sira}
                       dir="rtl"
-                      className={`p-3 flex items-baseline gap-2 break-inside-avoid ${
+                      className={`${
+                        activeDensity === "tight"
+                          ? "py-1 px-2.5"
+                          : activeDensity === "compact"
+                          ? "py-1.5 px-2.5"
+                          : "p-3"
+                      } flex items-baseline gap-2 break-inside-avoid ${
                         idx % 2 === 0 ? "bg-slate-50" : "bg-white"
                       }`}
                     >
@@ -2488,7 +2680,15 @@ export default function DialoguePdfModal({
                       >
                         {formatAr(line.konusmaci_ar)}
                       </span>
-                      <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-[1.85]">
+                      <span
+                        className={`arabic font-bold text-slate-900 ${
+                          activeDensity === "tight"
+                            ? "text-lg sm:text-xl leading-snug scale-[0.97] origin-right"
+                            : activeDensity === "compact"
+                            ? "text-xl sm:text-2xl leading-[1.6]"
+                            : "text-xl sm:text-2xl leading-[1.85]"
+                        }`}
+                      >
                         {formatAr(arText)}
                       </span>
                     </div>
@@ -2506,7 +2706,13 @@ export default function DialoguePdfModal({
                   return (
                     <div
                       key={line.sira}
-                      className={`p-3 break-inside-avoid ${
+                      className={`${
+                        activeDensity === "tight"
+                          ? "py-1 px-2.5"
+                          : activeDensity === "compact"
+                          ? "py-1.5 px-2.5"
+                          : "p-3"
+                      } break-inside-avoid ${
                         idx % 2 === 0 ? "bg-slate-50" : "bg-white"
                       }`}
                     >
@@ -2526,7 +2732,15 @@ export default function DialoguePdfModal({
                         {translationMode === "ar-dotted" ? (
                           <div className="flex-1 border-b border-dotted border-slate-400 h-7" />
                         ) : (
-                          <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-[1.85]">
+                          <span
+                            className={`arabic font-bold text-slate-900 ${
+                              activeDensity === "tight"
+                                ? "text-lg sm:text-xl leading-snug scale-[0.97] origin-right"
+                                : activeDensity === "compact"
+                                ? "text-xl sm:text-2xl leading-[1.6]"
+                                : "text-xl sm:text-2xl leading-[1.85]"
+                            }`}
+                          >
                             {formatAr(arText)}
                           </span>
                         )}
@@ -2534,7 +2748,7 @@ export default function DialoguePdfModal({
 
                       <div
                         dir="ltr"
-                        className="mt-1.5 pt-1.5 border-t border-slate-200/70 text-left"
+                        className="mt-1 pt-1 border-t border-slate-200/70 text-left"
                       >
                         {translationMode === "dotted" ? (
                           <div className="flex items-end gap-2">
@@ -2558,7 +2772,7 @@ export default function DialoguePdfModal({
               </div>
             ) : translationLayout === "grouped-end" ? (
               /* SONDA TOPLU MODU: Diyalog satırlarında yalnızca numaralı Arapça cümleler, altında (veya yeni sayfada) toplu tercüme bloğu */
-              <div className="space-y-4">
+              <div className={activeDensity !== "normal" ? "space-y-2.5" : "space-y-4"}>
                 <div className="border border-slate-300 rounded-xl overflow-hidden divide-y divide-slate-200">
                   {dialogue.satirlar.map((line, idx) => {
                     const spIdx = speakers.indexOf(line.konusmaci);
@@ -2568,7 +2782,13 @@ export default function DialoguePdfModal({
                       <div
                         key={line.sira}
                         dir="rtl"
-                        className={`p-3 flex items-baseline gap-2 break-inside-avoid ${
+                        className={`${
+                          activeDensity === "tight"
+                            ? "py-1 px-2.5"
+                            : activeDensity === "compact"
+                            ? "py-1.5 px-2.5"
+                            : "p-3"
+                        } flex items-baseline gap-2 break-inside-avoid ${
                           idx % 2 === 0 ? "bg-slate-50" : "bg-white"
                         }`}
                       >
@@ -2584,7 +2804,15 @@ export default function DialoguePdfModal({
                         {translationMode === "ar-dotted" ? (
                           <div className="flex-1 border-b border-dotted border-slate-400 h-7" />
                         ) : (
-                          <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-[1.85]">
+                          <span
+                            className={`arabic font-bold text-slate-900 ${
+                              activeDensity === "tight"
+                                ? "text-lg sm:text-xl leading-snug scale-[0.97] origin-right"
+                                : activeDensity === "compact"
+                                ? "text-xl sm:text-2xl leading-[1.6]"
+                                : "text-xl sm:text-2xl leading-[1.85]"
+                            }`}
+                          >
                             {formatAr(arText)}
                           </span>
                         )}
@@ -2597,6 +2825,10 @@ export default function DialoguePdfModal({
                   className={
                     translationPageBreak === "new"
                       ? "break-before-page print:break-before-page mt-6 pt-4 border-t-2 border-dashed border-emerald-400 space-y-2"
+                      : activeDensity === "tight"
+                      ? "mt-2 space-y-1.5"
+                      : activeDensity === "compact"
+                      ? "mt-3 space-y-1.5"
                       : "mt-6 space-y-2"
                   }
                 >
@@ -2613,7 +2845,9 @@ export default function DialoguePdfModal({
                       <div
                         key={line.sira}
                         dir="ltr"
-                        className={`px-3 py-2 text-xs text-slate-700 ${
+                        className={`px-3 ${
+                          activeDensity !== "normal" ? "py-1" : "py-2"
+                        } text-xs text-slate-700 ${
                           idx % 2 === 0 ? "bg-slate-50/70" : "bg-white"
                         }`}
                       >
@@ -2648,7 +2882,13 @@ export default function DialoguePdfModal({
                   return (
                     <div
                       key={line.sira}
-                      className={`p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center break-inside-avoid ${
+                      className={`${
+                        activeDensity === "tight"
+                          ? "py-1 px-2.5 gap-2"
+                          : activeDensity === "compact"
+                          ? "py-1.5 px-2.5 gap-2.5"
+                          : "p-3 gap-3"
+                      } grid grid-cols-1 sm:grid-cols-2 items-center break-inside-avoid ${
                         idx % 2 === 0 ? "bg-slate-50" : "bg-white"
                       }`}
                     >
@@ -2674,7 +2914,13 @@ export default function DialoguePdfModal({
                             <div className="flex-1 border-b border-dotted border-slate-400 h-6" />
                           </div>
                         ) : (
-                          <div className="text-xs sm:text-sm text-slate-700 font-semibold">
+                          <div
+                            className={`text-slate-700 font-semibold ${
+                              activeDensity === "tight"
+                                ? "text-[11px] sm:text-xs scale-[0.97] origin-left"
+                                : "text-xs sm:text-sm"
+                            }`}
+                          >
                             <span
                               className={`text-[11px] font-extrabold px-2 py-0.5 rounded-md border mr-1.5 inline-block ${
                                 isEmerald
@@ -2710,7 +2956,15 @@ export default function DialoguePdfModal({
                         {translationMode === "ar-dotted" ? (
                           <span className="inline-block w-4/5 border-b border-dotted border-slate-400 h-7 align-bottom" />
                         ) : (
-                          <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-[1.85]">
+                          <span
+                            className={`arabic font-bold text-slate-900 ${
+                              activeDensity === "tight"
+                                ? "text-lg sm:text-xl leading-snug scale-[0.97] origin-right"
+                                : activeDensity === "compact"
+                                ? "text-xl sm:text-2xl leading-[1.6]"
+                                : "text-xl sm:text-2xl leading-[1.85]"
+                            }`}
+                          >
                             {formatAr(arText)}
                           </span>
                         )}
@@ -2723,7 +2977,15 @@ export default function DialoguePdfModal({
 
             {/* KELİME TABLOSU ÖNİZLEMESİ */}
             {includeVocabulary && vocabEntries.length > 0 && (
-              <div className="space-y-2 pt-2">
+              <div
+                className={`space-y-2 ${
+                  activeDensity === "tight"
+                    ? "mt-2 pt-1"
+                    : activeDensity === "compact"
+                    ? "mt-3 pt-1"
+                    : "mt-6 pt-2"
+                }`}
+              >
                 <div className="text-xs font-extrabold text-[#087F5B] bg-slate-50 border border-slate-300 border-l-4 border-l-[#0CA678] px-3 py-1.5 rounded-lg">
                   📚 Diyalog Kelime Hazinesi (المفردات) — {vocabEntries.length}{" "}
                   Kelime
@@ -2735,7 +2997,9 @@ export default function DialoguePdfModal({
                     return (
                       <div
                         key={`${mainAr}-${idx}`}
-                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 break-inside-avoid"
+                        className={`flex items-center justify-between gap-2 px-3 ${
+                          activeDensity !== "normal" ? "py-1" : "py-2"
+                        } rounded-lg border border-slate-300 bg-slate-50 break-inside-avoid`}
                       >
                         <div className="min-w-0 flex-1">
                           {vocabLanguageMode === "ar-only" ? (
@@ -2750,7 +3014,13 @@ export default function DialoguePdfModal({
                           {vocabLanguageMode === "tr-only" ? (
                             <div className="border-b border-dotted border-slate-400 h-5 w-24" />
                           ) : (
-                            <span className="arabic text-xl font-bold text-[#087F5B] leading-[1.85]">
+                            <span
+                              className={`arabic text-xl font-bold text-[#087F5B] ${
+                                activeDensity !== "normal"
+                                  ? "leading-[1.6]"
+                                  : "leading-[1.85]"
+                              }`}
+                            >
                               {formatAr(mainAr)}
                             </span>
                           )}
@@ -2764,7 +3034,15 @@ export default function DialoguePdfModal({
 
             {/* ✨ BU DİYALOGDAKİ KALIP İFADELER (التعبيرات الاصطلاحية) TABLOSU ÖNİZLEMESİ */}
             {includeIdioms && dialogueIdioms.length > 0 && (
-              <div className="space-y-2 pt-2">
+              <div
+                className={`space-y-2 ${
+                  activeDensity === "tight"
+                    ? "mt-2 pt-1"
+                    : activeDensity === "compact"
+                    ? "mt-3 pt-1"
+                    : "mt-6 pt-2"
+                }`}
+              >
                 <div className="text-xs font-extrabold text-[#4C28B5] bg-[#F3F0FF] border border-[#D0BFFF] border-l-4 border-l-[#6741D9] px-3 py-1.5 rounded-lg">
                   ✨ Bu Diyalogdaki Kalıp İfadeler (التعبيرات الاصطلاحية) —{" "}
                   {dialogueIdioms.length} İfade
@@ -2773,13 +3051,25 @@ export default function DialoguePdfModal({
                   <table className="w-full border-collapse text-left">
                     <thead>
                       <tr className="bg-[#F3F0FF] text-[#4C28B5] text-[11px] font-extrabold border-b border-slate-300">
-                        <th className="py-2 px-3 text-right w-[30%]">
+                        <th
+                          className={`${
+                            activeDensity !== "normal" ? "py-1" : "py-2"
+                          } px-3 text-right w-[30%]`}
+                        >
                           Kalıp İfade (Arapça)
                         </th>
-                        <th className="py-2 px-3 w-[32%]">
+                        <th
+                          className={`${
+                            activeDensity !== "normal" ? "py-1" : "py-2"
+                          } px-3 w-[32%]`}
+                        >
                           Deyimsel Anlamı (Türkçe)
                         </th>
-                        <th className="py-2 px-3 w-[38%]">
+                        <th
+                          className={`${
+                            activeDensity !== "normal" ? "py-1" : "py-2"
+                          } px-3 w-[38%]`}
+                        >
                           Harfiyen Anlamı & Kullanım İpucu
                         </th>
                       </tr>
@@ -2792,18 +3082,30 @@ export default function DialoguePdfModal({
                         >
                           <td
                             dir="rtl"
-                            className="py-2 px-3 text-right font-arabic arabic text-lg sm:text-xl font-bold text-[#087F5B] leading-[1.85] border-l border-dashed border-slate-200"
+                            className={`${
+                              activeDensity !== "normal"
+                                ? "py-1 leading-[1.6]"
+                                : "py-2 leading-[1.85]"
+                            } px-3 text-right font-arabic arabic text-lg sm:text-xl font-bold text-[#087F5B] border-l border-dashed border-slate-200`}
                           >
                             {formatAr(idm.arabic)}
                           </td>
-                          <td className="py-2 px-3 text-xs font-bold text-slate-800 border-l border-dashed border-slate-200">
+                          <td
+                            className={`${
+                              activeDensity !== "normal" ? "py-1" : "py-2"
+                            } px-3 text-xs font-bold text-slate-800 border-l border-dashed border-slate-200`}
+                          >
                             {idiomsBlankMode ? (
                               <div className="border-b border-dotted border-slate-400 h-5 w-11/12" />
                             ) : (
                               idm.meaningTr
                             )}
                           </td>
-                          <td className="py-2 px-3 text-[11px] text-slate-600 space-y-0.5">
+                          <td
+                            className={`${
+                              activeDensity !== "normal" ? "py-1" : "py-2"
+                            } px-3 text-[11px] text-slate-600 space-y-0.5`}
+                          >
                             {idm.literalTr && (
                               <div className="text-[#5F3DC4] font-semibold">
                                 <strong>Harfiyen:</strong> {idm.literalTr}

@@ -207,6 +207,7 @@ export default function ShadowingModal({
   const interimTranscriptRef = useRef<string>("");
   const backupBrowserTranscriptRef = useRef<string>("");
   const resultsSectionRef = useRef<HTMLDivElement | null>(null);
+  const waveformCardRef = useRef<HTMLDivElement | null>(null);
   const userAudioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const refAudioBufferRef = useRef<AudioBuffer | null>(null);
 
@@ -571,6 +572,12 @@ export default function ShadowingModal({
       }
 
       setIsRecording(true);
+      setTimeout(() => {
+        waveformCardRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 120);
     } catch {
       setAdaptiveResult({
         action: "keep_going",
@@ -990,7 +997,7 @@ export default function ShadowingModal({
           )}
 
           {/* HEDEF ARAPÇA METİN KARTI + PROAKTİF MAHREÇ VE HAREKE REHBERİ */}
-          <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3 sm:p-4 text-center space-y-2">
+          <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3 sm:p-5 text-center space-y-2">
             {activeFormLabel && (
               <span className="text-[11px] uppercase font-extrabold text-[#087F5B] block">
                 {activeFormLabel}
@@ -1017,14 +1024,14 @@ export default function ShadowingModal({
               </div>
             )}
 
-            {/* Proaktif Mahreç ve Hareke Rehberi (Tek Satırlık Tıklanabilir Rozetler) */}
+            {/* Proaktif Mahreç ve Hareke Rehberi (Kompakt Rozetler) */}
             {proactiveGuide &&
               (proactiveGuide.details.length > 0 ||
                 proactiveGuide.shaddaCount > 0 ||
                 proactiveGuide.medCount > 0 ||
                 proactiveGuide.tanvinCount > 0) && (
                 <div className="pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] space-y-1.5 text-left">
-                  <div className="flex flex-wrap gap-1.5 justify-center">
+                  <div className="flex flex-wrap items-center justify-center gap-1">
                     {proactiveGuide.details.map((det) => {
                       const isExpanded = expandedTipId === det.id;
                       return (
@@ -1038,7 +1045,7 @@ export default function ShadowingModal({
                             );
                           }}
                           title="Mahreç ipucunu görmek için dokunun"
-                          className={`px-2.5 py-0.5 rounded-lg border text-[11px] font-extrabold transition-all cursor-pointer ${
+                          className={`px-2 py-0.5 rounded-lg border text-[11px] font-extrabold transition-all cursor-pointer ${
                             isExpanded
                               ? "bg-[#0CA678] border-[#087F5B] text-white"
                               : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#087F5B] dark:text-[#20c997] hover:border-[#0CA678]"
@@ -1049,17 +1056,17 @@ export default function ShadowingModal({
                       );
                     })}
                     {proactiveGuide.shaddaCount > 0 && (
-                      <span className="px-2.5 py-0.5 rounded-lg bg-[#F3F0FF] border border-[#6741D9]/40 text-[11px] font-extrabold text-[#6741D9]">
+                      <span className="px-2 py-0.5 rounded-lg bg-[#F3F0FF] border border-[#6741D9]/40 text-[11px] font-extrabold text-[#6741D9]">
                         ّ Şedde: {proactiveGuide.shaddaCount}
                       </span>
                     )}
                     {proactiveGuide.medCount > 0 && (
-                      <span className="px-2.5 py-0.5 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[11px] font-extrabold text-[var(--foreground)]">
+                      <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[11px] font-extrabold text-[var(--foreground)]">
                         ⏳ Med: {proactiveGuide.medCount}
                       </span>
                     )}
                     {proactiveGuide.tanvinCount > 0 && (
-                      <span className="px-2.5 py-0.5 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[11px] font-extrabold text-[var(--muted)]">
+                      <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[11px] font-extrabold text-[var(--muted)]">
                         ً Tenvin: {proactiveGuide.tanvinCount}
                       </span>
                     )}
@@ -1094,6 +1101,7 @@ export default function ShadowingModal({
 
           {/* BİRLEŞTİRİLMİŞ RİTİM & DALGA FORMU KARTI (REFERANS + SİZİN SESİNİZ TEK KARTTA) */}
           <div
+            ref={waveformCardRef}
             className={`rounded-2xl border-2 border-b-4 p-2.5 sm:p-3.5 transition-all ${
               isRecording
                 ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9]"
@@ -1101,36 +1109,36 @@ export default function ShadowingModal({
             }`}
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3.5">
-              {/* Üst / Sol Bölüm: Referans Ses Ritmi + Küçük Hız Seçici (Tek Kompakt Satır) */}
+              {/* Üst / Sol Bölüm: Referans Ses + Süre + Küçük Hız Seçici (Tek Kompakt Satır) */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-1 flex-wrap">
-                  <span className="text-xs font-extrabold text-[#087F5B] flex items-center gap-1 shrink-0">
-                    <Volume2 size={14} className="shrink-0" />
-                    <span>Referans Ses Ritmi</span>
-                  </span>
-                  <div className="flex items-center gap-1 ml-auto">
-                    <span className="text-[11px] font-bold text-[var(--muted)] tabular-nums">
+                <div className="flex items-center justify-between gap-1 mb-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs font-extrabold text-[#087F5B] flex items-center gap-1 whitespace-nowrap">
+                      <Volume2 size={14} className="shrink-0" />
+                      <span>🔊 Referans Ses</span>
+                    </span>
+                    <span className="text-xs font-semibold text-[var(--muted)] tabular-nums whitespace-nowrap">
                       {refDuration > 0 ? `${refDuration.toFixed(1)} sn` : "Hazır"}
                     </span>
-                    <div className="bg-white dark:bg-[var(--background)] rounded-lg p-0.5 border border-[#E6D7BE] flex items-center gap-0.5">
-                      {([0.5, 0.75, 1, 1.25] as SpeechRate[]).map((r) => (
-                        <button
-                          key={r}
-                          type="button"
-                          onClick={() => {
-                            playClick();
-                            setSpeechRate(r);
-                          }}
-                          className={`px-1.5 py-0.5 rounded-md text-[10px] tabular-nums transition-all cursor-pointer ${
-                            speechRate === r
-                              ? "bg-[#0CA678] text-white font-bold"
-                              : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
-                          }`}
-                        >
-                          {r}x
-                        </button>
-                      ))}
-                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-[var(--background)] rounded-lg p-0.5 border border-[#E6D7BE] flex items-center gap-0.5 shrink-0">
+                    {([0.5, 0.75, 1, 1.25] as SpeechRate[]).map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setSpeechRate(r);
+                        }}
+                        className={`px-1.5 py-0.5 rounded-md text-[11px] tabular-nums transition-all cursor-pointer ${
+                          speechRate === r
+                            ? "bg-[#0CA678] text-white font-bold"
+                            : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {r}x
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -1570,7 +1578,7 @@ export default function ShadowingModal({
               className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm sm:text-base border-b-4 border-red-800 animate-pulse flex items-center justify-center gap-2 cursor-pointer"
             >
               <Square size={15} fill="currentColor" className="shrink-0" />
-              <span>Kaydı Tamamla ve Analiz Et</span>
+              <span>⏹️ Kaydı Tamamla ve Analiz Et</span>
             </button>
           )}
 
@@ -1585,62 +1593,70 @@ export default function ShadowingModal({
             </button>
           )}
 
-          {/* 2. Satır: 12 Sütunlu Grid (Referansı Dinle: 5, Sesimi Dinle: 4, İndir: 1, Tamamla: 2) */}
-          <div className="grid grid-cols-12 gap-1.5 w-full items-center">
-            <button
-              type="button"
-              onClick={playReference}
-              className="col-span-5 h-9 px-2 py-2 rounded-xl bg-white dark:bg-[var(--background)] hover:bg-emerald-50 dark:hover:bg-slate-800 border-2 border-[#0CA678] border-b-3 text-[#087F5B] dark:text-[#20c997] text-xs sm:text-sm font-extrabold truncate flex items-center justify-center gap-1 cursor-pointer"
-            >
-              {isPlayingRef ? (
-                <Square size={13} fill="currentColor" className="shrink-0" />
-              ) : (
-                <Volume2 size={14} className="shrink-0" />
-              )}
-              <span className="truncate">
-                {isPlayingRef ? "Çalıyor..." : "Referansı Dinle"}
-              </span>
-            </button>
+          {/* 2. Satır: Kayıt Sırasında Gizlenir — 12 Sütunlu Grid (Referans: 4, Sesim: 4, İndir: 1, Tamamla: 3) */}
+          {!isRecording && (
+            <div className="grid grid-cols-12 gap-1.5 w-full items-center">
+              <button
+                type="button"
+                onClick={playReference}
+                className="col-span-4 h-9 px-2 py-2 rounded-xl bg-white dark:bg-[var(--background)] hover:bg-emerald-50 dark:hover:bg-slate-800 border-2 border-[#0CA678] border-b-3 text-[#087F5B] dark:text-[#20c997] text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1 cursor-pointer"
+              >
+                {isPlayingRef ? (
+                  <>
+                    <Square size={13} fill="currentColor" className="shrink-0" />
+                    <span>Çalıyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="sm:hidden">🔊 Referans</span>
+                    <span className="hidden sm:inline">🔊 Referansı Dinle</span>
+                  </>
+                )}
+              </button>
 
-            <button
-              type="button"
-              onClick={playUserWav}
-              disabled={!userAudioUrl || isRecording}
-              className="col-span-4 h-9 px-2 py-2 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] hover:bg-[#e5dbff] disabled:opacity-45 border-2 border-[#6741D9] border-b-3 text-[#4C28B5] dark:text-[#d0bfff] text-xs sm:text-sm font-extrabold truncate flex items-center justify-center gap-1 cursor-pointer"
-            >
-              {isPlayingUser ? (
-                <Square size={13} fill="currentColor" className="shrink-0" />
-              ) : (
-                <Play size={13} fill="currentColor" className="shrink-0" />
-              )}
-              <span className="truncate">Sesimi Dinle</span>
-            </button>
+              <button
+                type="button"
+                onClick={playUserWav}
+                disabled={!userAudioUrl || isRecording}
+                className="col-span-4 h-9 px-2 py-2 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] hover:bg-[#e5dbff] disabled:opacity-45 border-2 border-[#6741D9] border-b-3 text-[#4C28B5] dark:text-[#d0bfff] text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1 cursor-pointer"
+              >
+                {isPlayingUser ? (
+                  <>
+                    <Square size={13} fill="currentColor" className="shrink-0" />
+                    <span>Çalıyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="sm:hidden">▶ Sesim</span>
+                    <span className="hidden sm:inline">
+                      ▶ Sesimi Dinle (.wav)
+                    </span>
+                  </>
+                )}
+              </button>
 
-            <button
-              type="button"
-              onClick={downloadWav}
-              disabled={!userAudioUrl || isRecording}
-              className="col-span-1 h-9 w-full rounded-xl bg-white dark:bg-[var(--background)] disabled:opacity-40 border-2 border-[#E6D7BE] border-b-3 text-[var(--foreground)] hover:border-[#0CA678] flex items-center justify-center cursor-pointer"
-              title="16-bit PCM .wav Ses Kaydını İndir"
-            >
-              <Download size={14} className="shrink-0" />
-            </button>
+              <button
+                type="button"
+                onClick={downloadWav}
+                disabled={!userAudioUrl || isRecording}
+                className="col-span-1 h-9 w-full rounded-xl bg-white dark:bg-[var(--background)] disabled:opacity-40 border-2 border-[#E6D7BE] border-b-3 text-[var(--foreground)] hover:border-[#0CA678] flex items-center justify-center cursor-pointer"
+                title="16-bit PCM .wav Ses Kaydını İndir"
+              >
+                <Download className="w-4 h-4 shrink-0" />
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                handleClose();
-              }}
-              className="col-span-2 h-9 px-2 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-xs sm:text-sm font-semibold text-[var(--foreground)] hover:bg-[#FDFBF7] flex items-center justify-center gap-1 cursor-pointer"
-            >
-              <CheckCircle2
-                size={13}
-                className="text-[#0CA678] hidden sm:inline shrink-0"
-              />
-              <span className="truncate">Tamamla</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  handleClose();
+                }}
+                className="col-span-3 h-9 px-2 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-xs font-bold whitespace-nowrap text-[var(--foreground)] hover:bg-[#FDFBF7] flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <span>✓ Tamamla</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
