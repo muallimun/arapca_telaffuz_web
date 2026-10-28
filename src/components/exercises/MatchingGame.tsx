@@ -711,7 +711,7 @@ export default function MatchingGame({
         </svg>
 
         {/* SOL GRUP KUTUSU (TÜRKÇE — BAĞLANTI TUTAMACI SAĞ İÇ KENARDA) */}
-        <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[42%] sm:w-[39%] flex flex-col justify-between gap-2 z-10">
+        <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[45%] sm:w-[40%] flex flex-col justify-between gap-2 z-10">
           {trCards.map((trCard) => {
             const trConn = connections.find((c) => c.trId === trCard.id);
             const isTrSelected =
@@ -749,10 +749,10 @@ export default function MatchingGame({
                     handleCardSelect(trCard);
                   }
                 }}
-                className={`h-12 sm:h-13 px-2.5 sm:px-3.5 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-all ${rowStyle}`}
+                className={`h-auto min-h-[48px] px-2.5 py-2 sm:px-4 sm:py-3 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-all ${rowStyle}`}
               >
                 {/* Sol: Türkçe Anlamı */}
-                <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 line-clamp-2 flex-1 text-left leading-tight">
+                <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 break-words leading-snug line-clamp-2 flex-1 min-w-0 text-left">
                   {trCard.text}
                 </span>
 
@@ -769,14 +769,14 @@ export default function MatchingGame({
           })}
         </div>
 
-        {/* ORTA GENİŞ ÇİZGİ KORİDORU */}
+        {/* ORTA ÇİZGİ KORİDORU */}
         <div
-          className="flex-1 min-w-[56px] sm:min-w-[96px] md:min-w-[140px]"
+          className="flex-1 min-w-[24px] sm:min-w-[84px] md:min-w-[128px]"
           aria-hidden="true"
         />
 
         {/* SAĞ GRUP KUTUSU (ARAPÇA — BAĞLANTI TUTAMACI SOL İÇ KENARDA) */}
-        <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[42%] sm:w-[39%] flex flex-col justify-between gap-2 z-10">
+        <div className="bg-[#fdfcf7] dark:bg-slate-800/90 border border-stone-200/90 dark:border-slate-700 rounded-2xl p-2 sm:p-3.5 shadow-sm w-[45%] sm:w-[40%] flex flex-col justify-between gap-2 z-10">
           {arCards.map((arCard) => {
             const arConn = connections.find((c) => c.arId === arCard.id);
             const isArSelected =
@@ -814,7 +814,7 @@ export default function MatchingGame({
                     handleCardSelect(arCard);
                   }
                 }}
-                className={`h-12 sm:h-13 px-2.5 sm:px-3.5 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-all ${rowStyle}`}
+                className={`h-auto min-h-[48px] px-2.5 py-2 sm:px-4 sm:py-3 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-all ${rowStyle}`}
               >
                 {/* Sol İç Kenar: Orta Koridora Bakan Bağlantı Noktası (■) */}
                 <span
@@ -825,13 +825,13 @@ export default function MatchingGame({
                   aria-hidden="true"
                 />
 
-                {/* Orta/Sağ: Arapça Kelime (Harekeli & Okunaklı Büyük Font) */}
+                {/* Orta/Sağ: Arapça Kelime (Harekeli & Tam Görünür, Kesilmez) */}
                 <span
                   dir="rtl"
-                  className={`arabic font-arabic font-bold leading-snug truncate flex-1 text-right ${
+                  className={`arabic font-arabic font-bold break-words leading-snug line-clamp-2 flex-1 min-w-0 text-right ${
                     arCard.isSentence
-                      ? "text-base sm:text-xl"
-                      : "text-xl sm:text-2xl"
+                      ? "text-sm sm:text-xl"
+                      : "text-lg sm:text-2xl"
                   }`}
                 >
                   {formatAr(arCard.text)}

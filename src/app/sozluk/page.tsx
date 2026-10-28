@@ -29,7 +29,7 @@ import { useUserStore } from "@/store/userStore";
 import { useSettings } from "@/store/settings";
 import { playClick } from "@/lib/sfxManager";
 import ShadowingModal from "@/components/ui/ShadowingModal";
-import { formatArabicText } from "@/lib/arabicTextUtils";
+import { formatArabicText, splitMixedBidiText } from "@/lib/arabicTextUtils";
 
 type StatusFilter = "all" | "learned" | "unlearned" | "favorites";
 type TypeFilter = "all" | "isim" | "ozel-isim" | "fiil" | "edat";
@@ -561,17 +561,38 @@ export default function DictionaryPage() {
                           {theme.badgeText}
                         </span>
                         {word.kok && word.kok !== "-" && (
-                          <span className="text-xs font-bold text-[var(--muted)]">
-                            Kök:{" "}
-                            <strong className="arabic text-sm text-[var(--foreground)]">
+                          <span
+                            dir="ltr"
+                            className="inline-flex items-center gap-1 text-xs font-bold text-[var(--muted)]"
+                          >
+                            <span>Kök:</span>
+                            <bdi
+                              dir="rtl"
+                              className="arabic font-arabic text-sm font-bold text-[var(--foreground)] inline-block"
+                            >
                               {getDisplayArabic(word.kok)}
-                            </strong>
+                            </bdi>
                           </span>
                         )}
                       </div>
 
-                      <p className="text-sm font-extrabold text-[var(--foreground)] leading-snug">
-                        {word.anlam_tr}
+                      <p
+                        dir="ltr"
+                        className="text-sm font-extrabold text-[var(--foreground)] leading-snug text-left"
+                      >
+                        {splitMixedBidiText(word.anlam_tr).map((seg, sIdx) =>
+                          seg.isArabic ? (
+                            <bdi
+                              key={sIdx}
+                              dir="rtl"
+                              className="arabic font-arabic font-bold inline-block mx-0.5"
+                            >
+                              {getDisplayArabic(seg.text)}
+                            </bdi>
+                          ) : (
+                            <span key={sIdx}>{seg.text}</span>
+                          )
+                        )}
                       </p>
                     </div>
 
@@ -589,13 +610,16 @@ export default function DictionaryPage() {
                       </span>
                       {contextEntry?.contextWord && (
                         <span
-                          dir="rtl"
-                          className="text-xs md:text-sm font-medium text-[#6741D9] block mt-0.5"
+                          dir="ltr"
+                          className="inline-flex items-center justify-end gap-1 text-xs md:text-sm font-medium text-[#6741D9] mt-0.5"
                         >
-                          Metinde:{" "}
-                          <strong className="arabic text-base md:text-lg font-arabic font-bold">
+                          <span>Metinde:</span>
+                          <bdi
+                            dir="rtl"
+                            className="arabic text-base md:text-lg font-arabic font-bold inline-block"
+                          >
                             {getDisplayArabic(contextEntry.contextWord)}
-                          </strong>
+                          </bdi>
                         </span>
                       )}
                     </button>
@@ -603,13 +627,29 @@ export default function DictionaryPage() {
 
                   {/* Seçili Diyalog Bağlamı & Morfolojik Not */}
                   {contextEntry?.morphologyNote && (
-                    <div className="bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border border-[#E6D7BE] text-[11px] font-bold text-[#4C28B5]">
-                      <span className="inline-flex items-center gap-1 text-[10px] uppercase text-[#6741D9] block">
+                    <div
+                      dir="ltr"
+                      className="bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border border-[#E6D7BE] text-[11px] font-bold text-[#4C28B5] text-left"
+                    >
+                      <span className="inline-flex items-center gap-1 text-[10px] uppercase text-[#6741D9] block mb-0.5">
                         <Sparkles size={10} />
                         <span>Diyalogdaki Morfolojik Yapı:</span>
                       </span>
-                      <span dir="rtl" className="block text-right">
-                        {getDisplayArabic(contextEntry.morphologyNote)}
+                      <span dir="ltr" className="block text-left leading-relaxed">
+                        {splitMixedBidiText(contextEntry.morphologyNote).map(
+                          (seg, sIdx) =>
+                            seg.isArabic ? (
+                              <bdi
+                                key={sIdx}
+                                dir="rtl"
+                                className="arabic font-arabic text-sm font-bold inline-block mx-0.5"
+                              >
+                                {getDisplayArabic(seg.text)}
+                              </bdi>
+                            ) : (
+                              <span key={sIdx}>{seg.text}</span>
+                            )
+                        )}
                       </span>
                     </div>
                   )}

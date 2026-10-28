@@ -177,7 +177,7 @@ export const SUPPLEMENT_DICTIONARY: DictionaryItem[] = [
   {
     id: "supp_021",
     tur: "isim",
-    kok: "س م ر",
+    kok: "أ م ر",
     mufret: "اِسْتِمَارَة",
     cemi: "اِسْتِمَارَات",
     anlam_tr: "form, başvuru belgesi",

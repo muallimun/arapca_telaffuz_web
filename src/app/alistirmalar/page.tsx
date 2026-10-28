@@ -400,152 +400,162 @@ export default function ExercisesPage() {
 
               {/* 3. İçerik Türü (Soru Kaynağı: Kelimeler | Cümleler | Karışık) */}
               {selectedType !== "fill-in-blanks" && (
-                <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between sm:justify-start gap-1">
-                  <span className="text-[11px] font-bold text-[var(--muted)] px-1.5 whitespace-nowrap">
+                <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1.5 h-auto border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between sm:justify-start gap-1.5">
+                  <span className="text-[11px] font-bold text-[var(--muted)] px-1 whitespace-nowrap">
                     İçerik:
                   </span>
-                  {(
-                    [
-                      { id: "words", label: "🔤 Kelimeler" },
-                      { id: "sentences", label: "💬 Cümleler" },
-                      { id: "mixed", label: "🔀 Karışık" },
-                    ] as { id: QuizContentType; label: string }[]
-                  ).map((item) => {
-                    const active = contentType === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          playClick();
-                          setContentType(item.id);
-                        }}
-                        className={`flex-1 sm:flex-initial px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                          active
-                            ? "bg-[#6741D9] text-white font-bold shadow-2xs"
-                            : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    );
-                  })}
+                  <div className="grid grid-cols-3 sm:flex items-center gap-1 w-full sm:w-auto">
+                    {(
+                      [
+                        { id: "words", label: "🔤 Kelimeler" },
+                        { id: "sentences", label: "💬 Cümleler" },
+                        { id: "mixed", label: "🔀 Karışık" },
+                      ] as { id: QuizContentType; label: string }[]
+                    ).map((item) => {
+                      const active = contentType === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            setContentType(item.id);
+                          }}
+                          className={`px-2 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap text-center cursor-pointer ${
+                            active
+                              ? "bg-[#6741D9] text-white font-bold shadow-2xs"
+                              : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
               {/* Boşluk Doldurma Alt Mod Seçicisi */}
               {selectedType === "fill-in-blanks" && (
-                <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between sm:justify-start gap-1">
-                  <span className="text-[11px] font-bold text-[var(--muted)] px-1.5 whitespace-nowrap">
+                <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1.5 h-auto border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between sm:justify-start gap-1.5">
+                  <span className="text-[11px] font-bold text-[var(--muted)] px-1 whitespace-nowrap">
                     Mod:
                   </span>
-                  {(
-                    [
-                      { id: "choices", label: "🧩 Seçmeli / Sürükle" },
-                      { id: "dictation", label: "🎧 Dinle & Yaz (İmla)" },
-                    ] as { id: FillSubMode; label: string }[]
-                  ).map((m) => {
-                    const active = fillSubMode === m.id;
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => {
-                          playClick();
-                          setFillSubMode(m.id);
-                        }}
-                        className={`flex-1 sm:flex-initial px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                          active
-                            ? "bg-[#6741D9] text-white font-bold shadow-2xs"
-                            : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
-                        }`}
-                      >
-                        {m.label}
-                      </button>
-                    );
-                  })}
+                  <div className="grid grid-cols-2 sm:flex items-center gap-1 w-full sm:w-auto">
+                    {(
+                      [
+                        { id: "choices", label: "🧩 Seçmeli / Sürükle" },
+                        { id: "dictation", label: "🎧 Dinle & Yaz (İmla)" },
+                      ] as { id: FillSubMode; label: string }[]
+                    ).map((m) => {
+                      const active = fillSubMode === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            setFillSubMode(m.id);
+                          }}
+                          className={`px-2 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap text-center cursor-pointer ${
+                            active
+                              ? "bg-[#6741D9] text-white font-bold shadow-2xs"
+                              : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {m.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
               {/* 4. Değerlendirme Zamanı Seçicisi (⚡ Hemen Göster | 🏁 Bitince Göster) */}
               {selectedType !== "flashcard" && (
-                <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between sm:justify-start gap-1">
-                  <span className="text-[11px] font-bold text-[var(--muted)] px-1.5 whitespace-nowrap">
+                <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1.5 h-auto border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between sm:justify-start gap-1.5">
+                  <span className="text-[11px] font-bold text-[var(--muted)] px-1 whitespace-nowrap">
                     Sonuçlar:
                   </span>
-                  {(
-                    [
-                      { id: "instant", label: "⚡ Hemen Göster" },
-                      { id: "end", label: "🏁 Bitince Göster" },
-                    ] as { id: FeedbackMode; label: string }[]
-                  ).map((fb) => {
-                    const active = feedbackMode === fb.id;
-                    return (
-                      <button
-                        key={fb.id}
-                        type="button"
-                        onClick={() => {
-                          playClick();
-                          setFeedbackMode(fb.id);
-                        }}
-                        className={`flex-1 sm:flex-initial px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                          active
-                            ? "bg-[#0CA678] text-white font-bold shadow-2xs"
-                            : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
-                        }`}
-                      >
-                        {fb.label}
-                      </button>
-                    );
-                  })}
+                  <div className="grid grid-cols-2 sm:flex items-center gap-1 w-full sm:w-auto">
+                    {(
+                      [
+                        { id: "instant", label: "⚡ Hemen Göster" },
+                        { id: "end", label: "🏁 Bitince Göster" },
+                      ] as { id: FeedbackMode; label: string }[]
+                    ).map((fb) => {
+                      const active = feedbackMode === fb.id;
+                      return (
+                        <button
+                          key={fb.id}
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            setFeedbackMode(fb.id);
+                          }}
+                          className={`px-2 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap text-center cursor-pointer ${
+                            active
+                              ? "bg-[#0CA678] text-white font-bold shadow-2xs"
+                              : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {fb.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
-              {/* 5. Soru Sayısı (10 | 20 | 30) */}
-              <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-0.5">
-                {([10, 20, 30] as (10 | 20 | 30)[]).map((cnt) => (
-                  <button
-                    key={cnt}
-                    type="button"
-                    onClick={() => {
-                      playClick();
-                      setQuestionCount(cnt);
-                    }}
-                    className={`flex-1 px-2 py-1 text-xs tabular-nums rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                      questionCount === cnt
-                        ? "bg-[#0CA678] text-white font-bold"
-                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    {cnt}
-                  </button>
-                ))}
-              </div>
+              {/* 5 & 6. Soru Sayısı (10 | 20 | 30) ve Süre (Süresiz | 60s | 30s) */}
+              <div className="col-span-2 sm:col-span-1 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
+                <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-1">
+                  <span className="text-[11px] font-bold text-[var(--muted)] px-1.5 whitespace-nowrap">
+                    Soru:
+                  </span>
+                  {([10, 20, 30] as (10 | 20 | 30)[]).map((cnt) => (
+                    <button
+                      key={cnt}
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        setQuestionCount(cnt);
+                      }}
+                      className={`flex-1 px-2.5 py-1 text-xs tabular-nums rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                        questionCount === cnt
+                          ? "bg-[#0CA678] text-white font-bold"
+                          : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {cnt}
+                    </button>
+                  ))}
+                </div>
 
-              {/* 6. Süre (Süresiz | 60sn | 30sn) */}
-              <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-0.5">
-                <Timer size={12} className="text-[#6741D9] ml-1 shrink-0" />
-                {[
-                  { val: null, label: "Süresiz" },
-                  { val: 60, label: "60s" },
-                  { val: 30, label: "30s" },
-                ].map((t) => (
-                  <button
-                    key={String(t.val)}
-                    type="button"
-                    onClick={() => {
-                      playClick();
-                      setTimeLimit(t.val);
-                    }}
-                    className={`flex-1 px-1.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                      timeLimit === t.val
-                        ? "bg-[#0CA678] text-white font-bold"
-                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
+                <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-1">
+                  <Timer size={13} className="text-[#6741D9] ml-1.5 shrink-0" />
+                  {[
+                    { val: null, label: "Süresiz" },
+                    { val: 60, label: "60s" },
+                    { val: 30, label: "30s" },
+                  ].map((t) => (
+                    <button
+                      key={String(t.val)}
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        setTimeLimit(t.val);
+                      }}
+                      className={`flex-1 px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                        timeLimit === t.val
+                          ? "bg-[#0CA678] text-white font-bold"
+                          : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* 7. Sağ Uç / Alt Sticky: Vurgulu [▶ Alıştırmayı Başlat] Butonu */}

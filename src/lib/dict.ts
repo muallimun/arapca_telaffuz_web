@@ -1159,11 +1159,32 @@ export function analyzeAndMatchWord(rawWord: string): MorphologicalMatch | null 
   } else if (mithalPluralMatch) {
     skeletonCandidates.push(`و${mithalPluralMatch[1]}${mithalPluralMatch[2]}`);
   } else {
+    if (candidateCore === "استمار") {
+      skeletonCandidates.push("امر");
+    }
+    const istifalHollowStems: Record<string, string> = {
+      "استراح": "روح",
+      "استشار": "شور",
+      "استقام": "قوم",
+      "استقال": "قول",
+      "استعان": "عون",
+      "استجاب": "جوب",
+      "استطاع": "طوع",
+      "استدار": "دور",
+      "استنار": "نور",
+      "استفاد": "فيد",
+      "استمال": "ميل",
+    };
+    if (istifalHollowStems[candidateCore]) {
+      skeletonCandidates.push(istifalHollowStems[candidateCore]);
+    }
     if (candidateCore.startsWith("است") && candidateCore.length >= 6) {
       skeletonCandidates.push(candidateCore.slice(3));
+      skeletonCandidates.push(candidateCore.slice(3).replace(/[اوي]/g, ""));
     }
     if (/^[انتي]ست/.test(candidateCore) && candidateCore.length >= 6) {
       skeletonCandidates.push(candidateCore.slice(3));
+      skeletonCandidates.push(candidateCore.slice(3).replace(/[اوي]/g, ""));
     }
     if (candidateCore.startsWith("م") && candidateCore.length >= 4) {
       skeletonCandidates.push(candidateCore.slice(1));

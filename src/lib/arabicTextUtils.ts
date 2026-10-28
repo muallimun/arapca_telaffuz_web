@@ -129,3 +129,24 @@ export function formatArabicText(
   }
   return fixArabicTypography(text, fontFamily);
 }
+
+/**
+ * Türkçe (LTR) metin içindeki Arapça (RTL) kelime/cümle gruplarını ayırır.
+ * Böylece parantez içi Arapça ifadeler `<bdi dir="rtl">` ile izole edilerek
+ * parantez ve iki nokta üst üste `(:)` işaretlerinin ters dönmesi engellenir.
+ */
+export function splitMixedBidiText(
+  text: string
+): Array<{ text: string; isArabic: boolean }> {
+  if (!text) return [];
+  const arabicRunRegex =
+    /([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u064B-\u065F\u0670]+(?:[\s،؛؟]+[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u064B-\u065F\u0670]+)*)/g;
+  const parts = text.split(arabicRunRegex);
+  const result: Array<{ text: string; isArabic: boolean }> = [];
+  for (const part of parts) {
+    if (!part) continue;
+    const isArabic = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(part);
+    result.push({ text: part, isArabic });
+  }
+  return result;
+}

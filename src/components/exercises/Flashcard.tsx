@@ -99,13 +99,23 @@ export default function Flashcard({
   }, []);
 
   const fullPool = useMemo(() => {
+    const formatCatLabel = (tur: string) => {
+      const t = (tur || "").toLowerCase();
+      if (t === "ozel-isim") return "Özel İsim";
+      if (t === "fiil") return "Fiil";
+      if (t === "edat") return "Edat";
+      return "İsim";
+    };
     const wordCards: FlashcardItem[] = vocabulary
       .map((w) => ({
         id: `word_${w.id}`,
         kind: "word" as const,
         arabic: w.mufret || w.mazi || "",
         turkish: w.anlam_tr,
-        badgeText: `${w.tur.toUpperCase()} · Kök: ${w.kok}`,
+        badgeText:
+          w.kok && w.kok !== "-"
+            ? `${formatCatLabel(w.tur)} · Kök: ${w.kok}`
+            : formatCatLabel(w.tur),
         wordItem: w,
       }))
       .filter((c) => c.arabic.trim().length > 0);
@@ -416,7 +426,7 @@ export default function Flashcard({
       )}
 
       {/* ÜST İLERLEME SATIRI */}
-      <div className="w-full bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 py-2.5 flex items-center justify-between gap-2 text-xs font-extrabold">
+      <div className="w-full bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-extrabold">
         <div className="flex items-center gap-2">
           <span className="text-[var(--muted)]">
             Kart{" "}
@@ -444,14 +454,14 @@ export default function Flashcard({
             )}
           </span>
         </div>
-        <span className="text-[#087F5B] truncate max-w-[220px]">
+        <span dir="ltr" className="text-[#087F5B] font-extrabold">
           {currentCard.badgeText}
         </span>
       </div>
 
       {/* 3B DÖNEN KART ALANI */}
       <div
-        className="relative w-full h-76 sm:h-82 cursor-pointer [perspective:1000px]"
+        className="relative w-full h-72 sm:h-78 cursor-pointer [perspective:1000px]"
         onClick={() => {
           setIsFlipped(!isFlipped);
           playFlip();
@@ -464,14 +474,14 @@ export default function Flashcard({
         >
           {/* ÖN YÜZ (Arapça) */}
           <div
-            className={`absolute inset-0 [backface-visibility:hidden] rounded-2xl border-2 border-b-4 flex flex-col items-center justify-between p-5 sm:p-6 ${
+            className={`absolute inset-0 [backface-visibility:hidden] rounded-2xl border-2 border-b-4 flex flex-col items-center justify-between p-4 sm:p-6 ${
               isLearned
                 ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9]"
                 : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
             }`}
           >
-            {/* Üst Köşe Kontrolleri */}
-            <div className="w-full flex flex-wrap items-center justify-between gap-1.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-3">
+            {/* Üst Köşe Kontrolleri — Tek Satırda Kompakt Dizilim */}
+            <div className="w-full flex flex-wrap items-center justify-center sm:justify-between gap-1.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2.5">
               {currentWord ? (
                 <button
                   type="button"
@@ -480,13 +490,13 @@ export default function Flashcard({
                     toggleFavoriteWord(currentWord);
                     playClick();
                   }}
-                  className={`h-9 px-2.5 rounded-xl border-2 border-b-3 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-xl border-2 border-b-3 text-xs font-bold flex items-center gap-1 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                     isFav
                       ? "bg-red-50 border-red-300 text-red-600"
                       : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)]"
                   }`}
                 >
-                  <Heart size={14} fill={isFav ? "currentColor" : "none"} />
+                  <Heart size={13} fill={isFav ? "currentColor" : "none"} />
                   <span>{isFav ? "Kayıtlı" : "Kaydet"}</span>
                 </button>
               ) : (
@@ -499,9 +509,9 @@ export default function Flashcard({
                 <button
                   type="button"
                   onClick={handleSpeak}
-                  className="h-9 px-3 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] text-xs font-bold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
                 >
-                  <Volume2 size={14} />
+                  <Volume2 size={13} />
                   <span>Dinle</span>
                 </button>
 
@@ -512,7 +522,7 @@ export default function Flashcard({
                     playClick();
                     setCoachOpen(true);
                   }}
-                  className="h-9 px-2.5 rounded-xl bg-[#F3F0FF] border-2 border-[#6741D9] border-b-3 text-xs font-extrabold text-[#6741D9] flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl bg-[#F3F0FF] border-2 border-[#6741D9] border-b-3 text-xs font-extrabold text-[#6741D9] flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
                 >
                   <Mic size={13} />
                   <span>Telaffuz</span>
@@ -527,13 +537,13 @@ export default function Flashcard({
                     toggleLearnedWord(currentWord.id);
                     playClick();
                   }}
-                  className={`h-9 px-2.5 rounded-xl border-2 border-b-3 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-xl border-2 border-b-3 text-xs font-bold flex items-center gap-1 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                     isLearned
                       ? "bg-[#6741D9] border-[#5230B5] text-white"
                       : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)]"
                   }`}
                 >
-                  <CheckCircle2 size={14} />
+                  <CheckCircle2 size={13} />
                   <span>{isLearned ? "Öğrendim" : "Öğren"}</span>
                 </button>
               ) : (
@@ -548,7 +558,7 @@ export default function Flashcard({
                         : [...prev, currentCard]
                     );
                   }}
-                  className={`h-9 px-2.5 rounded-xl border-2 border-b-3 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-xl border-2 border-b-3 text-xs font-bold flex items-center gap-1 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                     isMarkedHard
                       ? "bg-amber-500 border-amber-700 text-white"
                       : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)]"
@@ -589,17 +599,10 @@ export default function Flashcard({
                 </span>
               )}
             </div>
-
-            <div className="w-full pt-2.5 border-t border-dashed border-[#E2D3B8] text-center text-xs font-bold text-[var(--muted)] flex items-center justify-center gap-1.5">
-              <RotateCcw size={13} />
-              <span>
-                Türkçe anlamını görmek için tıklayın veya Boşluk tuşuna basın
-              </span>
-            </div>
           </div>
 
           {/* ARKA YÜZ (Türkçe Anlamı) */}
-          <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-4 flex flex-col items-center justify-between p-6 text-center">
+          <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-4 flex flex-col items-center justify-between p-5 sm:p-6 text-center">
             <div className="w-full flex items-center justify-between border-b border-dashed border-[#6741D9]/30 pb-2.5 text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff]">
               <span>
                 {currentCard.kind === "sentence"
@@ -619,13 +622,18 @@ export default function Flashcard({
                 {currentCard.badgeText}
               </p>
             </div>
-
-            <div className="w-full pt-2.5 border-t border-dashed border-[#6741D9]/30 text-xs font-bold text-[#6741D9] flex items-center justify-center gap-1.5">
-              <RotateCcw size={13} />
-              <span>Arapça yüzüne dönmek için tıklayın (Boşluk / ← →)</span>
-            </div>
           </div>
         </div>
+      </div>
+
+      {/* KART İLE ALT BUTONLAR ARASINDA AYRI İPUCU SATIRI */}
+      <div className="mt-2 mb-3 text-center text-xs font-bold text-[var(--muted)] flex items-center justify-center gap-1.5">
+        <RotateCcw size={13} className="shrink-0 text-[#6741D9]" />
+        <span>
+          {isFlipped
+            ? "Arapça yüzüne dönmek için tıklayın (Boşluk / ← →)"
+            : "Türkçe anlamını görmek için tıklayın veya Boşluk tuşuna basın"}
+        </span>
       </div>
 
       {/* ALT GEZİNME BUTONLARI */}

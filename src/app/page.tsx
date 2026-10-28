@@ -337,19 +337,19 @@ export default function HomePage() {
           <Link
             href="/kutuphane?durum=completed"
             onClick={() => playClick()}
-            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3.5 flex items-center gap-3 hover:border-[#0CA678] transition-colors"
+            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 hover:border-[#0CA678] transition-colors"
           >
             <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[#0CA678] shrink-0">
               <CheckCircle2 size={20} strokeWidth={2.4} />
             </div>
             <div className="min-w-0">
-              <span className="block text-xl font-black tabular-nums text-[var(--foreground)] leading-none">
+              <span className="block text-xl font-black tabular-nums text-[var(--foreground)] leading-normal">
                 {mounted ? completedDialogues.length : 0}
                 <span className="text-xs font-bold text-[var(--muted)]">
                   /{diyaloglar.length}
                 </span>
               </span>
-              <span className="block text-xs font-bold text-[var(--muted)] mt-1 truncate">
+              <span className="block text-xs font-bold text-[var(--muted)] mt-0.5 line-clamp-2 leading-tight">
                 Tamamlanan Diyalog
               </span>
             </div>
@@ -359,19 +359,19 @@ export default function HomePage() {
           <Link
             href="/sozluk?durum=learned"
             onClick={() => playClick()}
-            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3.5 flex items-center gap-3 hover:border-[#0CA678] transition-colors"
+            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 hover:border-[#0CA678] transition-colors"
           >
             <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[#6741D9] shrink-0">
               <Brain size={20} strokeWidth={2.4} />
             </div>
             <div className="min-w-0">
-              <span className="block text-xl font-black tabular-nums text-[var(--foreground)] leading-none">
+              <span className="block text-xl font-black tabular-nums text-[var(--foreground)] leading-normal">
                 {mounted ? learnedWords.length : 0}
                 <span className="text-xs font-bold text-[var(--muted)]">
                   /{sozluk.length}
                 </span>
               </span>
-              <span className="block text-xs font-bold text-[var(--muted)] mt-1 truncate">
+              <span className="block text-xs font-bold text-[var(--muted)] mt-0.5 line-clamp-2 leading-tight">
                 Öğrenilen Kelime
               </span>
             </div>
@@ -381,26 +381,26 @@ export default function HomePage() {
           <button
             type="button"
             onClick={handlePracticeFeatured}
-            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3.5 flex items-center gap-3 text-left hover:border-[#0CA678] transition-colors cursor-pointer"
+            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 text-left hover:border-[#0CA678] transition-colors cursor-pointer"
           >
             <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-amber-600 shrink-0">
               <Award size={20} strokeWidth={2.4} />
             </div>
             <div className="min-w-0">
-              <span className="block text-xl font-black tabular-nums text-[var(--foreground)] leading-none">
+              <span className="block text-xl font-black tabular-nums text-[var(--foreground)] leading-normal">
                 %{pronunciationAccuracy}
               </span>
-              <span className="block text-xs font-bold text-[var(--muted)] mt-1 truncate">
+              <span className="block text-xs font-bold text-[var(--muted)] mt-0.5 line-clamp-2 leading-tight">
                 Telaffuz Başarısı
               </span>
             </div>
           </button>
 
-          {/* 4. Günlük Seri & Çalışma Süresi */}
+          {/* 4. Günlük Hedef & Seri */}
           <Link
             href="/alistirmalar"
             onClick={() => playClick()}
-            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3.5 flex flex-col justify-between gap-2 hover:border-[#0CA678] transition-colors"
+            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex flex-col justify-between gap-2 hover:border-[#0CA678] transition-colors"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-orange-500 shrink-0">
@@ -408,7 +408,7 @@ export default function HomePage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-1.5 flex-wrap">
-                  <span className="text-xl font-black tabular-nums text-[var(--foreground)] leading-none">
+                  <span className="text-xl font-black tabular-nums text-[var(--foreground)] leading-normal">
                     🔥 {mounted ? streakDays : 1}
                   </span>
                   <span className="text-xs font-extrabold text-orange-600 dark:text-orange-400">
@@ -419,8 +419,8 @@ export default function HomePage() {
                     {mounted ? studyMinutes : 0}/{mounted ? dailyGoalMinutes : 15} dk
                   </span>
                 </div>
-                <span className="block text-xs font-bold text-[var(--muted)] mt-1 truncate">
-                  Günlük Seri & Süre
+                <span className="block text-xs font-bold text-[var(--muted)] mt-0.5 line-clamp-2 leading-tight">
+                  Günlük Hedef
                 </span>
               </div>
             </div>

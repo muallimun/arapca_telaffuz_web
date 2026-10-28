@@ -449,6 +449,45 @@ export function extractArabicRoot(word: string): string {
     }
   }
 
+  // 0. İstif'âl (استفعال / استفالة / استـ) Bâbı Kök Çözümlemesi:
+  // "استمارة", "استراحة", "استشارة", "استقامة" gibi kelimelerde baştaki "است" 3 harfli zâid önek olup
+  // "س" ve "ت" kök harfi değildir!
+  if (core === "استمار" || core === "استماره") {
+    return "أمر";
+  }
+  const istifalHollowRoots: Record<string, string> = {
+    "استراح": "روح",
+    "استشار": "شور",
+    "استقام": "قوم",
+    "استقال": "قول",
+    "استعان": "عون",
+    "استجاب": "جوب",
+    "استطاع": "طوع",
+    "استدار": "دور",
+    "استنار": "نور",
+    "استفاد": "فيد",
+    "استمال": "ميل",
+    "استضاق": "ضيق",
+    "استعاذ": "عوذ",
+    "استزاد": "زيد",
+    "استعار": "عور",
+    "استثار": "ثور",
+    "استطاب": "طيب",
+  };
+  if (istifalHollowRoots[core]) {
+    return istifalHollowRoots[core];
+  }
+  const istifalHollowMatch = core.match(/^است([^\u0627\u0648\u064A])ا([^\u0627\u0648\u064A])$/);
+  if (istifalHollowMatch) {
+    return `${istifalHollowMatch[1]}و${istifalHollowMatch[2]}`;
+  }
+  if (core.startsWith("است") && core.length >= 6) {
+    const afterIst = core.slice(3).replace(/[اوي]/g, "");
+    if (afterIst.length === 3) {
+      return afterIst;
+    }
+  }
+
   // 1. Çoğul مَوَاعِيد / مَفَاعِيل kalıbı: م + و + ا + C2 + ي + C3 (6 harf) -> و + C2 + C3
   const mawaa3iidMatch = core.match(/^موا([^\u0627\u0648\u064A])ي([^\u0627\u0648\u064A])$/);
   if (mawaa3iidMatch) {
@@ -489,7 +528,7 @@ export function extractArabicRoot(word: string): string {
 
 /**
  * Kelimenin kök ünsüz iskeletini (Consonant Skeleton) çıkarır.
- * Misal fiil ism-i zaman/mekân (مَوْعِد -> وعد) kalıbını korur.
+ * Misal fiil ism-i zaman/mekân (مَوْعِد -> وعد) ve İstif'âl (استمارة -> أمر) kalıplarını korur.
  */
 export function getConsonantSkeleton(word: string): string {
   const normalized = normalizeForComparison(word).replace(
@@ -498,8 +537,11 @@ export function getConsonantSkeleton(word: string): string {
   );
   if (normalized.length <= 2) return normalized;
 
-  // مَوْعِد / مَوْقِف / مَوَاعِيد gibi kalıplarda و kök harfidir, silinmez:
-  if (/^(ال|وال|بال|لل|و|ف|ب|ل)?موا?[^\u0627\u0648\u064A]ي?[^\u0627\u0648\u064A]/.test(normalized)) {
+  // مَوْعِد / مَوْقِف / مَوَاعِيد ve استمارة / استراحة gibi kalıplarda özel kök çıkarımını kullan:
+  if (
+    /^(ال|وال|بال|لل|و|ف|ب|ل)?موا?[^\u0627\u0648\u064A]ي?[^\u0627\u0648\u064A]/.test(normalized) ||
+    /^(ال|وال|بال|لل|و|ف|ب|ل)?است/.test(normalized)
+  ) {
     return extractArabicRoot(normalized);
   }
 

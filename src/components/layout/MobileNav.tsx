@@ -17,7 +17,7 @@ export default function MobileNav() {
   const navItems = [
     { href: "/", icon: Home, label: "Ana Sayfa" },
     { href: "/kutuphane", icon: BookOpen, label: "Kütüphane" },
-    { href: "/alistirmalar", icon: Gamepad2, label: "Alıştırma" },
+    { href: "/alistirmalar", icon: Gamepad2, label: "Alıştırmalar" },
     { href: "/sozluk", icon: BookMarked, label: "Sözlük" },
     { href: "/ayarlar", icon: Settings, label: "Ayarlar" },
   ];
@@ -25,9 +25,9 @@ export default function MobileNav() {
   return (
     <nav
       aria-label="Mobil Alt Navigasyon"
-      className="lg:hidden print:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-t-2 border-[#E6D7BE] dark:border-[var(--border)] px-2 py-1.5"
+      className="lg:hidden print:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-t-2 border-[#E6D7BE] dark:border-[var(--border)] px-1.5 py-1.5"
     >
-      <div className="max-w-md mx-auto grid grid-cols-5 gap-1.5">
+      <div className="max-w-md mx-auto grid grid-cols-5 gap-1">
         {navItems.map((item) => {
           const isActive =
             item.href === "/"
@@ -47,7 +47,7 @@ export default function MobileNav() {
               }`}
             >
               <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[10px] mt-0.5 truncate max-w-full">
+              <span className="text-[10px] sm:text-xs font-medium tracking-tight whitespace-nowrap text-center leading-tight mt-0.5">
                 {item.label}
               </span>
             </Link>

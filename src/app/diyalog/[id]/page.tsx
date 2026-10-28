@@ -58,7 +58,7 @@ import {
 } from "@/lib/audioAnalysis";
 import { HybridSpeechManager } from "@/lib/speechManager";
 import { evaluateSentenceWords } from "@/lib/arabicNlpEngine";
-import { formatArabicText } from "@/lib/arabicTextUtils";
+import { formatArabicText, splitMixedBidiText } from "@/lib/arabicTextUtils";
 
 type StudyMode = "listen" | "shadowing" | "roleplay" | "vocabulary";
 type FlowMode = "single" | "sequential";
@@ -830,7 +830,9 @@ export default function DialogueDetailPage({
                 <h1 className="text-sm sm:text-base font-extrabold text-[var(--foreground)] truncate">
                   {dialogue.baslik_tr}
                 </h1>
-                <span className="text-[var(--muted)] font-bold">|</span>
+                <span className="hidden sm:inline text-[var(--muted)] font-bold">
+                  |
+                </span>
                 <span
                   dir="rtl"
                   className="arabic text-lg sm:text-xl font-bold text-[#087F5B] dark:text-[#20c997] leading-none"
@@ -867,8 +869,8 @@ export default function DialogueDetailPage({
           </button>
         </div>
 
-        {/* 2. SATIR: Tek Satırlık 4 Sütunlu Mod Sekmeleri */}
-        <div className="w-full grid grid-cols-4 gap-1 p-1 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
+        {/* 2. SATIR: Mobilde 2x2, Masaüstünde 4 Sütunlu Mod Sekmeleri */}
+        <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
           {(
             [
               { id: "listen", label: "📖 Dinle & İncele" },
@@ -897,7 +899,7 @@ export default function DialogueDetailPage({
                   }
                   setStudyMode(tab.id);
                 }}
-                className={`text-[11px] md:text-xs py-1.5 px-1 truncate rounded-lg font-extrabold transition-all text-center cursor-pointer ${
+                className={`text-xs py-1.5 px-2 whitespace-nowrap rounded-lg font-extrabold transition-all text-center cursor-pointer ${
                   isSelected
                     ? "bg-[#6741D9] text-white shadow-2xs"
                     : "text-[var(--muted)] hover:text-[var(--foreground)] bg-white/60 dark:bg-transparent"
@@ -1145,7 +1147,7 @@ export default function DialogueDetailPage({
                     <span className="text-[10px] font-extrabold uppercase text-[var(--muted)] block">
                       Metin &amp; Çeviri Görünümü
                     </span>
-                    <div className="grid grid-cols-5 gap-1 bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)]">
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 bg-white dark:bg-[var(--background)] rounded-xl p-1.5 border border-[#E6D7BE] dark:border-[var(--border)]">
                       {(
                         [
                           { id: "stacked", label: "Alt Alta", icon: Rows2 },
@@ -1172,14 +1174,14 @@ export default function DialogueDetailPage({
                               setRevealedArLines({});
                             }}
                             title={opt.label}
-                            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
                               active
                                 ? "bg-[#0CA678] text-white"
                                 : "text-[var(--muted)] hover:text-[var(--foreground)]"
                             }`}
                           >
                             <Icon size={13} />
-                            <span className="truncate max-w-full px-0.5">{opt.label}</span>
+                            <span className="whitespace-nowrap px-0.5">{opt.label}</span>
                           </button>
                         );
                       })}
@@ -1192,14 +1194,14 @@ export default function DialogueDetailPage({
                           setRevealedTrLines({});
                         }}
                         title="Tıkla-Gör (Çeviriyi tıklayınca aç)"
-                        className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                        className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
                           clickToRevealTr
                             ? "bg-[#0CA678] text-white"
                             : "text-[var(--muted)] hover:text-[var(--foreground)]"
                         }`}
                       >
                         <MousePointerClick size={13} />
-                        <span className="truncate max-w-full px-0.5">Tıkla-Gör</span>
+                        <span className="whitespace-nowrap px-0.5">Tıkla-Gör</span>
                       </button>
                     </div>
                   </div>
@@ -1209,12 +1211,12 @@ export default function DialogueDetailPage({
                     <span className="text-[10px] font-extrabold uppercase text-[var(--muted)] block">
                       Dinlenen Kelime Vurgusu
                     </span>
-                    <div className="grid grid-cols-4 gap-1 bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)]">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-white dark:bg-[var(--background)] rounded-xl p-1.5 border border-[#E6D7BE] dark:border-[var(--border)]">
                       {(
                         [
-                          { id: "both", label: "Vurgu+Ok" },
-                          { id: "highlight", label: "Vurgu" },
-                          { id: "arrow", label: "Ok" },
+                          { id: "both", label: "Vurgu + Ok" },
+                          { id: "highlight", label: "Sadece Vurgu" },
+                          { id: "arrow", label: "Sadece Ok" },
                           { id: "off", label: "Kapalı" },
                         ] as { id: WordTrackingStyle; label: string }[]
                       ).map((ws) => {
@@ -1227,7 +1229,7 @@ export default function DialogueDetailPage({
                               playClick();
                               setWordTrackingStyle(ws.id);
                             }}
-                            className={`py-1 px-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
+                            className={`py-1.5 px-2 rounded-lg text-[10px] font-extrabold whitespace-nowrap transition-all cursor-pointer ${
                               active
                                 ? "bg-[#6741D9] text-white"
                                 : "text-[var(--muted)] hover:text-[var(--foreground)]"
@@ -1500,13 +1502,37 @@ export default function DialogueDetailPage({
                           {catTheme.badgeText}
                         </span>
                         {word.kok && word.kok !== "-" && (
-                          <span className="text-[11px] font-bold text-[var(--muted)]">
-                            Kök: {getDisplayText(word.kok)}
+                          <span
+                            dir="ltr"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--muted)]"
+                          >
+                            <span>Kök:</span>
+                            <bdi
+                              dir="rtl"
+                              className="arabic font-arabic text-xs font-bold text-[var(--foreground)] inline-block"
+                            >
+                              {getDisplayText(word.kok)}
+                            </bdi>
                           </span>
                         )}
                       </div>
-                      <p className="text-sm font-extrabold text-[var(--foreground)] mt-1">
-                        {word.anlam_tr}
+                      <p
+                        dir="ltr"
+                        className="text-sm font-extrabold text-[var(--foreground)] mt-1 text-left leading-snug"
+                      >
+                        {splitMixedBidiText(word.anlam_tr).map((seg, sIdx) =>
+                          seg.isArabic ? (
+                            <bdi
+                              key={sIdx}
+                              dir="rtl"
+                              className="arabic font-arabic font-bold inline-block mx-0.5"
+                            >
+                              {getDisplayText(seg.text)}
+                            </bdi>
+                          ) : (
+                            <span key={sIdx}>{seg.text}</span>
+                          )
+                        )}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
@@ -1518,25 +1544,44 @@ export default function DialogueDetailPage({
                       </span>
                       {entry.contextWord && (
                         <span
-                          dir="rtl"
-                          className="text-xs md:text-sm font-medium text-[#6741D9] block mt-0.5"
+                          dir="ltr"
+                          className="inline-flex items-center justify-end gap-1 text-xs md:text-sm font-medium text-[#6741D9] mt-0.5"
                         >
-                          Metinde:{" "}
-                          <strong className="arabic text-base md:text-lg font-arabic font-bold">
+                          <span>Metinde:</span>
+                          <bdi
+                            dir="rtl"
+                            className="arabic text-base md:text-lg font-arabic font-bold inline-block"
+                          >
                             {getDisplayText(entry.contextWord)}
-                          </strong>
+                          </bdi>
                         </span>
                       )}
                     </div>
                   </div>
 
                   {entry.morphologyNote && (
-                    <div className="bg-white dark:bg-[var(--background)] rounded-xl px-3 py-1.5 border border-[#E6D7BE] text-[11px] font-bold text-[#4C28B5] dark:text-[#d0bfff]">
-                      <span className="text-[10px] uppercase tracking-wider text-[#6741D9] block">
+                    <div
+                      dir="ltr"
+                      className="bg-white dark:bg-[var(--background)] rounded-xl px-3 py-1.5 border border-[#E6D7BE] text-[11px] font-bold text-[#4C28B5] dark:text-[#d0bfff] text-left"
+                    >
+                      <span className="text-[10px] uppercase tracking-wider text-[#6741D9] block mb-0.5">
                         Morfolojik Çözümleme (Cümle #{entry.lineNumber}):
                       </span>
-                      <span dir="rtl" className="block text-right">
-                        {getDisplayText(entry.morphologyNote)}
+                      <span dir="ltr" className="block text-left leading-relaxed">
+                        {splitMixedBidiText(entry.morphologyNote).map(
+                          (seg, sIdx) =>
+                            seg.isArabic ? (
+                              <bdi
+                                key={sIdx}
+                                dir="rtl"
+                                className="arabic font-arabic text-sm font-bold inline-block mx-0.5"
+                              >
+                                {getDisplayText(seg.text)}
+                              </bdi>
+                            ) : (
+                              <span key={sIdx}>{seg.text}</span>
+                            )
+                        )}
                       </span>
                     </div>
                   )}
@@ -2022,7 +2067,7 @@ export default function DialogueDetailPage({
                     {currentViewMode !== "turkish-only" && (
                       <div
                         dir="ltr"
-                        className="mt-1.5 pt-1.5 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]"
+                        className="mt-1.5 pt-1.5 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] min-h-[30px] flex items-center"
                       >
                         {isTrRevealed ? (
                           <p
@@ -2034,7 +2079,8 @@ export default function DialogueDetailPage({
                         ) : (
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               playClick();
                               setRevealedTrLines((prev) => ({
                                 ...prev,
@@ -2043,7 +2089,7 @@ export default function DialogueDetailPage({
                             }}
                             className="inline-flex items-center gap-1.5 text-xs font-bold text-[#087F5B] bg-white dark:bg-[var(--background)] px-3 py-1 rounded-xl border border-[#E6D7BE] hover:border-[#0CA678] cursor-pointer"
                           >
-                            <Eye size={13} />
+                            <Eye size={13} className="shrink-0" />
                             <span>Türkçe Çeviriyi Göster</span>
                           </button>
                         )}
@@ -2132,7 +2178,7 @@ export default function DialogueDetailPage({
           onClick={handleCompleteAndContinue}
           className="w-full py-3.5 px-6 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm sm:text-base rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
         >
-          <CheckCircle2 size={18} />
+          <CheckCircle2 size={20} className="shrink-0 w-5 h-5" />
           <span>
             {isCompleted
               ? nextDialogue
@@ -2144,15 +2190,15 @@ export default function DialogueDetailPage({
           </span>
         </button>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {prevDialogue ? (
             <Link
               href={`/diyalog/${prevDialogue.id}`}
               onClick={() => playClick()}
-              className="p-3 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center gap-2 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all"
+              className="w-full p-3 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center gap-2.5 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all"
             >
               <ChevronLeft size={18} className="text-[#087F5B] shrink-0" />
-              <div className="truncate">
+              <div className="min-w-0 flex-1">
                 <span className="block text-[10px] text-[var(--muted)] uppercase">
                   Önceki Diyalog
                 </span>
@@ -2160,16 +2206,16 @@ export default function DialogueDetailPage({
               </div>
             </Link>
           ) : (
-            <div />
+            <div className="hidden sm:block" />
           )}
 
           {nextDialogue ? (
             <Link
               href={`/diyalog/${nextDialogue.id}`}
               onClick={() => playClick()}
-              className="p-3 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-end gap-2 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all text-right"
+              className="w-full p-3 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-end gap-2.5 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all text-right"
             >
-              <div className="truncate">
+              <div className="min-w-0 flex-1">
                 <span className="block text-[10px] text-[var(--muted)] uppercase">
                   Sonraki Diyalog
                 </span>
@@ -2178,7 +2224,7 @@ export default function DialogueDetailPage({
               <ChevronRight size={18} className="text-[#087F5B] shrink-0" />
             </Link>
           ) : (
-            <div />
+            <div className="hidden sm:block" />
           )}
         </div>
       </section>

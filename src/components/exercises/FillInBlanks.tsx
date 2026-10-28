@@ -961,51 +961,72 @@ export default function FillInBlanks({
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-3.5">
+    <div className="max-w-3xl mx-auto space-y-3.5 pb-24 sm:pb-10">
       {/* ÜST DURUM, ALT MOD SEÇİCİ VE SORU GEZGİNİ (1..N) ÇUBUĞU */}
       <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 py-2.5 space-y-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center justify-between sm:justify-start gap-2">
             <span className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] tabular-nums">
               Cümle {currentIndex + 1} / {questions.length}
             </span>
 
-            {/* Alt Yöntem Anahtarı: Seçmeli / Sürükle-Bırak vs Dinle & Boşluğu Yaz (İmla) */}
-            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-0.5 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setSubMode("choices");
-                }}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
-                  subMode === "choices"
-                    ? "bg-[#6741D9] text-white"
-                    : "text-[var(--muted)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                <Puzzle size={12} />
-                <span>Seçmeli / Sürükle-Bırak</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setSubMode("dictation");
-                }}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
-                  subMode === "dictation"
-                    ? "bg-[#6741D9] text-white"
-                    : "text-[var(--muted)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                <Headphones size={12} />
-                <span>Dinle & Boşluğu Yaz (İmla)</span>
-              </button>
+            <div className="flex sm:hidden items-center gap-1.5">
+              {timeLeft !== null && (
+                <div
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border text-xs font-black tabular-nums ${
+                    timeLeft <= 5
+                      ? "bg-red-100 border-red-300 text-red-700 animate-pulse"
+                      : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-amber-700"
+                  }`}
+                >
+                  <Timer size={14} />
+                  <span>{timeLeft} sn</span>
+                </div>
+              )}
+
+              <span className="text-xs font-extrabold text-[#087F5B] bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-2.5 py-1 rounded-xl tabular-nums">
+                {feedbackMode === "instant"
+                  ? `Doğru: ${correctCount}`
+                  : `Yanıtlanan: ${Object.keys(userAnswers).length}/${questions.length}`}
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Alt Yöntem Anahtarı: Seçmeli / Sürükle-Bırak vs Dinle & Boşluğu Yaz (İmla) */}
+          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 gap-1.5 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setSubMode("choices");
+              }}
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                subMode === "choices"
+                  ? "bg-[#6741D9] text-white"
+                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <Puzzle size={12} className="shrink-0" />
+              <span className="leading-tight">Seçmeli / Sürükle-Bırak</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setSubMode("dictation");
+              }}
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                subMode === "dictation"
+                  ? "bg-[#6741D9] text-white"
+                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <Headphones size={12} className="shrink-0" />
+              <span className="leading-tight">Dinle & Boşluğu Yaz (İmla)</span>
+            </button>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-2">
             {timeLeft !== null && (
               <div
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs sm:text-sm font-black tabular-nums ${
@@ -1131,7 +1152,7 @@ export default function FillInBlanks({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0CA678] text-white font-bold border-b-2 border-[#087F5B] cursor-pointer"
             >
               <Volume2 size={14} />
-              <span>🔊 Cümleyi Dinle</span>
+              <span>Cümleyi Dinle</span>
             </button>
 
             {subMode === "dictation" && (
