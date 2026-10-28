@@ -54,7 +54,7 @@ export default function Header() {
     cycleSpeechRate,
     arabicFont,
   } = useSettings();
-  const { isInstallable, isIOS, installApp } = usePwaInstall();
+  const { isInstallable, isInstalled, isIOS, installApp } = usePwaInstall();
 
   const [mounted, setMounted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -187,13 +187,36 @@ export default function Header() {
   const handleToggleFullscreen = async () => {
     playClick();
     try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
+      const docEl = document.documentElement as HTMLElement & {
+        webkitRequestFullscreen?: () => Promise<void>;
+      };
+      const doc = document as Document & {
+        webkitFullscreenElement?: Element | null;
+        webkitExitFullscreen?: () => Promise<void>;
+      };
+      const isFs = Boolean(
+        document.fullscreenElement || doc.webkitFullscreenElement
+      );
+      if (!isFs) {
+        if (typeof docEl.requestFullscreen === "function") {
+          await docEl.requestFullscreen();
+        } else if (typeof docEl.webkitRequestFullscreen === "function") {
+          await docEl.webkitRequestFullscreen();
+        } else if (isIOS && !isInstalled) {
+          setIosInstallOpen(true);
+        }
       } else {
-        await document.exitFullscreen();
+        if (typeof document.exitFullscreen === "function") {
+          await document.exitFullscreen();
+        } else if (typeof doc.webkitExitFullscreen === "function") {
+          await doc.webkitExitFullscreen();
+        }
       }
     } catch {
-      // iFrame kısıtlaması varsa sessizce geç
+      // Desteklenmeyen iOS tarayıcılarda veya iFrame kısıtlamasında hata fırlatmadan geç
+      if (isIOS && !isInstalled) {
+        setIosInstallOpen(true);
+      }
     }
   };
 
@@ -208,37 +231,57 @@ export default function Header() {
   const isHarekeOn = !mounted || showHareke;
   const currentViewMode: ViewMode = mounted ? viewMode : "stacked";
   const isDark = mounted && theme === "dark";
+  const canInstall = (isInstallable || isIOS) && !isInstalled;
 
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-40 print:hidden w-full h-12 py-1.5 bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b-2 border-[#E6D7BE] dark:border-[var(--border)] shadow-xs flex items-center">
-        <div className="w-full max-w-6xl mx-auto px-2.5 sm:px-6 h-full flex items-center justify-between gap-1.5 sm:gap-2">
-          {/* SOL: 3B Dokunsal Rozetli Gerçek Logo + Başlık + Masaüstü İkonlu Menü Kutusu */}
-          <div className="flex items-center gap-2 min-w-0 shrink">
+        <div className="w-full max-w-6xl mx-auto px-2 sm:px-6 h-full flex items-center justify-between gap-1.5 sm:gap-2">
+          {/* SOL: Sabit Uygulama Logosu (shrink-0) + Yanında Ayrı PWA Kurulum Butonu + Masaüstü Menü */}
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
             <Link
               href="/"
               onClick={() => playClick()}
-              className="flex items-center gap-2 group min-w-0"
+              className="flex items-center gap-1.5 sm:gap-2 group shrink-0"
+              title="Ana Sayfa"
             >
-              <div className="w-8 h-8 rounded-xl bg-white dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center shrink-0 group-active:translate-y-0.5 transition-transform p-0.5">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center shrink-0 group-active:translate-y-0.5 transition-transform p-0.5">
                 <img
                   src="/icons/android-chrome-192x192.png"
                   alt="Logo"
                   className="w-6 h-6 object-contain rounded-lg"
                 />
               </div>
-              <div className="min-w-0">
-                <span className="block sm:hidden text-xs font-extrabold tracking-tight text-[var(--foreground)] truncate">
-                  Arapça Diyalog
-                </span>
-                <span className="hidden sm:block text-xs sm:text-sm font-extrabold tracking-tight text-[var(--foreground)] truncate leading-tight">
+              <div className="hidden sm:block min-w-0">
+                <span className="block text-xs sm:text-sm font-extrabold tracking-tight text-[var(--foreground)] truncate leading-tight">
                   Arapça Telaffuz & Diyalog
                 </span>
               </div>
             </Link>
 
+            {/* PWA Uygulamayı Kur Butonu (Yalnızca canInstall && !isStandalone durumunda logonun yanında ayrı ve kompakt) */}
+            {mounted && canInstall && (
+              <button
+                type="button"
+                onClick={async () => {
+                  playClick();
+                  if (isInstallable) {
+                    await installApp();
+                  } else if (isIOS) {
+                    setIosInstallOpen(true);
+                  }
+                }}
+                title="Uygulamayı Cihaza Kur"
+                aria-label="Uygulamayı Cihaza Kur"
+                className="group relative h-8 sm:h-9 w-8 sm:w-auto sm:px-2.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-1 text-xs font-extrabold cursor-pointer shrink-0"
+              >
+                <Download size={14} className="shrink-0" />
+                <span className="hidden xl:inline">Kur</span>
+              </button>
+            )}
+
             {/* Masaüstü İkonlu ve Çerçeveli Premium Navigasyon Kutusu */}
-            <nav className="hidden md:flex items-center gap-1 ml-2 bg-slate-200/50 dark:bg-slate-800/60 p-1 rounded-xl border border-slate-300/60 dark:border-slate-700/60">
+            <nav className="hidden md:flex items-center gap-1 ml-1 bg-slate-200/50 dark:bg-slate-800/60 p-1 rounded-xl border border-slate-300/60 dark:border-slate-700/60">
               {navLinks.map((item) => {
                 const isActive =
                   item.href === "/"
@@ -265,27 +308,7 @@ export default function Header() {
           </div>
 
           {/* SAĞ: 3B Dokunsal Global Hızlı Ayar İkonları */}
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 max-w-full overflow-x-auto sm:overflow-visible no-scrollbar">
-            {/* PWA Uygulamayı Kur Butonu */}
-            {mounted && (isInstallable || isIOS) && (
-              <button
-                type="button"
-                onClick={async () => {
-                  playClick();
-                  if (isInstallable) {
-                    await installApp();
-                  } else if (isIOS) {
-                    setIosInstallOpen(true);
-                  }
-                }}
-                title="Uygulamayı Cihaza Kur"
-                className="group relative w-8 h-8 sm:w-auto sm:px-2.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-1 text-xs font-extrabold cursor-pointer shrink-0"
-              >
-                <Download size={14} />
-                <span className="hidden xl:inline">Kur</span>
-              </button>
-            )}
-
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {/* 1. Hareke Aç/Kapa İkonu */}
             <button
               type="button"
@@ -299,7 +322,7 @@ export default function Header() {
                   : "Harekeler: Gizli (Göstermek için tıkla)"
               }
               aria-label="Hareke Aç/Kapa"
-              className={`group relative w-8 h-8 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
+              className={`group relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
                 isHarekeOn
                   ? "bg-[#0CA678]/15 border-[#0CA678] text-[#087F5B] dark:text-[#20c997]"
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] opacity-75"
@@ -321,7 +344,7 @@ export default function Header() {
                 }}
                 title={`Çeviri Görünümü: ${VIEW_MODE_LABELS[currentViewMode]}`}
                 aria-label="Çeviri Görünümü"
-                className={`group relative w-8 h-8 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer ${
+                className={`group relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer ${
                   currentViewMode !== "arabic-only"
                     ? "bg-[#0CA678]/15 border-[#0CA678] text-[#087F5B] dark:text-[#20c997]"
                     : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)]"
@@ -372,7 +395,7 @@ export default function Header() {
               )}
             </div>
 
-            {/* 3. TTS Okuma Hızı */}
+            {/* 3. TTS Okuma Hızı (Mobilde sadece kompakt 1x metni, masaüstünde Gauge ikonu + 1x) */}
             <button
               type="button"
               onClick={() => {
@@ -381,9 +404,12 @@ export default function Header() {
               }}
               title={`Okuma Hızı: ${mounted ? speechRate : 1}x (Değiştirmek için tıkla)`}
               aria-label="TTS Okuma Hızı"
-              className="group relative h-8 px-1.5 sm:px-2 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center gap-1 text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="group relative w-8 h-8 sm:w-auto sm:h-9 px-1 sm:px-2 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center gap-1 text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
-              <Gauge size={13} className="text-[#0CA678] shrink-0" />
+              <Gauge
+                size={13}
+                className="hidden sm:inline text-[#0CA678] shrink-0"
+              />
               <span className="text-[11px] font-extrabold tabular-nums">
                 {mounted ? `${speechRate}x` : "1x"}
               </span>
@@ -405,7 +431,7 @@ export default function Header() {
                   : "Tema: Sıcak Krem (Gece moduna geç)"
               }
               aria-label="Tema Değiştir"
-              className="group relative w-8 h-8 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="group relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
               {isDark ? (
                 <Sun size={14} strokeWidth={2.4} className="text-amber-400" />
@@ -417,7 +443,7 @@ export default function Header() {
               </span>
             </button>
 
-            {/* 5. Ses Efektleri Aç/Kapa */}
+            {/* 5. Ses Efektleri Aç/Kapa (Küçük mobil ekranlarda gizli: hidden sm:flex) */}
             <button
               type="button"
               onClick={() => {
@@ -430,7 +456,7 @@ export default function Header() {
                   : "Ses Efektleri: Kapalı (Açmak için tıkla)"
               }
               aria-label="Ses Efektleri Aç/Kapa"
-              className={`group relative w-8 h-8 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
+              className={`group relative hidden sm:flex w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 items-center justify-center hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
                 mounted && sfxEnabled
                   ? "text-[#087F5B] dark:text-[#20c997]"
                   : "text-[var(--muted)] opacity-75"
@@ -452,7 +478,7 @@ export default function Header() {
               onClick={handleToggleMicModal}
               title="Mikrofon Testi"
               aria-label="Mikrofon Testi"
-              className={`group relative w-8 h-8 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
+              className={`group relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
                 micModalOpen
                   ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:bg-[#EFE3CE]"
@@ -473,7 +499,7 @@ export default function Header() {
               }}
               title="Kullanım Kılavuzu & Uygulama Bilgisi (İnfo)"
               aria-label="Kullanım Kılavuzu & İnfo"
-              className="group relative w-8 h-8 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 flex items-center justify-center text-[#6741D9] dark:text-[#d0bfff] hover:bg-[#e8e2ff] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="group relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 flex items-center justify-center text-[#6741D9] dark:text-[#d0bfff] hover:bg-[#e8e2ff] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
               <HelpCircle size={14} strokeWidth={2.4} />
               <span className="hidden sm:block pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
@@ -481,31 +507,31 @@ export default function Header() {
               </span>
             </button>
 
-            {/* 8. Tam Ekran */}
+            {/* 8. Tam Ekran (Hem mobilde hem masaüstünde görünür) */}
             <button
               type="button"
               onClick={handleToggleFullscreen}
               title={isFullscreen ? "Tam Ekrandan Çık" : "Tam Ekran"}
               aria-label="Tam Ekran"
-              className="group relative hidden sm:flex w-8 h-8 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="group relative flex w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
               {isFullscreen ? (
                 <Minimize2 size={14} strokeWidth={2.4} />
               ) : (
                 <Maximize2 size={14} strokeWidth={2.4} />
               )}
-              <span className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
+              <span className="hidden sm:block pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#2b241d] px-2 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md">
                 {isFullscreen ? "Tam Ekrandan Çık" : "Tam Ekran"}
               </span>
             </button>
 
-            {/* 9. Ayarlar Kısayolu (Tablet/Mobil için) */}
+            {/* 9. Ayarlar Kısayolu (Mobilde gizli: hidden md:flex lg:hidden) */}
             <Link
               href="/ayarlar"
               onClick={() => playClick()}
               title="Ayarlar"
               aria-label="Ayarlar"
-              className={`lg:hidden w-8 h-8 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all shrink-0 ${
+              className={`hidden md:flex lg:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl border-2 border-b-3 items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all shrink-0 ${
                 pathname === "/ayarlar"
                   ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"

@@ -9,11 +9,19 @@ export default function ScrollToTopButton() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setVisible(window.scrollY > 300);
+      const scrollY = window.scrollY;
+      const isAtFooter =
+        window.innerHeight + scrollY >=
+        document.documentElement.scrollHeight - 90;
+      setVisible(scrollY > 300 && !isAtFooter);
     };
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("resize", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
   }, []);
 
   const scrollToTop = () => {
@@ -27,13 +35,13 @@ export default function ScrollToTopButton() {
       onClick={scrollToTop}
       title="Yukarı Çık"
       aria-label="Sayfanın En Üstüne Kaydır"
-      className={`fixed bottom-20 right-4 md:bottom-6 md:right-6 z-30 print:hidden w-11 h-11 rounded-2xl bg-[#0CA678] hover:bg-[#099268] text-white border-2 border-[#087F5B] border-b-4 shadow-lg flex items-center justify-center cursor-pointer active:border-b-2 active:translate-y-0.5 transition-all duration-300 ${
+      className={`fixed right-3 bottom-20 sm:bottom-6 sm:right-6 z-30 print:hidden w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-[#0CA678] hover:bg-[#099268] text-white border-2 border-[#087F5B] border-b-4 shadow-lg flex items-center justify-center cursor-pointer active:border-b-2 active:translate-y-0.5 transition-all duration-300 ${
         visible
           ? "opacity-100 translate-y-0 pointer-events-auto"
           : "opacity-0 translate-y-4 pointer-events-none"
       }`}
     >
-      <ArrowUp size={20} strokeWidth={2.75} />
+      <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.75} />
     </button>
   );
 }

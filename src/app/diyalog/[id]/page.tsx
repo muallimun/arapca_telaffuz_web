@@ -59,6 +59,11 @@ import {
 import { HybridSpeechManager } from "@/lib/speechManager";
 import { evaluateSentenceWords } from "@/lib/arabicNlpEngine";
 import { formatArabicText, splitMixedBidiText } from "@/lib/arabicTextUtils";
+import {
+  requestWakeLock,
+  releaseWakeLock,
+  releaseAllWakeLocks,
+} from "@/lib/wakeLock";
 
 type StudyMode = "listen" | "shadowing" | "roleplay" | "vocabulary";
 type FlowMode = "single" | "sequential";
@@ -200,8 +205,28 @@ export default function DialogueDetailPage({
       stop();
       cleanupRoleplayMic();
       roleplaySpeechRef.current?.terminate();
+      void releaseAllWakeLocks();
     };
   }, [stop]);
+
+  // Diyalog dinlerken, rol yaparken veya gölgeleme çalışırken mobil ekranın kararmasını önle
+  const isWakeLockNeeded =
+    isPlayingAll ||
+    playingLineId !== null ||
+    isRoleplayRunning ||
+    loopingLineSira !== null ||
+    Boolean(shadowingTarget);
+
+  useEffect(() => {
+    if (isWakeLockNeeded) {
+      void requestWakeLock("dialogue-session");
+    } else {
+      void releaseWakeLock("dialogue-session");
+    }
+    return () => {
+      void releaseWakeLock("dialogue-session");
+    };
+  }, [isWakeLockNeeded]);
 
   useEffect(() => {
     if (!isLightboxOpen) return;

@@ -10,6 +10,7 @@ import {
   getWordIndexAtProgress,
   WordTimingSegment,
 } from "@/lib/audio";
+import { requestWakeLock, releaseWakeLock } from "@/lib/wakeLock";
 
 interface AudioState {
   activeAudio: HTMLAudioElement | null;
@@ -123,6 +124,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
     stop: () => {
       stopWordTrackingLoop();
       stopAllAudio();
+      void releaseWakeLock("audio");
       set({
         activeAudio: null,
         playingLineId: null,
@@ -143,6 +145,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
         currentResolve();
         currentResolve = null;
       }
+      void requestWakeLock("audio");
 
       const startedAt =
         typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -177,6 +180,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
           audio.onended = () => {
             stopWordTrackingLoop();
+            void releaseWakeLock("audio");
             const durSec =
               Number.isFinite(audio.duration) && audio.duration > 0
                 ? audio.duration / rate
@@ -199,6 +203,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
           audio.onerror = () => {
             stopWordTrackingLoop();
+            void releaseWakeLock("audio");
             setActiveAudio(null);
             set({
               playingLineId: null,
@@ -212,6 +217,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
           audio.play().catch((err) => {
             stopWordTrackingLoop();
+            void releaseWakeLock("audio");
             setActiveAudio(null);
             set({
               playingLineId: null,
@@ -234,6 +240,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
         currentResolve();
         currentResolve = null;
       }
+      void requestWakeLock("audio");
       set({ playingLineId: lineId });
 
       const startedAt =
@@ -246,6 +253,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
         playHybridTTS(text, rate, voice)
           .then(() => {
             stopWordTrackingLoop();
+            void releaseWakeLock("audio");
             const elapsedSec =
               ((typeof performance !== "undefined"
                 ? performance.now()
@@ -264,6 +272,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
           })
           .catch(() => {
             stopWordTrackingLoop();
+            void releaseWakeLock("audio");
             set({
               playingLineId: null,
               activeAudio: null,
