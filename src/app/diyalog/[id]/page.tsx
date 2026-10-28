@@ -836,6 +836,55 @@ export default function DialogueDetailPage({
     }
   };
 
+  const togglePlayAllShortcutRef = useRef<() => void>(() => {});
+  togglePlayAllShortcutRef.current = () => {
+    if (isRoleplayRunning) return;
+    if (
+      !isPlayingAll &&
+      (playingLineId !== null || isShadowingPause || loopingLineSira !== null)
+    ) {
+      playClick();
+      playToken.current += 1;
+      stop();
+      setLoopingLineSira(null);
+      setSentenceLoopRemaining(null);
+      return;
+    }
+    handleTogglePlayAll();
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || e.repeat) return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        tag === "BUTTON" ||
+        tag === "A" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      if (
+        shadowingTarget ||
+        isPdfModalOpen ||
+        isShareModalOpen ||
+        isLightboxOpen ||
+        document.querySelector(".fixed.inset-0")
+      ) {
+        return;
+      }
+      e.preventDefault();
+      togglePlayAllShortcutRef.current();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [shadowingTarget, isPdfModalOpen, isShareModalOpen, isLightboxOpen]);
+
   const cycleRoleplayHintLevel = (sira: number) => {
     playClick();
     setRoleplayHintLevels((prev) => {

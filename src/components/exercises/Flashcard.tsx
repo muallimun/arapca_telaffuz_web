@@ -222,8 +222,19 @@ export default function Flashcard({
   useEffect(() => {
     if (coachOpen || deck.length === 0 || isFinished) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      if (document.querySelector(".fixed.inset-0")) return;
+
       if (e.code === "Space") {
         e.preventDefault();
         setIsFlipped((f) => !f);

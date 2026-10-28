@@ -55,19 +55,19 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/icons/android-chrome-512x512.png",
-        width: 512,
-        height: 512,
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
         alt: "Arapça Telaffuz ve Diyalog Asistanı — Muallimun",
       },
     ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Arapça Telaffuz ve Diyalog Asistanı — Muallimun",
     description:
       "60 CEFR diyalog, 38 çiftlik yapay zeka mahreç koçu, morfolojik sözlük, kalıp ifadeler, 5 modlu alıştırma merkezi ve akıllı A4 PDF üreticisi.",
-    images: ["/icons/android-chrome-512x512.png"],
+    images: ["/opengraph-image"],
   },
   icons: {
     icon: [
