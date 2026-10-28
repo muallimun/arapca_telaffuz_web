@@ -1,5 +1,5 @@
 {
   "name": "Arapça Telaffuz ve Diyalog Asistanı",
-  "description": "İnteraktif Arapça diyaloglar, yapay zeka destekli telaffuz & mahreç koçluğu, kelime alıştırmaları ve sesli sözlük platformu.",
+  "description": "60 CEFR Arapça diyalog, 16kHz DSP & Whisper AI destekli 38 çiftlik Mahreç Koçu, morfolojik kök sözlüğü, kalıp ifadeler, Dinle ve Sırala dahil 5 modlu alıştırma merkezi, Akıllı Hata Defteri ve A4 PDF çalışma kağıdı üreticisi.",
   "requestFramePermissions": ["microphone"]
 }

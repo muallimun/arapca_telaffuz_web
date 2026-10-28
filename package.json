@@ -1,6 +1,7 @@
 {
   "name": "arapca-platform",
-  "version": "0.1.0",
+  "version": "2.0.0",
+  "description": "CEFR (A1-B2) 60 Arapça diyalog, 16kHz DSP & Whisper AI destekli 38 çiftlik Mahreç Koçu, morfolojik sözlük, kalıp ifadeler, 5 modlu interaktif alıştırma merkezi ve akıllı A4 PDF çalışma kağıdı üreticisi.",
   "private": true,
   "scripts": {
     "dev": "next dev",

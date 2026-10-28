@@ -10,32 +10,67 @@ import AppIntroSplash from "@/components/ui/AppIntroSplash";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Arapça Telaffuz ve Diyalog Asistanı",
+  metadataBase: new URL("https://app.muallimun.net"),
+  title: {
+    default: "Arapça Telaffuz ve Diyalog Asistanı — Muallimun",
+    template: "%s | Arapça Telaffuz ve Diyalog Asistanı",
+  },
   description:
-    "İnteraktif Arapça diyaloglar, yapay zeka destekli telaffuz & mahreç koçluğu, kelime alıştırmaları ve sesli sözlük platformu.",
+    "60 CEFR Arapça diyalog, 16kHz DSP & Whisper AI destekli 38 çiftlik Mahreç Koçu, morfolojik kök sözlüğü, kalıp ifadeler, Dinle ve Sırala dahil 5 modlu alıştırma merkezi, Akıllı Hata Defteri ve A4 PDF çalışma kağıdı üreticisi.",
+  applicationName: "Arapça Telaffuz ve Diyalog Asistanı",
+  keywords: [
+    "Arapça diyaloglar",
+    "Arapça telaffuz koçu",
+    "Arapça mahreç eğitimi",
+    "Arapça konuşma pratiği",
+    "Arapça kalıp ifadeler",
+    "morfolojik Arapça sözlük",
+    "Arapça cümle kurma",
+    "Arapça çalışma kağıdı PDF",
+    "Muallimun Arapça",
+    "CEFR Arapça A1 A2 B1 B2",
+  ],
+  authors: [{ name: "Muallimun", url: "https://muallimun.net" }],
+  creator: "Muallimun",
+  publisher: "Muallimun",
   manifest: "/manifest.webmanifest",
+  alternates: {
+    canonical: "https://app.muallimun.net",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Arapça",
+    title: "Arapça Asistanı",
   },
   openGraph: {
-    title: "Arapça Telaffuz ve Diyalog Asistanı",
+    title: "Arapça Telaffuz ve Diyalog Asistanı — Muallimun",
     description:
-      "İnteraktif Arapça diyaloglar, yapay zeka destekli telaffuz & mahreç koçluğu, kelime alıştırmaları ve sesli sözlük platformu.",
+      "60 CEFR diyalog, 38 çiftlik yapay zeka mahreç koçu, morfolojik sözlük, kalıp ifadeler, 5 modlu interaktif alıştırma merkezi ve akıllı A4 PDF çalışma kağıdı üreticisi.",
+    url: "https://app.muallimun.net",
+    siteName: "Arapça Telaffuz ve Diyalog Asistanı",
+    locale: "tr_TR",
     type: "website",
     images: [
       {
         url: "/icons/android-chrome-512x512.png",
         width: 512,
         height: 512,
-        alt: "Arapça Telaffuz ve Diyalog Asistanı",
+        alt: "Arapça Telaffuz ve Diyalog Asistanı — Muallimun",
       },
     ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Arapça Telaffuz ve Diyalog Asistanı — Muallimun",
+    description:
+      "60 CEFR diyalog, 38 çiftlik yapay zeka mahreç koçu, morfolojik sözlük, kalıp ifadeler, 5 modlu alıştırma merkezi ve akıllı A4 PDF üreticisi.",
+    images: ["/icons/android-chrome-512x512.png"],
   },
   icons: {
     icon: [
       { url: "/icons/favicon.ico" },
+      { url: "/icons/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icons/favicon-32x32.png", sizes: "32x32", type: "image/png" },
       {
         url: "/icons/android-chrome-192x192.png",
         sizes: "192x192",
@@ -50,8 +85,8 @@ export const metadata: Metadata = {
     shortcut: ["/icons/favicon.ico"],
     apple: [
       {
-        url: "/icons/android-chrome-192x192.png",
-        sizes: "192x192",
+        url: "/icons/apple-touch-icon.png",
+        sizes: "180x180",
         type: "image/png",
       },
     ],
@@ -63,8 +98,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FDFBF7" },
-    { media: "(prefers-color-scheme: dark)", color: "#191714" },
+    { media: "(prefers-color-scheme: light)", color: "#FAF6EE" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
   ],
 };
 
