@@ -28,9 +28,11 @@ import { useUserStore } from "@/store/userStore";
 import { formatArabicText } from "@/lib/arabicTextUtils";
 import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
 import { FeedbackMode, QuizContentType } from "./MultipleChoice";
+import { ArabicIdiom } from "@/lib/arabicIdioms";
 
 interface Props {
   vocabulary: DictionaryItem[];
+  idioms?: ArabicIdiom[];
   dialogues?: Dialogue[];
   contentType?: QuizContentType;
   timeLimit: number | null;
@@ -69,6 +71,7 @@ interface Point {
 
 export default function MatchingGame({
   vocabulary,
+  idioms = [],
   dialogues = [],
   contentType = "words",
   timeLimit,
@@ -162,6 +165,15 @@ export default function MatchingGame({
       }))
       .filter((p) => p.arText.length > 0 && p.trText.length > 0);
 
+    const idiomPairs: PairDefinition[] = idioms
+      .map((idm) => ({
+        matchId: `idm_${idm.id}`,
+        arText: idm.arabic.trim(),
+        trText: idm.meaningTr.trim(),
+        isSentence: idm.arabic.trim().split(/\s+/).length >= 3,
+      }))
+      .filter((p) => p.arText.length > 0 && p.trText.length > 0);
+
     const sentencePairs: PairDefinition[] = [];
     dialogues.forEach((dlg) => {
       dlg.satirlar.forEach((line) => {
@@ -176,23 +188,28 @@ export default function MatchingGame({
       });
     });
 
+    if (contentType === "idioms" && idiomPairs.length > 0) {
+      if (idiomPairs.length >= pairTarget) {
+        return shuffleArray(idiomPairs).slice(0, pairTarget);
+      }
+      return shuffleArray([
+        ...idiomPairs,
+        ...shuffleArray(wordPairs).slice(0, pairTarget - idiomPairs.length),
+      ]);
+    }
     if (contentType === "sentences" && sentencePairs.length >= 4) {
       return shuffleArray(sentencePairs).slice(0, pairTarget);
     }
-    if (
-      contentType === "mixed" &&
-      sentencePairs.length >= 2 &&
-      wordPairs.length >= 2
-    ) {
-      const sCount = Math.ceil(pairTarget / 2);
-      const wCount = pairTarget - sCount;
-      return shuffleArray([
-        ...shuffleArray(sentencePairs).slice(0, sCount),
-        ...shuffleArray(wordPairs).slice(0, wCount),
-      ]);
+    if (contentType === "mixed") {
+      const combined = [
+        ...shuffleArray(sentencePairs).slice(0, 2),
+        ...shuffleArray(idiomPairs).slice(0, 2),
+        ...shuffleArray(wordPairs).slice(0, 3),
+      ];
+      return shuffleArray(combined).slice(0, pairTarget);
     }
     return shuffleArray(wordPairs).slice(0, pairTarget);
-  }, [vocabulary, dialogues, contentType, pairTarget]);
+  }, [vocabulary, idioms, dialogues, contentType, pairTarget]);
 
   const setupBoardFromPairs = useCallback((chosenPairs: PairDefinition[]) => {
     fanfarePlayedRef.current = false;

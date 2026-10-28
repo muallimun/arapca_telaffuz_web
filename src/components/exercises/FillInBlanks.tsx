@@ -45,7 +45,8 @@ import { useUserStore } from "@/store/userStore";
 import { formatArabicText, removeArabicHarakat } from "@/lib/arabicTextUtils";
 import ArabicVirtualKeyboard from "@/components/ui/ArabicVirtualKeyboard";
 import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
-import { FeedbackMode } from "./MultipleChoice";
+import { FeedbackMode, QuizContentType } from "./MultipleChoice";
+import { ArabicIdiom, extractDialoguesIdioms } from "@/lib/arabicIdioms";
 
 export type FillSubMode = "choices" | "dictation";
 
@@ -64,6 +65,8 @@ export interface FillQuestionItem {
 interface Props {
   dialogues: Dialogue[];
   vocabulary: DictionaryItem[];
+  idioms?: ArabicIdiom[];
+  contentType?: QuizContentType;
   feedbackMode?: FeedbackMode;
   initialSubMode?: FillSubMode;
   timeLimit: number | null;
@@ -92,6 +95,8 @@ export function normalizeArabicSpelling(input: string): string {
 export default function FillInBlanks({
   dialogues,
   vocabulary,
+  idioms = [],
+  contentType = "sentences",
   feedbackMode = "instant",
   initialSubMode = "choices",
   timeLimit,
@@ -160,6 +165,93 @@ export default function FillInBlanks({
     const stripPunct = (w: string) =>
       w.replace(/[.,!?؟،؛:"'«»()]/g, "").trim();
 
+    const vocabDistractorPool = Array.from(
+      new Set([
+        ...vocabulary
+          .map((v) => (v.mufret || v.mazi || "").split("/")[0].trim())
+          .filter(Boolean),
+        ...idioms
+          .flatMap((idm) => idm.arabic.split(/\s+/))
+          .map(stripPunct)
+          .filter((w) => w.length > 2),
+      ])
+    );
+
+    if (contentType === "idioms") {
+      // 1) Diyalog cümlelerinde geçen kalıp ifadelerden boşluk doldurma üret
+      const extracted = extractDialoguesIdioms(dialogues);
+      for (const ext of extracted) {
+        const idiomWords = ext.arabic
+          .split(/\s+/)
+          .map(stripPunct)
+          .filter((w) => w.length >= 2);
+        const lineWords = ext.lineArabic.split(/\s+/);
+        // Cümlede kalıp ifadeye ait olan kelimeyi bul
+        const matchedLineWord = lineWords.find((lw) => {
+          const cleanLw = normalizeArabicSpelling(lw);
+          return idiomWords.some(
+            (iw) => normalizeArabicSpelling(iw) === cleanLw && cleanLw.length >= 2
+          );
+        });
+        const targetRaw =
+          matchedLineWord ||
+          lineWords.find((lw) => stripPunct(lw).length > 2);
+        if (!targetRaw) continue;
+        const cleanTarget = stripPunct(targetRaw);
+        const distractors = shuffleArray(
+          vocabDistractorPool.filter(
+            (w) => normalizeArabicSpelling(w) !== normalizeArabicSpelling(cleanTarget)
+          )
+        ).slice(0, 3);
+        if (distractors.length === 3) {
+          generated.push({
+            id: `fill_idm_dlg_${ext.id}_${ext.lineNumber}`,
+            sentenceWithBlank: ext.lineArabic.replace(targetRaw, " [ ? ] "),
+            fullArabic: ext.lineArabic,
+            correctWord: cleanTarget,
+            options: shuffleArray([cleanTarget, ...distractors]),
+            turkce: `${ext.lineTurkish} (✨ Kalıp İfade: ${ext.meaningTr})`,
+            dialogueId: "",
+            lineSira: ext.lineNumber,
+            voice: "ar-SA-HamedNeural",
+          });
+        }
+      }
+
+      // 2) Çok kelimeli kalıp ifadelerin kendisinden boşluk doldurma üret
+      for (const idm of idioms) {
+        const words = idm.arabic.trim().split(/\s+/);
+        const validWords = words.filter((w) => stripPunct(w).length >= 2);
+        if (validWords.length < 2) continue;
+        const chosenWord = shuffleArray(validWords)[0];
+        const cleanTarget = stripPunct(chosenWord);
+        const distractors = shuffleArray(
+          vocabDistractorPool.filter(
+            (w) => normalizeArabicSpelling(w) !== normalizeArabicSpelling(cleanTarget)
+          )
+        ).slice(0, 3);
+        if (distractors.length === 3) {
+          generated.push({
+            id: `fill_idm_${idm.id}`,
+            sentenceWithBlank: idm.arabic.replace(chosenWord, " [ ? ] "),
+            fullArabic: idm.arabic,
+            correctWord: cleanTarget,
+            options: shuffleArray([cleanTarget, ...distractors]),
+            turkce: `✨ ${idm.meaningTr}${
+              idm.literalTr ? ` (Harfiyen: ${idm.literalTr})` : ""
+            }`,
+            dialogueId: "",
+            lineSira: 1,
+            voice: "ar-SA-HamedNeural",
+          });
+        }
+      }
+
+      if (generated.length > 0) {
+        return shuffleArray(generated).slice(0, questionCount);
+      }
+    }
+
     const vocabFormsSet = new Set<string>();
     for (const v of vocabulary) {
       const rawForms = [v.mufret, v.cemi, v.mazi, v.muzari, v.masdar];
@@ -200,8 +292,7 @@ export default function FillInBlanks({
 
         if (candidateWord) {
           const cleanTarget = stripPunct(candidateWord);
-          const distractorWords = shuffleArray(vocabulary)
-            .map((v) => (v.mufret || v.mazi || "").split("/")[0].trim())
+          const distractorWords = shuffleArray(vocabDistractorPool)
             .filter((w) => w && w !== cleanTarget)
             .slice(0, 3);
 
@@ -231,7 +322,7 @@ export default function FillInBlanks({
     }
     return shuffleArray(generated).slice(0, questionCount);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogues, vocabulary, questionCount, roundSeed]);
+  }, [dialogues, vocabulary, idioms, contentType, questionCount, roundSeed]);
 
   const questions = customQuestions || generatedQuestions;
   const currentQ = questions[currentIndex];

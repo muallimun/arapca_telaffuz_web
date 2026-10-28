@@ -16,6 +16,7 @@ import {
   Play,
   Target,
   X,
+  Sparkles,
 } from "lucide-react";
 import { useUserStore } from "@/store/userStore";
 import { useSettings } from "@/store/settings";
@@ -32,15 +33,18 @@ import { shuffleArray } from "@/lib/quiz";
 import ShadowingModal from "@/components/ui/ShadowingModal";
 import { formatArabicText } from "@/lib/arabicTextUtils";
 import { QuizContentType } from "./MultipleChoice";
+import { ArabicIdiom } from "@/lib/arabicIdioms";
 
 export interface FlashcardItem {
   id: string;
-  kind: "word" | "sentence";
+  kind: "word" | "idiom" | "sentence";
   arabic: string;
   turkish: string;
   badgeText: string;
   subLabel?: string;
   wordItem?: DictionaryItem;
+  literalTr?: string;
+  usageNote?: string;
   dialogueId?: string;
   lineSira?: number;
   voice?: VoiceOption;
@@ -48,6 +52,7 @@ export interface FlashcardItem {
 
 interface Props {
   vocabulary: DictionaryItem[];
+  idioms?: ArabicIdiom[];
   dialogues?: Dialogue[];
   contentType?: QuizContentType;
   questionCount?: number;
@@ -84,6 +89,7 @@ export function getShortDialogueSentences(dialogues: Dialogue[]): FlashcardItem[
 
 export default function Flashcard({
   vocabulary,
+  idioms = [],
   dialogues = [],
   contentType = "words",
   questionCount = 20,
@@ -104,6 +110,7 @@ export default function Flashcard({
       if (t === "ozel-isim") return "Özel İsim";
       if (t === "fiil") return "Fiil";
       if (t === "edat") return "Edat";
+      if (t === "ifade") return "Kalıp İfade";
       return "İsim";
     };
     const wordCards: FlashcardItem[] = vocabulary
@@ -120,25 +127,36 @@ export default function Flashcard({
       }))
       .filter((c) => c.arabic.trim().length > 0);
 
+    const idiomCards: FlashcardItem[] = idioms
+      .map((idm) => ({
+        id: `idm_${idm.id}`,
+        kind: "idiom" as const,
+        arabic: idm.arabic,
+        turkish: idm.meaningTr,
+        badgeText: `✨ Kalıp İfade · Seviye ${idm.level || "A1-B2"}`,
+        literalTr: idm.literalTr,
+        usageNote: idm.usageNote,
+      }))
+      .filter((c) => c.arabic.trim().length > 0);
+
     const sentenceCards = getShortDialogueSentences(dialogues);
 
+    if (contentType === "idioms") {
+      return idiomCards.length > 0 ? idiomCards : wordCards;
+    }
     if (contentType === "sentences") {
       return sentenceCards.length > 0 ? sentenceCards : wordCards;
     }
     if (contentType === "mixed") {
-      if (sentenceCards.length > 0 && wordCards.length > 0) {
-        const halfSent = Math.ceil(questionCount / 2);
-        const halfWord = questionCount - halfSent;
-        return [
-          ...shuffleArray(sentenceCards).slice(0, halfSent),
-          ...shuffleArray(wordCards).slice(0, halfWord),
-        ];
-      }
-      return [...sentenceCards, ...wordCards];
+      return [
+        ...shuffleArray(sentenceCards).slice(0, Math.ceil(questionCount / 3)),
+        ...shuffleArray(idiomCards).slice(0, Math.ceil(questionCount / 3)),
+        ...shuffleArray(wordCards).slice(0, Math.ceil(questionCount / 3)),
+      ];
     }
     return wordCards;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vocabulary, dialogues, contentType, questionCount, roundSeed]);
+  }, [vocabulary, idioms, dialogues, contentType, questionCount, roundSeed]);
 
   const deck = useMemo(() => {
     if (customDeck && customDeck.length > 0) return customDeck;
@@ -436,7 +454,7 @@ export default function Flashcard({
           </span>
           <span
             className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold inline-flex items-center gap-1 ${
-              currentCard.kind === "sentence"
+              currentCard.kind === "sentence" || currentCard.kind === "idiom"
                 ? "bg-[#F3F0FF] text-[#6741D9] border border-[#6741D9]/30"
                 : "bg-[#E6FCF5] text-[#087F5B] border border-[#0CA678]/30"
             }`}
@@ -445,6 +463,11 @@ export default function Flashcard({
               <>
                 <MessageSquareQuote size={11} />
                 <span>Kısa Cümle</span>
+              </>
+            ) : currentCard.kind === "idiom" ? (
+              <>
+                <Sparkles size={11} />
+                <span>Kalıp İfade</span>
               </>
             ) : (
               <>
@@ -461,7 +484,7 @@ export default function Flashcard({
 
       {/* 3B DÖNEN KART ALANI */}
       <div
-        className="relative w-full h-72 sm:h-78 cursor-pointer [perspective:1000px]"
+        className="relative w-full h-76 sm:h-82 cursor-pointer [perspective:1000px]"
         onClick={() => {
           setIsFlipped(!isFlipped);
           playFlip();
@@ -570,13 +593,15 @@ export default function Flashcard({
               )}
             </div>
 
-            {/* Orta Arapça Kelime veya Kısa Diyalog Cümlesi */}
+            {/* Orta Arapça Kelime, Kalıp İfade veya Kısa Diyalog Cümlesi */}
             <div className="my-auto text-center space-y-2 px-2">
               <span
                 dir="rtl"
                 className={`arabic font-bold text-[#087F5B] dark:text-[#20c997] block leading-relaxed ${
                   currentCard.kind === "sentence"
                     ? "text-3xl sm:text-4xl"
+                    : currentCard.kind === "idiom"
+                    ? "text-3xl sm:text-5xl"
                     : "text-5xl sm:text-6xl"
                 }`}
               >
@@ -601,12 +626,14 @@ export default function Flashcard({
             </div>
           </div>
 
-          {/* ARKA YÜZ (Türkçe Anlamı) */}
-          <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-4 flex flex-col items-center justify-between p-5 sm:p-6 text-center">
-            <div className="w-full flex items-center justify-between border-b border-dashed border-[#6741D9]/30 pb-2.5 text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff]">
+          {/* ARKA YÜZ (Türkçe Anlamı + Kalıp İfade Harfiyen Anlamı & Kullanım İpucu) */}
+          <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-4 flex flex-col items-center justify-between p-4 sm:p-6 text-center">
+            <div className="w-full flex items-center justify-between border-b border-dashed border-[#6741D9]/30 pb-2 text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff]">
               <span>
                 {currentCard.kind === "sentence"
                   ? "CÜMLENİN TÜRKÇE ÇEVİRİSİ"
+                  : currentCard.kind === "idiom"
+                  ? "✨ KALIP İFADENİN DEYİMSEL ANLAMI"
                   : "TÜRKÇE ANLAMI"}
               </span>
               <span className="arabic text-lg truncate max-w-[220px]" dir="rtl">
@@ -614,10 +641,31 @@ export default function Flashcard({
               </span>
             </div>
 
-            <div className="my-auto space-y-3">
+            <div className="my-auto space-y-2.5 w-full">
               <p className="text-xl sm:text-2xl font-extrabold text-[var(--foreground)] leading-snug">
                 {currentCard.turkish}
               </p>
+
+              {currentCard.kind === "idiom" &&
+                (currentCard.literalTr || currentCard.usageNote) && (
+                  <div className="rounded-xl bg-white/90 dark:bg-[var(--background)] border border-[#6741D9]/30 p-3 text-left text-xs space-y-1 max-w-md mx-auto">
+                    {currentCard.literalTr && (
+                      <p className="font-bold text-[#4C28B5] dark:text-[#d0bfff]">
+                        <span className="font-extrabold">✨ Harfiyen Anlamı:</span>{" "}
+                        {currentCard.literalTr}
+                      </p>
+                    )}
+                    {currentCard.usageNote && (
+                      <p className="text-[var(--foreground)] font-semibold leading-snug">
+                        <span className="font-extrabold text-[#087F5B]">
+                          💡 Kullanım İpucu:
+                        </span>{" "}
+                        {currentCard.usageNote}
+                      </p>
+                    )}
+                  </div>
+                )}
+
               <p className="text-xs font-bold text-[var(--muted)]">
                 {currentCard.badgeText}
               </p>

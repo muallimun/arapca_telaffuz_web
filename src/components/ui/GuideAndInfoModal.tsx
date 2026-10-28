@@ -74,10 +74,10 @@ export default function GuideAndInfoModal() {
 
   const tabs: { id: GuideTab; label: string; icon: typeof Rocket }[] = [
     { id: "quickstart", label: "🚀 Hızlı Başlangıç", icon: Rocket },
-    { id: "icons", label: "🎨 İkonlar & Renkler", icon: Palette },
-    { id: "pedagogy", label: "🎓 5 Adımda Yöntem", icon: GraduationCap },
-    { id: "about", label: "ℹ️ Uygulama Hakkında", icon: Info },
-    { id: "apps", label: "🌐 Diğer Uygulamalarımız", icon: Globe },
+    { id: "icons", label: "🎨 İkon & Renkler", icon: Palette },
+    { id: "pedagogy", label: "🎓 5 Adım Yöntemi", icon: GraduationCap },
+    { id: "about", label: "ℹ️ Hakkında", icon: Info },
+    { id: "apps", label: "🌐 Diğer Uygulamalar", icon: Globe },
   ];
 
   return (
@@ -86,7 +86,7 @@ export default function GuideAndInfoModal() {
       onClick={() => setIsOpen(false)}
     >
       <div
-        className="w-full max-w-2xl bg-[#FDFBF7] dark:bg-[var(--surface)] rounded-3xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[86vh]"
+        className="w-[95vw] max-w-3xl lg:max-w-4xl max-h-[88vh] flex flex-col bg-[#FDFBF7] dark:bg-[var(--surface)] rounded-3xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* MODAL ÜST BAŞLIK */}
@@ -119,8 +119,8 @@ export default function GuideAndInfoModal() {
         </div>
 
         {/* 5 SEKME SEÇİCİ */}
-        <div className="bg-[#F7EFE1]/60 dark:bg-[var(--background)]/60 px-3 sm:px-4 py-2 border-b border-[#E6D7BE] dark:border-[var(--border)] flex overflow-x-auto no-scrollbar flex-nowrap gap-1.5 shrink-0">
-          {tabs.map((tab) => {
+        <div className="bg-[#F7EFE1]/60 dark:bg-[var(--background)]/60 shrink-0 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
+          {tabs.map((tab, idx) => {
             const active = activeTab === tab.id;
             return (
               <button
@@ -130,7 +130,9 @@ export default function GuideAndInfoModal() {
                   playClick();
                   setActiveTab(tab.id);
                 }}
-                className={`px-3 py-2 rounded-xl text-[11px] sm:text-xs font-extrabold transition-all text-center whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`py-2 px-3 text-xs sm:text-[13px] font-semibold whitespace-nowrap flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer ${
+                  idx === 4 ? "col-span-2 sm:col-span-1" : ""
+                } ${
                   active
                     ? "bg-[#6741D9] text-white shadow-2xs"
                     : "bg-white dark:bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--foreground)] border border-[#E6D7BE] dark:border-[var(--border)]"
@@ -167,63 +169,77 @@ export default function GuideAndInfoModal() {
                   className="px-4 py-2.5 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] text-white text-xs font-extrabold border-b-3 border-[#3b1f8c] flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
                 >
                   <Target size={15} />
-                  <span>🎯 Etkileşimli Tanıtım Turunu Şimdi Başlat</span>
+                  <span>Etkileşimli Tanıtım Turunu Şimdi Başlat</span>
                 </button>
               </div>
 
               {/* Modül Özeti */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
-                  <h3 className="text-xs sm:text-sm font-extrabold text-[#087F5B]">
-                    1. Diyalog Kütüphanesi (60 Diyalog)
-                  </h3>
-                  <p className="text-xs text-[var(--muted)] leading-relaxed">
-                    Başlangıç (A1-A2), Orta (B1) ve İleri (B2) kurlarında 60
-                    özel görselli günlük konuşma diyaloğu.
-                  </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="h-full flex flex-col justify-between p-4 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE]">
+                  <div className="space-y-1.5">
+                    <h3 className="text-xs sm:text-sm font-extrabold text-[#087F5B]">
+                      1. Diyalog Kütüphanesi (60 Diyalog)
+                    </h3>
+                    <p className="text-xs text-[var(--muted)] leading-relaxed">
+                      Başlangıç (A1-A2), Orta (B1) ve İleri (B2) kurlarında 60
+                      özel görselli günlük konuşma diyaloğu. Kur filtreleme,
+                      anahtar kelime arama, favorilere ekleme, tamamlama takibi
+                      ve cümle bazlı ses hızı kontrolüyle kademeli öğrenim.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
-                  <h3 className="text-xs sm:text-sm font-extrabold text-[#6741D9]">
-                    2. Diyalog, Sözlük & ✨ Kalıp İfadeler
-                  </h3>
-                  <p className="text-xs text-[var(--muted)] leading-relaxed">
-                    Dinle & İncele (canlı kelime/ok takibi + döngü), Telaffuz
-                    Stüdyosu, Otomatik Mikrofonlu Rol Yapma ve Diyalog Sözlüğü.{" "}
-                    <strong className="text-[var(--foreground)]">
-                      ✨ Kalıp İfadeler (التعبيرات الاصطلاحية):
-                    </strong>{" "}
-                    Her diyalogda geçen deyim ve kalıp ifadeleri harfiyen ve
-                    deyimsel anlamlarıyla inceleyip sesli telaffuz pratiği yapın.
-                  </p>
+                <div className="h-full flex flex-col justify-between p-4 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE]">
+                  <div className="space-y-1.5">
+                    <h3 className="text-xs sm:text-sm font-extrabold text-[#6741D9]">
+                      2. Diyalog, Sözlük & ✨ Kalıp İfadeler
+                    </h3>
+                    <p className="text-xs text-[var(--muted)] leading-relaxed">
+                      Canlı kelime/ok takipli dinleme, cümle arası gölgeleme
+                      boşluğu, 38 mahreç analizli Telaffuz Stüdyosu ve Rol Yapma
+                      modu. Tıklanan kelimede morfolojik kök analizi ve{" "}
+                      <strong className="text-[var(--foreground)]">
+                        ✨ Kalıp İfadeler
+                      </strong>{" "}
+                      kartlarıyla deyimsel anlam ve sesli pratik.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
-                  <h3 className="text-xs sm:text-sm font-extrabold text-amber-700">
-                    3. İnteraktif Alıştırma Merkezi (5 Mod)
-                  </h3>
-                  <p className="text-xs text-[var(--muted)] leading-relaxed">
-                    3B Kelime/Cümle Kartları, Çoktan Seçmeli Test, Sürükle-Bırak
-                    ve Dinle-Yaz (Klavyeli İmla) Boşluk Doldurma, Ok Çizimli
-                    Eşleştirme ve{" "}
-                    <strong className="text-[var(--foreground)]">
-                      🧩 Dinle ve Sırala (Cümle Kurma):
-                    </strong>{" "}
-                    Diyalog cümlelerini dinleyip karışık verilen Arapça
-                    kelimeleri sağdan sola (RTL) doğru sırayla dizerek cümle
-                    kurma ve sentaks (nahiv) becerinizi geliştirin.
-                  </p>
+                <div className="h-full flex flex-col justify-between p-4 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE]">
+                  <div className="space-y-1.5">
+                    <h3 className="text-xs sm:text-sm font-extrabold text-amber-700">
+                      3. İnteraktif Alıştırma Merkezi (5 Mod)
+                    </h3>
+                    <p className="text-xs text-[var(--muted)] leading-relaxed">
+                      3B Kelime/İfade Kartları, Çoktan Seçmeli Test, Ok Çizimli
+                      Eşleştirme, Sürükle-Bırak / Klavyeli İmla Boşluk Doldurma
+                      ve{" "}
+                      <strong className="text-[var(--foreground)]">
+                        🧩 Dinle ve Sırala (Cümle Kurma)
+                      </strong>{" "}
+                      modlarıyla kelimeleri, cümleleri ve kalıp ifadeleri
+                      pekiştirin.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
-                  <h3 className="text-xs sm:text-sm font-extrabold text-sky-700">
-                    4. Kurumsal A4 PDF Ders Notu
-                  </h3>
-                  <p className="text-xs text-[var(--muted)] leading-relaxed">
-                    İki sütunlu tercüme (Sağda Arapça / Solda Türkçe), noktalı
-                    boşluklu Kelime/İmla Testi tablosu ve Boşluk Doldurma çalışma
-                    kağıdı.
-                  </p>
+                <div className="h-full flex flex-col justify-between p-4 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE]">
+                  <div className="space-y-1.5">
+                    <h3 className="text-xs sm:text-sm font-extrabold text-sky-700">
+                      4. Akıllı A4 PDF & Çalışma Kağıdı
+                    </h3>
+                    <p className="text-xs text-[var(--muted)] leading-relaxed">
+                      Sağda Arapça / Solda Türkçe iki sütunlu ders notu, renkli
+                      kelime ve{" "}
+                      <strong className="text-[var(--foreground)]">
+                        ✨ Kalıp İfadeler
+                      </strong>{" "}
+                      tabloları. Öğretmen ve öğrenciler için noktalı boşluklu
+                      çalışma kağıdı, öğrenci bilgi şeridi, mini sınav ve
+                      otomatik cevap anahtarı üretimi.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="sm:col-span-2 p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">

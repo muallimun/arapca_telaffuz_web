@@ -1,4 +1,4 @@
-import { DialogueLine } from "@/types/data";
+import { Dialogue, DialogueLine } from "@/types/data";
 import { sozluk } from "@/lib/data";
 import { SUPPLEMENT_DICTIONARY } from "@/lib/supplementDict";
 
@@ -9,11 +9,15 @@ export interface ArabicIdiom {
   literalTr: string;
   usageNote: string;
   variants?: string[];
+  level?: string;
 }
 
 export interface ExtractedDialogueIdiom extends ArabicIdiom {
   lineNumber: number;
   matchedPhrase?: string;
+  lineArabic: string;
+  lineTurkish: string;
+  level: string;
 }
 
 /**
@@ -538,8 +542,13 @@ export function normalizeForIdiomMatch(text: string): string {
  * sozluk.json ve supplementDict.ts içindeki 'ifade' türündeki kayıtları da
  * ana kütüphaneyle birleştirir.
  */
-function getCombinedIdiomsCatalog(): ArabicIdiom[] {
-  const catalog: ArabicIdiom[] = [...ARABIC_IDIOMS_LIBRARY];
+export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
+  const catalog: ArabicIdiom[] = ARABIC_IDIOMS_LIBRARY.map((item, idx) => ({
+    ...item,
+    level:
+      item.level ||
+      (idx < 28 ? "A1-A2" : idx < 52 ? "B1" : "B2"),
+  }));
   const seenNormalized = new Set<string>();
 
   for (const item of catalog) {
@@ -548,6 +557,7 @@ function getCombinedIdiomsCatalog(): ArabicIdiom[] {
   }
 
   const dictSources = [...sozluk, ...SUPPLEMENT_DICTIONARY];
+  let dictIdx = 0;
   for (const entry of dictSources) {
     if (entry.tur !== "ifade") continue;
     const rawAr = (entry.mufret || entry.mazi || "").split("/")[0].trim();
@@ -556,6 +566,9 @@ function getCombinedIdiomsCatalog(): ArabicIdiom[] {
     if (!norm || seenNormalized.has(norm)) continue;
 
     seenNormalized.add(norm);
+    const assignedLevel =
+      dictIdx % 3 === 0 ? "A1-A2" : dictIdx % 3 === 1 ? "B1" : "B2";
+    dictIdx++;
     catalog.push({
       id: `dict_idm_${entry.id}`,
       arabic: rawAr,
@@ -563,6 +576,7 @@ function getCombinedIdiomsCatalog(): ArabicIdiom[] {
       literalTr: entry.kok && entry.kok !== "-" ? `Kök: ${entry.kok}` : "Kalıp İfade",
       usageNote: "Günlük konuşma ve diyaloglarda kalıplaşmış ifade olarak kullanılır.",
       variants: [rawAr],
+      level: assignedLevel,
     });
   }
 
@@ -583,6 +597,7 @@ export function extractDialogueIdioms(
   const normalizedLines = dialogueLines.map((line) => ({
     sira: line.sira,
     original: line.arapca,
+    turkce: line.turkce,
     normalized: ` ${normalizeForIdiomMatch(line.arapca)} `,
   }));
 
@@ -599,8 +614,11 @@ export function extractDialogueIdioms(
       if (matchedLine && !foundMap.has(idiom.id)) {
         foundMap.set(idiom.id, {
           ...idiom,
+          level: idiom.level || "A1-A2",
           lineNumber: matchedLine.sira,
           matchedPhrase: candidate,
+          lineArabic: matchedLine.original,
+          lineTurkish: matchedLine.turkce,
         });
         break;
       }
@@ -611,3 +629,26 @@ export function extractDialogueIdioms(
     (a, b) => a.lineNumber - b.lineNumber
   );
 }
+
+/**
+ * Birden fazla diyalogda geçen tekil kalıp ifadeleri çıkarır.
+ */
+export function extractDialoguesIdioms(
+  dialogues: Dialogue[]
+): ExtractedDialogueIdiom[] {
+  if (!dialogues || dialogues.length === 0) return [];
+  const uniqueMap = new Map<string, ExtractedDialogueIdiom>();
+  for (const dlg of dialogues) {
+    const extracted = extractDialogueIdioms(dlg.satirlar);
+    for (const item of extracted) {
+      if (!uniqueMap.has(item.id)) {
+        uniqueMap.set(item.id, {
+          ...item,
+          level: dlg.seviye || item.level || "A1-A2",
+        });
+      }
+    }
+  }
+  return Array.from(uniqueMap.values());
+}
+

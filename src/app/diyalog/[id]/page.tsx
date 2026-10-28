@@ -1614,9 +1614,18 @@ export default function DialogueDetailPage({
                     </bdi>
                   </h2>
                 </div>
-                <span className="text-[11px] font-semibold text-[var(--muted)]">
-                  Deyimsel anlam, kullanım notu ve sesli telaffuz
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-semibold text-[var(--muted)] hidden sm:inline">
+                    Deyimsel anlam, kullanım notu ve sesli telaffuz
+                  </span>
+                  <Link
+                    href={`/alistirmalar?source=idioms&dialogueId=${dialogue.id}`}
+                    onClick={() => playClick()}
+                    className="px-2.5 py-1 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] text-white border-b-2 border-[#3b1f8c] text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                  >
+                    <span>🎯 Alıştırma Yap</span>
+                  </Link>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -2454,9 +2463,18 @@ export default function DialogueDetailPage({
                 (التعبيرات الاصطلاحية)
               </bdi>
             </h2>
-            <span className="px-2 py-0.5 rounded-lg bg-[#6741D9]/15 text-[#6741D9] dark:text-[#d0bfff] text-[11px] font-extrabold">
-              {dialogueIdioms.length} Kalıp İfade
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded-lg bg-[#6741D9]/15 text-[#6741D9] dark:text-[#d0bfff] text-[11px] font-extrabold">
+                {dialogueIdioms.length} Kalıp İfade
+              </span>
+              <Link
+                href={`/alistirmalar?source=idioms&dialogueId=${dialogue.id}`}
+                onClick={() => playClick()}
+                className="px-2.5 py-1 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] text-white border-b-2 border-[#3b1f8c] text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shrink-0"
+              >
+                <span>🎯 Alıştırma Yap</span>
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">

@@ -32,6 +32,8 @@ import {
   playFanfare,
 } from "@/lib/sfxManager";
 import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
+import { ArabicIdiom, extractDialoguesIdioms } from "@/lib/arabicIdioms";
+import { QuizContentType } from "./MultipleChoice";
 
 export interface SentenceBuilderQuestion {
   id: string;
@@ -53,6 +55,8 @@ interface WordToken {
 
 interface SentenceBuilderProps {
   dialogues: Dialogue[];
+  idioms?: ArabicIdiom[];
+  contentType?: QuizContentType;
   questionCount?: 10 | 20 | 30;
   timeLimit?: number | null;
   feedbackMode?: "instant" | "end";
@@ -88,6 +92,8 @@ function tokenizeArabicSentence(sentence: string): string[] {
 
 export default function SentenceBuilder({
   dialogues,
+  idioms = [],
+  contentType = "sentences",
   questionCount = 10,
   timeLimit = null,
   feedbackMode = "instant",
@@ -128,9 +134,55 @@ export default function SentenceBuilder({
 
   const fanfarePlayedRef = useRef(false);
 
-  // Diyaloglardan cümle kurmaya uygun (3-10 kelimelik) cümleleri seç
+  // Diyaloglardan veya kalıp ifadelerden cümle kurmaya uygun soruları seç
   const generatedQuestions = useMemo(() => {
     const candidates: SentenceBuilderQuestion[] = [];
+
+    if (contentType === "idioms" || contentType === "mixed") {
+      // 2 ve daha fazla kelimeli kalıp ifadeler
+      for (const idm of idioms) {
+        const tokens = tokenizeArabicSentence(idm.arabic);
+        if (tokens.length >= 2 && tokens.length <= 10) {
+          candidates.push({
+            id: `sb_idm_${idm.id}`,
+            dialogueId: "",
+            dialogueTitle: "✨ Kalıp İfade",
+            level: idm.level || "A1-B2",
+            lineSira: 1,
+            fullArabic: idm.arabic,
+            turkish: `${idm.meaningTr}${
+              idm.literalTr ? ` (Harfiyen: ${idm.literalTr})` : ""
+            }`,
+            words: tokens,
+            voice: "ar-SA-HamedNeural",
+          });
+        }
+      }
+
+      // Diyaloglarda geçen kalıp ifade cümleleri
+      const extracted = extractDialoguesIdioms(dialogues);
+      for (const ext of extracted) {
+        const tokens = tokenizeArabicSentence(ext.lineArabic);
+        if (tokens.length >= 2 && tokens.length <= 10) {
+          candidates.push({
+            id: `sb_idm_dlg_${ext.id}_${ext.lineNumber}`,
+            dialogueId: "",
+            dialogueTitle: `✨ Kalıp İfade Cümlesi`,
+            level: ext.level || "A1-B2",
+            lineSira: ext.lineNumber,
+            fullArabic: ext.lineArabic,
+            turkish: `${ext.lineTurkish} (✨ ${ext.meaningTr})`,
+            words: tokens,
+            voice: "ar-SA-HamedNeural",
+          });
+        }
+      }
+
+      if (contentType === "idioms" && candidates.length > 0) {
+        return shuffleArray(candidates).slice(0, questionCount);
+      }
+    }
+
     for (const dlg of dialogues) {
       for (const line of dlg.satirlar) {
         const tokens = tokenizeArabicSentence(line.arapca);
@@ -154,7 +206,7 @@ export default function SentenceBuilder({
     }
     return shuffleArray(candidates).slice(0, questionCount);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogues, questionCount, roundSeed]);
+  }, [dialogues, idioms, contentType, questionCount, roundSeed]);
 
   const questions = customQuestions || generatedQuestions;
   const currentQ = questions[currentIndex];

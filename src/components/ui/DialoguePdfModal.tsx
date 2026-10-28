@@ -15,9 +15,13 @@ import {
   QrCode,
   PenTool,
   Eye,
+  UserCheck,
+  KeyRound,
+  Settings2,
 } from "lucide-react";
 import { Dialogue } from "@/types/data";
 import { DialogueVocabularyEntry, getWordCategory } from "@/lib/dict";
+import { extractDialogueIdioms } from "@/lib/arabicIdioms";
 import { playClick, playSuccess } from "@/lib/sfxManager";
 import {
   formatArabicText,
@@ -35,7 +39,7 @@ interface DialoguePdfModalProps {
 }
 
 type ImagePrintMode = "hide" | "compact" | "banner";
-type TranslationPrintMode = "show" | "hide" | "dotted";
+type TranslationPrintMode = "show" | "hide" | "dotted" | "ar-dotted";
 type TranslationLayout = "side-by-side" | "stacked" | "grouped-end";
 type SideBySideOrder = "ar-right" | "ar-left";
 type VocabPlacement = "same-page" | "new-page";
@@ -334,9 +338,20 @@ export default function DialoguePdfModal({
   // PDF-5: Dinleme QR Kodu (Varsayılan: Açık)
   const [includeQrCode, setIncludeQrCode] = useState<boolean>(true);
 
-  // Ek Sözlük & Mizanpaj Ayarları
+  // Ek Sözlük, Kalıp İfadeler & Mizanpaj Ayarları
+  const idioms = useMemo(
+    () => extractDialogueIdioms(dialogue.satirlar),
+    [dialogue.satirlar]
+  );
+  const dialogueIdioms = idioms;
   const [includeVocabulary, setIncludeVocabulary] = useState<boolean>(true);
+  const [includeIdioms, setIncludeIdioms] = useState<boolean>(true);
+  const [idiomsBlankMode, setIdiomsBlankMode] = useState<boolean>(false);
   const [includeWorksheet, setIncludeWorksheet] = useState<boolean>(false);
+  const [includeStudentHeader, setIncludeStudentHeader] =
+    useState<boolean>(false);
+  const [includeAnswerKey, setIncludeAnswerKey] = useState<boolean>(true);
+  const [mobileTab, setMobileTab] = useState<"settings" | "preview">("settings");
   const [vocabPlacement, setVocabPlacement] =
     useState<VocabPlacement>("same-page");
   const [vocabLanguageMode, setVocabLanguageMode] =
@@ -349,6 +364,24 @@ export default function DialoguePdfModal({
   const [sideBySideOrder, setSideBySideOrder] =
     useState<SideBySideOrder>("ar-right");
   const [showAdvancedLayout, setShowAdvancedLayout] = useState<boolean>(false);
+
+  const hasAnyBlankActivity =
+    clozeMode ||
+    translationMode === "dotted" ||
+    translationMode === "ar-dotted" ||
+    (includeVocabulary &&
+      vocabEntries.length > 0 &&
+      vocabLanguageMode !== "both") ||
+    (includeIdioms && idioms.length > 0 && idiomsBlankMode) ||
+    includeWorksheet;
+
+  // Herhangi bir çalışma kağıdı / boşluk modu seçildiğinde Öğrenci Bilgi Şeridi ve Cevap Anahtarını otomatik aktif et
+  useEffect(() => {
+    if (hasAnyBlankActivity) {
+      setIncludeStudentHeader(true);
+      setIncludeAnswerKey(true);
+    }
+  }, [hasAnyBlankActivity]);
 
   const printIframeRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -557,7 +590,7 @@ export default function DialoguePdfModal({
         return `
           <div class="tr-dotted-wrap">
             <span class="speaker-tr ${badgeCls}">${line.konusmaci}:</span>
-            <div class="tr-dotted-line"></div>
+            <div class="tr-dotted-line">........................................................................</div>
           </div>
         `;
       }
@@ -567,11 +600,35 @@ export default function DialoguePdfModal({
       `;
     };
 
+    // Arapça hücresi veya geniş/yüksek noktalı yazım kutusu üretici
+    const renderArContentHtml = (
+      line: Dialogue["satirlar"][0],
+      badgeCls: string,
+      arLineText: string,
+      numbered?: boolean
+    ) => {
+      const speakerLabel = numbered
+        ? `${line.sira}. ${formatAr(line.konusmaci_ar)}`
+        : formatAr(line.konusmaci_ar);
+      if (translationMode === "ar-dotted") {
+        return `
+          <div class="ar-dotted-wrap" dir="rtl">
+            <span class="speaker-ar ${badgeCls}">${speakerLabel}</span>
+            <div class="ar-dotted-box">................................................................................</div>
+          </div>
+        `;
+      }
+      return `
+        <span class="speaker-ar ${badgeCls}">${speakerLabel}</span>
+        <span class="ar-text">${formatAr(arLineText)}</span>
+      `;
+    };
+
     // Cümle satırları HTML üretimi
     let dialogueBodyHtml = "";
 
     if (translationMode === "hide") {
-      // Sadece Arapça
+      // Sadece Arapça (hiçbir çeviri boşluk modu aktif değilse)
       dialogueBodyHtml = `
         <div class="lines-container">
           ${dialogue.satirlar
@@ -584,10 +641,7 @@ export default function DialoguePdfModal({
               return `
                 <div class="line-row single-ar" style="background: ${rowBg};">
                   <div class="ar-col" dir="rtl">
-                    <span class="speaker-ar ${badgeCls}">${formatAr(
-                line.konusmaci_ar
-              )}</span>
-                    <span class="ar-text">${formatAr(arLineText)}</span>
+                    ${renderArContentHtml(line, badgeCls, arLineText)}
                   </div>
                 </div>
               `;
@@ -601,6 +655,10 @@ export default function DialoguePdfModal({
         translationMode === "dotted"
           ? "Türkçe Tercüme (Yazı Alanı)"
           : "Türkçe Tercüme";
+      const arHeaderTitle =
+        translationMode === "ar-dotted"
+          ? "النَّصُّ الْعَرَبِيُّ (Arapça Yazım Alanı)"
+          : "النَّصُّ الْعَرَبِيُّ (Arapça Metin)";
 
       dialogueBodyHtml = `
         <table class="two-col-table" dir="ltr">
@@ -610,10 +668,10 @@ export default function DialoguePdfModal({
                 isArRight
                   ? `
                 <th style="width: 50%; text-align: left;" dir="ltr">${trHeaderTitle}</th>
-                <th style="width: 50%; text-align: right;" dir="rtl">النَّصُّ الْعَرَبِيُّ (Arapça Metin)</th>
+                <th style="width: 50%; text-align: right;" dir="rtl">${arHeaderTitle}</th>
               `
                   : `
-                <th style="width: 50%; text-align: right;" dir="rtl">النَّصُّ الْعَرَبِيُّ (Arapça Metin)</th>
+                <th style="width: 50%; text-align: right;" dir="rtl">${arHeaderTitle}</th>
                 <th style="width: 50%; text-align: left;" dir="ltr">${trHeaderTitle}</th>
               `
               }
@@ -630,10 +688,7 @@ export default function DialoguePdfModal({
 
                 const arCellHtml = `
                   <td class="ar-cell" dir="rtl">
-                    <span class="speaker-ar ${badgeCls}">${formatAr(
-                  line.konusmaci_ar
-                )}</span>
-                    <span class="ar-text">${formatAr(arLineText)}</span>
+                    ${renderArContentHtml(line, badgeCls, arLineText)}
                   </td>
                 `;
                 const trCellHtml = `
@@ -669,10 +724,7 @@ export default function DialoguePdfModal({
               return `
                 <div class="stacked-card" style="background: ${rowBg};">
                   <div class="ar-col" dir="rtl">
-                    <span class="speaker-ar ${badgeCls}">${formatAr(
-                line.konusmaci_ar
-              )}</span>
-                    <span class="ar-text">${formatAr(arLineText)}</span>
+                    ${renderArContentHtml(line, badgeCls, arLineText)}
                   </div>
                   <div class="tr-col" dir="ltr">
                     ${renderTrContentHtml(line, badgeCls)}
@@ -704,10 +756,7 @@ export default function DialoguePdfModal({
                 return `
                   <div class="line-row single-ar" style="background: ${rowBg};">
                     <div class="ar-col" dir="rtl">
-                      <span class="speaker-ar ${badgeCls}">${
-                  line.sira
-                }. ${formatAr(line.konusmaci_ar)}</span>
-                      <span class="ar-text">${formatAr(arLineText)}</span>
+                      ${renderArContentHtml(line, badgeCls, arLineText, true)}
                     </div>
                   </div>
                 `;
@@ -724,7 +773,7 @@ export default function DialoguePdfModal({
                   ? `
               <div class="end-tr-item">
                 <strong>${line.sira}. ${line.konusmaci}:</strong>
-                <div class="tr-dotted-line" style="display:inline-block;width:75%;vertical-align:bottom;"></div>
+                <div class="tr-dotted-line" style="display:inline-block;width:75%;vertical-align:bottom;">......................................................</div>
               </div>
             `
                   : `
@@ -757,12 +806,12 @@ export default function DialoguePdfModal({
 
         const trDisplayHtml =
           vocabLanguageMode === "ar-only"
-            ? `<div class="vocab-dotted-blank" title="Türkçe anlamı yazınız">&nbsp;</div>`
+            ? `<div class="vocab-dotted-blank" title="Türkçe anlamı yazınız">............................................</div>`
             : `<div class="vocab-meaning">${w.anlam_tr}</div>`;
 
         const arDisplayHtml =
           vocabLanguageMode === "tr-only"
-            ? `<div class="vocab-dotted-blank-ar" dir="rtl" title="Arapça karşılığını yazınız">&nbsp;</div>`
+            ? `<div class="vocab-dotted-blank-ar" dir="rtl" title="Arapça karşılığını yazınız">....................................</div>`
             : `<span class="vocab-ar">${formatAr(mainAr)}</span>`;
 
         return `
@@ -809,6 +858,53 @@ export default function DialoguePdfModal({
       `;
     }
 
+    // Opsiyonel: ✨ Bu Diyalogdaki Kalıp İfadeler (التعبيرات الاصطلاحية) Tablosu
+    let idiomsSectionHtml = "";
+    if (includeIdioms && idioms.length > 0) {
+      const idiomRowsHtml = idioms
+        .map((idm, idx) => {
+          const rowBg = idx % 2 === 0 ? "#f8fafc" : "#ffffff";
+          const meaningCellHtml = idiomsBlankMode
+            ? `<div class="idiom-dotted-line">......................................................</div>`
+            : `<strong>${idm.meaningTr}</strong>`;
+          return `
+            <tr style="background: ${rowBg};">
+              <td class="idiom-ar-cell" dir="rtl">${formatAr(idm.arabic)}</td>
+              <td class="idiom-tr-cell" dir="ltr">${meaningCellHtml}</td>
+              <td class="idiom-note-cell" dir="ltr">
+                <div><strong>Harfiyen:</strong> ${idm.literalTr}</div>
+                <div style="color:#475569;margin-top:2px;">💡 ${idm.usageNote}</div>
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      idiomsSectionHtml = `
+        <div class="section-block" style="margin-top: 18px; page-break-inside: avoid;">
+          <div class="section-title" style="border-left-color: #6741d9; color: #4c28b5;">
+            ✨ Bu Diyalogdaki Kalıp İfadeler (التعبيرات الاصطلاحية) — ${
+              idioms.length
+            } İfade${
+        idiomsBlankMode ? " • Çalışma Kağıdı (Deyimsel Anlamı Yazınız)" : ""
+      }
+          </div>
+          <table class="idioms-table" dir="ltr">
+            <thead>
+              <tr>
+                <th style="width: 30%; text-align: right;" dir="rtl">1. Kalıp İfade (Arapça)</th>
+                <th style="width: 30%; text-align: left;">2. Deyimsel Anlamı (Türkçe)</th>
+                <th style="width: 40%; text-align: left;">3. Harfiyen Anlamı & Kullanım İpucu</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${idiomRowsHtml}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
     // Opsiyonel: Ek 5 Soruluk Çalışma Soruları
     let worksheetSectionHtml = "";
     if (includeWorksheet && miniWorksheetQuestions.length > 0) {
@@ -844,6 +940,108 @@ export default function DialoguePdfModal({
           </div>
         </div>
       `;
+    }
+
+    // Öğrenci Bilgi Şeridi (Ad-Soyad / Sınıf / Tarih / Puan)
+    const studentHeaderHtml = includeStudentHeader
+      ? `
+        <div class="student-info-strip">
+          <span><strong>Adı Soyadı:</strong> ....................................</span>
+          <span><strong>Sınıf / No:</strong> ....................</span>
+          <span><strong>Tarih:</strong> .... / .... / 2026</span>
+          <span><strong>Puan:</strong> .........</span>
+        </div>
+      `
+      : "";
+
+    // 🗝️ Cevap Anahtarı (Sadece herhangi bir boşluklu etkinlik aktifse ve includeAnswerKey açıksa basılır)
+    let answerKeySectionHtml = "";
+    if (hasAnyBlankActivity && includeAnswerKey) {
+      const parts: string[] = [];
+
+      if (clozeMode && clozeData.helperWords.length > 0) {
+        const orderedMissing = dialogue.satirlar
+          .map((l, i) => {
+            const p = clozeData.processedLines[i] || "";
+            if (!p.includes("....................")) return null;
+            return `${l.sira}) ${formatAr(l.arapca)}`;
+          })
+          .filter(Boolean)
+          .join(" &nbsp;|&nbsp; ");
+        parts.push(
+          `<div class="ak-item"><strong>Diyalog Boşluk Doldurma:</strong> <span dir="rtl" class="ak-ar">${orderedMissing}</span></div>`
+        );
+      }
+
+      if (includeIdioms && idioms.length > 0 && idiomsBlankMode) {
+        const idiomAnswers = idioms
+          .map((idm, idx) => `${idx + 1}) ${idm.meaningTr}`)
+          .join(" &nbsp;•&nbsp; ");
+        parts.push(
+          `<div class="ak-item"><strong>Kalıp İfadeler:</strong> ${idiomAnswers}</div>`
+        );
+      }
+
+      if (
+        includeVocabulary &&
+        vocabEntries.length > 0 &&
+        vocabLanguageMode !== "both"
+      ) {
+        const vocabAnswers = vocabEntries
+          .map((e, idx) => {
+            const w = e.item;
+            const mainAr = w.mufret || w.mazi || "";
+            return vocabLanguageMode === "ar-only"
+              ? `${idx + 1}) ${w.anlam_tr}`
+              : `${idx + 1}) <span dir="rtl" class="ak-ar">${formatAr(mainAr)}</span>`;
+          })
+          .join(" &nbsp;•&nbsp; ");
+        parts.push(
+          `<div class="ak-item"><strong>Kelime Tablosu:</strong> ${vocabAnswers}</div>`
+        );
+      }
+
+      if (includeWorksheet && miniWorksheetQuestions.length > 0) {
+        const wsAnswers = miniWorksheetQuestions
+          .map(
+            (q) =>
+              `${q.sira}) <span dir="rtl" class="ak-ar">${formatAr(q.answer)}</span>`
+          )
+          .join(" &nbsp;•&nbsp; ");
+        parts.push(
+          `<div class="ak-item"><strong>Ek Çalışma Soruları:</strong> ${wsAnswers}</div>`
+        );
+      }
+
+      if (translationMode === "dotted") {
+        const trAnswers = dialogue.satirlar
+          .map((l) => `${l.sira}) ${l.turkce}`)
+          .join(" &nbsp;|&nbsp; ");
+        parts.push(
+          `<div class="ak-item"><strong>Diyalog Türkçe Tercümeleri:</strong> ${trAnswers}</div>`
+        );
+      } else if (translationMode === "ar-dotted") {
+        const arAnswers = dialogue.satirlar
+          .map(
+            (l) =>
+              `${l.sira}) <span dir="rtl" class="ak-ar">${formatAr(l.arapca)}</span>`
+          )
+          .join(" &nbsp;|&nbsp; ");
+        parts.push(
+          `<div class="ak-item"><strong>Diyalog Arapça Metinleri:</strong> ${arAnswers}</div>`
+        );
+      }
+
+      if (parts.length > 0) {
+        answerKeySectionHtml = `
+          <div class="answer-key-block">
+            <div class="answer-key-title">🗝️ Cevap Anahtarı (مِفْتَاحُ الْإِجَابَات)</div>
+            <div class="answer-key-body">
+              ${parts.join("")}
+            </div>
+          </div>
+        `;
+      }
     }
 
     // Görsel & QR Kod HTML blokları
@@ -1096,6 +1294,19 @@ export default function DialoguePdfModal({
             border-bottom: 1px solid #e2e8f0;
             vertical-align: middle;
           }
+          .two-col-table tr,
+          .idioms-table tr,
+          .stacked-card,
+          .line-row,
+          .vocab-grid-card,
+          .quiz-row {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          .section-title {
+            page-break-after: avoid;
+            break-after: avoid;
+          }
           .ar-cell {
             text-align: right;
             border-left: 1px dashed #cbd5e1;
@@ -1116,6 +1327,104 @@ export default function DialoguePdfModal({
             flex: 1;
             height: 22px;
             border-bottom: 1.5px dotted #94a3b8;
+          }
+          .ar-dotted-box {
+            display: inline-block;
+            width: 82%;
+            min-width: 180px;
+            height: 28px;
+            border-bottom: 1.5px dotted #64748b;
+            vertical-align: bottom;
+          }
+          .student-info-strip {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px 16px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 7px 14px;
+            background: #f8fafc;
+            margin-bottom: 12px;
+            font-size: 11px;
+            color: #1e293b;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          .student-dots {
+            color: #64748b;
+            letter-spacing: 0.5px;
+          }
+          .idioms-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 10px;
+            overflow: hidden;
+          }
+          .idioms-table th {
+            background: #f3f0ff;
+            color: #4c28b5;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 8px 10px;
+            border-bottom: 1.5px solid #cbd5e1;
+            text-align: left;
+          }
+          .idioms-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
+          }
+          .idiom-ar-cell {
+            text-align: right;
+            font-family: ${fontConfig.cssFamily};
+            font-size: ${Math.round(21 * fontConfig.scale)}px;
+            font-weight: 700;
+            color: #087f5b;
+            line-height: 1.85;
+            width: 30%;
+            border-left: 1px dashed #cbd5e1;
+          }
+          .idiom-tr-cell {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+            width: 32%;
+            border-left: 1px dashed #cbd5e1;
+          }
+          .idiom-note-cell {
+            font-size: 10.5px;
+            color: #475569;
+            line-height: 1.45;
+            width: 38%;
+          }
+          .idiom-literal {
+            color: #5f3dc4;
+            font-weight: 600;
+            margin-bottom: 2px;
+          }
+          .idiom-usage {
+            color: #475569;
+          }
+          .answer-key-block {
+            background: #f8fafc;
+            border: 1.5px dashed #0ca678;
+            border-radius: 10px;
+            padding: 8px 12px;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          .answer-key-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 11px;
+            color: #1e293b;
+          }
+          .answer-key-item {
+            line-height: 1.55;
           }
           .sp-badge-emerald {
             background: #e6fcf5;
@@ -1141,7 +1450,7 @@ export default function DialoguePdfModal({
             font-size: ${Math.round(22 * fontConfig.scale)}px;
             font-weight: 700;
             color: #0f172a;
-            line-height: ${fontConfig.lineHeight};
+            line-height: 1.85;
           }
           .speaker-tr {
             font-weight: 800;
@@ -1209,7 +1518,7 @@ export default function DialoguePdfModal({
             gap: 10px;
             border: 1px solid #cbd5e1;
             border-radius: 8px;
-            padding: 6px 10px;
+            padding: 8px 10px;
             background: #f8fafc;
             page-break-inside: avoid;
             min-height: 46px;
@@ -1277,7 +1586,7 @@ export default function DialoguePdfModal({
             font-size: ${Math.round(21 * fontConfig.scale)}px;
             font-weight: 700;
             color: #087f5b;
-            line-height: 1.4;
+            line-height: 1.85;
           }
           .word-bank {
             background: #f3f0ff;
@@ -1293,12 +1602,13 @@ export default function DialoguePdfModal({
           }
           .quiz-row {
             border-bottom: 1px dashed #cbd5e1;
-            padding: 7px 4px;
+            padding: 8px 4px;
           }
           .quiz-ar {
             font-family: ${fontConfig.cssFamily};
             font-size: 20px;
             font-weight: 700;
+            line-height: 1.85;
           }
           .quiz-tr {
             font-size: 11px;
@@ -1370,11 +1680,14 @@ export default function DialoguePdfModal({
           }
         </div>
 
+        ${studentHeaderHtml}
         ${bannerImageHtml}
         ${helperWordsBoxHtml}
         ${dialogueBodyHtml}
         ${vocabSectionHtml}
+        ${idiomsSectionHtml}
         ${worksheetSectionHtml}
+        ${answerKeySectionHtml}
 
         <footer class="corporate-footer">
           <span>Diyalog #${String(rawNum).padStart(2, "0")}: ${
@@ -1470,7 +1783,7 @@ export default function DialoguePdfModal({
             <button
               type="button"
               onClick={handleGenerateAndPrintPdf}
-              className="px-3.5 py-2 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs border-b-3 border-[#087F5B] active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+              className="hidden sm:flex px-3.5 py-2 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs border-b-3 border-[#087F5B] active:translate-y-0.5 transition-all items-center gap-1.5 cursor-pointer shadow-sm"
             >
               <Printer size={15} />
               <span>Yazdır / PDF İndir</span>
@@ -1489,17 +1802,55 @@ export default function DialoguePdfModal({
           </div>
         </div>
 
+        {/* MOBİL ERGONOMİ SEKMELERİ (< 768px): [⚙️ Kağıt Ayarları] ve [📄 A4 Önizleme] */}
+        <div className="print:hidden md:hidden bg-[#F7EFE1]/80 dark:bg-[var(--background)] px-3 py-2 border-b border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              setMobileTab("settings");
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              mobileTab === "settings"
+                ? "bg-[#6741D9] text-white shadow-xs"
+                : "bg-white dark:bg-[var(--surface)] text-[var(--muted)] border border-[#E6D7BE]"
+            }`}
+          >
+            <span>⚙️ Kağıt Ayarları</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              setMobileTab("preview");
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              mobileTab === "preview"
+                ? "bg-[#0CA678] text-white shadow-xs"
+                : "bg-white dark:bg-[var(--surface)] text-[var(--muted)] border border-[#E6D7BE]"
+            }`}
+          >
+            <span>📄 A4 Önizleme</span>
+          </button>
+        </div>
+
         {/* KOMPAKT SEÇİM ÇİPLERİ / SEGMENTED CONTROLS BARI (print:hidden) */}
-        <div className="print:hidden bg-[#FDFBF7] dark:bg-[var(--surface)] px-3 sm:px-5 py-3 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] space-y-2.5 shrink-0">
+        <div
+          className={`print:hidden bg-[#FDFBF7] dark:bg-[var(--surface)] px-3 sm:px-5 py-3 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] space-y-2.5 overflow-y-auto md:overflow-visible ${
+            mobileTab === "settings"
+              ? "flex-1 md:flex-none block"
+              : "hidden md:block shrink-0"
+          }`}
+        >
           {/* 1. Satır: Görsel Modu + Çeviri Modu */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {/* PDF-1: Görsel Seçici */}
-            <div className="flex items-center gap-1.5 bg-[#F7EFE1] dark:bg-[var(--background)] px-2.5 py-1.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
+            <div className="flex flex-wrap items-center gap-1.5 bg-[#F7EFE1] dark:bg-[var(--background)] px-2.5 py-1.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
               <ImageIcon size={14} className="text-[#087F5B] shrink-0" />
               <span className="text-[11px] font-extrabold text-[var(--foreground)]">
                 Görsel:
               </span>
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1">
                 {(
                   [
                     { id: "hide", label: "Gizle" },
@@ -1526,18 +1877,19 @@ export default function DialoguePdfModal({
               </div>
             </div>
 
-            {/* PDF-2: Çeviri Görünüm Seçici */}
-            <div className="flex items-center gap-1.5 bg-[#F7EFE1] dark:bg-[var(--background)] px-2.5 py-1.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
+            {/* PDF-2: Çeviri & Boşluklu Çalışma Kağıdı Görünüm Seçici */}
+            <div className="flex flex-wrap items-center gap-1.5 bg-[#F7EFE1] dark:bg-[var(--background)] px-2.5 py-1.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
               <Languages size={14} className="text-[#6741D9] shrink-0" />
               <span className="text-[11px] font-extrabold text-[var(--foreground)]">
-                Çeviri:
+                Dil & Çeviri:
               </span>
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1">
                 {(
                   [
-                    { id: "show", label: "Göster" },
-                    { id: "hide", label: "Gizle" },
-                    { id: "dotted", label: "Yazı Alanı (Noktalı)" },
+                    { id: "show", label: "Arapça + Türkçe" },
+                    { id: "hide", label: "Sadece Arapça" },
+                    { id: "dotted", label: "Çeviriyi Boş Bırak (TR Boş)" },
+                    { id: "ar-dotted", label: "Arapçayı Boş Bırak (AR Boş)" },
                   ] as { id: TranslationPrintMode; label: string }[]
                 ).map((opt) => (
                   <button
@@ -1560,7 +1912,7 @@ export default function DialoguePdfModal({
             </div>
           </div>
 
-          {/* 2. Satır: Boşluk Doldurma + Harekeler + QR Kod + Kelime Tablosu + Düzen Çipleri */}
+          {/* 2. Satır: Boşluk Doldurma + Harekeler + QR Kod + Kelime Tablosu + Kalıp İfadeler + Öğrenci Şeridi + Cevap Anahtarı */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-1.5">
               {/* PDF-3: Boşluk Doldurma (Etkinlik) Toggle */}
@@ -1630,6 +1982,84 @@ export default function DialoguePdfModal({
                 <BookOpen size={13} />
                 <span>Kelime Tablosu ({vocabEntries.length})</span>
               </button>
+
+              {/* ✨ Kalıp İfadeler Tablosu Toggle (Yalnızca diyalogda kalıp ifade varsa gösterilir) */}
+              {dialogueIdioms.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setIncludeIdioms((v) => !v);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    includeIdioms
+                      ? "bg-[#6741D9] text-white border-[#5230B5] shadow-xs"
+                      : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
+                  }`}
+                >
+                  <span>✨ Kalıp İfadeler Tablosu ({dialogueIdioms.length})</span>
+                </button>
+              )}
+
+              {/* ✨ Kalıp İfade Anlamlarını Boş Bırak Alt Seçeneği */}
+              {dialogueIdioms.length > 0 && includeIdioms && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setIdiomsBlankMode((v) => !v);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    idiomsBlankMode
+                      ? "bg-amber-600 text-white border-amber-700 shadow-xs"
+                      : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
+                  }`}
+                >
+                  <span>
+                    📝 Kalıp İfade Anlamlarını Boş Bırak:{" "}
+                    {idiomsBlankMode ? "Açık" : "Kapalı"}
+                  </span>
+                </button>
+              )}
+
+              {/* 👤 Öğrenci Bilgi Şeridi Toggle */}
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setIncludeStudentHeader((v) => !v);
+                }}
+                className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  includeStudentHeader
+                    ? "bg-[#0CA678] text-white border-[#087F5B] shadow-xs"
+                    : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
+                }`}
+              >
+                <span>
+                  👤 Öğrenci Bilgi Şeridi:{" "}
+                  {includeStudentHeader ? "Açık" : "Kapalı"}
+                </span>
+              </button>
+
+              {/* 🗝️ Sayfa Sonuna Cevap Anahtarı Ekle (Yalnızca boşluklu bir etkinlik aktifse) */}
+              {hasAnyBlankActivity && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setIncludeAnswerKey((v) => !v);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    includeAnswerKey
+                      ? "bg-emerald-700 text-white border-emerald-900 shadow-xs"
+                      : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
+                  }`}
+                >
+                  <span>
+                    🗝️ Cevap Anahtarı: {includeAnswerKey ? "Açık" : "Kapalı"}
+                  </span>
+                </button>
+              )}
             </div>
 
             {/* Mizanpaj & Sözlük Alt Ayarları Aç/Kapa */}
@@ -1642,7 +2072,11 @@ export default function DialoguePdfModal({
               className="px-2.5 py-1.5 rounded-xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] text-[11px] font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center gap-1 cursor-pointer"
             >
               <Columns2 size={13} />
-              <span>{showAdvancedLayout ? "Mizanpajı Gizle" : "Tablo & Mizanpaj Ayarları"}</span>
+              <span>
+                {showAdvancedLayout
+                  ? "Mizanpajı Gizle"
+                  : "Tablo & Mizanpaj Ayarları"}
+              </span>
             </button>
           </div>
 
@@ -1656,9 +2090,21 @@ export default function DialoguePdfModal({
                 </span>
                 <div className="flex flex-wrap gap-1">
                   {[
-                    { id: "side-by-side" as TranslationLayout, label: "Yan Yana", icon: Columns2 },
-                    { id: "stacked" as TranslationLayout, label: "Alt Alta", icon: Rows2 },
-                    { id: "grouped-end" as TranslationLayout, label: "Sonda Toplu", icon: AlignJustify },
+                    {
+                      id: "side-by-side" as TranslationLayout,
+                      label: "Yan Yana",
+                      icon: Columns2,
+                    },
+                    {
+                      id: "stacked" as TranslationLayout,
+                      label: "Alt Alta",
+                      icon: Rows2,
+                    },
+                    {
+                      id: "grouped-end" as TranslationLayout,
+                      label: "Sonda Toplu",
+                      icon: AlignJustify,
+                    },
                   ].map((l) => {
                     const Icon = l.icon;
                     return (
@@ -1755,8 +2201,14 @@ export default function DialoguePdfModal({
                 <div className="flex flex-wrap gap-1">
                   {[
                     { id: "both" as VocabLanguageMode, label: "Arapça + Türkçe" },
-                    { id: "ar-only" as VocabLanguageMode, label: "Anlam Testi (TR Boş)" },
-                    { id: "tr-only" as VocabLanguageMode, label: "İmla Testi (AR Boş)" },
+                    {
+                      id: "ar-only" as VocabLanguageMode,
+                      label: "Anlam Testi (TR Boş)",
+                    },
+                    {
+                      id: "tr-only" as VocabLanguageMode,
+                      label: "İmla Testi (AR Boş)",
+                    },
                   ].map((m) => (
                     <button
                       key={m.id}
@@ -1786,7 +2238,10 @@ export default function DialoguePdfModal({
                     }}
                     className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white border border-[#E6D7BE] text-[var(--foreground)] cursor-pointer"
                   >
-                    Konum: {vocabPlacement === "same-page" ? "Aynı Sayfada" : "Yeni Sayfada"}
+                    Konum:{" "}
+                    {vocabPlacement === "same-page"
+                      ? "Aynı Sayfada"
+                      : "Yeni Sayfada"}
                   </button>
                   <button
                     type="button"
@@ -1809,10 +2264,14 @@ export default function DialoguePdfModal({
         </div>
 
         {/* CANLI A4 ÇALIŞMA KAĞIDI ÖNİZLEME ALANI */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-[#EFE6D5]/70 dark:bg-black/30">
-          <div className="max-w-[780px] mx-auto bg-white text-[#1f1a14] rounded-2xl border-2 border-[#CBD5E1] shadow-lg p-4 sm:p-7 space-y-4">
+        <div
+          className={`flex-1 overflow-y-auto p-2.5 sm:p-6 bg-[#EFE6D5]/70 dark:bg-black/30 ${
+            mobileTab === "preview" ? "block" : "hidden md:block"
+          }`}
+        >
+          <div className="max-w-[780px] w-full mx-auto bg-white text-[#1f1a14] rounded-2xl border-2 border-[#CBD5E1] shadow-lg p-3.5 sm:p-7 space-y-4 overflow-x-hidden">
             {/* Önizleme Rozeti (print:hidden) */}
-            <div className="print:hidden flex items-center justify-between text-[11px] font-bold text-slate-500 border-b border-slate-200 pb-2">
+            <div className="print:hidden flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-slate-500 border-b border-slate-200 pb-2">
               <span className="flex items-center gap-1.5 text-[#087F5B]">
                 <Eye size={14} />
                 <span>Canlı A4 Çalışma Kağıdı Önizlemesi</span>
@@ -1831,7 +2290,8 @@ export default function DialoguePdfModal({
                     CEFR {dialogue.seviye}
                   </span>
                   <span className="px-2 py-0.5 rounded-md border border-[#CBB692] text-[#5C5042] text-[10px] font-bold">
-                    {dialogue.satirlar.length} Cümle • {vocabEntries.length} Kelime
+                    {dialogue.satirlar.length} Cümle • {vocabEntries.length}{" "}
+                    Kelime
                   </span>
                   <span className="px-2 py-0.5 rounded-md border border-[#CBB692] text-[#5C5042] text-[10px] font-bold">
                     {includeHarakat ? "Harekeli" : "Harekesiz"}
@@ -1887,6 +2347,30 @@ export default function DialoguePdfModal({
               )}
             </div>
 
+            {/* 👤 ÖĞRENCİ BİLGİ ŞERİDİ (Ad-Soyad / Sınıf / Tarih / Puan) */}
+            {includeStudentHeader && (
+              <div className="border border-slate-300 rounded-xl px-3.5 py-2 bg-slate-50 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-800">
+                <span>
+                  <strong>Adı Soyadı:</strong>{" "}
+                  <span className="text-slate-400">
+                    ..................................
+                  </span>
+                </span>
+                <span>
+                  <strong>Sınıf / No:</strong>{" "}
+                  <span className="text-slate-400">.................</span>
+                </span>
+                <span>
+                  <strong>Tarih:</strong>{" "}
+                  <span className="text-slate-400">.... / .... / 2026</span>
+                </span>
+                <span>
+                  <strong>Puan:</strong>{" "}
+                  <span className="text-slate-400">.......</span>
+                </span>
+              </div>
+            )}
+
             {/* PDF-1: Geniş Banner Görsel Modu (width: 100%, max-height: 135px, object-fit: cover) */}
             {effectiveImageMode === "banner" && (
               <div className="w-full rounded-xl overflow-hidden border border-slate-300">
@@ -1937,7 +2421,7 @@ export default function DialoguePdfModal({
                     <div
                       key={line.sira}
                       dir="rtl"
-                      className={`p-3 flex items-baseline gap-2 ${
+                      className={`p-3 flex items-baseline gap-2 break-inside-avoid ${
                         idx % 2 === 0 ? "bg-slate-50" : "bg-white"
                       }`}
                     >
@@ -1950,7 +2434,7 @@ export default function DialoguePdfModal({
                       >
                         {formatAr(line.konusmaci_ar)}
                       </span>
-                      <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
+                      <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-[1.85]">
                         {formatAr(arText)}
                       </span>
                     </div>
@@ -1968,11 +2452,14 @@ export default function DialoguePdfModal({
                   return (
                     <div
                       key={line.sira}
-                      className={`p-3 ${
+                      className={`p-3 break-inside-avoid ${
                         idx % 2 === 0 ? "bg-slate-50" : "bg-white"
                       }`}
                     >
-                      <div dir="rtl" className="text-right flex items-baseline gap-2">
+                      <div
+                        dir="rtl"
+                        className="text-right flex items-baseline gap-2"
+                      >
                         <span
                           className={`arabic text-base font-bold px-2 py-0.5 rounded-md border shrink-0 ${
                             isEmerald
@@ -1982,9 +2469,13 @@ export default function DialoguePdfModal({
                         >
                           {formatAr(line.konusmaci_ar)}
                         </span>
-                        <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
-                          {formatAr(arText)}
-                        </span>
+                        {translationMode === "ar-dotted" ? (
+                          <div className="flex-1 border-b border-dotted border-slate-400 h-7" />
+                        ) : (
+                          <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-[1.85]">
+                            {formatAr(arText)}
+                          </span>
+                        )}
                       </div>
 
                       <div
@@ -2023,7 +2514,7 @@ export default function DialoguePdfModal({
                       <div
                         key={line.sira}
                         dir="rtl"
-                        className={`p-3 flex items-baseline gap-2 ${
+                        className={`p-3 flex items-baseline gap-2 break-inside-avoid ${
                           idx % 2 === 0 ? "bg-slate-50" : "bg-white"
                         }`}
                       >
@@ -2036,9 +2527,13 @@ export default function DialoguePdfModal({
                         >
                           {line.sira}. {formatAr(line.konusmaci_ar)}
                         </span>
-                        <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
-                          {formatAr(arText)}
-                        </span>
+                        {translationMode === "ar-dotted" ? (
+                          <div className="flex-1 border-b border-dotted border-slate-400 h-7" />
+                        ) : (
+                          <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-[1.85]">
+                            {formatAr(arText)}
+                          </span>
+                        )}
                       </div>
                     );
                   })}
@@ -2099,14 +2594,16 @@ export default function DialoguePdfModal({
                   return (
                     <div
                       key={line.sira}
-                      className={`p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center ${
+                      className={`p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center break-inside-avoid ${
                         idx % 2 === 0 ? "bg-slate-50" : "bg-white"
                       }`}
                     >
                       {/* Sol Sütun: Türkçe Çeviri veya Noktalı Yazı Alanı */}
                       <div
                         className={
-                          sideBySideOrder === "ar-left" ? "sm:order-2" : "sm:order-1"
+                          sideBySideOrder === "ar-left"
+                            ? "sm:order-2"
+                            : "sm:order-1"
                         }
                       >
                         {translationMode === "dotted" ? (
@@ -2138,11 +2635,13 @@ export default function DialoguePdfModal({
                         )}
                       </div>
 
-                      {/* Sağ Sütun: Arapça Metin */}
+                      {/* Sağ Sütun: Arapça Metin veya Noktalı Yazı Alanı */}
                       <div
                         dir="rtl"
                         className={`text-right ${
-                          sideBySideOrder === "ar-left" ? "sm:order-1" : "sm:order-2"
+                          sideBySideOrder === "ar-left"
+                            ? "sm:order-1"
+                            : "sm:order-2"
                         }`}
                       >
                         <span
@@ -2154,9 +2653,13 @@ export default function DialoguePdfModal({
                         >
                           {formatAr(line.konusmaci_ar)}
                         </span>
-                        <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
-                          {formatAr(arText)}
-                        </span>
+                        {translationMode === "ar-dotted" ? (
+                          <span className="inline-block w-4/5 border-b border-dotted border-slate-400 h-7 align-bottom" />
+                        ) : (
+                          <span className="arabic text-xl sm:text-2xl font-bold text-slate-900 leading-[1.85]">
+                            {formatAr(arText)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
@@ -2168,7 +2671,8 @@ export default function DialoguePdfModal({
             {includeVocabulary && vocabEntries.length > 0 && (
               <div className="space-y-2 pt-2">
                 <div className="text-xs font-extrabold text-[#087F5B] bg-slate-50 border border-slate-300 border-l-4 border-l-[#0CA678] px-3 py-1.5 rounded-lg">
-                  📚 Diyalog Kelime Hazinesi (المفردات) — {vocabEntries.length} Kelime
+                  📚 Diyalog Kelime Hazinesi (المفردات) — {vocabEntries.length}{" "}
+                  Kelime
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {vocabEntries.map((entry, idx) => {
@@ -2177,7 +2681,7 @@ export default function DialoguePdfModal({
                     return (
                       <div
                         key={`${mainAr}-${idx}`}
-                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-slate-300 bg-slate-50"
+                        className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 break-inside-avoid"
                       >
                         <div className="min-w-0 flex-1">
                           {vocabLanguageMode === "ar-only" ? (
@@ -2192,7 +2696,7 @@ export default function DialoguePdfModal({
                           {vocabLanguageMode === "tr-only" ? (
                             <div className="border-b border-dotted border-slate-400 h-5 w-24" />
                           ) : (
-                            <span className="arabic text-xl font-bold text-[#087F5B]">
+                            <span className="arabic text-xl font-bold text-[#087F5B] leading-[1.85]">
                               {formatAr(mainAr)}
                             </span>
                           )}
@@ -2200,6 +2704,131 @@ export default function DialoguePdfModal({
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* ✨ BU DİYALOGDAKİ KALIP İFADELER (التعبيرات الاصطلاحية) TABLOSU ÖNİZLEMESİ */}
+            {includeIdioms && dialogueIdioms.length > 0 && (
+              <div className="space-y-2 pt-2">
+                <div className="text-xs font-extrabold text-[#4C28B5] bg-[#F3F0FF] border border-[#D0BFFF] border-l-4 border-l-[#6741D9] px-3 py-1.5 rounded-lg">
+                  ✨ Bu Diyalogdaki Kalıp İfadeler (التعبيرات الاصطلاحية) —{" "}
+                  {dialogueIdioms.length} İfade
+                </div>
+                <div className="border border-slate-300 rounded-xl overflow-hidden">
+                  <table className="w-full border-collapse text-left">
+                    <thead>
+                      <tr className="bg-[#F3F0FF] text-[#4C28B5] text-[11px] font-extrabold border-b border-slate-300">
+                        <th className="py-2 px-3 text-right w-[30%]">
+                          Kalıp İfade (Arapça)
+                        </th>
+                        <th className="py-2 px-3 w-[32%]">
+                          Deyimsel Anlamı (Türkçe)
+                        </th>
+                        <th className="py-2 px-3 w-[38%]">
+                          Harfiyen Anlamı & Kullanım İpucu
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {dialogueIdioms.map((idm) => (
+                        <tr
+                          key={idm.id}
+                          className="break-inside-avoid bg-white odd:bg-slate-50/70"
+                        >
+                          <td
+                            dir="rtl"
+                            className="py-2 px-3 text-right font-arabic arabic text-lg sm:text-xl font-bold text-[#087F5B] leading-[1.85] border-l border-dashed border-slate-200"
+                          >
+                            {formatAr(idm.arabic)}
+                          </td>
+                          <td className="py-2 px-3 text-xs font-bold text-slate-800 border-l border-dashed border-slate-200">
+                            {idiomsBlankMode ? (
+                              <div className="border-b border-dotted border-slate-400 h-5 w-11/12" />
+                            ) : (
+                              idm.meaningTr
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-[11px] text-slate-600 space-y-0.5">
+                            {idm.literalTr && (
+                              <div className="text-[#5F3DC4] font-semibold">
+                                <strong>Harfiyen:</strong> {idm.literalTr}
+                              </div>
+                            )}
+                            {idm.usageNote && (
+                              <div>
+                                <strong>İpucu:</strong> {idm.usageNote}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 🗝️ CEVAP ANAHTARI ÖNİZLEMESİ (Yalnızca boşluklu çalışma kağıdı aktifse) */}
+            {includeAnswerKey && hasAnyBlankActivity && (
+              <div className="space-y-1.5 pt-2 break-inside-avoid">
+                <div className="text-xs font-extrabold text-[#087F5B] bg-emerald-50 border border-emerald-300 border-l-4 border-l-[#0CA678] px-3 py-1.5 rounded-lg">
+                  🗝️ Cevap Anahtarı (مفتاح الإجابات)
+                </div>
+                <div className="rounded-xl border border-dashed border-[#0CA678] bg-slate-50 p-3 text-[11px] text-slate-700 space-y-1">
+                  {clozeMode && clozeData.helperWords.length > 0 && (
+                    <div>
+                      <strong>Diyalog Boşlukları:</strong>{" "}
+                      <span dir="rtl" className="arabic text-base font-bold text-[#087F5B]">
+                        {dialogue.satirlar
+                          .map((l, i) =>
+                            clozeData.processedLines[i] !== l.arapca
+                              ? `(${i + 1}) ${formatAr(l.arapca)}`
+                              : ""
+                          )
+                          .filter(Boolean)
+                          .join(" • ")}
+                      </span>
+                    </div>
+                  )}
+                  {includeIdioms && idiomsBlankMode && dialogueIdioms.length > 0 && (
+                    <div>
+                      <strong>Kalıp İfadeler:</strong>{" "}
+                      {dialogueIdioms
+                        .map(
+                          (idm, i) =>
+                            `${i + 1}. ${formatAr(idm.arabic)} = ${idm.meaningTr}`
+                        )
+                        .join(" | ")}
+                    </div>
+                  )}
+                  {includeVocabulary && vocabLanguageMode !== "both" && (
+                    <div>
+                      <strong>Kelime Testi:</strong>{" "}
+                      {vocabEntries
+                        .slice(0, 14)
+                        .map(
+                          (e, i) =>
+                            `${i + 1}. ${formatAr(
+                              e.item.mufret || e.item.mazi || ""
+                            )}: ${e.item.anlam_tr}`
+                        )
+                        .join(" | ")}
+                    </div>
+                  )}
+                  {(translationMode === "dotted" ||
+                    translationMode === "ar-dotted") && (
+                    <div>
+                      <strong>Diyalog Satırları:</strong>{" "}
+                      {dialogue.satirlar
+                        .map((l) =>
+                          translationMode === "dotted"
+                            ? `${l.sira}. ${l.turkce}`
+                            : `${l.sira}. ${formatAr(l.arapca)}`
+                        )
+                        .join(" • ")}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -2222,7 +2851,7 @@ export default function DialoguePdfModal({
           </div>
         </div>
 
-        {/* MODAL ALT AKSİYON ÇUBUĞU (print:hidden) */}
+        {/* MODAL ALT AKSİYON ÇUBUĞU (print:hidden - Her iki sekmede de sabit görünür) */}
         <div className="print:hidden bg-[#F7EFE1] dark:bg-[var(--background)] px-4 sm:px-5 py-3 border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-3 shrink-0">
           <span className="text-xs font-extrabold text-[#087F5B] hidden sm:inline">
             www.muallimun.net • Kurumsal A4 Vektörel Çalışma Kağıdı
@@ -2245,7 +2874,7 @@ export default function DialoguePdfModal({
               className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
             >
               <Printer size={17} />
-              <span>A4 Çalışma Kağıdını Yazdır / PDF İndir</span>
+              <span>🖨️ Yazdır / PDF Kaydet</span>
             </button>
           </div>
         </div>

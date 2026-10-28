@@ -27,6 +27,7 @@ import {
   ListChecks,
   Eye,
   Share2,
+  Sparkles,
 } from "lucide-react";
 import { useCountdown } from "@/lib/useTimer";
 import { speakHybrid, playTTS } from "@/lib/audio";
@@ -34,17 +35,20 @@ import { useSettings } from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
 import { formatArabicText } from "@/lib/arabicTextUtils";
 import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
+import { ArabicIdiom } from "@/lib/arabicIdioms";
 
-export type QuizContentType = "words" | "sentences" | "mixed";
+export type QuizContentType = "words" | "idioms" | "sentences" | "mixed";
 export type FeedbackMode = "instant" | "end";
 
 export interface QuizQuestionItem {
   id: string;
-  kind: "word" | "sentence";
+  kind: "word" | "idiom" | "sentence";
   arabic: string;
   turkish: string;
   metaLabel: string;
   wordId?: string;
+  literalTr?: string;
+  usageNote?: string;
   options: { text: string; isCorrect: boolean }[];
 }
 
@@ -53,6 +57,7 @@ function formatWordTurLabel(tur?: string): string {
   if (normalized === "isim") return "İsim";
   if (normalized === "fiil") return "Fiil";
   if (normalized === "edat" || normalized === "harf") return "Edat";
+  if (normalized === "ifade") return "Kalıp İfade";
   if (
     normalized === "ozel-isim" ||
     normalized === "özel isim" ||
@@ -68,6 +73,7 @@ function formatWordTurLabel(tur?: string): string {
 
 interface Props {
   vocabulary: DictionaryItem[];
+  idioms?: ArabicIdiom[];
   dialogues?: Dialogue[];
   contentType?: QuizContentType;
   feedbackMode?: FeedbackMode;
@@ -78,6 +84,7 @@ interface Props {
 
 export default function MultipleChoice({
   vocabulary,
+  idioms = [],
   dialogues = [],
   contentType = "words",
   feedbackMode = "instant",
@@ -111,6 +118,24 @@ export default function MultipleChoice({
         wordId: w.id,
       }))
       .filter((w) => w.arabic.length > 0 && w.turkish.length > 0);
+
+    const idiomPool: {
+      id: string;
+      arabic: string;
+      turkish: string;
+      metaLabel: string;
+      literalTr?: string;
+      usageNote?: string;
+    }[] = idioms
+      .map((idm) => ({
+        id: `idm-${idm.id}`,
+        arabic: idm.arabic.trim(),
+        turkish: idm.meaningTr.trim(),
+        metaLabel: `✨ Kalıp İfade · Seviye: ${idm.level || "A1-B2"}`,
+        literalTr: idm.literalTr,
+        usageNote: idm.usageNote,
+      }))
+      .filter((i) => i.arabic.length > 0 && i.turkish.length > 0);
 
     const sentencePool: {
       id: string;
@@ -158,6 +183,42 @@ export default function MultipleChoice({
       };
     };
 
+    const buildIdiomQuestion = (
+      target: (typeof idiomPool)[number]
+    ): QuizQuestionItem => {
+      let distractorCandidates = idiomPool.filter(
+        (i) => i.id !== target.id && i.turkish !== target.turkish
+      );
+      if (distractorCandidates.length < 3) {
+        const fallbackWords = wordPool
+          .filter((w) => w.turkish !== target.turkish)
+          .map((w) => ({
+            id: w.id,
+            arabic: w.arabic,
+            turkish: w.turkish,
+            metaLabel: w.metaLabel,
+          }));
+        distractorCandidates = [...distractorCandidates, ...fallbackWords];
+      }
+      const distractors = shuffleArray(distractorCandidates)
+        .slice(0, 3)
+        .map((d) => ({ text: d.turkish, isCorrect: false }));
+
+      return {
+        id: target.id,
+        kind: "idiom",
+        arabic: target.arabic,
+        turkish: target.turkish,
+        metaLabel: target.metaLabel,
+        literalTr: target.literalTr,
+        usageNote: target.usageNote,
+        options: shuffleArray([
+          { text: target.turkish, isCorrect: true },
+          ...distractors,
+        ]),
+      };
+    };
+
     const buildSentenceQuestion = (
       target: (typeof sentencePool)[number]
     ): QuizQuestionItem => {
@@ -182,33 +243,34 @@ export default function MultipleChoice({
       };
     };
 
+    if (contentType === "idioms" && idiomPool.length > 0) {
+      return shuffleArray(idiomPool)
+        .slice(0, questionCount)
+        .map(buildIdiomQuestion);
+    }
+
     if (contentType === "sentences" && sentencePool.length >= 4) {
       return shuffleArray(sentencePool)
         .slice(0, questionCount)
         .map(buildSentenceQuestion);
     }
 
-    if (
-      contentType === "mixed" &&
-      sentencePool.length >= 4 &&
-      wordPool.length >= 4
-    ) {
-      const halfSentences = Math.ceil(questionCount / 2);
-      const halfWords = questionCount - halfSentences;
-      const pickedSentences = shuffleArray(sentencePool)
-        .slice(0, halfSentences)
-        .map(buildSentenceQuestion);
-      const pickedWords = shuffleArray(wordPool)
-        .slice(0, halfWords)
-        .map(buildWordQuestion);
-      return shuffleArray([...pickedSentences, ...pickedWords]);
+    if (contentType === "mixed") {
+      const combinedQuestions: QuizQuestionItem[] = [
+        ...shuffleArray(wordPool).slice(0, questionCount).map(buildWordQuestion),
+        ...shuffleArray(idiomPool).slice(0, questionCount).map(buildIdiomQuestion),
+        ...shuffleArray(sentencePool)
+          .slice(0, questionCount)
+          .map(buildSentenceQuestion),
+      ];
+      return shuffleArray(combinedQuestions).slice(0, questionCount);
     }
 
     return shuffleArray(wordPool)
       .slice(0, questionCount)
       .map(buildWordQuestion);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vocabulary, dialogues, contentType, questionCount, roundSeed]);
+  }, [vocabulary, idioms, dialogues, contentType, questionCount, roundSeed]);
 
   const questions = customQuestions || generatedQuestions;
 
@@ -641,6 +703,26 @@ export default function MultipleChoice({
               })}
             </div>
 
+            {reviewQ.kind === "idiom" &&
+              (reviewQ.literalTr || reviewQ.usageNote) && (
+                <div className="rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/30 p-3 text-left text-xs space-y-1">
+                  {reviewQ.literalTr && (
+                    <p className="font-bold text-[#4C28B5] dark:text-[#d0bfff]">
+                      <span className="font-extrabold">✨ Harfiyen Anlamı:</span>{" "}
+                      {reviewQ.literalTr}
+                    </p>
+                  )}
+                  {reviewQ.usageNote && (
+                    <p className="text-[var(--foreground)] font-semibold">
+                      <span className="font-extrabold text-[#087F5B]">
+                        💡 Kullanım İpucu:
+                      </span>{" "}
+                      {reviewQ.usageNote}
+                    </p>
+                  )}
+                </div>
+              )}
+
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-[#E2D3B8]">
               <button
                 type="button"
@@ -769,7 +851,8 @@ export default function MultipleChoice({
             </span>
             <span
               className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold inline-flex items-center gap-1 ${
-                currentQuestion.kind === "sentence"
+                currentQuestion.kind === "sentence" ||
+                currentQuestion.kind === "idiom"
                   ? "bg-[#F3F0FF] text-[#6741D9] border border-[#6741D9]/30"
                   : "bg-[#E6FCF5] text-[#087F5B] border border-[#0CA678]/30"
               }`}
@@ -778,6 +861,11 @@ export default function MultipleChoice({
                 <>
                   <MessageSquareQuote size={11} />
                   <span>Diyalog Cümlesi</span>
+                </>
+              ) : currentQuestion.kind === "idiom" ? (
+                <>
+                  <Sparkles size={11} />
+                  <span>Kalıp İfade</span>
                 </>
               ) : (
                 <>
@@ -843,6 +931,8 @@ export default function MultipleChoice({
           <span className="text-left">
             {currentQuestion.kind === "sentence"
               ? "Aşağıdaki Arapça diyalog cümlesinin doğru Türkçe çevirisi hangisidir?"
+              : currentQuestion.kind === "idiom"
+              ? "Aşağıdaki Arapça kalıp ifadenin doğru deyimsel anlamı hangisidir?"
               : "Aşağıdaki Arapça kelimenin Türkçe karşılığı nedir?"}
           </span>
           <button
@@ -860,6 +950,8 @@ export default function MultipleChoice({
           className={`arabic font-bold text-[#087F5B] dark:text-[#20c997] py-2 ${
             currentQuestion.kind === "sentence"
               ? "text-2xl sm:text-4xl leading-relaxed"
+              : currentQuestion.kind === "idiom"
+              ? "text-3xl sm:text-5xl leading-relaxed"
               : "text-4xl sm:text-6xl"
           }`}
         >
@@ -917,6 +1009,29 @@ export default function MultipleChoice({
           );
         })}
       </div>
+
+      {/* KALIP İFADE CEVAPLANDIĞINDA HARFİYEN ANLAMI VE KULLANIM İPUCU KUTUSU */}
+      {feedbackMode === "instant" &&
+        Boolean(selected) &&
+        currentQuestion.kind === "idiom" &&
+        (currentQuestion.literalTr || currentQuestion.usageNote) && (
+          <div className="rounded-2xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9]/40 p-3.5 text-left text-xs space-y-1.5 animate-in fade-in duration-150">
+            {currentQuestion.literalTr && (
+              <p className="font-bold text-[#4C28B5] dark:text-[#d0bfff]">
+                <span className="font-extrabold">✨ Harfiyen Anlamı:</span>{" "}
+                {currentQuestion.literalTr}
+              </p>
+            )}
+            {currentQuestion.usageNote && (
+              <p className="text-[var(--foreground)] font-semibold">
+                <span className="font-extrabold text-[#087F5B]">
+                  💡 Kullanım İpucu:
+                </span>{" "}
+                {currentQuestion.usageNote}
+              </p>
+            )}
+          </div>
+        )}
 
       {/* ÖNCEKİ SORU / SONRAKİ SORU (VEYA TESTİ BİTİR) NAVİGASYON BAR */}
       <div className="flex items-center justify-between gap-3 pt-1">

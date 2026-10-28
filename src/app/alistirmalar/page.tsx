@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -20,6 +20,11 @@ import { diyaloglar, sozluk } from "@/lib/data";
 import { getDialogueVocabulary } from "@/lib/dict";
 import { DictionaryItem } from "@/types/data";
 import { useUserStore } from "@/store/userStore";
+import {
+  ArabicIdiom,
+  getCombinedIdiomsCatalog,
+  extractDialoguesIdioms,
+} from "@/lib/arabicIdioms";
 
 import Flashcard, {
   getShortDialogueSentences,
@@ -58,6 +63,20 @@ export default function ExercisesPage() {
   const [feedbackMode, setFeedbackMode] = useState<FeedbackMode>("instant");
   const [fillSubMode, setFillSubMode] = useState<FillSubMode>("choices");
 
+  // Diyalog sayfasından "?source=idioms&dialogueId=dlg_XX" ile gelindiğinde otomatik seç
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sourceParam = params.get("source");
+    const dlgParam = params.get("dialogueId");
+    if (sourceParam === "idioms") {
+      setContentType("idioms");
+    }
+    if (dlgParam && diyaloglar.some((d) => d.id === dlgParam)) {
+      setSingleDialogueId(dlgParam);
+    }
+  }, []);
+
   const selectedDialogues = useMemo(() => {
     if (singleDialogueId !== "all") {
       return diyaloglar.filter((dlg) => dlg.id === singleDialogueId);
@@ -78,6 +97,37 @@ export default function ExercisesPage() {
   const shortSentenceCountInPool = useMemo(() => {
     return getShortDialogueSentences(selectedDialogues).length;
   }, [selectedDialogues]);
+
+  // Seçili kur veya diyaloga göre Kalıp İfadeler havuzu
+  const idiomsPool: ArabicIdiom[] = useMemo(() => {
+    const allCatalog = getCombinedIdiomsCatalog();
+    if (singleDialogueId !== "all") {
+      const dlgExtracted = extractDialoguesIdioms(selectedDialogues);
+      return dlgExtracted.length > 0 ? dlgExtracted : allCatalog;
+    }
+    if (rangePreset === "1-15") {
+      const extracted = extractDialoguesIdioms(selectedDialogues);
+      const byLevel = allCatalog.filter((i) => i.level === "A1-A2");
+      const map = new Map<string, ArabicIdiom>();
+      [...extracted, ...byLevel].forEach((i) => map.set(i.id, i));
+      return Array.from(map.values());
+    }
+    if (rangePreset === "16-35") {
+      const extracted = extractDialoguesIdioms(selectedDialogues);
+      const byLevel = allCatalog.filter((i) => i.level === "B1");
+      const map = new Map<string, ArabicIdiom>();
+      [...extracted, ...byLevel].forEach((i) => map.set(i.id, i));
+      return Array.from(map.values());
+    }
+    if (rangePreset === "36-60") {
+      const extracted = extractDialoguesIdioms(selectedDialogues);
+      const byLevel = allCatalog.filter((i) => i.level === "B2");
+      const map = new Map<string, ArabicIdiom>();
+      [...extracted, ...byLevel].forEach((i) => map.set(i.id, i));
+      return Array.from(map.values());
+    }
+    return allCatalog;
+  }, [singleDialogueId, rangePreset, selectedDialogues]);
 
   const { combinedVocabulary, poolNotice } = useMemo(() => {
     if (singleDialogueId !== "all") {
@@ -162,14 +212,14 @@ export default function ExercisesPage() {
       id: "flashcard",
       title: "Kelime & Cümle Kartları",
       arabicBadge: "البِطَاقَات",
-      subtitle: "Sesli Arapça-Türkçe 3B kelime ve kısa cümle kartları",
+      subtitle: "Sesli Arapça-Türkçe 3B kelime, kalıp ifade ve kısa cümle kartları",
       icon: BookOpen,
     },
     {
       id: "multiple-choice",
       title: "Çoktan Seçmeli Test",
       arabicBadge: "الاخْتِبَار",
-      subtitle: "Kelime veya diyalog cümleleriyle 4 şıklı anlam testi",
+      subtitle: "Kelime, kalıp ifade veya diyalog cümleleriyle 4 şıklı anlam testi",
       icon: CheckSquare,
     },
     {
@@ -183,14 +233,14 @@ export default function ExercisesPage() {
       id: "matching",
       title: "Ok Çizerek Eşleştirme",
       arabicBadge: "المُطَابَقَة",
-      subtitle: "Kelime ve cümleleri interaktif ok çizerek eşleştirin",
+      subtitle: "Kelime, kalıp ifade ve cümleleri interaktif ok çizerek eşleştirin",
       icon: Link2,
     },
     {
       id: "sentence-builder",
       title: "Cümle Kurma (Kelime Sıralama)",
       arabicBadge: "تَرْتِيبُ الْجُمَل",
-      subtitle: "Dinlediğiniz diyalog cümlesinin kelimelerini sağdan sola sıralayın",
+      subtitle: "Dinlediğiniz cümle veya kalıp ifadenin kelimelerini sağdan sola sıralayın",
       icon: ListOrdered,
     },
   ];
@@ -227,7 +277,12 @@ export default function ExercisesPage() {
 
   const handleStartExercise = () => {
     playClick();
-    if (combinedVocabulary.length < 4 && sentenceCountInPool < 4) return;
+    if (
+      combinedVocabulary.length < 4 &&
+      sentenceCountInPool < 4 &&
+      idiomsPool.length < 1
+    )
+      return;
     setIsPlaying(true);
   };
 
@@ -237,12 +292,14 @@ export default function ExercisesPage() {
       : sentenceCountInPool;
 
   const activePoolCountLabel =
-    selectedType === "fill-in-blanks" || selectedType === "sentence-builder"
+    contentType === "idioms"
+      ? `${idiomsPool.length} Kalıp İfade`
+      : selectedType === "fill-in-blanks" || selectedType === "sentence-builder"
       ? `${sentenceCountInPool} Cümle`
       : contentType === "sentences"
       ? `${effectiveSentenceCount} Cümle`
       : contentType === "mixed"
-      ? `${combinedVocabulary.length} Kelime + ${effectiveSentenceCount} Cümle`
+      ? `${combinedVocabulary.length} Kelime + ${idiomsPool.length} Kalıp İfade + ${effectiveSentenceCount} Cümle`
       : `${combinedVocabulary.length} Kelime`;
 
   return (
@@ -278,7 +335,7 @@ export default function ExercisesPage() {
               İnteraktif Alıştırma Merkezi
             </h1>
             <p className="text-[11px] sm:text-xs font-medium text-[var(--muted)] truncate">
-              Kelime ve diyalog cümleleriyle interaktif pratik yapın
+              Kelime, kalıp ifade ve diyalog cümleleriyle interaktif pratik yapın
             </p>
           </div>
         </div>
@@ -310,7 +367,11 @@ export default function ExercisesPage() {
                     onClick={() => {
                       playClick();
                       setSelectedType(card.id);
-                      if (card.id === "sentence-builder") {
+                      if (
+                        (card.id === "sentence-builder" ||
+                          card.id === "fill-in-blanks") &&
+                        contentType === "words"
+                      ) {
                         setContentType("sentences");
                       }
                     }}
@@ -415,43 +476,41 @@ export default function ExercisesPage() {
                 </select>
               </div>
 
-              {/* 3. İçerik Türü (Soru Kaynağı: Kelimeler | Cümleler | Karışık) */}
-              {selectedType !== "fill-in-blanks" &&
-                selectedType !== "sentence-builder" && (
-                <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1.5 h-auto border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between sm:justify-start gap-1.5">
-                  <span className="text-[11px] font-bold text-[var(--muted)] px-1 whitespace-nowrap">
-                    İçerik:
-                  </span>
-                  <div className="grid grid-cols-3 sm:flex items-center gap-1 w-full sm:w-auto">
-                    {(
-                      [
-                        { id: "words", label: "🔤 Kelimeler" },
-                        { id: "sentences", label: "💬 Cümleler" },
-                        { id: "mixed", label: "🔀 Karışık" },
-                      ] as { id: QuizContentType; label: string }[]
-                    ).map((item) => {
-                      const active = contentType === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => {
-                            playClick();
-                            setContentType(item.id);
-                          }}
-                          className={`px-2 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap text-center cursor-pointer ${
-                            active
-                              ? "bg-[#6741D9] text-white font-bold shadow-2xs"
-                              : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+              {/* 3. İçerik Türü (Soru Kaynağı: Kelimeler | Kalıp İfadeler | Cümleler | Karışık) */}
+              <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1.5 h-auto border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between sm:justify-start gap-1.5 w-full sm:w-auto">
+                <span className="text-[11px] font-bold text-[var(--muted)] px-1 whitespace-nowrap">
+                  İçerik:
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full">
+                  {(
+                    [
+                      { id: "words", label: "🔤 Kelimeler" },
+                      { id: "idioms", label: "✨ Kalıp İfadeler" },
+                      { id: "sentences", label: "💬 Cümleler" },
+                      { id: "mixed", label: "🔀 Karışık" },
+                    ] as { id: QuizContentType; label: string }[]
+                  ).map((item) => {
+                    const active = contentType === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setContentType(item.id);
+                        }}
+                        className={`px-2.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap text-center cursor-pointer ${
+                          active
+                            ? "bg-[#6741D9] text-white font-bold shadow-2xs"
+                            : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
 
               {/* Boşluk Doldurma Alt Mod Seçicisi */}
               {selectedType === "fill-in-blanks" && (
@@ -581,7 +640,9 @@ export default function ExercisesPage() {
                 type="button"
                 onClick={handleStartExercise}
                 disabled={
-                  combinedVocabulary.length < 4 && sentenceCountInPool < 4
+                  combinedVocabulary.length < 4 &&
+                  sentenceCountInPool < 4 &&
+                  idiomsPool.length < 1
                 }
                 className="col-span-2 sm:col-span-1 sm:ml-auto w-full sm:w-auto h-10 px-5 bg-[#0CA678] hover:bg-[#099268] disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm rounded-xl border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-sm shrink-0 cursor-pointer whitespace-nowrap sticky bottom-2 z-20"
               >
@@ -604,6 +665,7 @@ export default function ExercisesPage() {
           {selectedType === "flashcard" && (
             <Flashcard
               vocabulary={combinedVocabulary}
+              idioms={idiomsPool}
               dialogues={selectedDialogues}
               contentType={contentType}
               questionCount={questionCount}
@@ -613,6 +675,7 @@ export default function ExercisesPage() {
           {selectedType === "multiple-choice" && (
             <MultipleChoice
               vocabulary={combinedVocabulary}
+              idioms={idiomsPool}
               dialogues={selectedDialogues}
               contentType={contentType}
               timeLimit={timeLimit}
@@ -625,6 +688,8 @@ export default function ExercisesPage() {
             <FillInBlanks
               dialogues={selectedDialogues}
               vocabulary={combinedVocabulary}
+              idioms={idiomsPool}
+              contentType={contentType}
               timeLimit={timeLimit}
               questionCount={questionCount}
               feedbackMode={feedbackMode}
@@ -635,6 +700,7 @@ export default function ExercisesPage() {
           {selectedType === "matching" && (
             <MatchingGame
               vocabulary={combinedVocabulary}
+              idioms={idiomsPool}
               dialogues={selectedDialogues}
               contentType={contentType}
               timeLimit={timeLimit}
@@ -646,6 +712,8 @@ export default function ExercisesPage() {
           {selectedType === "sentence-builder" && (
             <SentenceBuilder
               dialogues={selectedDialogues}
+              idioms={idiomsPool}
+              contentType={contentType}
               questionCount={questionCount}
               timeLimit={timeLimit}
               feedbackMode={feedbackMode}
