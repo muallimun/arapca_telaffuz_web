@@ -1,6 +1,12 @@
 // src/lib/audioAnalysis.ts
 // Web Audio API (16kHz Kayıt, Canlı RMS, VAD, Çift Dalga Formu Ritim Korelasyonu ve 16-bit PCM .wav Üretimi)
 
+import {
+  SentenceEvaluationResult,
+  WordEvaluationResult,
+  findCriticalLetterMakhrajTip,
+} from "./arabicNlpEngine";
+
 export interface RecordingSession16kHz {
   killStreamImmediately: () => void;
   stop: () => Promise<{
@@ -237,7 +243,30 @@ export async function resampleTo16kHz(
 }
 
 /**
- * Sesteki baş ve sondaki sessizlik kısımlarını kırpar (VAD - Voice Activity Detection).
+ * Ses dizisinin tepe genliğini (peak amplitude) hedef seviyeye (varsayılan 0.95) normalize eder.
+ */
+export function normalizeAudioPeak(
+  samples: Float32Array,
+  targetPeak: number = 0.95
+): Float32Array {
+  if (!samples || samples.length === 0) return new Float32Array(0);
+  let maxAbs = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const v = Math.abs(samples[i]);
+    if (v > maxAbs) maxAbs = v;
+  }
+  if (maxAbs < 0.002) return samples;
+  const gain = targetPeak / maxAbs;
+  const out = new Float32Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    out[i] = Math.max(-1, Math.min(1, samples[i] * gain));
+  }
+  return out;
+}
+
+/**
+ * Sesteki baş ve sondaki sessizlik kısımlarını kırpar (VAD - Voice Activity Detection)
+ * ve tepe genliğini 0.95 seviyesine normalize eder.
  */
 export function trimSilence(
   float32Data: Float32Array,
@@ -246,18 +275,32 @@ export function trimSilence(
   if (!float32Data || float32Data.length === 0) {
     return new Float32Array(0);
   }
+
+  let maxAbs = 0;
+  for (let i = 0; i < float32Data.length; i++) {
+    const v = Math.abs(float32Data[i]);
+    if (v > maxAbs) maxAbs = v;
+  }
+
+  // Tamamen sessiz kayıt
+  if (maxAbs < 0.003) {
+    return new Float32Array(0);
+  }
+
+  // Düşük mikrofon kazançlarında bile konuşma başlangıcını yakalayan adaptif eşik
+  const effectiveThreshold = Math.min(threshold, Math.max(0.0035, maxAbs * 0.12));
   let start = -1;
   let end = -1;
 
   for (let i = 0; i < float32Data.length; i++) {
-    if (Math.abs(float32Data[i]) > threshold) {
-      start = Math.max(0, i - 800); // 50ms ön pay
+    if (Math.abs(float32Data[i]) > effectiveThreshold) {
+      start = Math.max(0, i - 1000); // ~62ms ön pay
       break;
     }
   }
   for (let i = float32Data.length - 1; i >= 0; i--) {
-    if (Math.abs(float32Data[i]) > threshold) {
-      end = Math.min(float32Data.length - 1, i + 1200); // 75ms arka pay
+    if (Math.abs(float32Data[i]) > effectiveThreshold) {
+      end = Math.min(float32Data.length - 1, i + 1400); // ~87ms arka pay
       break;
     }
   }
@@ -267,7 +310,136 @@ export function trimSilence(
     return new Float32Array(0);
   }
 
-  return float32Data.slice(start, end + 1);
+  const sliced = float32Data.slice(start, end + 1);
+  return normalizeAudioPeak(sliced, 0.95);
+}
+
+/**
+ * Tarayıcı ses-metin (STT) motoru yanıt vermediğinde (ör. Firefox Web Speech eksikliği veya çevrimdışı durum),
+ * kaydedilen 16kHz DSP ses dalgasının referans ses dalgasıyla olan zarf, süre, hece enerjisi ve ritim uyumunu
+ * kullanarak gerçekçi kelime ve cümle telaffuz analizi üretir.
+ */
+export function evaluateAcousticDspSentence(
+  expectedSentence: string,
+  userBars: number[],
+  refBars: number[],
+  userDuration: number,
+  refDuration: number
+): SentenceEvaluationResult {
+  const cleanWords = expectedSentence
+    .replace(/[.,!?؟،؛:"'«»()[\]-]/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
+
+  if (cleanWords.length === 0) {
+    return {
+      words: [],
+      overallScore: 0,
+      isRootGuardTriggered: false,
+    };
+  }
+
+  const safeRefDur =
+    refDuration > 0.3 ? refDuration : Math.max(1.2, cleanWords.length * 0.65 + 0.4);
+  const overallRhythm = calculateRhythmMatch(refBars, userBars);
+  const overallTempo = calculateTempoScore(safeRefDur, userDuration);
+
+  // Kullanıcının ne kadar süre konuştuğu (ör. 5 kelimelik cümlede sadece 0.4 sn konuştuysa son kelimeler okunmamıştır)
+  const durationCoverageRatio = Math.min(
+    1.15,
+    userDuration / Math.max(0.6, safeRefDur * 0.85)
+  );
+
+  // Her kelimenin harf/hece ağırlığına göre 48 barlık zarfı dilimlere ayır
+  const wordWeights = cleanWords.map((w) =>
+    Math.max(2, w.replace(/[\u064B-\u065F\u0670]/g, "").length)
+  );
+  const totalWeight = wordWeights.reduce((a, b) => a + b, 0);
+  const totalBars = Math.min(userBars.length, refBars.length) || 48;
+
+  let currentBarIndex = 0;
+  const wordResults: WordEvaluationResult[] = [];
+  let sumScores = 0;
+
+  for (let idx = 0; idx < cleanWords.length; idx++) {
+    const word = cleanWords[idx];
+    const weightRatio = wordWeights[idx] / Math.max(1, totalWeight);
+    const barCount =
+      idx === cleanWords.length - 1
+        ? Math.max(1, totalBars - currentBarIndex)
+        : Math.max(1, Math.round(weightRatio * totalBars));
+
+    const startBar = Math.min(currentBarIndex, totalBars - 1);
+    const endBar = Math.min(totalBars, startBar + barCount);
+    currentBarIndex = endBar;
+
+    const uSlice = userBars.slice(startBar, endBar);
+    const rSlice = refBars.slice(startBar, endBar);
+
+    const avgUserEnergy =
+      uSlice.length > 0
+        ? uSlice.reduce((a, b) => a + b, 0) / uSlice.length
+        : 0;
+    const peakUserEnergy = uSlice.length > 0 ? Math.max(...uSlice) : 0;
+    const segCorrelation =
+      uSlice.length > 0 && rSlice.length === uSlice.length
+        ? calculateRhythmMatch(rSlice, uSlice)
+        : overallRhythm;
+
+    // Kelimenin cümle içindeki konumu (0.0 -> 1.0)
+    const wordPositionRatio = (idx + 0.5) / cleanWords.length;
+    const isCoveredByDuration = wordPositionRatio <= durationCoverageRatio + 0.18;
+
+    let wordScore = 0;
+    if (!isCoveredByDuration || peakUserEnergy < 0.09) {
+      // Bu kelimeye denk gelen zaman diliminde ses enerjisi çok düşük
+      wordScore = Math.round(Math.max(25, peakUserEnergy * 240));
+    } else {
+      const energyScore = Math.min(100, Math.round(avgUserEnergy * 165 + 42));
+      const rawScore =
+        segCorrelation * 0.42 +
+        overallRhythm * 0.25 +
+        overallTempo * 0.18 +
+        energyScore * 0.15;
+      wordScore = Math.max(48, Math.min(96, Math.round(rawScore)));
+    }
+
+    let status: "correct" | "warning" | "wrong" = "wrong";
+    if (wordScore >= 80) status = "correct";
+    else if (wordScore >= 60) status = "warning";
+    else status = "wrong";
+
+    const makhrajTip = findCriticalLetterMakhrajTip(word);
+
+    wordResults.push({
+      targetWord: word,
+      spokenWord:
+        wordScore >= 75
+          ? word
+          : wordScore >= 55
+          ? "DSP Akustik Eşleşme"
+          : "Düşük Hece Enerjisi",
+      score: wordScore,
+      status,
+      makhrajTip: status === "correct" ? undefined : makhrajTip,
+      medVezinTip:
+        status === "correct"
+          ? undefined
+          : "16kHz DSP akustik zarf analizine göre bu kelimenin hece vurgusunu ve med süresini referans sesle eşleştirerek tekrar okuyabilirsiniz.",
+    });
+
+    sumScores += wordScore;
+  }
+
+  const overallScore =
+    wordResults.length > 0 ? Math.round(sumScores / wordResults.length) : 0;
+
+  return {
+    words: wordResults,
+    overallScore,
+    isRootGuardTriggered: false,
+  };
 }
 
 /**
@@ -519,9 +691,9 @@ export async function start16kHzRecorder(options?: {
           : 0;
 
       const isSilent =
-        rawDuration < 0.4 ||
-        voicedDuration < 0.15 ||
-        (peakRawRms < 0.011 && !hasSpoken);
+        rawDuration < 0.3 ||
+        voicedDuration < 0.12 ||
+        (peakRawRms < 0.006 && !hasSpoken);
 
       const finalSamplesForWav =
         trimmedSamples.length > 0 ? trimmedSamples : samples16kHz;

@@ -50,6 +50,7 @@ import {
   calculateRhythmMatch,
   calculateTempoScore,
   calculateOverallFluency,
+  evaluateAcousticDspSentence,
   start16kHzRecorder,
   RecordingSession16kHz,
 } from "@/lib/audioAnalysis";
@@ -141,6 +142,9 @@ export default function ShadowingModal({
   const [adaptiveResult, setAdaptiveResult] =
     useState<AdaptiveCoachingResult | null>(null);
   const [silentWarning, setSilentWarning] = useState<string | null>(null);
+  const [dspFallbackNotice, setDspFallbackNotice] = useState<string | null>(
+    null
+  );
 
   const audioStore = useAudioStore();
 
@@ -313,6 +317,7 @@ export default function ShadowingModal({
     setTempoScore(null);
     setFluencyScore(null);
     setSilentWarning(null);
+    setDspFallbackNotice(null);
     if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
     setUserAudioUrl(null);
     setUserWavBlob(null);
@@ -419,6 +424,7 @@ export default function ShadowingModal({
     setFluencyScore(null);
     setAdaptiveResult(null);
     setSilentWarning(null);
+    setDspFallbackNotice(null);
     setUsedEngineBadge(null);
     setUserBars(DEFAULT_BARS);
     finalTranscriptRef.current = "";
@@ -561,16 +567,19 @@ export default function ShadowingModal({
       }
 
       // E. Sessiz Kayıt / Düşük Ses Kontrolü:
-      // Kayıt çok kısaysa (< 0.4 sn) veya ses seviyesi (RMS) sessizlik eşiğinin altındaysa ve hiçbir kelime algılanmadıysa,
-      // yapay/yanıltıcı bir akıcılık veya ritim puanı üretme!
+      // Kaydedilen ses dalgasında konuşma enerjisi varsa (RMS eşiğinin üzerinde ses kaydedilmişse ve dalga boyu oluşmuşsa),
+      // spokenText boş dönse bile kesinlikle "Mikrofondan net bir ses algılanamadı" hatası gösterme!
       const normalizedSpoken = normalizeArabicForPronunciation(recognizedText);
       const hasDetectedWords =
         normalizedSpoken.length > 0 && /[\u0600-\u06FF]/.test(normalizedSpoken);
 
-      if (
-        !hasDetectedWords &&
-        (recorded.rawDuration < 0.4 || recorded.isSilent || !recognizedText)
-      ) {
+      const hasSpeechEnergy =
+        !recorded.isSilent &&
+        (recorded.voicedDuration >= 0.14 ||
+          recorded.peakRms >= 0.008 ||
+          recorded.envelopeBars.some((b) => b > 0.14));
+
+      if (!hasDetectedWords && !hasSpeechEnergy) {
         setIsAnalyzing(false);
         setWhisperStatus("");
         setEvaluation(null);
@@ -578,6 +587,7 @@ export default function ShadowingModal({
         setTempoScore(null);
         setFluencyScore(null);
         setActiveWordTip(null);
+        setDspFallbackNotice(null);
         playError();
         setSilentWarning(
           "Mikrofondan net bir ses algılanamadı. Lütfen mikrofona biraz daha yakın ve net bir sesle tekrar okuyun."
@@ -586,8 +596,13 @@ export default function ShadowingModal({
       }
 
       let computedRhythm = 0;
+      let effectiveRefBars = refBars;
+      let effectiveRefDur = refDuration;
+
       if (refAudioBufferRef.current) {
         const refEnv = extractAudioEnvelope(refAudioBufferRef.current, 48);
+        effectiveRefBars = refEnv.bars;
+        effectiveRefDur = refEnv.duration;
         computedRhythm = calculateRhythmMatch(
           refEnv.bars,
           recorded.envelopeBars
@@ -603,12 +618,21 @@ export default function ShadowingModal({
           refDuration,
           recorded.duration
         );
-        computedRhythm = computedTempo;
-        setRhythmScore(computedTempo);
+        const barCorr = calculateRhythmMatch(refBars, recorded.envelopeBars);
+        computedRhythm = Math.round(barCorr * 0.6 + computedTempo * 0.4);
+        setRhythmScore(computedRhythm);
         setTempoScore(computedTempo);
       }
 
-      processTranscription(recognizedText, computedRhythm);
+      processTranscription(
+        recognizedText,
+        computedRhythm,
+        recorded.envelopeBars,
+        effectiveRefBars,
+        recorded.duration,
+        effectiveRefDur,
+        hasSpeechEnergy
+      );
     } catch {
       setIsAnalyzing(false);
       setWhisperStatus("");
@@ -617,18 +641,27 @@ export default function ShadowingModal({
 
   const processTranscription = (
     transcribedText: string,
-    currentRhythm: number
+    currentRhythm: number,
+    userEnvelopeBars: number[],
+    referenceEnvelopeBars: number[],
+    recordedDuration: number,
+    referenceDuration: number,
+    hasSpeechEnergy: boolean
   ) => {
     setIsAnalyzing(false);
     setWhisperStatus("");
 
     const normalizedCheck = normalizeArabicForPronunciation(transcribedText);
-    if (!normalizedCheck || !/[\u0600-\u06FF]/.test(normalizedCheck)) {
+    const hasArabicText =
+      Boolean(normalizedCheck) && /[\u0600-\u06FF]/.test(normalizedCheck);
+
+    if (!hasArabicText && !hasSpeechEnergy) {
       setEvaluation(null);
       setRhythmScore(null);
       setTempoScore(null);
       setFluencyScore(null);
       setActiveWordTip(null);
+      setDspFallbackNotice(null);
       playError();
       setSilentWarning(
         "Mikrofondan net bir ses algılanamadı. Lütfen mikrofona biraz daha yakın ve net bir sesle tekrar okuyun."
@@ -637,7 +670,26 @@ export default function ShadowingModal({
     }
 
     setSilentWarning(null);
-    const result = evaluateSentenceWords(activeText, transcribedText);
+
+    let result: SentenceEvaluationResult;
+    if (hasArabicText) {
+      setDspFallbackNotice(null);
+      result = evaluateSentenceWords(activeText, transcribedText);
+    } else {
+      // Kullanıcı konuşmuş ve ses dalgası oluşmuş ama metin motoru (Firefox Web Speech eksikliği / Whisper gecikmesi) metin üretememiş:
+      // 16kHz DSP zarf, süre, hece enerjisi ve ritim uyumunu kullanarak analizi tamamla
+      setDspFallbackNotice(
+        "Tarayıcı ses-metin motoru yanıt vermediği için analiz 16kHz DSP akustik dalga ve ritim eşleştirmesiyle yapıldı."
+      );
+      result = evaluateAcousticDspSentence(
+        activeText,
+        userEnvelopeBars,
+        referenceEnvelopeBars,
+        recordedDuration,
+        referenceDuration
+      );
+    }
+
     setEvaluation(result);
     recordPronunciationScore(result.overallScore);
 
@@ -845,6 +897,14 @@ export default function ShadowingModal({
               {activeText}
             </p>
 
+            {/* KAYIT AKTİFKEN DİKKAT ÇEKİCİ "ŞİMDİ YÜKSEK SESLE OKUYUN" UYARI BANDI */}
+            {isRecording && (
+              <div className="rounded-xl bg-gradient-to-r from-[#0CA678] via-emerald-600 to-rose-600 text-white px-4 py-2.5 shadow-lg border-2 border-white/40 animate-pulse flex items-center justify-center gap-2 text-xs sm:text-sm font-black tracking-wide">
+                <Mic size={18} className="shrink-0 animate-bounce" />
+                <span>🎙️ MİKROFON AÇIK — ŞİMDİ YÜKSEK SESLE OKUYUN!</span>
+              </div>
+            )}
+
             {/* Proaktif Mahreç ve Hareke Rehberi (Konuşma Öncesi) */}
             {proactiveGuide && (
               <div className="pt-2.5 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] space-y-2 text-left">
@@ -990,14 +1050,22 @@ export default function ShadowingModal({
               </div>
 
               {/* 48 Bar Canlı RMS / Kullanıcı Zarfı */}
-              <div className="w-full h-12 bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border border-[#E6D7BE] flex items-end justify-between gap-0.5">
+              <div
+                className={`w-full h-12 bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border flex items-end justify-between gap-0.5 transition-all ${
+                  isRecording
+                    ? "border-[#0CA678] ring-2 ring-[#0CA678]/30"
+                    : "border-[#E6D7BE]"
+                }`}
+              >
                 {userBars.map((val, i) => (
                   <div
                     key={i}
                     style={{ height: `${Math.max(12, Math.round(val * 100))}%` }}
-                    className={`flex-1 rounded-full transition-all ${
+                    className={`flex-1 rounded-full transition-all duration-75 ${
                       isRecording
-                        ? "bg-[#6741D9]"
+                        ? val > 0.12
+                          ? "bg-[#0CA678]"
+                          : "bg-[#6741D9]"
                         : userAudioUrl
                         ? "bg-[#6741D9]/80"
                         : "bg-[#E6D7BE]"
@@ -1037,13 +1105,25 @@ export default function ShadowingModal({
                     className="hidden"
                   />
                 </div>
+              ) : isRecording ? (
+                <div className="rounded-xl bg-[#6741D9] text-white px-3 py-2 shadow-md border-b-3 border-[#4C28B5] flex flex-col items-center justify-center gap-1 text-center">
+                  <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-extrabold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                    <Mic size={16} className="shrink-0" />
+                    <span>🗣️ Şimdi Arapça cümleyi yüksek sesle okuyun...</span>
+                  </div>
+                  {liveInterimText && (
+                    <span
+                      dir="rtl"
+                      className="arabic text-sm font-bold text-emerald-200 truncate max-w-full"
+                    >
+                      Algılanan: {liveInterimText}
+                    </span>
+                  )}
+                </div>
               ) : (
                 <div className="text-[11px] font-semibold text-center text-[var(--muted)] py-1.5 truncate">
-                  {isRecording
-                    ? liveInterimText
-                      ? `Algılanan: ${liveInterimText}`
-                      : "Cümleyi yüksek sesle okuyun..."
-                    : "Aşağıdaki 'Kayda Başla' butonuna basıp okuyun"}
+                  Aşağıdaki &lsquo;Kayda Başla&rsquo; butonuna basıp okuyun
                 </div>
               )}
             </div>
@@ -1071,6 +1151,14 @@ export default function ShadowingModal({
           {/* DEĞERLENDİRME SONUÇLARI */}
           {evaluation && (
             <div className="space-y-3.5">
+              {/* 16kHz DSP Akustik Dalga & Ritim Eşleştirmesi Bilgi Notu */}
+              {dspFallbackNotice && (
+                <div className="bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 text-xs font-extrabold text-[#4C28B5] dark:text-[#d0bfff]">
+                  <Info size={16} className="text-[#6741D9] shrink-0" />
+                  <span>{dspFallbackNotice}</span>
+                </div>
+              )}
+
               {/* 3'lü Skor Özeti */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-3 text-center">

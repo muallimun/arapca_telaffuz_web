@@ -163,8 +163,9 @@ export class HybridSpeechManager {
     const activeWorker = this.worker;
     return new Promise<string>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        activeWorker.removeEventListener("message", handleMessage);
         reject(new Error("Whisper zaman aşımı"));
-      }, 28000);
+      }, 45000);
 
       const handleMessage = (event: MessageEvent<WhisperWorkerResponse>) => {
         const { status, data, text, device, error } = event.data;
@@ -196,7 +197,7 @@ export class HybridSpeechManager {
       activeWorker.postMessage({
         type: "transcribe",
         audioData: audioData16kHz,
-        language: "ar",
+        language: "arabic",
       });
     });
   }
