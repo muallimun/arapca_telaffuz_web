@@ -706,7 +706,7 @@ export default function GuideAndInfoModal() {
           {/* DUYURU & PAYLAŞIM KANALLARIMIZ ŞERİDİ (TÜM SEKMELERDE GÖRÜNÜR) */}
           <div className="mt-4 pt-3 border-t border-stone-200/80 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-2.5 bg-stone-100/60 dark:bg-slate-800/50 px-3.5 py-2.5 rounded-xl">
             <span className="text-xs font-medium text-slate-600 dark:text-slate-300 text-center sm:text-left">
-              📢 Yeni diyalog, PDF ve güncellemelerden haberdar olmak için kanallarımıza katılın:
+              📢 Güncellemeler ve yeni içerikler için bizi takip edin:
             </span>
             <div className="flex items-center gap-2 shrink-0">
               <a

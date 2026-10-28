@@ -10,7 +10,11 @@ export type SttEngineType = "whisper" | "webspeech";
 
 export interface SttCallbacks {
   onStatusChange?: (statusText: string) => void;
-  onInterimTranscript?: (interimText: string) => void;
+  onInterimTranscript?: (
+    interimText: string,
+    finalTranscript?: string,
+    rawInterim?: string
+  ) => void;
 }
 
 export class HybridSpeechManager {
@@ -68,24 +72,34 @@ export class HybridSpeechManager {
         let finalChunk = "";
         let interimChunk = "";
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const transcript = event.results[i][0].transcript;
+          const transcript = event.results[i][0]?.transcript || "";
           if (event.results[i].isFinal) {
             finalChunk += transcript + " ";
           } else {
             interimChunk += transcript;
           }
         }
-        if (finalChunk) {
-          this.webSpeechFinalTranscript += finalChunk;
+        if (finalChunk.trim()) {
+          this.webSpeechFinalTranscript = (
+            this.webSpeechFinalTranscript +
+            " " +
+            finalChunk
+          ).trim();
+          this.webSpeechInterimTranscript = interimChunk.trim();
+        } else if (interimChunk.trim()) {
+          this.webSpeechInterimTranscript = interimChunk.trim();
         }
-        this.webSpeechInterimTranscript = interimChunk;
         const combined = (
           this.webSpeechFinalTranscript +
           " " +
           this.webSpeechInterimTranscript
         ).trim();
         if (combined && callbacks?.onInterimTranscript) {
-          callbacks.onInterimTranscript(combined);
+          callbacks.onInterimTranscript(
+            combined,
+            this.webSpeechFinalTranscript,
+            this.webSpeechInterimTranscript
+          );
         }
       };
 
@@ -113,7 +127,6 @@ export class HybridSpeechManager {
         rec.onresult = null;
         rec.onerror = null;
         rec.onend = null;
-        if (typeof rec.abort === "function") rec.abort();
         if (typeof rec.stop === "function") rec.stop();
       } catch {
         // sessizce geç

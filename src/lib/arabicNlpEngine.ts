@@ -1,6 +1,8 @@
 // src/lib/arabicNlpEngine.ts
 // Arapça Fonetik, 38 Çiftlik Mahreç Koçluğu, 2D Levenshtein Hizalama, Kök Harf Kalkanı ve Adaptif Rehberlik Motoru
 
+import { normalizeArabicForPronunciation } from "./arabicTextUtils";
+
 // ==============================================================================
 // 1. TİP TANIMLAMALARI (INTERFACES & TYPES)
 // ==============================================================================
@@ -372,7 +374,7 @@ export function cleanDisplayText(text: string): string {
   return text
     .replace(/\u0640/g, "")
     .replace(/[\(\)\[\]\{\}\d]/g, "")
-    .replace(/[؟،.!؛:]/g, "")
+    .replace(/[.,،؛؟?!:"'«»…\-–—/\\]/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -383,22 +385,17 @@ export function cleanDisplayText(text: string): string {
  */
 export function stripDiacriticsOnly(text: string): string {
   return cleanDisplayText(text)
-    .replace(/[\u064B-\u065F\u0670]/g, "")
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 /**
- * 2. Aşama: Karşılaştırma Normalizasyonu — Harekeleri soyar ve Elif/Hemze/Tâ-i Merbûta varyantlarını eşitler.
+ * 2. Aşama: Karşılaştırma Normalizasyonu — Harekeleri, şeddeyi, tatweel ve noktalamaları soyar;
+ * Elif/Hemze, Elif-i Maksûre, Tâ-i Merbûta (vakıf ه) ve med-i mukadder (هذا/هاذا vb.) varyantlarını eşitler.
  */
 export function normalizeForComparison(text: string): string {
-  return text
-    .replace(/[\u064B-\u065F\u0670]/g, "")
-    .replace(/[أإآٱ]/g, "ا")
-    .replace(/ى/g, "ي")
-    .replace(/ة/g, "ه")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeArabicForPronunciation(text);
 }
 
 export function shapeArabic(
@@ -755,15 +752,127 @@ export function analyzeVezinAndMed(
 // 7. ANA DEĞERLENDİRME VE ADAPTİF KOÇLUK FONKSİYONLARI
 // ==============================================================================
 
-function findMakhrajPairFromAlignment(
-  alignment: AlignmentResult[]
+export const CRITICAL_MAKHRAJ_LETTERS = [
+  "ث",
+  "ذ",
+  "ظ",
+  "ح",
+  "ع",
+  "خ",
+  "غ",
+  "ق",
+  "ص",
+  "ض",
+  "ط",
+  "ر",
+];
+
+const CRITICAL_LETTER_COACHING: Record<
+  string,
+  { title: string; tip: string; pair: string }
+> = {
+  ث: {
+    title: "Peltek Se (ث) Mahreç Rehberi",
+    tip: "Bu kelimedeki (ث) harfini dil ucunu üst ön dişlerin ucuna hafifçe değdirerek, yumuşak ve sakin bir nefes akışıyla okuyabilirsiniz.",
+    pair: "ث ↔ س/ت",
+  },
+  ذ: {
+    title: "Peltek Zel (ذ) Mahreç Rehberi",
+    tip: "Bu kelimedeki (ذ) harfini dil ucunu üst ön dişlerin ucuna değdirip ses tellerini titreterek, keskin (ز) sesine kaymadan netleştirebilirsiniz.",
+    pair: "ذ ↔ ز/د",
+  },
+  ظ: {
+    title: "Kalın Peltek Zı (ظ) Mahreç Rehberi",
+    tip: "Bu kelimedeki (ظ) harfini dil ucunu üst diş ucuna değdirirken dil kökünü damağa kaldırarak tok ve dolgun bir sesle çıkarabilirsiniz.",
+    pair: "ظ ↔ ز/ذ",
+  },
+  ح: {
+    title: "Boğaz Ortası Hâ (ح) Mahreç Rehberi",
+    tip: "Bu kelimedeki (ح) harfini boğaz ortasını hafifçe daraltarak, hırıltısız ve sıcak bir buğu sesiyle netleştirebilirsiniz.",
+    pair: "ح ↔ ه/خ",
+  },
+  ع: {
+    title: "Boğaz Ortası Ayn (ع) Mahreç Rehberi",
+    tip: "Bu kelimedeki (ع) harfini boğaz ortası kaslarını hafifçe sıkarak derin ve belirgin çıkarabilirsiniz; düz Elif/Hemze gibi geçmeyin.",
+    pair: "ع ↔ أ/ا",
+  },
+  خ: {
+    title: "Boğaz Üstü Hı (خ) Mahreç Rehberi",
+    tip: "Bu kelimedeki (خ) harfini boğazın üst kısmından (yumuşak damak) hafif hırıltılı bir nefesle çıkarabilirsiniz.",
+    pair: "خ ↔ ح/غ",
+  },
+  غ: {
+    title: "Boğaz Üstü Ğayn (غ) Mahreç Rehberi",
+    tip: "Bu kelimedeki (غ) harfini boğaz üstünden ses tellerini titreterek yumuşak ve akıcı şekilde okuyabilirsiniz.",
+    pair: "غ ↔ خ/ق",
+  },
+  ق: {
+    title: "Kalın Kaf (ق) Mahreç Rehberi",
+    tip: "Bu kelimedeki (ق) harfini dilin en arka kökünü yumuşak damağa vurarak tok ve dolgun çıkarabilirsiniz; ince (ك) sesine yaklaştırmayın.",
+    pair: "ق ↔ ك",
+  },
+  ص: {
+    title: "Kalın Sad (ص) Mahreç Rehberi",
+    tip: "Bu kelimedeki (ص) harfini dil kökünü üst damağa kaldırarak (İsti'lâ) tok ve kalın bir ıslık tınısıyla okuyabilirsiniz.",
+    pair: "ص ↔ س",
+  },
+  ض: {
+    title: "Kalın Dad (ض) Mahreç Rehberi",
+    tip: "Bu kelimedeki (ض) harfini dilin yan kenarını üst azı dişlerine yaslayarak tok ve dolgun çıkarabilirsiniz; peltekleştirmeyin.",
+    pair: "ض ↔ د/ظ",
+  },
+  ط: {
+    title: "Kalın Tı (ط) Mahreç Rehberi",
+    tip: "Bu kelimedeki (ط) harfini dil sırtını üst damağa kapatarak tok ve güçlü çıkarabilirsiniz; ince (ت) gibi okumayın.",
+    pair: "ط ↔ ت",
+  },
+  ر: {
+    title: "Titrek Ra (ر) Mahreç Rehberi",
+    tip: "Bu kelimedeki (ر) harfini dil ucunu üst diş etine hafifçe dokundurup akıcı şekilde netleştirebilirsiniz.",
+    pair: "ر ↔ ل/ن",
+  },
+};
+
+export function findCriticalLetterMakhrajTip(
+  targetWord: string
 ): MakhrajTip | undefined {
+  const clean = stripDiacriticsOnly(targetWord);
+  for (const letter of CRITICAL_MAKHRAJ_LETTERS) {
+    if (clean.includes(letter) && CRITICAL_LETTER_COACHING[letter]) {
+      return CRITICAL_LETTER_COACHING[letter];
+    }
+  }
+  return undefined;
+}
+
+function findMakhrajPairFromAlignment(
+  alignment: AlignmentResult[],
+  prioritizeCriticalOnly: boolean = false
+): MakhrajTip | undefined {
+  // 1. Öncelikle kritik Arapça harflerdeki (ث، ذ، ظ، ح، ع، خ، غ، ق، ص، ض، ط، ر) değişimleri kontrol et
   for (const item of alignment) {
     if (
       item.operation === "SUBSTITUTE" &&
       item.expectedChar &&
       item.spokenChar
     ) {
+      // Vakıf (ة <-> ه) ve Hemzeli Elif (أ/إ/آ/ٱ <-> ا) farklarını mahreç hatası sayma
+      if (
+        (item.expectedChar === "ة" && item.spokenChar === "ه") ||
+        (item.expectedChar === "ه" && item.spokenChar === "ة") ||
+        (["أ", "إ", "آ", "ٱ", "ا"].includes(item.expectedChar) &&
+          ["أ", "إ", "آ", "ٱ", "ا"].includes(item.spokenChar))
+      ) {
+        continue;
+      }
+
+      const isCriticalTarget = CRITICAL_MAKHRAJ_LETTERS.includes(
+        item.expectedChar
+      );
+      if (prioritizeCriticalOnly && !isCriticalTarget) {
+        continue;
+      }
+
       const pair = MAKHRAJ_CONFUSION_PAIRS.find(
         (p) =>
           (p.pair1 === item.expectedChar && p.pair2 === item.spokenChar) ||
@@ -785,10 +894,10 @@ export function evaluateSingleWord(
   expected: string,
   spoken: string
 ): WordEvaluationResult {
-  // 1. ÖNCE ham ünsüzleri (أ/إ/ء/ع/ه/ة/ت korunarak) hazırla
+  // 1. ÖNCE ham ünsüzleri hazırla
   const rawExp = stripDiacriticsOnly(expected);
   const rawSpk = stripDiacriticsOnly(spoken);
-  // 2. SONRA genel karşılaştırma normalizasyonunu hazırla
+  // 2. SONRA fonetik ve vakıf normalizasyonunu hazırla
   const cleanExp = normalizeForComparison(expected);
   const cleanSpk = normalizeForComparison(spoken);
 
@@ -799,16 +908,14 @@ export function evaluateSingleWord(
       spokenWord: "Anlaşılamadı",
       score: 0,
       status: "wrong",
+      makhrajTip: findCriticalLetterMakhrajTip(expected),
       medVezinTip:
-        "⚠️ Sistem Hatası: Sesiniz anlaşılamadı veya Arapça olmayan karakterler algılandı. Lütfen mikrofonu kontrol edip tekrar deneyin.",
+        "Mikrofondan bu kelime net algılanamadı. Doğal telaffuzunu dinleyip tekrar deneyebilirsiniz.",
     };
   }
 
-  // Hemze/Elif ve Tâ-i Merbûta normalizasyonundan ÖNCE ham hizalamayı çalıştır
-  const rawAlignment = alignCharacters(rawExp, rawSpk);
-  const rawMakhrajTip = findMakhrajPairFromAlignment(rawAlignment);
-
-  if (cleanExp === cleanSpk && !rawMakhrajTip) {
+  // Fonetik ve vakıf normalizasyonu sonrasında tam eşleşme varsa (ör. المكتبة === المكتبه, هذا === هاذا) %100 doğru kabul et
+  if (cleanExp === cleanSpk) {
     return {
       targetWord: expected,
       spokenWord: spoken,
@@ -822,15 +929,35 @@ export function evaluateSingleWord(
   const maxLen = Math.max(cleanExp.length, cleanSpk.length, 1);
   const baseScore = Math.round((matchCount / maxLen) * 100);
 
-  // Önce ham hizalamadan (ع ↔ أ/إ, ه ↔ أ/إ, ت ↔ ة/ه dahil) mahreç çiftini ara, bulunamazsa normalize hizalamaya bak
-  const makhrajTip = rawMakhrajTip || findMakhrajPairFromAlignment(alignment);
+  // Tam doğru (%85+ benzerlik) okunan kelimeler için "Hatalı/Dikkat Edilecek Mahreç" uyarısı çıkarma
+  if (baseScore >= 85) {
+    return {
+      targetWord: expected,
+      spokenWord: spoken,
+      score: baseScore,
+      status: "correct",
+    };
+  }
+
+  // %85 altı (eksik/farklı okunan) kelimelerde öncelikle kritik Arapça harflere (ث، ذ، ظ، ح، ع، خ، غ، ق، ص، ض، ط، ر) odaklan
+  const rawAlignment = alignCharacters(rawExp, rawSpk);
+  const criticalAlignmentTip =
+    findMakhrajPairFromAlignment(rawAlignment, true) ||
+    findMakhrajPairFromAlignment(alignment, true);
+  const fallbackCriticalTip = findCriticalLetterMakhrajTip(expected);
+  const generalAlignmentTip =
+    findMakhrajPairFromAlignment(rawAlignment, false) ||
+    findMakhrajPairFromAlignment(alignment, false);
+
+  const makhrajTip =
+    criticalAlignmentTip || fallbackCriticalTip || generalAlignmentTip;
 
   const medVezinTip = analyzeVezinAndMed(cleanExp, alignment) || undefined;
   const rootGuard = applyRootConsonantGuard(
-    rawExp,
-    rawSpk,
+    cleanExp,
+    cleanSpk,
     baseScore,
-    Boolean(makhrajTip)
+    Boolean(criticalAlignmentTip)
   );
   const finalScore = rootGuard.finalScore;
 
@@ -845,10 +972,12 @@ export function evaluateSingleWord(
     spokenWord: spoken,
     score: finalScore,
     status,
-    makhrajTip,
-    medVezinTip,
-    isRootGuardTriggered: rootGuard.isTriggered,
-    rootGuardMessage: rootGuard.message,
+    makhrajTip: status === "correct" ? undefined : makhrajTip,
+    medVezinTip: status === "correct" ? undefined : medVezinTip,
+    isRootGuardTriggered:
+      status === "correct" ? false : rootGuard.isTriggered,
+    rootGuardMessage:
+      status === "correct" ? undefined : rootGuard.message,
   };
 }
 
@@ -977,8 +1106,9 @@ export function evaluateSentenceWords(
         spokenWord: "",
         score: 0,
         status: "wrong",
+        makhrajTip: findCriticalLetterMakhrajTip(expWord),
         medVezinTip:
-          "⚠️ Eksik Kelime: Bu kelime cümle okunurken atlandı veya duyulamadı.",
+          "Bu kelime cümle okunurken atlandı veya mikrofondan net duyulamadı. Kelimeye tıklayarak doğal okunuşunu dinleyip tekrar deneyebilirsiniz.",
       });
       continue;
     }

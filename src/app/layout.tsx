@@ -94,13 +94,13 @@ export default function RootLayout({
         <OnboardingTourModal />
         <GuideAndInfoModal />
         <Header />
-        <main className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 md:py-6 pb-24 md:pb-10">
+        <main className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 md:py-6">
           {children}
         </main>
         <ScrollToTopButton />
         <MobileNav />
 
-        <footer className="flex flex-col sm:flex-row print:hidden border-t-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] dark:bg-[var(--surface)] py-4 pb-28 sm:pb-4 px-4 sm:px-6 text-center text-xs text-[var(--muted)] mt-auto items-center justify-between gap-3 max-w-6xl w-full mx-auto rounded-t-2xl">
+        <footer className="flex flex-col sm:flex-row print:hidden border-t-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] dark:bg-[var(--surface)] py-3 px-3 sm:py-4 sm:px-6 mt-6 sm:mt-10 mb-14 lg:mb-0 text-center text-xs text-[var(--muted)] items-center justify-between gap-2 max-w-6xl w-full mx-auto rounded-t-2xl">
           <div className="flex items-center justify-center sm:justify-start gap-2 max-w-full">
             <div className="w-7 h-7 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center p-0.5 shrink-0">
               <img
@@ -120,7 +120,7 @@ export default function RootLayout({
               target="_blank"
               rel="noopener noreferrer"
               title="Telegram Kanalımıza Katılın"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 hover:border-sky-300 transition-all shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 hover:border-sky-300 transition-all shadow-xs"
             >
               <svg
                 className="w-3.5 h-3.5 fill-current shrink-0"
@@ -137,7 +137,7 @@ export default function RootLayout({
               target="_blank"
               rel="noopener noreferrer"
               title="WhatsApp Kanalımızı Takip Edin"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 transition-all shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 transition-all shadow-xs"
             >
               <svg
                 className="w-3.5 h-3.5 fill-current shrink-0"
@@ -153,7 +153,7 @@ export default function RootLayout({
               href="https://muallimun.net"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 font-bold text-[#087F5B] dark:text-[#20c997] hover:text-[#0CA678] transition-colors bg-white dark:bg-[var(--background)] px-3 py-1.5 rounded-full border border-[#E6D7BE] dark:border-[var(--border)] shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#087F5B] dark:text-[#20c997] hover:text-[#0CA678] transition-colors bg-white dark:bg-[var(--background)] rounded-full border border-[#E6D7BE] dark:border-[var(--border)] shadow-xs"
             >
               <span>muallimun.net</span>
             </a>

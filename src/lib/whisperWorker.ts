@@ -116,6 +116,33 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
 
   if (type === "transcribe" && audioData) {
     try {
+      // Çok kısa (< 0.3 sn / 4800 örnek) veya tamamen sessiz ses verisinde Whisper halüsinasyonunu önle
+      if (!audioData || audioData.length < 4800) {
+        self.postMessage({
+          status: "completed",
+          text: "",
+          device: activeDevice,
+        } satisfies WhisperWorkerResponse);
+        return;
+      }
+
+      let sumSq = 0;
+      let peak = 0;
+      for (let i = 0; i < audioData.length; i++) {
+        const v = Math.abs(audioData[i]);
+        sumSq += v * v;
+        if (v > peak) peak = v;
+      }
+      const rms = Math.sqrt(sumSq / audioData.length);
+      if (peak < 0.01 && rms < 0.004) {
+        self.postMessage({
+          status: "completed",
+          text: "",
+          device: activeDevice,
+        } satisfies WhisperWorkerResponse);
+        return;
+      }
+
       self.postMessage({ status: "loading" } satisfies WhisperWorkerResponse);
       const model = await getTranscriber();
 
@@ -135,13 +162,27 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
         max_new_tokens: 100,
       });
 
-      const recognizedText = Array.isArray(output)
-        ? output.map((o) => o.text).join(" ")
-        : output?.text || "";
+      let recognizedText = (
+        Array.isArray(output)
+          ? output.map((o) => o.text).join(" ")
+          : output?.text || ""
+      ).trim();
+
+      // Whisper sessizlik halüsinasyonlarını temizle
+      const hallucinationPatterns = [
+        /اشتركوا في القناة/gi,
+        /لا تنسوا الاشتراك/gi,
+        /ترجمة نانسي قنقر/gi,
+        /شكراً? للمشاهدة/gi,
+        /ترجمة وتحرير/gi,
+      ];
+      for (const pat of hallucinationPatterns) {
+        recognizedText = recognizedText.replace(pat, "").trim();
+      }
 
       self.postMessage({
         status: "completed",
-        text: recognizedText.trim(),
+        text: recognizedText,
         device: activeDevice,
       } satisfies WhisperWorkerResponse);
     } catch (error: any) {

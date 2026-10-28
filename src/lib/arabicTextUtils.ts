@@ -150,3 +150,72 @@ export function splitMixedBidiText(
   }
   return result;
 }
+
+/**
+ * Med-i Mukadder (yazılmayan ama okunan elif) kelimelerinin eşdeğerlik tablosu.
+ * Öğrenci veya ses tanıma motoru "هاذا" veya "هذا" döndürdüğünde %100 tam eşleşme sağlar.
+ */
+const MED_MUKADDER_EQUIVALENTS: Record<string, string> = {
+  هاذا: "هذا",
+  هاذه: "هذه",
+  هاذهي: "هذه",
+  هاذان: "هذان",
+  هاؤلا: "هؤلا",
+  هاؤلاء: "هؤلاء",
+  ذالك: "ذلك",
+  كذالك: "كذلك",
+  فذالك: "فذلك",
+  هاكذا: "هكذا",
+  لاكن: "لكن",
+  ولاكن: "ولكن",
+  لاكنني: "لكنني",
+  لاكنه: "لكنه",
+  لاكنها: "لكنها",
+  رحمان: "رحمن",
+  الرحمان: "الرحمن",
+  اولائك: "اولئك",
+  الاه: "اله",
+  الاهي: "الهي",
+  طاه: "طه",
+  لهاذا: "لهذا",
+  بهاذا: "بهذا",
+  لهاذه: "لهذه",
+  بهاذه: "بهذه",
+};
+
+/**
+ * Telaffuz ve Mahreç Karşılaştırması İçin Arapça Fonetik ve Vakıf (Durak) Normalizasyonu:
+ * 1. Tüm harekeleri, şeddeyi, tatweel (ـ) karakterini ve noktalama işaretlerini (., ،, ؛, ؟, ?, !, :, ", ') temizler.
+ * 2. Hemzeli elifleri (أ, إ, آ, ٱ) standart ا harfine dönüştürür.
+ * 3. Elif-i maksûreyi (ى) ي harfine dönüştürür.
+ * 4. Kelime sonundaki Tâ-i Merbûta (ة) ile ه harfini eşdeğer kabul eder (vakıf kuralı).
+ * 5. هذا/هاذا, هذه/هاذه, ذلك/ذالك, لكن/لاكن, رحمن/رحمان gibi med-i mukadder kelimelerini eşitler.
+ */
+export function normalizeArabicForPronunciation(text: string): string {
+  if (!text) return "";
+
+  const cleaned = text
+    // 1. Harekeler, şedde, çeker ve Kur'an durak/tecvid işaretlerini temizle
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
+    // Tatweel (keşide) ve sıfır genişlikli karakterleri temizle
+    .replace(/[\u0640\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, "")
+    // Noktalama işaretlerini (., ،, ؛, ؟, ?, !, :, ", ', parantez vb.) temizle
+    .replace(/[.,،؛؟?!:"'«»()\[\]{}…\-–—/\\]/g, " ")
+    // 2. Hemzeli elifleri standart elif (ا) harfine dönüştür
+    .replace(/[أإآٱ]/g, "ا")
+    // 3. Elif-i maksûreyi (ى) ي harfine dönüştür
+    .replace(/ى/g, "ي")
+    // 4. Tâ-i Merbûta (ة) ile ه harfini eşdeğer kabul et (özellikle kelime sonunda vakıf kuralı)
+    .replace(/ة/g, "ه")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned) return "";
+
+  // 5. Med-i mukadder kelimelerini kelime bazında normalize et
+  return cleaned
+    .split(" ")
+    .map((word) => MED_MUKADDER_EQUIVALENTS[word] || word)
+    .join(" ");
+}
+

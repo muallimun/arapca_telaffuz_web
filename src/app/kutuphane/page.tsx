@@ -484,7 +484,7 @@ export default function LibraryPage() {
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
                       <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
                         <span className="bg-white/95 text-[#2b241d] font-extrabold text-[11px] px-2.5 py-0.5 rounded-lg border border-[#E6D7BE] tabular-nums">
@@ -502,15 +502,18 @@ export default function LibraryPage() {
                         </span>
                       )}
 
-                      <div className="absolute bottom-2 right-3 left-3 flex items-end justify-between gap-2">
-                        <span className="text-white text-xs font-bold truncate drop-shadow-xs">
-                          {dlg.baslik_tr}
-                        </span>
+                      <div className="absolute bottom-2 right-3 left-3 flex flex-col gap-0.5">
                         <span
                           dir="rtl"
-                          className="arabic text-white text-xl font-bold leading-none drop-shadow-xs shrink-0"
+                          className="arabic text-white text-lg sm:text-xl font-bold leading-tight text-right drop-shadow-xs truncate"
                         >
                           {getDisplayArabic(dlg.baslik_ar)}
+                        </span>
+                        <span
+                          dir="ltr"
+                          className="text-white text-xs font-bold leading-snug text-left drop-shadow-xs truncate"
+                        >
+                          {dlg.baslik_tr}
                         </span>
                       </div>
                     </Link>

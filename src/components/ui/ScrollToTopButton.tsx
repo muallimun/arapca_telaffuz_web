@@ -38,7 +38,7 @@ export default function ScrollToTopButton() {
       className={`fixed right-3 bottom-20 sm:bottom-6 sm:right-6 z-30 print:hidden w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-[#0CA678] hover:bg-[#099268] text-white border-2 border-[#087F5B] border-b-4 shadow-lg flex items-center justify-center cursor-pointer active:border-b-2 active:translate-y-0.5 transition-all duration-300 ${
         visible
           ? "opacity-100 translate-y-0 pointer-events-auto"
-          : "opacity-0 translate-y-4 pointer-events-none"
+          : "opacity-0 pointer-events-none translate-y-2"
       }`}
     >
       <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.75} />

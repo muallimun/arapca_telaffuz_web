@@ -8,11 +8,42 @@ export interface RecordingSession16kHz {
     trimmedSamples: Float32Array;
     wavBlob: Blob;
     wavUrl: string;
+    playbackBlob: Blob;
+    playbackUrl: string;
+    mimeType: string;
     duration: number;
+    rawDuration: number;
+    voicedDuration: number;
+    peakRms: number;
+    avgRms: number;
+    isSilent: boolean;
     rmsHistory: number[];
     envelopeBars: number[];
   }>;
   getLiveRms: () => number;
+  getStream: () => MediaStream;
+  getAudioContext: () => AudioContext;
+}
+
+/**
+ * Mobil (iOS Safari & Android Chrome) ve masaüstü tarayıcılar için desteklenen
+ * en uygun MediaRecorder MIME türünü dinamik olarak seçer.
+ */
+export function getSupportedAudioMimeType(): string {
+  if (
+    typeof window === "undefined" ||
+    typeof MediaRecorder === "undefined" ||
+    typeof MediaRecorder.isTypeSupported !== "function"
+  ) {
+    return "";
+  }
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg",
+  ];
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
 }
 
 /**
@@ -45,6 +76,13 @@ export function extractFloat32Envelope(
   }
 
   const maxVal = Math.max(...bars, 0.0001);
+  // Eğer en yüksek enerji bile sessizlik eşiğinin altındaysa arka plan gürültüsünü 1.0'a büyütme
+  if (maxVal < 0.008) {
+    return {
+      bars: Array(numBars).fill(0.05),
+      duration: 0,
+    };
+  }
   const normalizedBars = bars.map((b) => Math.max(0.04, b / maxVal));
 
   return {
@@ -205,8 +243,11 @@ export function trimSilence(
   float32Data: Float32Array,
   threshold: number = 0.012
 ): Float32Array {
-  let start = 0;
-  let end = float32Data.length - 1;
+  if (!float32Data || float32Data.length === 0) {
+    return new Float32Array(0);
+  }
+  let start = -1;
+  let end = -1;
 
   for (let i = 0; i < float32Data.length; i++) {
     if (Math.abs(float32Data[i]) > threshold) {
@@ -221,14 +262,17 @@ export function trimSilence(
     }
   }
 
-  // En az 0.15 saniyelik (2400 örnek) bir kesit olsun
-  if (end - start < 2400) return float32Data;
+  // Eğer hiçbir örnek sessizlik eşiğini geçmediyse boş dizi döndür
+  if (start === -1 || end === -1 || end <= start) {
+    return new Float32Array(0);
+  }
+
   return float32Data.slice(start, end + 1);
 }
 
 /**
  * Doğrudan AudioContext({ sampleRate: 16000 }) üzerinden 16kHz Mono Float32Array ses kaydı,
- * canlı RMS zarfı (rmsHistory) ve otomatik sessizlik algılama (autoStopOnSilence) başlatır.
+ * mobil uyumlu MediaRecorder (webm/mp4/ogg) kaydı, canlı RMS zarfı ve otomatik sessizlik algılama başlatır.
  */
 export async function start16kHzRecorder(options?: {
   onLiveRms?: (rms: number, rmsHistory: number[]) => void;
@@ -246,6 +290,27 @@ export async function start16kHzRecorder(options?: {
     },
   });
 
+  // Mobil (iOS Safari / Android) ve masaüstü için MediaRecorder başlat
+  const supportedMimeType = getSupportedAudioMimeType();
+  let mediaRecorder: MediaRecorder | null = null;
+  const mediaChunks: BlobPart[] = [];
+
+  if (typeof MediaRecorder !== "undefined") {
+    try {
+      mediaRecorder = supportedMimeType
+        ? new MediaRecorder(stream, { mimeType: supportedMimeType })
+        : new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (e: BlobEvent) => {
+        if (e.data && e.data.size > 0) {
+          mediaChunks.push(e.data);
+        }
+      };
+      mediaRecorder.start(200);
+    } catch {
+      mediaRecorder = null;
+    }
+  }
+
   const AudioCtx =
     window.AudioContext ||
     (window as unknown as { webkitAudioContext: typeof AudioContext })
@@ -256,23 +321,36 @@ export async function start16kHzRecorder(options?: {
   } catch {
     audioCtx = new AudioCtx();
   }
+  if (audioCtx.state === "suspended") {
+    await audioCtx.resume().catch(() => {});
+  }
+
   const source = audioCtx.createMediaStreamSource(stream);
   const processor = audioCtx.createScriptProcessor(2048, 1, 1);
 
   const chunks: Float32Array[] = [];
+  const rawRmsValues: number[] = [];
   const rmsHistory: number[] = [];
   let currentRms = 0;
+  let peakRawRms = 0;
   let hasSpoken = false;
   let firstSpeechAt = 0;
   let lastSpeechAt = Date.now();
   let stopped = false;
   let autoStopTriggered = false;
   const startedAt = Date.now();
-  const silenceLimitMs = options?.silenceDurationMs ?? 1000;
-  const maxDurationLimitMs = options?.maxDurationMs ?? 10000;
+  const silenceLimitMs = options?.silenceDurationMs ?? 1200;
+  const maxDurationLimitMs = options?.maxDurationMs ?? 12000;
 
   const killStreamImmediately = () => {
     stopped = true;
+    try {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+    } catch {
+      // ignore
+    }
     try {
       processor.disconnect();
       source.disconnect();
@@ -304,13 +382,16 @@ export async function start16kHzRecorder(options?: {
       sumSq += copy[i] * copy[i];
     }
     const rms = Math.sqrt(sumSq / copy.length);
+    rawRmsValues.push(rms);
+    if (rms > peakRawRms) peakRawRms = rms;
+
     currentRms = Math.min(1, rms * 4.5);
     rmsHistory.push(currentRms);
 
     options?.onLiveRms?.(currentRms, rmsHistory.slice(-48));
 
     const now = Date.now();
-    // VAD: Konuşma başladıktan sonra silenceLimitMs (1000ms) sessizlik olursa otomatik durdur
+    // VAD: Konuşma başladıktan sonra silenceLimitMs sessizlik olursa otomatik durdur
     if (rms > 0.015) {
       if (!hasSpoken) {
         hasSpoken = true;
@@ -319,7 +400,7 @@ export async function start16kHzRecorder(options?: {
       lastSpeechAt = now;
     } else if (
       hasSpoken &&
-      now - firstSpeechAt >= 300 &&
+      now - firstSpeechAt >= 350 &&
       now - lastSpeechAt >= silenceLimitMs
     ) {
       if (!autoStopTriggered) {
@@ -342,7 +423,29 @@ export async function start16kHzRecorder(options?: {
   return {
     killStreamImmediately,
     getLiveRms: () => currentRms,
+    getStream: () => stream,
+    getAudioContext: () => audioCtx,
     stop: async () => {
+      stopped = true;
+
+      // MediaRecorder varsa son chunk'ın gelmesini bekle
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        await new Promise<void>((resolve) => {
+          const recorder = mediaRecorder!;
+          const timer = setTimeout(resolve, 250);
+          recorder.onstop = () => {
+            clearTimeout(timer);
+            resolve();
+          };
+          try {
+            recorder.stop();
+          } catch {
+            clearTimeout(timer);
+            resolve();
+          }
+        });
+      }
+
       killStreamImmediately();
 
       const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
@@ -352,6 +455,13 @@ export async function start16kHzRecorder(options?: {
         merged.set(chunk, offset);
         offset += chunk.length;
       }
+
+      const actualMimeType =
+        mediaRecorder?.mimeType || supportedMimeType || "audio/wav";
+      const nativeMediaBlob =
+        mediaChunks.length > 0
+          ? new Blob(mediaChunks, { type: actualMimeType })
+          : null;
 
       // Cihaz 16000 Hz desteklemediyse (ör. 48000 Hz açtıysa) 16000 Hz'e resample et
       let samples16kHz: Float32Array = merged;
@@ -369,19 +479,82 @@ export async function start16kHzRecorder(options?: {
         }
       }
 
+      // iOS Safari'de ScriptProcessor bazen sessiz kalabilir; nativeMediaBlob varsa oradan decode et
+      if (
+        (samples16kHz.length === 0 || peakRawRms < 0.003) &&
+        nativeMediaBlob &&
+        nativeMediaBlob.size > 256
+      ) {
+        try {
+          const ab = await nativeMediaBlob.arrayBuffer();
+          const decoded = await audioCtx.decodeAudioData(ab);
+          samples16kHz = await resampleTo16kHz(decoded);
+          let sumSq = 0;
+          let maxAbs = 0;
+          for (let i = 0; i < samples16kHz.length; i++) {
+            const v = samples16kHz[i];
+            sumSq += v * v;
+            if (Math.abs(v) > maxAbs) maxAbs = Math.abs(v);
+          }
+          const decodedRms = Math.sqrt(sumSq / Math.max(1, samples16kHz.length));
+          if (decodedRms > peakRawRms) peakRawRms = decodedRms;
+          if (maxAbs > 0.02) hasSpoken = true;
+        } catch {
+          // ignore decode fallback error
+        }
+      }
+
       await audioCtx.close().catch(() => {});
 
-      const trimmedSamples = trimSilence(samples16kHz, 0.012);
-      const wavBlob = float32ToWavBlob(trimmedSamples, 16000);
+      const rawDuration =
+        samples16kHz.length > 0
+          ? samples16kHz.length / 16000
+          : (Date.now() - startedAt) / 1000;
+
+      const trimmedSamples = trimSilence(samples16kHz, 0.01);
+      const voicedDuration = trimmedSamples.length / 16000;
+      const avgRms =
+        rawRmsValues.length > 0
+          ? rawRmsValues.reduce((a, b) => a + b, 0) / rawRmsValues.length
+          : 0;
+
+      const isSilent =
+        rawDuration < 0.4 ||
+        voicedDuration < 0.15 ||
+        (peakRawRms < 0.011 && !hasSpoken);
+
+      const finalSamplesForWav =
+        trimmedSamples.length > 0 ? trimmedSamples : samples16kHz;
+      const wavBlob = float32ToWavBlob(finalSamplesForWav, 16000);
       const wavUrl = URL.createObjectURL(wavBlob);
-      const env = extractFloat32Envelope(trimmedSamples, 16000, 48);
+
+      // Mobil (iOS Safari & Android) uyumluluğu için MediaRecorder Blob'u varsa oynatmada onu tercih et
+      const playbackBlob =
+        nativeMediaBlob && nativeMediaBlob.size > 256
+          ? nativeMediaBlob
+          : wavBlob;
+      const playbackUrl =
+        playbackBlob === wavBlob ? wavUrl : URL.createObjectURL(playbackBlob);
+
+      const env =
+        trimmedSamples.length >= 1600
+          ? extractFloat32Envelope(trimmedSamples, 16000, 48)
+          : { bars: Array(48).fill(0.05), duration: 0 };
 
       return {
         samples16kHz,
         trimmedSamples,
         wavBlob,
         wavUrl,
-        duration: trimmedSamples.length / 16000,
+        playbackBlob,
+        playbackUrl,
+        mimeType: playbackBlob.type || "audio/wav",
+        duration: voicedDuration > 0 ? voicedDuration : rawDuration,
+        rawDuration,
+        voicedDuration,
+        peakRms: peakRawRms,
+        avgRms,
+        isSilent,
         rmsHistory,
         envelopeBars: env.bars,
       };

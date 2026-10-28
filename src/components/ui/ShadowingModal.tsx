@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useUserStore } from "@/store/userStore";
 import { useSettings, SpeechRate } from "@/store/settings";
+import { useAudioStore } from "@/store/audioStore";
 import { sozluk } from "@/lib/data";
 import { analyzeAndMatchWord } from "@/lib/dict";
-import { playTTS, playAudioElement, VoiceOption } from "@/lib/audio";
+import {
+  playTTS,
+  playAudioElement,
+  stopAllAudio,
+  VoiceOption,
+} from "@/lib/audio";
+import { normalizeArabicForPronunciation } from "@/lib/arabicTextUtils";
 import { HybridSpeechManager, SttEngineType } from "@/lib/speechManager";
 import {
   X,
@@ -127,24 +134,82 @@ export default function ShadowingModal({
   const [userDuration, setUserDuration] = useState<number>(0);
   const [adaptiveResult, setAdaptiveResult] =
     useState<AdaptiveCoachingResult | null>(null);
+  const [silentWarning, setSilentWarning] = useState<string | null>(null);
+
+  const audioStore = useAudioStore();
 
   const speechManagerRef = useRef<HybridSpeechManager | null>(null);
   const recordingSessionRef = useRef<RecordingSession16kHz | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const finalTranscriptRef = useRef<string>("");
+  const interimTranscriptRef = useRef<string>("");
   const userAudioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const refAudioBufferRef = useRef<AudioBuffer | null>(null);
 
-  // Unmount sırasında açık kalan mikrofon veya Web Speech kaydını KESİNLİKLE kapat
+  const cleanupMediaResources = useCallback(() => {
+    if (rafIdRef.current !== null && typeof window !== "undefined") {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    if (mediaRecorderRef.current) {
+      try {
+        if (mediaRecorderRef.current.state !== "inactive") {
+          mediaRecorderRef.current.stop();
+        }
+      } catch {
+        // ignore
+      }
+      mediaRecorderRef.current = null;
+    }
+    if (recordingSessionRef.current) {
+      try {
+        recordingSessionRef.current.killStreamImmediately();
+      } catch {
+        // ignore
+      }
+      recordingSessionRef.current = null;
+    }
+    if (mediaStreamRef.current) {
+      try {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      } catch {
+        // ignore
+      }
+      mediaStreamRef.current = null;
+    }
+    if (audioContextRef.current) {
+      try {
+        if (audioContextRef.current.state !== "closed") {
+          audioContextRef.current.close().catch(() => {});
+        }
+      } catch {
+        // ignore
+      }
+      audioContextRef.current = null;
+    }
+    speechManagerRef.current?.stopLiveWebSpeech();
+    if (typeof window !== "undefined") {
+      window.speechSynthesis?.cancel();
+    }
+  }, []);
+
+  const handleClose = useCallback(() => {
+    cleanupMediaResources();
+    stopAllAudio();
+    onClose();
+  }, [cleanupMediaResources, onClose]);
+
+  // Unmount sırasında açık kalan MediaStream, AudioContext, RAF ve Web Speech kaydını KESİNLİKLE kapat
   useEffect(() => {
     speechManagerRef.current = new HybridSpeechManager();
     return () => {
-      if (recordingSessionRef.current) {
-        recordingSessionRef.current.stop().catch(() => {});
-        recordingSessionRef.current = null;
-      }
-      speechManagerRef.current?.stopLiveWebSpeech();
+      cleanupMediaResources();
       speechManagerRef.current?.terminate();
     };
-  }, []);
+  }, [cleanupMediaResources]);
 
   useEffect(() => {
     return () => {
@@ -241,6 +306,7 @@ export default function ShadowingModal({
     setRhythmScore(null);
     setTempoScore(null);
     setFluencyScore(null);
+    setSilentWarning(null);
     if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
     setUserAudioUrl(null);
     setUserWavBlob(null);
@@ -304,13 +370,37 @@ export default function ShadowingModal({
       userAudioPlayerRef.current.currentTime = 0;
       setIsPlayingUser(false);
     } else {
-      userAudioPlayerRef.current.play();
-      setIsPlayingUser(true);
+      audioStore.stop();
+      stopAllAudio();
+      if (typeof window !== "undefined") {
+        window.speechSynthesis?.cancel();
+      }
+      setIsPlayingRef(false);
+      userAudioPlayerRef.current.currentTime = 0;
+      userAudioPlayerRef.current
+        .play()
+        .then(() => setIsPlayingUser(true))
+        .catch(() => setIsPlayingUser(false));
     }
   };
 
   const startRecording = async () => {
+    // Arka planda çalan diyalog veya TTS sesinin mikrofona karışmaması için anında sustur
+    audioStore.stop();
+    stopAllAudio();
+    if (typeof window !== "undefined") {
+      window.speechSynthesis?.cancel();
+    }
+    if (userAudioPlayerRef.current) {
+      userAudioPlayerRef.current.pause();
+      userAudioPlayerRef.current.currentTime = 0;
+    }
+    setIsPlayingRef(false);
+    setIsPlayingUser(false);
+
+    cleanupMediaResources();
     playRecordStart();
+
     if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
     setUserAudioUrl(null);
     setUserWavBlob(null);
@@ -322,24 +412,41 @@ export default function ShadowingModal({
     setTempoScore(null);
     setFluencyScore(null);
     setAdaptiveResult(null);
+    setSilentWarning(null);
     setUsedEngineBadge(null);
     setUserBars(DEFAULT_BARS);
+    finalTranscriptRef.current = "";
+    interimTranscriptRef.current = "";
 
     try {
       // Paralel olarak Web Speech API'yi başlat (hem hızlı motor hem de Whisper fallback için)
       speechManagerRef.current?.startLiveWebSpeech({
-        onInterimTranscript: (interim) => {
-          setLiveInterimText(interim);
+        onInterimTranscript: (combined, finalPart, interimPart) => {
+          if (typeof finalPart === "string" && finalPart.trim()) {
+            finalTranscriptRef.current = finalPart.trim();
+          }
+          if (typeof interimPart === "string") {
+            interimTranscriptRef.current = interimPart.trim();
+          } else if (combined && !finalTranscriptRef.current) {
+            interimTranscriptRef.current = combined.trim();
+          }
+          setLiveInterimText(combined);
         },
       });
 
       const session = await start16kHzRecorder({
         onLiveRms: (_rms, liveHistory) => {
-          const padded = [
-            ...Array(Math.max(0, 48 - liveHistory.length)).fill(0.06),
-            ...liveHistory.slice(-48),
-          ];
-          setUserBars(padded);
+          if (rafIdRef.current !== null) {
+            cancelAnimationFrame(rafIdRef.current);
+          }
+          rafIdRef.current = requestAnimationFrame(() => {
+            const padded = [
+              ...Array(Math.max(0, 48 - liveHistory.length)).fill(0.06),
+              ...liveHistory.slice(-48),
+            ];
+            setUserBars(padded);
+            rafIdRef.current = null;
+          });
         },
         onAutoSilenceStop: () => {
           stopRecording();
@@ -347,6 +454,37 @@ export default function ShadowingModal({
       });
 
       recordingSessionRef.current = session;
+      mediaStreamRef.current = session.getStream();
+      audioContextRef.current = session.getAudioContext();
+
+      // Mobil (iOS Safari & Android) ses formatı uyumluluğu için desteklenen MIME türünü dinamik seç
+      if (
+        typeof window !== "undefined" &&
+        typeof MediaRecorder !== "undefined" &&
+        mediaStreamRef.current
+      ) {
+        const supportedType = [
+          "audio/webm;codecs=opus",
+          "audio/webm",
+          "audio/mp4",
+          "audio/ogg",
+        ].find(
+          (type) =>
+            typeof MediaRecorder.isTypeSupported === "function" &&
+            MediaRecorder.isTypeSupported(type)
+        );
+        try {
+          const rec = supportedType
+            ? new MediaRecorder(mediaStreamRef.current, {
+                mimeType: supportedType,
+              })
+            : new MediaRecorder(mediaStreamRef.current);
+          mediaRecorderRef.current = rec;
+        } catch {
+          mediaRecorderRef.current = null;
+        }
+      }
+
       setIsRecording(true);
     } catch {
       setAdaptiveResult({
@@ -362,18 +500,84 @@ export default function ShadowingModal({
     const activeSession = recordingSessionRef.current;
     recordingSessionRef.current = null;
 
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+
     playRecordStop();
     setIsRecording(false);
     setIsAnalyzing(true);
 
-    speechManagerRef.current?.stopLiveWebSpeech();
+    const stoppedWebSpeechText =
+      speechManagerRef.current?.stopLiveWebSpeech() || "";
+    const fullSpokenText = (
+      finalTranscriptRef.current +
+      " " +
+      interimTranscriptRef.current
+    ).trim();
+    const bestWebSpeechText = fullSpokenText || stoppedWebSpeechText;
 
     try {
       const recorded = await activeSession.stop();
-      setUserAudioUrl(recorded.wavUrl);
+      mediaStreamRef.current = null;
+      audioContextRef.current = null;
+      mediaRecorderRef.current = null;
+
+      setUserAudioUrl(recorded.playbackUrl || recorded.wavUrl);
       setUserWavBlob(recorded.wavBlob);
       setUserDuration(recorded.duration);
       setUserBars(recorded.envelopeBars);
+
+      let recognizedText = "";
+      let usedEngine: SttEngineType = sttEngine;
+
+      if (speechManagerRef.current) {
+        // Eğer kayıt çok kısaysa (< 0.4 sn) veya tamamen sessizse ve Web Speech de boşsa Whisper'ı boşuna çalıştırma
+        if (recorded.isSilent && !bestWebSpeechText) {
+          recognizedText = "";
+        } else {
+          const hybridRes = await speechManagerRef.current.transcribeHybrid(
+            sttEngine,
+            recorded.trimmedSamples.length > 0
+              ? recorded.trimmedSamples
+              : recorded.samples16kHz,
+            {
+              onStatusChange: (st) => setWhisperStatus(st),
+            }
+          );
+          recognizedText = (hybridRes.text || "").trim() || bestWebSpeechText;
+          usedEngine = hybridRes.usedEngine;
+        }
+        setUsedEngineBadge(usedEngine);
+      } else {
+        recognizedText = bestWebSpeechText;
+      }
+
+      // E. Sessiz Kayıt / Düşük Ses Kontrolü:
+      // Kayıt çok kısaysa (< 0.4 sn) veya ses seviyesi (RMS) sessizlik eşiğinin altındaysa ve hiçbir kelime algılanmadıysa,
+      // yapay/yanıltıcı bir akıcılık veya ritim puanı üretme!
+      const normalizedSpoken = normalizeArabicForPronunciation(recognizedText);
+      const hasDetectedWords =
+        normalizedSpoken.length > 0 && /[\u0600-\u06FF]/.test(normalizedSpoken);
+
+      if (
+        !hasDetectedWords &&
+        (recorded.rawDuration < 0.4 || recorded.isSilent || !recognizedText)
+      ) {
+        setIsAnalyzing(false);
+        setWhisperStatus("");
+        setEvaluation(null);
+        setRhythmScore(null);
+        setTempoScore(null);
+        setFluencyScore(null);
+        setActiveWordTip(null);
+        playError();
+        setSilentWarning(
+          "Mikrofondan net bir ses algılanamadı. Lütfen mikrofona biraz daha yakın ve net bir sesle tekrar okuyun."
+        );
+        return;
+      }
 
       let computedRhythm = 0;
       if (refAudioBufferRef.current) {
@@ -398,22 +602,10 @@ export default function ShadowingModal({
         setTempoScore(computedTempo);
       }
 
-      if (speechManagerRef.current) {
-        const { text: recognizedText, usedEngine } =
-          await speechManagerRef.current.transcribeHybrid(
-            sttEngine,
-            recorded.trimmedSamples,
-            {
-              onStatusChange: (st) => setWhisperStatus(st),
-            }
-          );
-        setUsedEngineBadge(usedEngine);
-        processTranscription(recognizedText, computedRhythm);
-      } else {
-        setIsAnalyzing(false);
-      }
+      processTranscription(recognizedText, computedRhythm);
     } catch {
       setIsAnalyzing(false);
+      setWhisperStatus("");
     }
   };
 
@@ -424,17 +616,21 @@ export default function ShadowingModal({
     setIsAnalyzing(false);
     setWhisperStatus("");
 
-    if (!transcribedText || transcribedText.trim().length < 1) {
-      setEvaluation({ words: [], overallScore: 0, isRootGuardTriggered: false });
+    const normalizedCheck = normalizeArabicForPronunciation(transcribedText);
+    if (!normalizedCheck || !/[\u0600-\u06FF]/.test(normalizedCheck)) {
+      setEvaluation(null);
+      setRhythmScore(null);
+      setTempoScore(null);
+      setFluencyScore(null);
+      setActiveWordTip(null);
       playError();
-      setAdaptiveResult({
-        action: "keep_going",
-        message:
-          "Ses algılanamadı. Lütfen mikrofona biraz daha yakın ve net bir şekilde Arapça cümleyi okuyun.",
-      });
+      setSilentWarning(
+        "Mikrofondan net bir ses algılanamadı. Lütfen mikrofona biraz daha yakın ve net bir sesle tekrar okuyun."
+      );
       return;
     }
 
+    setSilentWarning(null);
     const result = evaluateSentenceWords(activeText, transcribedText);
     setEvaluation(result);
     recordPronunciationScore(result.overallScore);
@@ -447,9 +643,11 @@ export default function ShadowingModal({
     const fluency = calculateOverallFluency(pronunciation, currentRhythm);
     setFluencyScore(fluency);
 
+    // Öncelikle eksik/farklı (<%85) okunan kelimeleri seç
     const firstErr = result.words.find((w) => w.status !== "correct");
-    const detectedMakhrajPair = result.words.find((w) => w.makhrajTip?.pair)
-      ?.makhrajTip?.pair;
+    const detectedMakhrajPair = result.words.find(
+      (w) => w.status !== "correct" && w.makhrajTip?.pair
+    )?.makhrajTip?.pair;
 
     const updatedScores = [...pronunciationScores, result.overallScore];
     const coaching = evaluateAdaptiveCoaching(
@@ -554,7 +752,7 @@ export default function ShadowingModal({
               type="button"
               onClick={() => {
                 playClick();
-                onClose();
+                handleClose();
               }}
               className="w-9 h-9 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 flex items-center justify-center text-[var(--muted)] hover:text-red-600 transition-colors cursor-pointer"
               aria-label="Kapat"
@@ -812,6 +1010,8 @@ export default function ShadowingModal({
                   <audio
                     ref={userAudioPlayerRef}
                     src={userAudioUrl}
+                    playsInline
+                    preload="auto"
                     onEnded={() => setIsPlayingUser(false)}
                     className="hidden"
                   />
@@ -836,6 +1036,14 @@ export default function ShadowingModal({
                 {whisperStatus ||
                   "Telaffuzunuz ve 38 mahreç çifti analiz ediliyor..."}
               </span>
+            </div>
+          )}
+
+          {/* SESSİZ KAYIT / DÜŞÜK SES UYARISI */}
+          {silentWarning && !isAnalyzing && (
+            <div className="bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-400 border-b-4 rounded-2xl p-4 flex items-center gap-3 text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200">
+              <AlertTriangle size={20} className="text-amber-600 shrink-0" />
+              <span>{silentWarning}</span>
             </div>
           )}
 
@@ -1011,16 +1219,15 @@ export default function ShadowingModal({
                 <div className="bg-white dark:bg-[var(--background)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-4 space-y-2.5 text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-2">
                     <h4 className="font-extrabold text-[var(--foreground)] flex items-center gap-1.5">
-                      <AlertTriangle
-                        size={15}
-                        className={
-                          activeWordTip.status === "correct"
-                            ? "text-[#0CA678]"
-                            : "text-rose-600"
-                        }
-                      />
+                      {activeWordTip.status === "correct" ? (
+                        <CheckCircle2 size={15} className="text-[#0CA678]" />
+                      ) : (
+                        <Target size={15} className="text-[#6741D9]" />
+                      )}
                       <span>
-                        Kelime Mahreç, Kök İskeleti ve Vezin Karşılaştırması
+                        {activeWordTip.status === "correct"
+                          ? "Doğru Telaffuz & Tam Mahreç Uyumu"
+                          : "Odaklı Mahreç Koçu & Telaffuz Rehberi"}
                       </span>
                     </h4>
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -1066,50 +1273,59 @@ export default function ShadowingModal({
                       className={`p-2.5 rounded-xl border ${
                         activeWordTip.status === "correct"
                           ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                          : "bg-rose-50 border-rose-200 text-rose-700"
+                          : "bg-amber-50 border-amber-200 text-amber-900"
                       }`}
                     >
                       <span className="text-[10px] font-bold block">
                         Algılanan Okunuş (%{activeWordTip.score})
                       </span>
                       <span dir="rtl" className="arabic text-2xl font-bold">
-                        {activeWordTip.spokenWord || "Anlaşılamadı"}
+                        {activeWordTip.spokenWord || "Duyulamadı"}
                       </span>
                     </div>
                   </div>
 
-                  {activeWordTip.makhrajTip && (
-                    <div className="bg-[#F7EFE1] p-3 rounded-xl border border-[#E6D7BE]">
-                      <p className="font-extrabold text-[#087F5B] mb-0.5">
-                        🎯 {activeWordTip.makhrajTip.title} (
-                        {activeWordTip.makhrajTip.pair})
-                      </p>
-                      <p className="text-[var(--foreground)] font-medium leading-relaxed">
-                        {activeWordTip.makhrajTip.tip}
-                      </p>
+                  {activeWordTip.status === "correct" ? (
+                    <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-semibold">
+                      ✨ Harika! Bu kelimeyi mahreç ve vakıf kurallarına uygun
+                      olarak doğru telaffuz ettiniz.
                     </div>
-                  )}
+                  ) : (
+                    <>
+                      {activeWordTip.makhrajTip && (
+                        <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] p-3 rounded-xl border border-[#E6D7BE]">
+                          <p className="font-extrabold text-[#087F5B] mb-0.5">
+                            🎯 {activeWordTip.makhrajTip.title} (
+                            {activeWordTip.makhrajTip.pair})
+                          </p>
+                          <p className="text-[var(--foreground)] font-medium leading-relaxed">
+                            {activeWordTip.makhrajTip.tip}
+                          </p>
+                        </div>
+                      )}
 
-                  {activeWordTip.rootGuardMessage && (
-                    <div className="bg-rose-50 p-3 rounded-xl border border-rose-200">
-                      <p className="font-extrabold text-rose-800 mb-0.5">
-                        🛡️ Kök Harf Kalkanı (Max %58 Sınırı)
-                      </p>
-                      <p className="text-rose-950 font-medium">
-                        {activeWordTip.rootGuardMessage}
-                      </p>
-                    </div>
-                  )}
+                      {activeWordTip.rootGuardMessage && (
+                        <div className="bg-rose-50 p-3 rounded-xl border border-rose-200">
+                          <p className="font-extrabold text-rose-800 mb-0.5">
+                            🛡️ Kök Harf Kalkanı
+                          </p>
+                          <p className="text-rose-950 font-medium">
+                            {activeWordTip.rootGuardMessage}
+                          </p>
+                        </div>
+                      )}
 
-                  {activeWordTip.medVezinTip && (
-                    <div className="bg-amber-50 p-3 rounded-xl border border-amber-200">
-                      <p className="font-extrabold text-amber-800 mb-0.5">
-                        📐 Vezin / Uzatma (Med) Analizi
-                      </p>
-                      <p className="text-amber-950 font-medium">
-                        {activeWordTip.medVezinTip}
-                      </p>
-                    </div>
+                      {activeWordTip.medVezinTip && (
+                        <div className="bg-amber-50 p-3 rounded-xl border border-amber-200">
+                          <p className="font-extrabold text-amber-800 mb-0.5">
+                            📐 Telaffuz & Vezin İpucu
+                          </p>
+                          <p className="text-amber-950 font-medium">
+                            {activeWordTip.medVezinTip}
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -1160,7 +1376,7 @@ export default function ShadowingModal({
             type="button"
             onClick={() => {
               playClick();
-              onClose();
+              handleClose();
             }}
             className="py-3 px-5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-4 text-xs font-extrabold text-[var(--foreground)] hover:bg-[#FDFBF7] cursor-pointer"
           >
