@@ -691,7 +691,9 @@ export default function ShadowingModal({
     }
 
     setEvaluation(result);
-    recordPronunciationScore(result.overallScore);
+    if (result.overallScore > 0) {
+      recordPronunciationScore(result.overallScore);
+    }
 
     if (result.overallScore >= 80) playSuccess();
     else if (result.overallScore >= 50) playPartial();
@@ -707,11 +709,15 @@ export default function ShadowingModal({
       (w) => w.status !== "correct" && w.makhrajTip?.pair
     )?.makhrajTip?.pair;
 
-    const updatedScores = [...pronunciationScores, result.overallScore];
+    const updatedScores = [
+      ...pronunciationScores.filter((s) => s > 0),
+      ...(result.overallScore > 0 ? [result.overallScore] : []),
+    ];
     const coaching = evaluateAdaptiveCoaching(
       updatedScores,
       level,
-      detectedMakhrajPair
+      detectedMakhrajPair,
+      fluency
     );
     setAdaptiveResult(coaching);
 
@@ -836,7 +842,7 @@ export default function ShadowingModal({
         </div>
 
         {/* İÇERİK GÖVDESİ */}
-        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="p-4 sm:p-5 pb-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
           {/* MİKRO-DRILL (ODAKLI KELİME ANTRENMANI) GERİ DÖNÜŞ ŞERİDİ */}
           {isMicroDrill && (
             <div className="bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-4 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-2">
@@ -901,7 +907,7 @@ export default function ShadowingModal({
             {isRecording && (
               <div className="rounded-xl bg-gradient-to-r from-[#0CA678] via-emerald-600 to-rose-600 text-white px-4 py-2.5 shadow-lg border-2 border-white/40 animate-pulse flex items-center justify-center gap-2 text-xs sm:text-sm font-black tracking-wide">
                 <Mic size={18} className="shrink-0 animate-bounce" />
-                <span>🎙️ MİKROFON AÇIK — ŞİMDİ YÜKSEK SESLE OKUYUN!</span>
+                <span>MİKROFON AÇIK — ŞİMDİ YÜKSEK SESLE OKUYUN!</span>
               </div>
             )}
 
@@ -1086,7 +1092,7 @@ export default function ShadowingModal({
                     ) : (
                       <Play size={13} fill="currentColor" />
                     )}
-                    <span>▶️ Sesim (.wav Dinle)</span>
+                    <span>Sesimi Dinle (.wav)</span>
                   </button>
                   <button
                     type="button"
@@ -1106,23 +1112,20 @@ export default function ShadowingModal({
                   />
                 </div>
               ) : isRecording ? (
-                <div className="rounded-xl bg-[#6741D9] text-white px-3 py-2 shadow-md border-b-3 border-[#4C28B5] flex flex-col items-center justify-center gap-1 text-center">
-                  <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-extrabold">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                    <Mic size={16} className="shrink-0" />
-                    <span>🗣️ Şimdi Arapça cümleyi yüksek sesle okuyun...</span>
-                  </div>
-                  {liveInterimText && (
-                    <span
-                      dir="rtl"
-                      className="arabic text-sm font-bold text-emerald-200 truncate max-w-full"
-                    >
+                <div className="w-full py-2.5 px-3 rounded-xl bg-[#6741D9]/15 dark:bg-[#6741D9]/25 border border-[#6741D9]/40 text-xs font-extrabold text-[#4C28B5] dark:text-[#d0bfff] flex items-center justify-center gap-1.5 truncate">
+                  <span className="w-2 h-2 rounded-full bg-[#0CA678] animate-ping shrink-0" />
+                  {liveInterimText ? (
+                    <span dir="rtl" className="arabic text-xs font-bold truncate">
                       Algılanan: {liveInterimText}
+                    </span>
+                  ) : (
+                    <span className="truncate">
+                      🗣️ Şimdi Arapça cümleyi yüksek sesle okuyun...
                     </span>
                   )}
                 </div>
               ) : (
-                <div className="text-[11px] font-semibold text-center text-[var(--muted)] py-1.5 truncate">
+                <div className="w-full py-2.5 px-3 rounded-xl bg-white/60 dark:bg-[var(--background)]/60 border border-dashed border-[#E6D7BE] text-[11px] font-semibold text-center text-[var(--muted)] truncate">
                   Aşağıdaki &lsquo;Kayda Başla&rsquo; butonuna basıp okuyun
                 </div>
               )}
@@ -1196,6 +1199,9 @@ export default function ShadowingModal({
                   className={`border-2 border-b-4 rounded-2xl p-3.5 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
                     adaptiveResult.action === "level_up"
                       ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff]"
+                      : (fluencyScore ?? evaluation.overallScore) >= 75 ||
+                        evaluation.overallScore >= 85
+                      ? "bg-emerald-50 dark:bg-emerald-950/40 border-[#0CA678] text-[#087F5B] dark:text-emerald-200"
                       : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--foreground)]"
                   }`}
                 >
@@ -1204,6 +1210,12 @@ export default function ShadowingModal({
                       <TrendingUp
                         size={18}
                         className="text-[#6741D9] shrink-0 mt-0.5"
+                      />
+                    ) : (fluencyScore ?? evaluation.overallScore) >= 75 ||
+                      evaluation.overallScore >= 85 ? (
+                      <CheckCircle2
+                        size={16}
+                        className="text-[#0CA678] shrink-0 mt-0.5"
                       />
                     ) : (
                       <Info
@@ -1360,7 +1372,7 @@ export default function ShadowingModal({
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#6741D9] text-white font-bold border-b-2 border-[#5230B5] cursor-pointer"
                           >
                             <Target size={12} />
-                            <span>🎯 Sadece Bu Kelimeyi Çalış</span>
+                            <span>Sadece Bu Kelimeyi Çalış</span>
                           </button>
                         )}
                     </div>

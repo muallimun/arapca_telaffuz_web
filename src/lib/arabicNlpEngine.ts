@@ -1139,7 +1139,8 @@ export function evaluateSentenceWords(
 export function evaluateAdaptiveCoaching(
   recentScores: number[],
   currentLevel: string = "A1",
-  lastMakhrajPair?: string
+  lastMakhrajPair?: string,
+  currentFluencyScore?: number
 ): AdaptiveCoachingResult {
   const levelOrder = ["A1", "A2", "B1", "B2", "C1"];
   const normalizedLevel =
@@ -1150,8 +1151,42 @@ export function evaluateAdaptiveCoaching(
       ? levelOrder[currentIdx + 1]
       : "C1";
 
-  if (recentScores.length >= 3) {
-    const last3 = recentScores.slice(-3);
+  // %0 (sessiz/iptal edilmiş) denemeleri geçmiş ortalamasına dahil etme
+  const validScores = recentScores.filter((s) => s > 0);
+  const latest =
+    validScores.length > 0
+      ? validScores[validScores.length - 1]
+      : recentScores[recentScores.length - 1] ?? 0;
+  const effectiveFluency = currentFluencyScore ?? latest;
+  const isCurrentHigh = effectiveFluency >= 75 || latest >= 85;
+
+  if (validScores.length >= 6) {
+    const last6 = validScores.slice(-6);
+    const avg6 = last6.reduce((a, b) => a + b, 0) / 6;
+    const allAbove85 = last6.every((s) => s >= 85);
+    if (allAbove85 || avg6 >= 85) {
+      return {
+        action: "level_up",
+        suggestedLevel: nextLevel,
+        message: `Harika! Son 6 telaffuz denemenizin ortalaması %${Math.round(
+          avg6
+        )}. Bir üst kur olan ${nextLevel} seviyesindeki diyaloglara geçmeye hazırsınız!`,
+      };
+    }
+  }
+
+  // Son deneme yüksekse (Genel Akıcılık >= %75 veya Telaffuz Doğruluğu >= %85) asla "Hızı 0.75x yap" uyarısı gösterme
+  if (isCurrentHigh) {
+    return {
+      action: "keep_going",
+      message:
+        "Harika gelişim! Bu denemede kelime mahreçlerini ve cümle akıcılığını çok başarılı telaffuz ettiniz.",
+    };
+  }
+
+  // "Okuma hızını 0.75x moduna düşürmeniz önerilir" tavsiyesini yalnızca kullanıcının son denemesi de %70'in altındaysa göster
+  if (latest < 70 && validScores.length >= 3) {
+    const last3 = validScores.slice(-3);
     const avg3 = last3.reduce((a, b) => a + b, 0) / 3;
     const allUnder60 = last3.every((s) => s < 60);
     if (allUnder60 || avg3 < 60) {
@@ -1170,27 +1205,26 @@ export function evaluateAdaptiveCoaching(
     }
   }
 
-  if (recentScores.length >= 6) {
-    const last6 = recentScores.slice(-6);
-    const avg6 = last6.reduce((a, b) => a + b, 0) / 6;
-    const allAbove85 = last6.every((s) => s >= 85);
-    if (allAbove85 || avg6 >= 85) {
-      return {
-        action: "level_up",
-        suggestedLevel: nextLevel,
-        message: `Harika! Son 6 telaffuz denemenizin ortalaması %${Math.round(
-          avg6
-        )}. Bir üst kur olan ${nextLevel} seviyesindeki diyaloglara geçmeye hazırsınız!`,
-      };
-    }
+  if (latest < 70) {
+    return {
+      action: "slow_down",
+      suggestedSpeed: 0.75,
+      focusMakhrajPair: lastMakhrajPair,
+      message: `Bu denemede telaffuz puanınız %${Math.round(
+        latest
+      )}. Okuma hızını 0.75x moduna düşürmeniz ve ${
+        lastMakhrajPair
+          ? `(${lastMakhrajPair}) mahreç ayrımına`
+          : "kelime mahreçlerine"
+      } odaklanarak tekrar denemeniz önerilir.`,
+    };
   }
 
-  const latest = recentScores[recentScores.length - 1] ?? 0;
   return {
     action: "keep_going",
     message:
       latest >= 80
-        ? "Tebrikler! Harf mahreçlerini ve cümle veznini çok başarılı telaffuz ettiniz."
+        ? "Harika gelişim! Bu denemede kelime mahreçlerini ve cümle akıcılığını çok başarılı telaffuz ettiniz."
         : "Zorlandığınız sarı veya kırmızı kelimenin üzerine tıklayarak doğal telaffuzunu dinleyin ve mahreç ipucunu inceleyip tekrar deneyin.",
   };
 }

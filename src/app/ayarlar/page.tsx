@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Type,
-  AlignLeft,
   Monitor,
   Eye,
   ChevronLeft,
@@ -51,6 +50,8 @@ import {
 import { triggerGuideModal } from "@/components/ui/GuideAndInfoModal";
 import { triggerOnboardingTour } from "@/components/ui/OnboardingTourModal";
 
+type SettingsCategory = "all" | "appearance" | "audio" | "data";
+
 export default function SettingsPage() {
   const {
     theme,
@@ -94,6 +95,8 @@ export default function SettingsPage() {
   const { isInstallable, isInstalled, isIOS, installApp } = usePwaInstall();
 
   const [mounted, setMounted] = useState(false);
+  const [activeCategory, setActiveCategory] =
+    useState<SettingsCategory>("all");
   const [confirmReset, setConfirmReset] = useState(false);
   const [dataMessage, setDataMessage] = useState<{
     type: "success" | "error";
@@ -216,45 +219,83 @@ export default function SettingsPage() {
     { label: "Çok Büyük", value: 20 },
   ];
 
+  const categoryTabs: { id: SettingsCategory; label: string }[] = [
+    { id: "all", label: "✨ Tümü" },
+    { id: "appearance", label: "🔤 Yazı Tipi & Görünüm" },
+    { id: "audio", label: "🔊 Ses & Gölgeleme" },
+    { id: "data", label: "💾 Hedef & Veri" },
+  ];
+
   const rawSampleArabic =
     "أَسْتَوْدِعُكِ اللّٰهَ يَا أُمِّي، وَأَسْتَوْدِعُكَ اللّٰهَ يَا أَبِي.";
   const sampleArabic = formatArabicText(rawSampleArabic, showHareke, arabicFont);
   const activeFontCfg = getArabicFontConfig(arabicFont);
 
+  const showAppearance =
+    activeCategory === "all" || activeCategory === "appearance";
+  const showAudio = activeCategory === "all" || activeCategory === "audio";
+  const showData = activeCategory === "all" || activeCategory === "data";
+
   return (
-    <div className="space-y-5 overflow-x-hidden">
-      {/* ÜST BAŞLIK */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            onClick={() => playClick()}
-            className="w-10 h-10 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-2 active:translate-y-0.5 transition-all shrink-0"
-            aria-label="Ana Sayfaya Dön"
-          >
-            <ChevronLeft size={20} strokeWidth={2.5} />
-          </Link>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-[var(--foreground)] tracking-tight">
-              Uygulama ve Okuma Ayarları
-            </h1>
-            <p className="text-xs font-medium text-[var(--muted)]">
-              Arapça yazı tipi (font), hareke, ses hızı ve diyalog görünüm
-              tercihlerinizi özelleştirin
-            </p>
+    <div className="space-y-4 overflow-x-hidden">
+      {/* ÜST BAŞLIK + HIZLI KATEGORİ FİLTRE SEKMELERİ */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              onClick={() => playClick()}
+              className="w-10 h-10 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-2 active:translate-y-0.5 transition-all shrink-0"
+              aria-label="Ana Sayfaya Dön"
+            >
+              <ChevronLeft size={20} strokeWidth={2.5} />
+            </Link>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-[var(--foreground)] tracking-tight">
+                Uygulama ve Okuma Ayarları
+              </h1>
+              <p className="text-xs font-medium text-[var(--muted)]">
+                Arapça yazı tipi (font), hareke, ses hızı ve diyalog görünüm
+                tercihlerinizi özelleştirin
+              </p>
+            </div>
           </div>
+        </div>
+
+        {/* Hızlı Kategori Filtre Sekmeleri */}
+        <div className="flex flex-wrap gap-1.5 bg-[#F7EFE1] dark:bg-[var(--surface)] p-1.5 rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)]">
+          {categoryTabs.map((tab) => {
+            const isSelected = activeCategory === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setActiveCategory(tab.id);
+                }}
+                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
+                  isSelected
+                    ? "bg-[#0CA678] text-white shadow-xs"
+                    : "bg-white/75 dark:bg-[var(--background)] text-[var(--muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* 0. KULLANIM KILAVUZU, İKON REHBERİ & TANITIM TURU KARTI */}
-      <section className="bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] rounded-2xl border-2 border-[#6741D9] border-b-4 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+      {/* 0. KULLANIM KILAVUZU, İKON REHBERİ & TANITIM TURU KARTI (Çift İkon Temizlenmiş) */}
+      <section className="bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] rounded-2xl border-2 border-[#6741D9] border-b-4 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-start sm:items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#6741D9] text-white flex items-center justify-center shrink-0">
             <HelpCircle size={20} />
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-extrabold text-[#4C28B5] dark:text-[#d0bfff]">
-              📖 Kullanım Kılavuzu, İkon Rehberi & Tanıtım Turu
+              Kullanım Kılavuzu, İkon Rehberi &amp; Tanıtım Turu
             </h2>
             <p className="text-xs font-medium text-[var(--muted)]">
               Uygulamadaki tüm ikonların anlamlarını, 5 adımlı verimli çalışma
@@ -285,915 +326,961 @@ export default function SettingsPage() {
             className="h-9 px-3.5 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] text-white text-xs font-extrabold border-b-3 border-[#3b1f8c] flex items-center gap-1.5 cursor-pointer"
           >
             <Target size={14} />
-            <span>🎯 Tanıtım Turunu Başlat</span>
+            <span>Tanıtım Turunu Başlat</span>
           </button>
         </div>
       </section>
 
-      {/* 1. ARAPÇA YAZI TİPİ (FONT) VE BOYUTU + CANLI TİPOGRAFİ ÖNİZLEME */}
-      <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-3">
-          <div className="flex items-center gap-2">
-            <Type size={18} className="text-[#087F5B]" />
-            <div>
-              <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
-                🔤 Arapça Yazı Tipi (Font) ve Boyutu
-              </h2>
-              <p className="text-xs text-[var(--muted)]">
-                Arapça metinleri ve harekeleri en rahat okuyabildiğiniz seçkin
-                hat/yazı tipini seçin
-              </p>
-            </div>
-          </div>
-
-          <span className="px-3 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] text-xs font-extrabold text-[#087F5B] dark:text-[#20c997]">
-            Aktif Font: {activeFontCfg.name.split(" (")[0]} (
-            {activeFontCfg.scale > 1 ? `${activeFontCfg.scale}x Ölçek` : "1x"})
-          </span>
-        </div>
-
-        {/* 5 Seçkin Arapça Font Radyo Kartları */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {ARABIC_FONT_OPTIONS.map((font) => {
-            const isSelected = arabicFont === font.id;
-            return (
-              <button
-                key={font.id}
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setArabicFont(font.id);
-                }}
-                className={`relative text-left p-3.5 rounded-2xl border-2 border-b-4 transition-all flex flex-col justify-between gap-2.5 cursor-pointer ${
-                  isSelected
-                    ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] -translate-y-0.5 shadow-xs"
-                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#cbb692]"
-                }`}
-              >
-                {isSelected && (
-                  <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-[#6741D9] text-white flex items-center justify-center">
-                    <Check size={12} strokeWidth={3} />
-                  </span>
-                )}
-
-                <div className="space-y-1 pr-5">
-                  <span
-                    className={`block text-xs font-extrabold leading-snug ${
-                      isSelected
-                        ? "text-[#4C28B5] dark:text-[#d0bfff]"
-                        : "text-[var(--foreground)]"
-                    }`}
-                  >
-                    {font.name}
-                  </span>
-                  <span className="block text-[11px] text-[var(--muted)] leading-tight">
-                    {font.subtitle}
-                  </span>
+      {/* KATEGORİ 1: YAZI TİPİ, OKUMA, HAREKE & GÖRÜNÜM TERCİHLERİ */}
+      {showAppearance && (
+        <>
+          {/* 1A. ARAPÇA YAZI TİPİ (FONT) VE BOYUTU + CANLI TİPOGRAFİ ÖNİZLEME */}
+          <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-5 space-y-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2.5">
+              <div className="flex items-center gap-2">
+                <Type size={18} className="text-[#087F5B]" />
+                <div>
+                  <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
+                    Arapça Yazı Tipi (Font) ve Boyutu
+                  </h2>
+                  <p className="text-xs text-[var(--muted)]">
+                    Arapça metinleri ve harekeleri en rahat okuyabildiğiniz
+                    seçkin hat/yazı tipini seçin
+                  </p>
                 </div>
+              </div>
 
-                <div
-                  dir="rtl"
-                  style={{
-                    fontFamily: font.cssFamily,
-                    fontSize: `${Math.round(25 * font.scale)}px`,
-                    lineHeight: font.lineHeight,
-                  }}
-                  className="w-full rounded-xl bg-[#F7EFE1]/70 dark:bg-[var(--surface)] px-3 py-1.5 border border-[#E6D7BE] dark:border-[var(--border)] text-right font-bold text-[#087F5B] dark:text-[#20c997]"
-                >
-                  {formatArabicText("أَسْتَوْدِعُكَ اللّٰهَ", showHareke)}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Arapça ve Türkçe Yazı Boyutu Kontrolleri */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]">
-          {/* Arapça Yazı Boyutu ('sm' | 'md' | 'lg' | 'xl') */}
-          <div className="bg-white dark:bg-[var(--background)] rounded-2xl p-3 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5 min-w-0">
-            <div>
-              <span className="block text-xs font-extrabold text-[var(--foreground)]">
-                Arapça Yazı Boyutu ({arabicFontSizePreset.toUpperCase()} ·{" "}
-                {arabicFontSize}px)
-              </span>
-              <span className="block text-[11px] text-[var(--muted)]">
-                Diyalog ve sözlükteki Arapça metin büyüklüğü
+              <span className="px-3 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] text-xs font-extrabold text-[#087F5B] dark:text-[#20c997]">
+                Aktif Font: {activeFontCfg.name.split(" (")[0]} (
+                {activeFontCfg.scale > 1
+                  ? `${activeFontCfg.scale}x Ölçek`
+                  : "1x"}
+                )
               </span>
             </div>
 
-            <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1.5 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full">
-              {ARABIC_FONT_SIZE_PRESETS.map(
-                (preset: {
-                  id: ArabicFontSizePreset;
-                  label: string;
-                  px: number;
-                }) => {
-                  const active =
-                    arabicFontSizePreset === preset.id ||
-                    arabicFontSize === preset.px;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => {
-                        playClick();
-                        setArabicFontSize(preset.id);
-                      }}
-                      className={`px-2 py-1.5 text-xs rounded-lg transition-all text-center truncate cursor-pointer ${
-                        active
-                          ? "bg-[#0CA678] text-white font-bold shadow-2xs"
-                          : "bg-white/60 dark:bg-[var(--background)]/50 text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {preset.id.toUpperCase()} ({preset.px})
-                    </button>
-                  );
-                }
-              )}
-            </div>
-          </div>
-
-          {/* Türkçe Yazı Boyutu */}
-          <div className="bg-white dark:bg-[var(--background)] rounded-2xl p-3 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5 min-w-0">
-            <div>
-              <span className="block text-xs font-extrabold text-[var(--foreground)]">
-                Türkçe Çeviri Boyutu ({turkishFontSize}px)
-              </span>
-              <span className="block text-[11px] text-[var(--muted)]">
-                Diyalog altındaki Türkçe çeviri büyüklüğü
-              </span>
-            </div>
-
-            <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1.5 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full">
-              {turkishSizes.map((s) => {
-                const isSelected =
-                  turkishFontSize === s.value ||
-                  (s.value === 20 && turkishFontSize === 21);
+            {/* 5 Seçkin Arapça Font Radyo Kartları (Kompakt p-3) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+              {ARABIC_FONT_OPTIONS.map((font) => {
+                const isSelected = arabicFont === font.id;
                 return (
                   <button
-                    key={s.value}
+                    key={font.id}
                     type="button"
                     onClick={() => {
                       playClick();
-                      setTurkishFontSize(s.value);
+                      setArabicFont(font.id);
                     }}
-                    className={`px-2 py-1.5 text-xs rounded-lg transition-all text-center truncate cursor-pointer ${
+                    className={`relative text-left p-3 rounded-2xl border-2 border-b-4 transition-all flex flex-col justify-between gap-2 cursor-pointer ${
                       isSelected
-                        ? "bg-[#0CA678] text-white font-bold shadow-2xs"
-                        : "bg-white/60 dark:bg-[var(--background)]/50 text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                        ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] -translate-y-0.5 shadow-xs"
+                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#cbb692]"
                     }`}
                   >
-                    {s.label} ({s.value})
+                    {isSelected && (
+                      <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-[#6741D9] text-white flex items-center justify-center">
+                        <Check size={12} strokeWidth={3} />
+                      </span>
+                    )}
+
+                    <div className="space-y-0.5 pr-5">
+                      <span
+                        className={`block text-xs font-extrabold leading-snug ${
+                          isSelected
+                            ? "text-[#4C28B5] dark:text-[#d0bfff]"
+                            : "text-[var(--foreground)]"
+                        }`}
+                      >
+                        {font.name}
+                      </span>
+                      <span className="block text-[11px] text-[var(--muted)] leading-tight">
+                        {font.subtitle}
+                      </span>
+                    </div>
+
+                    <div
+                      dir="rtl"
+                      style={{
+                        fontFamily: font.cssFamily,
+                        fontSize: `${Math.round(24 * font.scale)}px`,
+                        lineHeight: font.lineHeight,
+                      }}
+                      className="w-full rounded-xl bg-[#F7EFE1]/70 dark:bg-[var(--surface)] px-2.5 py-1 border border-[#E6D7BE] dark:border-[var(--border)] text-right font-bold text-[#087F5B] dark:text-[#20c997]"
+                    >
+                      {formatArabicText("أَسْتَوْدِعُكَ اللّٰهَ", showHareke)}
+                    </div>
                   </button>
                 );
               })}
             </div>
-          </div>
-        </div>
 
-        {/* Canlı Tipografi Önizleme Kutusu */}
-        <div className="pt-2 space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-[#087F5B] dark:text-[#20c997]">
-              Canlı Tipografi Önizleme Kutusu (Lafzatullah & Hareke Testi)
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                playTTS(rawSampleArabic, speechRate);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0CA678] text-white text-xs font-bold border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
-            >
-              <Volume2 size={14} />
-              <span>Örnek Cümleyi Dinle ({speechRate}x)</span>
-            </button>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] p-4 sm:p-5 space-y-2.5 shadow-2xs">
-            {viewMode !== "turkish-only" && (
-              <p
-                dir="rtl"
-                style={{
-                  fontFamily: activeFontCfg.cssFamily,
-                  fontSize: `${Math.round(
-                    arabicFontSize * activeFontCfg.scale
-                  )}px`,
-                  lineHeight: activeFontCfg.lineHeight,
-                }}
-                className="arabic font-bold text-[var(--foreground)]"
-              >
-                {sampleArabic}
-              </p>
-            )}
-            {viewMode !== "arabic-only" && (
-              <p
-                style={{ fontSize: `${turkishFontSize}px` }}
-                className="font-semibold text-[var(--muted)] border-t border-dashed border-[#E2D3B8] pt-2"
-              >
-                “Anneciğim seni Allah&apos;a emanet ediyorum; babacığım seni de
-                Allah&apos;a emanet ediyorum.”
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* 2. DİYALOG GÖRÜNÜM MODU (4'lü Seçim Izgarası) */}
-      <section className="space-y-2.5">
-        <div className="flex items-center gap-2 px-1">
-          <Eye size={17} className="text-[#087F5B]" />
-          <h2 className="text-sm font-extrabold text-[var(--foreground)]">
-            Diyalog Görünüm Düzeni
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {viewModes.map((mode) => {
-            const isSelected = viewMode === mode.id;
-            return (
-              <button
-                key={mode.id}
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setViewMode(mode.id);
-                }}
-                className={`relative text-left p-4 rounded-2xl border-2 border-b-4 transition-all cursor-pointer ${
-                  isSelected
-                    ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] -translate-y-0.5"
-                    : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#cbb692]"
-                }`}
-              >
-                {isSelected && (
-                  <span className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#6741D9] text-white flex items-center justify-center">
-                    <Check size={14} strokeWidth={3} />
+            {/* Arapça ve Türkçe Yazı Boyutu Kontrolleri */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]">
+              {/* Arapça Yazı Boyutu ('sm' | 'md' | 'lg' | 'xl') */}
+              <div className="bg-white dark:bg-[var(--background)] rounded-xl p-3 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2 min-w-0">
+                <div>
+                  <span className="block text-xs font-extrabold text-[var(--foreground)]">
+                    Arapça Yazı Boyutu ({arabicFontSizePreset.toUpperCase()} ·{" "}
+                    {arabicFontSize}px)
                   </span>
-                )}
-                <span
-                  className={`block text-sm font-extrabold pr-7 ${
-                    isSelected
-                      ? "text-[#4C28B5] dark:text-[#d0bfff]"
-                      : "text-[var(--foreground)]"
-                  }`}
-                >
-                  {mode.label}
-                </span>
-                <span className="block text-xs text-[var(--muted)] mt-1 leading-relaxed">
-                  {mode.desc}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+                  <span className="block text-[11px] text-[var(--muted)]">
+                    Diyalog ve sözlükteki Arapça metin büyüklüğü
+                  </span>
+                </div>
 
-      {/* 3. KESİK ÇİZGİLİ SATIRLAR: OKUMA, SES VE ETKİLEŞİM AYARLARI */}
-      <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 sm:px-6 py-2">
-        {/* Satır 1: Harekeleri Göster */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Sparkles size={18} className="text-[#087F5B] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Arapça Harekeleri Göster (Tashkeel)
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Üstün, esre, ötre ve şedde işaretlerini metinlerde göster veya
-                gizle
-              </span>
-            </div>
-          </div>
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 sm:grid-cols-4 gap-1 w-full">
+                  {ARABIC_FONT_SIZE_PRESETS.map(
+                    (preset: {
+                      id: ArabicFontSizePreset;
+                      label: string;
+                      px: number;
+                    }) => {
+                      const active =
+                        arabicFontSizePreset === preset.id ||
+                        arabicFontSize === preset.px;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            setArabicFontSize(preset.id);
+                          }}
+                          className={`px-2 py-1 text-xs rounded-lg transition-all text-center truncate cursor-pointer ${
+                            active
+                              ? "bg-[#0CA678] text-white font-bold shadow-2xs"
+                              : "bg-white/60 dark:bg-[var(--background)]/50 text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {preset.id.toUpperCase()} ({preset.px})
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
 
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                setShowHareke(true);
-              }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                showHareke
-                  ? "bg-[#0CA678] text-white font-semibold"
-                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-              }`}
-            >
-              Harekeli
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                setShowHareke(false);
-              }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                !showHareke
-                  ? "bg-[#0CA678] text-white font-semibold"
-                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-              }`}
-            >
-              Harekesiz
-            </button>
-          </div>
-        </div>
+              {/* Türkçe Yazı Boyutu */}
+              <div className="bg-white dark:bg-[var(--background)] rounded-xl p-3 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2 min-w-0">
+                <div>
+                  <span className="block text-xs font-extrabold text-[var(--foreground)]">
+                    Türkçe Çeviri Boyutu ({turkishFontSize}px)
+                  </span>
+                  <span className="block text-[11px] text-[var(--muted)]">
+                    Diyalog altındaki Türkçe çeviri büyüklüğü
+                  </span>
+                </div>
 
-        {/* Satır 2: Sözlük İpuçları */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <BookOpen size={18} className="text-[#087F5B] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Kelime Tıklama Sözlük İpuçları
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Diyalog içindeki Arapça kelimelere tıklayınca kök ve anlam
-                penceresini aç
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                setShowTooltips(true);
-              }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                showTooltips
-                  ? "bg-[#0CA678] text-white font-semibold"
-                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-              }`}
-            >
-              Açık
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                setShowTooltips(false);
-              }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                !showTooltips
-                  ? "bg-[#0CA678] text-white font-semibold"
-                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-              }`}
-            >
-              Kapalı
-            </button>
-          </div>
-        </div>
-
-        {/* Satır 3: Gölgeleme (Ses Kaydı) */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Mic size={18} className="text-[#087F5B] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Gölgeleme & Mahreç Kayıt Butonları
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Diyalog satırlarında kendi sesinizi kaydedip analiz etme
-                butonunu göster
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                setShowShadowing(true);
-              }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                showShadowing
-                  ? "bg-[#0CA678] text-white font-semibold"
-                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-              }`}
-            >
-              Açık
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                setShowShadowing(false);
-              }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                !showShadowing
-                  ? "bg-[#0CA678] text-white font-semibold"
-                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-              }`}
-            >
-              Kapalı
-            </button>
-          </div>
-        </div>
-
-        {/* Satır 4: TTS Okuma Hızı */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Gauge size={18} className="text-[#087F5B] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Arapça Seslendirme Hızı (TTS / MP3)
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Varsayılan konuşma ve telaffuz dinleme hızı (0.5x - 1.25x)
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
-            {([0.5, 0.75, 1, 1.25] as SpeechRate[]).map((rate) => (
-              <button
-                key={rate}
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setSpeechRate(rate);
-                }}
-                className={`px-3.5 py-1.5 text-xs tabular-nums rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  speechRate === rate
-                    ? "bg-[#0CA678] text-white font-semibold"
-                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                }`}
-              >
-                {rate}x
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Satır 4B: Sesli Okuma Kelime Takibi (wordTrackingStyle) */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Target size={18} className="text-[#087F5B] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                🎯 Sesli Okuma Kelime Takibi
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Cümle dinlenirken okunan Arapça kelimenin canlı karaoke
-                renklendirmesi ve ok (▼) takibi
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 sm:flex items-center gap-1 self-start lg:self-auto w-full sm:w-auto">
-            {(
-              [
-                { id: "both", label: "Renk + Ok" },
-                { id: "highlight", label: "Sadece Renk" },
-                { id: "arrow", label: "Sadece Ok" },
-                { id: "off", label: "Kapalı" },
-              ] as { id: WordTrackingStyle; label: string }[]
-            ).map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setWordTrackingStyle(opt.id);
-                }}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  wordTrackingStyle === opt.id
-                    ? "bg-[#0CA678] text-white font-semibold"
-                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Satır 4C: Tüm Diyalog Döngü Sayısı (dialogueLoopCount) */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Repeat size={18} className="text-[#6741D9] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Tüm Diyalog Dinleme Döngüsü (Loop)
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                &ldquo;Tümünü Dinle&rdquo; başlatıldığında diyaloğun kaç kez
-                baştan sona tekrarlanacağı
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1 self-start lg:self-auto">
-            {(
-              [
-                { id: 1, label: "1x (Tek)" },
-                { id: 2, label: "2x" },
-                { id: 3, label: "3x" },
-                { id: 5, label: "5x" },
-                { id: "infinite", label: "∞ Sonsuz" },
-              ] as { id: DialogueLoopCount; label: string }[]
-            ).map((opt) => (
-              <button
-                key={String(opt.id)}
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setDialogueLoopCount(opt.id);
-                }}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  dialogueLoopCount === opt.id
-                    ? "bg-[#6741D9] text-white font-semibold"
-                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Satır 4D: Tekli Cümle Tekrar Sayısı (sentenceLoopCount) */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Repeat size={18} className="text-[#087F5B] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Tekli Cümle Tekrar Sayısı
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Cümle kartındaki 🔁 Tekrarla ikonuna basıldığında cümlenin kaç
-                kez üst üste okunacağı
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center gap-1 self-start lg:self-auto">
-            {(
-              [
-                { id: 2, label: "2x" },
-                { id: 3, label: "3x" },
-                { id: 5, label: "5x" },
-                { id: "infinite", label: "∞ Sonsuz" },
-              ] as { id: SentenceLoopCount; label: string }[]
-            ).map((opt) => (
-              <button
-                key={String(opt.id)}
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setSentenceLoopCount(opt.id);
-                }}
-                className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  sentenceLoopCount === opt.id
-                    ? "bg-[#0CA678] text-white font-semibold"
-                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Satır 4E: Cümleler Arası Bekleme / Gölgeleme Boşluğu (pauseBetweenLines) */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Timer size={18} className="text-[#087F5B] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Cümleler Arası Gölgeleme Boşluğu
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Tüm diyaloğu dinlerken cümleyi sesli tekrar edebilmeniz için
-                bırakılacak bekleme süresi
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-1 sm:flex items-center gap-1 self-start lg:self-auto w-full sm:w-auto">
-            {(
-              [
-                { id: 0, label: "Yok (Akıcı)" },
-                { id: 2, label: "2 Saniye Bekle" },
-                { id: "auto", label: "Cümle Süresi Kadar Boşluk" },
-              ] as { id: PauseBetweenLines; label: string }[]
-            ).map((opt) => (
-              <button
-                key={String(opt.id)}
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setPauseBetweenLines(opt.id);
-                }}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  pauseBetweenLines === opt.id
-                    ? "bg-[#0CA678] text-white font-semibold"
-                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Satır 5: Ses Efektleri */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Volume2 size={18} className="text-[#087F5B] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Etkileşim Ses Efektleri (SFX)
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Buton tıklama, doğru/yanlış cevap ve telaffuz bildirim sesleri
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => {
-                setSfxEnabled(true);
-                playClick();
-              }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                sfxEnabled
-                  ? "bg-[#0CA678] text-white font-semibold"
-                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-              }`}
-            >
-              Açık
-            </button>
-            <button
-              type="button"
-              onClick={() => setSfxEnabled(false)}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                !sfxEnabled
-                  ? "bg-[#0CA678] text-white font-semibold"
-                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-              }`}
-            >
-              Kapalı
-            </button>
-          </div>
-        </div>
-
-        {/* Satır 6: Tema Görünümü */}
-        <div className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Monitor size={18} className="text-[#087F5B] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Renk Teması
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Sıcak fildişi/krem gündüz modu veya göz yormayan gece modu
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                setTheme("light");
-              }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                theme === "light"
-                  ? "bg-[#0CA678] text-white font-semibold"
-                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-              }`}
-            >
-              Sıcak Krem
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                setTheme("dark");
-              }}
-              className={`px-3.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                theme === "dark"
-                  ? "bg-[#0CA678] text-white font-semibold"
-                  : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-              }`}
-            >
-              Gece Modu
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. VERİ YÖNETİMİ, GÜNLÜK HEDEF VE PWA KURULUMU */}
-      <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-4 sm:px-6 py-3 space-y-1">
-        {/* Satır 1: Günlük Çalışma Hedefi ve Seri */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Flame size={18} className="text-orange-500 shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Günlük Çalışma Hedefi ({dailyGoalMinutes} dk) · 🔥 {streakDays}{" "}
-                Gün Seri
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Her gün düzenli Arapça pratik için hedef sürenizi belirleyin
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1 self-start sm:self-auto">
-            {[10, 15, 30, 45].map((mins) => (
-              <button
-                key={mins}
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setDailyGoalMinutes(mins);
-                }}
-                className={`px-3 py-1.5 text-xs tabular-nums rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  dailyGoalMinutes === mins
-                    ? "bg-[#0CA678] text-white font-semibold"
-                    : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                }`}
-              >
-                {mins} dk
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Satır 2: Cihaza Uygulama Olarak Kur (PWA) */}
-        <div className="py-3.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Smartphone size={18} className="text-[#6741D9] shrink-0" />
-            <div>
-              <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                Uygulamayı Cihaza Kur (Çevrimdışı PWA)
-              </span>
-              <span className="block text-xs text-[var(--muted)]">
-                Ana ekrana ekleyerek tam ekran ve internet olmadan da kullanın
-              </span>
-            </div>
-          </div>
-
-          <div>
-            {isInstalled ? (
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#E6FCF5] dark:bg-emerald-950/50 text-[#087F5B] dark:text-emerald-300 border border-[#0CA678]/40 text-xs font-extrabold">
-                <CheckCircle2 size={15} />
-                Cihaza Kurulu
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={async () => {
-                  playClick();
-                  if (isInstallable) {
-                    await installApp();
-                  } else {
-                    setShowIosGuide((v) => !v);
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] text-white border-b-3 border-[#4C28B5] text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
-              >
-                <Download size={14} />
-                <span>Uygulamayı Kur</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {showIosGuide && !isInstalled && (
-          <div className="my-2 p-3.5 rounded-xl bg-white dark:bg-[var(--background)] border border-[#6741D9]/40 text-xs font-semibold text-[var(--foreground)]">
-            {isIOS ? (
-              <p>
-                <strong>iPhone / iPad Kurulumu:</strong> Safari alt çubuğundaki{" "}
-                <strong>Paylaş</strong> butonuna dokunun ve{" "}
-                <strong>&ldquo;Ana Ekrana Ekle&rdquo;</strong> seçeneğini seçin.
-              </p>
-            ) : (
-              <p>
-                <strong>Masaüstü / Android Kurulumu:</strong> Tarayıcı adres
-                çubuğunun sağındaki <strong>Uygulamayı Yükle</strong> simgesine
-                veya tarayıcı menüsündeki{" "}
-                <strong>&ldquo;Ana Ekrana Ekle / Uygulamayı Yükle&rdquo;</strong>{" "}
-                seçeneğine tıklayın.
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Satır 3: Veri Yönetimi ve Yedekleme */}
-        <div className="py-3.5 flex flex-col gap-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <Database size={18} className="text-[#087F5B] shrink-0" />
-              <div>
-                <span className="block text-sm font-extrabold text-[var(--foreground)]">
-                  Veri Yönetimi ve Yedekleme
-                </span>
-                <span className="block text-xs text-[var(--muted)]">
-                  Öğrendiğiniz kelimeleri, telaffuz puanlarınızı ve serinizi
-                  .json olarak yedekleyin veya geri yükleyin
-                </span>
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 sm:grid-cols-4 gap-1 w-full">
+                  {turkishSizes.map((s) => {
+                    const isSelected =
+                      turkishFontSize === s.value ||
+                      (s.value === 20 && turkishFontSize === 21);
+                    return (
+                      <button
+                        key={s.value}
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setTurkishFontSize(s.value);
+                        }}
+                        className={`px-2 py-1 text-xs rounded-lg transition-all text-center truncate cursor-pointer ${
+                          isSelected
+                            ? "bg-[#0CA678] text-white font-bold shadow-2xs"
+                            : "bg-white/60 dark:bg-[var(--background)]/50 text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {s.label} ({s.value})
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleExportBackup}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
-              >
-                <Download size={14} />
-                <span>İlerlemeyi Dışa Aktar (.json)</span>
-              </button>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json,application/json"
-                onChange={handleImportFile}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  playClick();
-                  fileInputRef.current?.click();
-                }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#6741D9] active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
-              >
-                <Upload size={14} className="text-[#6741D9]" />
-                <span>Yedek Yükle (.json)</span>
-              </button>
-
-              {!confirmReset ? (
+            {/* Canlı Tipografi Önizleme Kutusu (Kompakt py-3 px-4) */}
+            <div className="pt-1.5 space-y-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-[#087F5B] dark:text-[#20c997]">
+                  Canlı Tipografi Önizleme Kutusu (Lafzatullah &amp; Hareke Testi)
+                </span>
                 <button
                   type="button"
                   onClick={() => {
                     playClick();
-                    setConfirmReset(true);
+                    playTTS(rawSampleArabic, speechRate);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-rose-300 dark:border-rose-800 border-b-3 text-xs font-extrabold text-rose-700 dark:text-rose-300 hover:bg-rose-50 active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#0CA678] text-white text-xs font-bold border-b-2 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
                 >
-                  <Trash2 size={14} />
-                  <span>İlerlemeyi Sıfırla</span>
+                  <Volume2 size={13} />
+                  <span>Örnek Cümleyi Dinle ({speechRate}x)</span>
                 </button>
-              ) : (
-                <div className="inline-flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/50 border-2 border-rose-400 rounded-xl px-2.5 py-1">
-                  <span className="text-xs font-extrabold text-rose-800 dark:text-rose-200">
-                    Emin misiniz?
-                  </span>
+              </div>
+
+              <div className="bg-white dark:bg-[var(--background)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] py-3 px-4 space-y-2 shadow-2xs">
+                {viewMode !== "turkish-only" && (
+                  <p
+                    dir="rtl"
+                    style={{
+                      fontFamily: activeFontCfg.cssFamily,
+                      fontSize: `${Math.round(
+                        arabicFontSize * activeFontCfg.scale
+                      )}px`,
+                      lineHeight: activeFontCfg.lineHeight,
+                    }}
+                    className="arabic font-bold text-[var(--foreground)]"
+                  >
+                    {sampleArabic}
+                  </p>
+                )}
+                {viewMode !== "arabic-only" && (
+                  <p
+                    style={{ fontSize: `${turkishFontSize}px` }}
+                    className="font-semibold text-[var(--muted)] border-t border-dashed border-[#E2D3B8] pt-1.5"
+                  >
+                    “Anneciğim seni Allah&apos;a emanet ediyorum; babacığım seni
+                    de Allah&apos;a emanet ediyorum.”
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* 1B. DİYALOG GÖRÜNÜM MODU (4'lü Seçim Izgarası) */}
+          <section className="space-y-2">
+            <div className="flex items-center gap-2 px-1">
+              <Eye size={17} className="text-[#087F5B]" />
+              <h2 className="text-sm font-extrabold text-[var(--foreground)]">
+                Diyalog Görünüm Düzeni
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {viewModes.map((mode) => {
+                const isSelected = viewMode === mode.id;
+                return (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setViewMode(mode.id);
+                    }}
+                    className={`relative text-left p-3.5 rounded-2xl border-2 border-b-4 transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] -translate-y-0.5"
+                        : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#cbb692]"
+                    }`}
+                  >
+                    {isSelected && (
+                      <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-[#6741D9] text-white flex items-center justify-center">
+                        <Check size={12} strokeWidth={3} />
+                      </span>
+                    )}
+                    <span
+                      className={`block text-xs sm:text-sm font-extrabold pr-6 ${
+                        isSelected
+                          ? "text-[#4C28B5] dark:text-[#d0bfff]"
+                          : "text-[var(--foreground)]"
+                      }`}
+                    >
+                      {mode.label}
+                    </span>
+                    <span className="block text-[11px] text-[var(--muted)] mt-1 leading-snug">
+                      {mode.desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* GRUP 1 — OKUMA, HAREKE & GÖRÜNÜM TERCİHLERİ (2 Sütunlu Grid) */}
+          <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-5 space-y-3">
+            <div className="flex items-center gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
+              <Sparkles size={17} className="text-[#087F5B]" />
+              <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
+                Okuma, Hareke &amp; Görünüm Tercihleri
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* 1. Arapça Harekeleri Göster (Tashkeel) */}
+              <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
+                <div className="flex items-start gap-2.5">
+                  <Sparkles size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                      Arapça Harekeleri Göster (Tashkeel)
+                    </span>
+                    <span className="block text-[11px] text-[var(--muted)]">
+                      Üstün, esre, ötre ve şedde işaretlerini göster veya gizle
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 gap-1">
                   <button
                     type="button"
-                    onClick={handleResetConfirmed}
-                    className="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-xs font-extrabold hover:bg-rose-700 cursor-pointer"
+                    onClick={() => {
+                      playClick();
+                      setShowHareke(true);
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      showHareke
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
                   >
-                    Evet, Sıfırla
+                    Harekeli
                   </button>
                   <button
                     type="button"
-                    onClick={() => setConfirmReset(false)}
-                    className="px-2 py-1 rounded-lg bg-white dark:bg-[var(--surface)] text-xs font-bold text-[var(--muted)] cursor-pointer"
+                    onClick={() => {
+                      playClick();
+                      setShowHareke(false);
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      !showHareke
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
                   >
-                    Vazgeç
+                    Harekesiz
                   </button>
                 </div>
-              )}
+              </div>
+
+              {/* 2. Kelime Tıklama Sözlük İpuçları */}
+              <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
+                <div className="flex items-start gap-2.5">
+                  <BookOpen size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                      Kelime Tıklama Sözlük İpuçları
+                    </span>
+                    <span className="block text-[11px] text-[var(--muted)]">
+                      Kelimelere tıklayınca morfolojik kök ve anlam penceresini aç
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setShowTooltips(true);
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      showTooltips
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Açık
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setShowTooltips(false);
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      !showTooltips
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Kapalı
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. Gölgeleme & Mahreç Kayıt Butonları */}
+              <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
+                <div className="flex items-start gap-2.5">
+                  <Mic size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                      Gölgeleme &amp; Mahreç Kayıt Butonları
+                    </span>
+                    <span className="block text-[11px] text-[var(--muted)]">
+                      Diyalog satırlarında ses kaydetme ve mahreç koçu butonunu
+                      göster
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setShowShadowing(true);
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      showShadowing
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Açık
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setShowShadowing(false);
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      !showShadowing
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Kapalı
+                  </button>
+                </div>
+              </div>
+
+              {/* 4. Etkileşim Ses Efektleri (SFX) */}
+              <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
+                <div className="flex items-start gap-2.5">
+                  <Volume2 size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                      Etkileşim Ses Efektleri (SFX)
+                    </span>
+                    <span className="block text-[11px] text-[var(--muted)]">
+                      Buton tıklama, doğru/yanlış cevap ve telaffuz bildirim
+                      sesleri
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSfxEnabled(true);
+                      playClick();
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      sfxEnabled
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Açık
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSfxEnabled(false)}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      !sfxEnabled
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Kapalı
+                  </button>
+                </div>
+              </div>
+
+              {/* 5. Renk Teması */}
+              <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
+                <div className="flex items-start gap-2.5">
+                  <Monitor size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                      Renk Teması
+                    </span>
+                    <span className="block text-[11px] text-[var(--muted)]">
+                      Sıcak fildişi/krem gündüz modu veya göz yormayan gece modu
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setTheme("light");
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      theme === "light"
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Sıcak Krem
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setTheme("dark");
+                    }}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      theme === "dark"
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Gece Modu
+                  </button>
+                </div>
+              </div>
+
+              {/* 6. Sesli Okuma Kelime Takibi (Çift İkon Temizlenmiş) */}
+              <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
+                <div className="flex items-start gap-2.5">
+                  <Target size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                      Sesli Okuma Kelime Takibi
+                    </span>
+                    <span className="block text-[11px] text-[var(--muted)]">
+                      Dinlenen Arapça kelimenin canlı karaoke vurgusu ve ok (▼)
+                      takibi
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-4 gap-1">
+                  {(
+                    [
+                      { id: "both", label: "Renk+Ok" },
+                      { id: "highlight", label: "Renk" },
+                      { id: "arrow", label: "Ok" },
+                      { id: "off", label: "Kapalı" },
+                    ] as { id: WordTrackingStyle; label: string }[]
+                  ).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        setWordTrackingStyle(opt.id);
+                      }}
+                      className={`px-2 py-1.5 text-[11px] rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                        wordTrackingStyle === opt.id
+                          ? "bg-[#0CA678] text-white font-bold"
+                          : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+
+      {/* KATEGORİ 2 / GRUP 2 — SESLENDİRME HIZI, DÖNGÜ & GÖLGELEME AYARLARI (2 Sütunlu Grid) */}
+      {showAudio && (
+        <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-5 space-y-3">
+          <div className="flex items-center gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
+            <Volume2 size={17} className="text-[#087F5B]" />
+            <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
+              Seslendirme Hızı, Döngü &amp; Gölgeleme Ayarları
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* 1. Arapça Seslendirme Hızı (TTS / MP3) */}
+            <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
+              <div className="flex items-start gap-2.5">
+                <Gauge size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                <div>
+                  <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                    Arapça Seslendirme Hızı (TTS / MP3)
+                  </span>
+                  <span className="block text-[11px] text-[var(--muted)]">
+                    Varsayılan konuşma ve telaffuz dinleme hızı (0.5x - 1.25x)
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-4 gap-1">
+                {([0.5, 0.75, 1, 1.25] as SpeechRate[]).map((rate) => (
+                  <button
+                    key={rate}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setSpeechRate(rate);
+                    }}
+                    className={`px-2 py-1.5 text-xs tabular-nums rounded-lg transition-all cursor-pointer ${
+                      speechRate === rate
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {rate}x
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. Cümleler Arası Gölgeleme Boşluğu */}
+            <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
+              <div className="flex items-start gap-2.5">
+                <Timer size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                <div>
+                  <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                    Cümleler Arası Gölgeleme Boşluğu
+                  </span>
+                  <span className="block text-[11px] text-[var(--muted)]">
+                    Diyaloğu dinlerken cümleyi sesli tekrar için bekleme süresi
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-3 gap-1">
+                {(
+                  [
+                    { id: 0, label: "Yok" },
+                    { id: 2, label: "2 Sn" },
+                    { id: "auto", label: "Cümle Süresi" },
+                  ] as { id: PauseBetweenLines; label: string }[]
+                ).map((opt) => (
+                  <button
+                    key={String(opt.id)}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setPauseBetweenLines(opt.id);
+                    }}
+                    className={`px-2 py-1.5 text-[11px] rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                      pauseBetweenLines === opt.id
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Tüm Diyalog Dinleme Döngüsü (Loop) */}
+            <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
+              <div className="flex items-start gap-2.5">
+                <Repeat size={17} className="text-[#6741D9] shrink-0 mt-0.5" />
+                <div>
+                  <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                    Tüm Diyalog Dinleme Döngüsü (Loop)
+                  </span>
+                  <span className="block text-[11px] text-[var(--muted)]">
+                    &ldquo;Dinle&rdquo; başlatıldığında diyaloğun kaç kez
+                    tekrarlanacağı
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-5 gap-1">
+                {(
+                  [
+                    { id: 1, label: "1x" },
+                    { id: 2, label: "2x" },
+                    { id: 3, label: "3x" },
+                    { id: 5, label: "5x" },
+                    { id: "infinite", label: "∞" },
+                  ] as { id: DialogueLoopCount; label: string }[]
+                ).map((opt) => (
+                  <button
+                    key={String(opt.id)}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setDialogueLoopCount(opt.id);
+                    }}
+                    className={`px-2 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      dialogueLoopCount === opt.id
+                        ? "bg-[#6741D9] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 4. Tekli Cümle Tekrar Sayısı */}
+            <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
+              <div className="flex items-start gap-2.5">
+                <Repeat size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                <div>
+                  <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                    Tekli Cümle Tekrar Sayısı
+                  </span>
+                  <span className="block text-[11px] text-[var(--muted)]">
+                    Cümle kartındaki Tekrarla butonunda varsayılan tekrar sayısı
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-4 gap-1">
+                {(
+                  [
+                    { id: 2, label: "2x" },
+                    { id: 3, label: "3x" },
+                    { id: 5, label: "5x" },
+                    { id: "infinite", label: "∞" },
+                  ] as { id: SentenceLoopCount; label: string }[]
+                ).map((opt) => (
+                  <button
+                    key={String(opt.id)}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setSentenceLoopCount(opt.id);
+                    }}
+                    className={`px-2 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                      sentenceLoopCount === opt.id
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* KATEGORİ 3 / GRUP 3 — GÜNLÜK HEDEF, UYGULAMA KURULUMU & VERİ YEDEKLEME */}
+      {showData && (
+        <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-5 space-y-3">
+          <div className="flex items-center gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
+            <Database size={17} className="text-[#087F5B]" />
+            <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
+              Günlük Hedef, Uygulama Kurulumu &amp; Veri Yedekleme
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* 1. Günlük Çalışma Hedefi ve Seri */}
+            <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
+              <div className="flex items-start gap-2.5">
+                <Flame size={18} className="text-orange-500 shrink-0 mt-0.5" />
+                <div>
+                  <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                    Günlük Çalışma Hedefi ({dailyGoalMinutes} dk) · {streakDays}{" "}
+                    Gün Seri
+                  </span>
+                  <span className="block text-[11px] text-[var(--muted)]">
+                    Her gün düzenli Arapça pratik için hedef sürenizi belirleyin
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-4 gap-1">
+                {[10, 15, 30, 45].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setDailyGoalMinutes(mins);
+                    }}
+                    className={`px-2.5 py-1.5 text-xs tabular-nums rounded-lg transition-all cursor-pointer ${
+                      dailyGoalMinutes === mins
+                        ? "bg-[#0CA678] text-white font-bold"
+                        : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {mins} dk
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. Cihaza Uygulama Olarak Kur (PWA) */}
+            <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
+              <div className="flex items-start gap-2.5">
+                <Smartphone
+                  size={18}
+                  className="text-[#6741D9] shrink-0 mt-0.5"
+                />
+                <div>
+                  <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                    Uygulamayı Cihaza Kur (Çevrimdışı PWA)
+                  </span>
+                  <span className="block text-[11px] text-[var(--muted)]">
+                    Ana ekrana ekleyerek tam ekran ve internet olmadan da
+                    kullanın
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end">
+                {isInstalled ? (
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#E6FCF5] dark:bg-emerald-950/50 text-[#087F5B] dark:text-emerald-300 border border-[#0CA678]/40 text-xs font-extrabold">
+                    <CheckCircle2 size={14} />
+                    Cihaza Kurulu
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      playClick();
+                      if (isInstallable) {
+                        await installApp();
+                      } else {
+                        setShowIosGuide((v) => !v);
+                      }
+                    }}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] text-white border-b-3 border-[#4C28B5] text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
+                  >
+                    <Download size={14} />
+                    <span>Uygulamayı Kur</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          {dataMessage && (
-            <div
-              className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-between gap-2 ${
-                dataMessage.type === "success"
-                  ? "bg-[#E6FCF5] dark:bg-emerald-950/40 border-[#0CA678]/50 text-[#087F5B] dark:text-emerald-300"
-                  : "bg-rose-50 dark:bg-rose-950/40 border-rose-400 text-rose-800 dark:text-rose-200"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {dataMessage.type === "success" ? (
-                  <CheckCircle2 size={15} className="shrink-0" />
-                ) : (
-                  <AlertTriangle size={15} className="shrink-0" />
-                )}
-                <span>{dataMessage.text}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDataMessage(null)}
-                className="text-[11px] underline opacity-80 hover:opacity-100 cursor-pointer"
-              >
-                Kapat
-              </button>
+          {showIosGuide && !isInstalled && (
+            <div className="p-3 rounded-xl bg-white dark:bg-[var(--background)] border border-[#6741D9]/40 text-xs font-semibold text-[var(--foreground)]">
+              {isIOS ? (
+                <p>
+                  <strong>iPhone / iPad Kurulumu:</strong> Safari alt çubuğundaki{" "}
+                  <strong>Paylaş</strong> butonuna dokunun ve{" "}
+                  <strong>&ldquo;Ana Ekrana Ekle&rdquo;</strong> seçeneğini
+                  seçin.
+                </p>
+              ) : (
+                <p>
+                  <strong>Masaüstü / Android Kurulumu:</strong> Tarayıcı adres
+                  çubuğunun sağındaki <strong>Uygulamayı Yükle</strong>{" "}
+                  simgesine veya tarayıcı menüsündeki{" "}
+                  <strong>
+                    &ldquo;Ana Ekrana Ekle / Uygulamayı Yükle&rdquo;
+                  </strong>{" "}
+                  seçeneğine tıklayın.
+                </p>
+              )}
             </div>
           )}
-        </div>
-      </section>
+
+          {/* 3. Veri Yönetimi ve Yedekleme */}
+          <div className="bg-white dark:bg-[var(--background)] p-3.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <Database size={18} className="text-[#087F5B] shrink-0 mt-0.5" />
+                <div>
+                  <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                    Veri Yönetimi ve Yedekleme
+                  </span>
+                  <span className="block text-[11px] text-[var(--muted)]">
+                    Öğrendiğiniz kelimeleri, telaffuz puanlarınızı ve serinizi
+                    .json olarak yedekleyin veya geri yükleyin
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportBackup}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
+                >
+                  <Download size={14} />
+                  <span>İlerlemeyi Dışa Aktar (.json)</span>
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={handleImportFile}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    fileInputRef.current?.click();
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#6741D9] active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
+                >
+                  <Upload size={14} className="text-[#6741D9]" />
+                  <span>Yedek Yükle (.json)</span>
+                </button>
+
+                {!confirmReset ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setConfirmReset(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-rose-300 dark:border-rose-800 border-b-3 text-xs font-extrabold text-rose-700 dark:text-rose-300 hover:bg-rose-50 active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
+                  >
+                    <Trash2 size={14} />
+                    <span>İlerlemeyi Sıfırla</span>
+                  </button>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/50 border-2 border-rose-400 rounded-xl px-2.5 py-1">
+                    <span className="text-xs font-extrabold text-rose-800 dark:text-rose-200">
+                      Emin misiniz?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleResetConfirmed}
+                      className="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-xs font-extrabold hover:bg-rose-700 cursor-pointer"
+                    >
+                      Evet, Sıfırla
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmReset(false)}
+                      className="px-2 py-1 rounded-lg bg-white dark:bg-[var(--surface)] text-xs font-bold text-[var(--muted)] cursor-pointer"
+                    >
+                      Vazgeç
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {dataMessage && (
+              <div
+                className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-between gap-2 ${
+                  dataMessage.type === "success"
+                    ? "bg-[#E6FCF5] dark:bg-emerald-950/40 border-[#0CA678]/50 text-[#087F5B] dark:text-emerald-300"
+                    : "bg-rose-50 dark:bg-rose-950/40 border-rose-400 text-rose-800 dark:text-rose-200"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {dataMessage.type === "success" ? (
+                    <CheckCircle2 size={15} className="shrink-0" />
+                  ) : (
+                    <AlertTriangle size={15} className="shrink-0" />
+                  )}
+                  <span>{dataMessage.text}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDataMessage(null)}
+                  className="text-[11px] underline opacity-80 hover:opacity-100 cursor-pointer"
+                >
+                  Kapat
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

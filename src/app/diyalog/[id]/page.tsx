@@ -208,6 +208,7 @@ export default function DialogueDetailPage({
 
   const playToken = useRef(0);
   const lineRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+  const roleplaySummaryRef = useRef<HTMLDivElement | null>(null);
   const roleplayRecorderRef = useRef<RecordingSession16kHz | null>(null);
   const roleplaySpeechRef = useRef<HybridSpeechManager | null>(null);
   const roleplayFinalTranscriptRef = useRef<string>("");
@@ -217,6 +218,17 @@ export default function DialogueDetailPage({
     null
   );
   const roleplayTurnRafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!roleplayCompletedBanner) return;
+    const timer = setTimeout(() => {
+      roleplaySummaryRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [roleplayCompletedBanner]);
 
   const cleanupRoleplayMic = () => {
     if (roleplayTurnTimerRef.current !== null) {
@@ -1580,7 +1592,10 @@ export default function DialogueDetailPage({
           </div>
 
           {studyMode === "roleplay" && roleplayCompletedBanner && (
-            <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border-2 border-[#0CA678] border-b-4 p-3.5 space-y-2.5 shadow-sm">
+            <div
+              ref={roleplaySummaryRef}
+              className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border-2 border-[#0CA678] border-b-4 ring-2 ring-emerald-500 transition-all p-3.5 space-y-2.5 shadow-sm"
+            >
               {(() => {
                 const userLines = dialogue.satirlar.filter(
                   (l) => l.konusmaci === selectedRoleSpeaker
@@ -1641,9 +1656,18 @@ export default function DialogueDetailPage({
                         {userLines.map((ul) => {
                           const sc = roleplayLineScores[ul.sira] ?? 0;
                           return (
-                            <span
+                            <button
                               key={ul.sira}
-                              className={`px-2 py-0.5 rounded-lg border text-[10px] font-extrabold tabular-nums ${
+                              type="button"
+                              onClick={() => {
+                                playClick();
+                                lineRefs.current[ul.sira]?.scrollIntoView({
+                                  behavior: "smooth",
+                                  block: "center",
+                                });
+                              }}
+                              title={`#${ul.sira}. repliğe git`}
+                              className={`px-2 py-0.5 rounded-lg border text-[10px] font-extrabold tabular-nums cursor-pointer hover:scale-105 transition ${
                                 sc >= 70
                                   ? "bg-white dark:bg-[var(--background)] border-[#0CA678]/50 text-[#087F5B] dark:text-emerald-300"
                                   : sc > 0
@@ -1653,7 +1677,7 @@ export default function DialogueDetailPage({
                             >
                               #{ul.sira}: %{sc}
                               {sc === 0 ? " (Okunmadı / Ses Yok)" : ""}
-                            </span>
+                            </button>
                           );
                         })}
                       </div>
