@@ -87,6 +87,19 @@
   --speaker-6: #91a7ff;
 }
 
+.light {
+  color-scheme: light;
+  --background: #fdfbf7;
+  --foreground: #0f172a;
+  --surface: #f7efe1;
+  --surface-white: #ffffff;
+  --border: #cbd5e1;
+  --border-dashed: #cbd5e1;
+  --muted: #475569;
+  --lavender-bg: #f3f0ff;
+  --purple-accent: #6741d9;
+}
+
 html,
 body {
   background-color: var(--background);

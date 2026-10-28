@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
   Check,
@@ -46,7 +47,8 @@ type ExerciseType =
   | "matching"
   | "sentence-builder";
 
-export default function ExercisesPage() {
+function ExercisesPageContent() {
+  const searchParams = useSearchParams();
   const [selectedType, setSelectedType] = useState<ExerciseType>("flashcard");
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -65,17 +67,15 @@ export default function ExercisesPage() {
 
   // Diyalog sayfasından "?source=idioms&dialogueId=dlg_XX" ile gelindiğinde otomatik seç
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const sourceParam = params.get("source");
-    const dlgParam = params.get("dialogueId");
+    const sourceParam = searchParams.get("source");
+    const dlgParam = searchParams.get("dialogueId");
     if (sourceParam === "idioms") {
       setContentType("idioms");
     }
     if (dlgParam && diyaloglar.some((d) => d.id === dlgParam)) {
       setSingleDialogueId(dlgParam);
     }
-  }, []);
+  }, [searchParams]);
 
   const selectedDialogues = useMemo(() => {
     if (singleDialogueId !== "all") {
@@ -723,5 +723,13 @@ export default function ExercisesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ExercisesPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Yükleniyor...</div>}>
+      <ExercisesPageContent />
+    </Suspense>
   );
 }

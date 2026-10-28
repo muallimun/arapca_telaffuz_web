@@ -9,6 +9,8 @@ interface ArabicVirtualKeyboardProps {
   onClear: () => void;
   onEnter: () => void;
   onClose?: () => void;
+  useDeviceKeyboard?: boolean;
+  onToggleDeviceKeyboard?: () => void;
 }
 
 const LETTER_ROW_1 = ["ض", "ص", "ث", "ق", "ف", "غ", "ع", "ه", "خ", "ح", "ج", "د"];
@@ -29,6 +31,8 @@ export default function ArabicVirtualKeyboard({
   onClear,
   onEnter,
   onClose,
+  useDeviceKeyboard = false,
+  onToggleDeviceKeyboard,
 }: ArabicVirtualKeyboardProps) {
   const handleChar = (c: string) => {
     playClick();
@@ -64,19 +68,43 @@ export default function ArabicVirtualKeyboard({
           ))}
         </div>
 
-        {onClose && (
-          <button
-            type="button"
-            onClick={() => {
-              playClick();
-              onClose();
-            }}
-            title="Klavyeyi Kapat"
-            className="w-7 h-7 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
-          >
-            <X size={14} />
-          </button>
-        )}
+        <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
+          {onToggleDeviceKeyboard && (
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                onToggleDeviceKeyboard();
+              }}
+              title="Cihaz Klavyesi ile Sanal Klavye arasında geçiş yap"
+              className={`h-7 px-2.5 rounded-lg border text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
+                useDeviceKeyboard
+                  ? "bg-[#6741D9] border-[#5230B5] text-white"
+                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[#6741D9] dark:text-[#d0bfff] hover:border-[#6741D9]"
+              }`}
+            >
+              <span>
+                {useDeviceKeyboard
+                  ? "⌨️ Sanal Klavye"
+                  : "⌨️ Cihaz Klavyesi / Sanal Klavye"}
+              </span>
+            </button>
+          )}
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                onClose();
+              }}
+              title="Klavyeyi Kapat"
+              className="w-7 h-7 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 1. Harf Satırı */}

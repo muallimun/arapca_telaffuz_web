@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arapca-platform-v3';
+const CACHE_NAME = 'muallimun-arapca-v4';
 const OFFLINE_URL = '/offline';
 
 const PRECACHE_ASSETS = [
@@ -60,12 +60,18 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          if (response && response.status === 200 && response.type === 'basic') {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        .then((networkResponse) => {
+          if (
+            networkResponse &&
+            networkResponse.status === 200 &&
+            networkResponse.type === 'basic'
+          ) {
+            const responseClone = networkResponse.clone();
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put(event.request, responseClone).catch(() => {}));
           }
-          return response;
+          return networkResponse;
         })
         .catch(async () => {
           const cache = await caches.open(CACHE_NAME);
@@ -94,20 +100,21 @@ self.addEventListener('fetch', (event) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(request).then((response) => {
-        if (
-          !response ||
-          response.status !== 200 ||
-          response.status === 206 ||
-          response.type !== 'basic'
-        ) {
-          return response;
+      return fetch(request).then((networkResponse) => {
+        if (!networkResponse || networkResponse.status === 206) {
+          return networkResponse;
         }
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, responseToCache).catch(() => {});
-        });
-        return response;
+        if (
+          networkResponse &&
+          networkResponse.status === 200 &&
+          networkResponse.type === 'basic'
+        ) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone).catch(() => {});
+          });
+        }
+        return networkResponse;
       });
     })
   );

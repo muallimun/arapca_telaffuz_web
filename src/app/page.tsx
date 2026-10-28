@@ -366,7 +366,18 @@ export default function HomePage() {
             </div>
             <div className="min-w-0">
               <span className="block text-xl font-black tabular-nums text-[var(--foreground)] leading-normal">
-                {mounted ? learnedWords.length : 0}
+                {mounted
+                  ? Math.min(
+                      sozluk.length,
+                      learnedWords.filter(
+                        (id) =>
+                          Boolean(id) &&
+                          !id.startsWith("idiom_") &&
+                          !id.startsWith("idm_") &&
+                          !id.startsWith("sent_")
+                      ).length
+                    )
+                  : 0}
                 <span className="text-xs font-bold text-[var(--muted)]">
                   /{sozluk.length}
                 </span>

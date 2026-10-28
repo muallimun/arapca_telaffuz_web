@@ -99,6 +99,7 @@ export default function DialogueDetailPage({
     isShadowingPause,
     shadowingPauseMs,
     setShadowingPause,
+    waitShadowingPause,
   } = useAudioStore();
   const {
     viewMode,
@@ -519,8 +520,8 @@ export default function DialogueDetailPage({
 
       if (nextRem === "infinite" || (typeof nextRem === "number" && nextRem > 0)) {
         setSentenceLoopRemaining(nextRem);
-        await new Promise((r) => setTimeout(r, 800));
-        if (playToken.current !== currentToken) return;
+        const loopWaitOk = await waitShadowingPause(800, false);
+        if (!loopWaitOk || playToken.current !== currentToken) return;
         await playSentence(line, false, true, false, nextRem, currentDlgTurn);
         return;
       } else {
@@ -558,17 +559,16 @@ export default function DialogueDetailPage({
 
       if (isShadowWait) {
         setShadowingPauseLineSira(line.sira);
-        setShadowingPause(true, waitMs);
       }
 
-      await new Promise((r) => setTimeout(r, waitMs));
+      const waitCompleted = await waitShadowingPause(waitMs, isShadowWait);
 
       if (isShadowWait) {
         setShadowingPause(false, 0);
         setShadowingPauseLineSira(null);
       }
 
-      if (playToken.current !== currentToken) return;
+      if (!waitCompleted || playToken.current !== currentToken) return;
       const nextLine = dialogue.satirlar.find((s) => s.sira === line.sira + 1);
       if (nextLine) {
         if (inRoleplay && nextLine.konusmaci === selectedRoleSpeaker) {
@@ -595,8 +595,8 @@ export default function DialogueDetailPage({
         if (shouldRepeatDialogue) {
           const nextTurn = currentDlgTurn + 1;
           setDialogueLoopTurn(nextTurn);
-          await new Promise((r) => setTimeout(r, 750));
-          if (playToken.current !== currentToken) return;
+          const dlgRepeatOk = await waitShadowingPause(750, false);
+          if (!dlgRepeatOk || playToken.current !== currentToken) return;
           const firstLine = dialogue.satirlar[0];
           await playSentence(firstLine, true, false, false, null, nextTurn);
           return;
@@ -1632,11 +1632,11 @@ export default function DialogueDetailPage({
                 {dialogueIdioms.map((idm) => (
                   <div
                     key={idm.id}
-                    className="rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-l-4 border-l-[#6741D9] p-3.5 flex flex-col justify-between space-y-2.5"
+                    className="rounded-2xl bg-white dark:bg-slate-900/90 border-2 border-[#E6D7BE] dark:border-slate-700 border-l-4 border-l-[#6741D9] dark:border-l-indigo-500 p-3.5 flex flex-col justify-between space-y-2.5"
                   >
                     <div className="space-y-1.5">
                       <div className="flex items-start justify-between gap-2">
-                        <span className="px-2 py-0.5 rounded-md bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/30 text-[10px] font-extrabold text-[#6741D9] dark:text-[#d0bfff]">
+                        <span className="px-2 py-0.5 rounded-md bg-[#F3F0FF] dark:bg-indigo-950/80 border border-[#6741D9]/30 dark:border-indigo-500/40 text-[10px] font-extrabold text-[#6741D9] dark:text-indigo-200">
                           Cümle #{idm.lineNumber} • Kalıp İfade
                         </span>
                         <span
@@ -1647,18 +1647,18 @@ export default function DialogueDetailPage({
                         </span>
                       </div>
 
-                      <p className="text-sm font-extrabold text-[var(--foreground)]">
+                      <p className="text-sm font-extrabold text-[var(--foreground)] dark:text-slate-100">
                         {idm.meaningTr}
                       </p>
 
-                      <p className="text-[11px] font-semibold text-[var(--muted)]">
-                        <strong className="text-[var(--foreground)]">
+                      <p className="text-[11px] font-semibold text-[var(--muted)] dark:text-slate-300">
+                        <strong className="text-[var(--foreground)] dark:text-slate-100">
                           Kelime Anlamı:
                         </strong>{" "}
                         {idm.literalTr}
                       </p>
 
-                      <div className="rounded-xl bg-[#F7EFE1]/80 dark:bg-[var(--surface)] px-2.5 py-1.5 border border-[#E6D7BE] text-[11px] font-semibold text-[var(--foreground)] leading-snug">
+                      <div className="rounded-xl bg-[#F7EFE1]/80 dark:bg-slate-800/90 px-2.5 py-1.5 border border-[#E6D7BE] dark:border-slate-700 text-[11px] font-semibold text-[var(--foreground)] dark:text-slate-200 leading-snug">
                         💡 <strong>Kullanım İpucu:</strong> {idm.usageNote}
                       </div>
                     </div>
@@ -1673,7 +1673,7 @@ export default function DialogueDetailPage({
                             rate: speechRate,
                           });
                         }}
-                        className="flex-1 h-9 px-3 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] hover:border-[#0CA678] border-2 border-[#E6D7BE] border-b-3 text-xs font-extrabold text-[var(--foreground)] flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="flex-1 h-9 px-3 rounded-xl bg-[#F7EFE1] dark:bg-slate-800 hover:border-[#0CA678] border-2 border-[#E6D7BE] dark:border-slate-600 border-b-3 text-xs font-extrabold text-[var(--foreground)] dark:text-slate-100 flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Volume2 size={14} className="text-[#0CA678]" />
                         <span>🔊 Dinle</span>
@@ -1687,7 +1687,7 @@ export default function DialogueDetailPage({
                             text: idm.arabic,
                           });
                         }}
-                        className="flex-1 h-9 px-3 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] hover:bg-[#e8e2ff] border-2 border-[#6741D9] border-b-3 text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="flex-1 h-9 px-3 rounded-xl bg-[#F3F0FF] dark:bg-indigo-950/85 hover:bg-[#e8e2ff] dark:hover:bg-indigo-900/80 border-2 border-[#6741D9] dark:border-indigo-500 border-b-3 text-xs font-extrabold text-[#6741D9] dark:text-indigo-200 flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Mic size={14} />
                         <span>🎙️ Telaffuz Et</span>
@@ -2481,11 +2481,11 @@ export default function DialogueDetailPage({
             {dialogueIdioms.map((idm) => (
               <div
                 key={idm.id}
-                className="rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] border-l-4 border-l-[#6741D9] p-3 flex flex-col justify-between gap-2"
+                className="rounded-xl bg-white dark:bg-slate-900/90 border border-[#E6D7BE] dark:border-slate-700 border-l-4 border-l-[#6741D9] dark:border-l-indigo-500 p-3 flex flex-col justify-between gap-2"
               >
                 <div className="space-y-1">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-[10px] font-extrabold text-[#6741D9] bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] px-2 py-0.5 rounded-md">
+                    <span className="text-[10px] font-extrabold text-[#6741D9] dark:text-indigo-200 bg-[#F3F0FF] dark:bg-indigo-950/80 border border-[#6741D9]/25 dark:border-indigo-500/40 px-2 py-0.5 rounded-md">
                       Cümle #{idm.lineNumber}
                     </span>
                     <span
@@ -2495,10 +2495,10 @@ export default function DialogueDetailPage({
                       {getDisplayText(idm.arabic)}
                     </span>
                   </div>
-                  <p className="text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                  <p className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] dark:text-slate-100">
                     {idm.meaningTr}
                   </p>
-                  <p className="text-[11px] font-medium text-[var(--muted)] leading-snug">
+                  <p className="text-[11px] font-medium text-[var(--muted)] dark:text-slate-300 leading-snug">
                     💡 {idm.usageNote}
                   </p>
                 </div>
@@ -2513,7 +2513,7 @@ export default function DialogueDetailPage({
                         rate: speechRate,
                       });
                     }}
-                    className="flex-1 h-8 px-2.5 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] hover:border-[#0CA678] border border-[#E6D7BE] text-[11px] font-extrabold text-[var(--foreground)] flex items-center justify-center gap-1 cursor-pointer"
+                    className="flex-1 h-8 px-2.5 rounded-xl bg-[#F7EFE1] dark:bg-slate-800 hover:border-[#0CA678] border border-[#E6D7BE] dark:border-slate-600 text-[11px] font-extrabold text-[var(--foreground)] dark:text-slate-100 flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Volume2 size={13} className="text-[#0CA678]" />
                     <span>🔊 Dinle</span>
@@ -2526,7 +2526,7 @@ export default function DialogueDetailPage({
                         text: idm.arabic,
                       });
                     }}
-                    className="flex-1 h-8 px-2.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] hover:bg-[#e8e2ff] border border-[#6741D9]/50 text-[11px] font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center justify-center gap-1 cursor-pointer"
+                    className="flex-1 h-8 px-2.5 rounded-xl bg-[#F3F0FF] dark:bg-indigo-950/85 hover:bg-[#e8e2ff] dark:hover:bg-indigo-900/80 border border-[#6741D9]/50 dark:border-indigo-500 text-[11px] font-extrabold text-[#6741D9] dark:text-indigo-200 flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Mic size={13} />
                     <span>🎙️ Telaffuz Et</span>

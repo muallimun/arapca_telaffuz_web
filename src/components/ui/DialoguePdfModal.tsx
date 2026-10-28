@@ -2265,11 +2265,11 @@ export default function DialoguePdfModal({
 
         {/* CANLI A4 ÇALIŞMA KAĞIDI ÖNİZLEME ALANI */}
         <div
-          className={`flex-1 overflow-y-auto p-2.5 sm:p-6 bg-[#EFE6D5]/70 dark:bg-black/30 ${
+          className={`flex-1 overflow-y-auto p-2.5 sm:p-6 bg-[#EFE6D5]/70 dark:bg-black/40 ${
             mobileTab === "preview" ? "block" : "hidden md:block"
           }`}
         >
-          <div className="max-w-[780px] w-full mx-auto bg-white text-[#1f1a14] rounded-2xl border-2 border-[#CBD5E1] shadow-lg p-3.5 sm:p-7 space-y-4 overflow-x-hidden">
+          <div className="max-w-[780px] w-full mx-auto bg-white text-slate-900 light rounded-2xl border-2 border-[#CBD5E1] shadow-lg p-3.5 sm:p-7 space-y-4 overflow-x-hidden">
             {/* Önizleme Rozeti (print:hidden) */}
             <div className="print:hidden flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-slate-500 border-b border-slate-200 pb-2">
               <span className="flex items-center gap-1.5 text-[#087F5B]">

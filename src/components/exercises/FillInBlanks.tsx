@@ -132,6 +132,7 @@ export default function FillInBlanks({
   const [typedText, setTypedText] = useState<string>("");
   const [showWordBank, setShowWordBank] = useState<boolean>(false);
   const [showKeyboard, setShowKeyboard] = useState<boolean>(true);
+  const [useDeviceKeyboard, setUseDeviceKeyboard] = useState<boolean>(false);
   const [autoAudio, setAutoAudio] = useState<boolean>(true);
   const [hintCount, setHintCount] = useState<number>(0);
 
@@ -1358,6 +1359,11 @@ export default function FillInBlanks({
                           <input
                             ref={inputRef}
                             type="text"
+                            inputMode={
+                              showKeyboard && !useDeviceKeyboard
+                                ? "none"
+                                : "text"
+                            }
                             dir="rtl"
                             value={typedText}
                             onChange={(e) => setTypedText(e.target.value)}
@@ -1379,11 +1385,15 @@ export default function FillInBlanks({
                             type="button"
                             onClick={() => {
                               playClick();
-                              setShowKeyboard((v) => !v);
+                              setShowKeyboard((v) => {
+                                const next = !v;
+                                if (next) setUseDeviceKeyboard(false);
+                                return next;
+                              });
                             }}
                             title="Arapça Sanal Klavyeyi Aç/Kapat"
                             className={`w-10 h-10 rounded-xl border-2 border-b-3 flex items-center justify-center transition-all cursor-pointer ${
-                              showKeyboard
+                              showKeyboard && !useDeviceKeyboard
                                 ? "bg-[#6741D9] border-[#5230B5] text-white"
                                 : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#6741D9]"
                             }`}
@@ -1486,16 +1496,40 @@ export default function FillInBlanks({
             })}
           </div>
         </>
+      ) : showKeyboard ? (
+        <ArabicVirtualKeyboard
+          onKeyPress={(ch) => setTypedText((prev) => prev + ch)}
+          onBackspace={() => setTypedText((prev) => prev.slice(0, -1))}
+          onClear={() => setTypedText("")}
+          onEnter={handleCheckDictation}
+          onClose={() => {
+            setShowKeyboard(false);
+            setUseDeviceKeyboard(true);
+            setTimeout(() => inputRef.current?.focus(), 40);
+          }}
+          useDeviceKeyboard={useDeviceKeyboard}
+          onToggleDeviceKeyboard={() => {
+            setUseDeviceKeyboard((prev) => {
+              const next = !prev;
+              setTimeout(() => inputRef.current?.focus(), 40);
+              return next;
+            });
+          }}
+        />
       ) : (
-        showKeyboard && (
-          <ArabicVirtualKeyboard
-            onKeyPress={(ch) => setTypedText((prev) => prev + ch)}
-            onBackspace={() => setTypedText((prev) => prev.slice(0, -1))}
-            onClear={() => setTypedText("")}
-            onEnter={handleCheckDictation}
-            onClose={() => setShowKeyboard(false)}
-          />
-        )
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              setUseDeviceKeyboard(false);
+              setShowKeyboard(true);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#6741D9]/40 text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] hover:border-[#6741D9] flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>⌨️ Cihaz Klavyesi / Sanal Klavye</span>
+          </button>
+        </div>
       )}
 
       {/* ÖNCEKİ SORU / SONRAKİ SORU (VEYA TESTİ BİTİR) NAVİGASYON BAR */}

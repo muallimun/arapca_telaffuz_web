@@ -568,35 +568,35 @@ export default function SentenceBuilder({
           </div>
 
           <div className="grid grid-cols-4 gap-2 text-center pt-1">
-            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-2.5 border border-[#E6D7BE]">
+            <div className="bg-white dark:bg-[var(--background)] rounded-xl p-2.5 border border-[#E6D7BE] dark:border-[var(--border)]">
               <span className="block text-[10px] font-bold text-[var(--muted)] uppercase">
                 Başarı
               </span>
-              <span className="text-lg font-black text-[#6741D9] tabular-nums">
+              <span className="text-lg font-black text-[#6741D9] dark:text-[#d0bfff] tabular-nums">
                 %{pct}
               </span>
             </div>
-            <div className="bg-emerald-50 dark:bg-emerald-950/40 rounded-xl p-2.5 border border-emerald-300">
-              <span className="block text-[10px] font-bold text-emerald-700 uppercase">
+            <div className="bg-emerald-50 dark:bg-emerald-950/50 rounded-xl p-2.5 border border-emerald-300 dark:border-emerald-800">
+              <span className="block text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase">
                 Doğru
               </span>
-              <span className="text-lg font-black text-emerald-700 tabular-nums">
+              <span className="text-lg font-black text-emerald-700 dark:text-emerald-300 tabular-nums">
                 {correctCount}
               </span>
             </div>
-            <div className="bg-rose-50 dark:bg-rose-950/40 rounded-xl p-2.5 border border-rose-300">
-              <span className="block text-[10px] font-bold text-rose-700 uppercase">
+            <div className="bg-rose-50 dark:bg-rose-950/50 rounded-xl p-2.5 border border-rose-300 dark:border-rose-800">
+              <span className="block text-[10px] font-bold text-rose-700 dark:text-rose-300 uppercase">
                 Hatalı
               </span>
-              <span className="text-lg font-black text-rose-700 tabular-nums">
+              <span className="text-lg font-black text-rose-700 dark:text-rose-300 tabular-nums">
                 {wrongCount}
               </span>
             </div>
-            <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl p-2.5 border border-amber-300">
-              <span className="block text-[10px] font-bold text-amber-800 uppercase">
+            <div className="bg-amber-50 dark:bg-amber-950/50 rounded-xl p-2.5 border border-amber-300 dark:border-amber-800">
+              <span className="block text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase">
                 Puan
               </span>
-              <span className="text-lg font-black text-amber-800 tabular-nums">
+              <span className="text-lg font-black text-amber-800 dark:text-amber-300 tabular-nums">
                 {totalPoints}
               </span>
             </div>
@@ -848,18 +848,18 @@ export default function SentenceBuilder({
           dir="rtl"
           className={`flex flex-wrap items-center justify-start gap-2 min-h-[76px] p-3.5 rounded-2xl border-2 border-dashed transition-all ${
             evalState === "correct"
-              ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 ring-4 ring-emerald-500/20"
+              ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 ring-4 ring-emerald-500/20"
               : evalState === "wrong"
-              ? "bg-rose-50 dark:bg-rose-950/40 border-rose-500"
+              ? "bg-rose-50 dark:bg-rose-950/50 border-rose-500"
               : evalState === "revealed"
-              ? "bg-amber-50 dark:bg-amber-950/30 border-amber-500"
-              : "bg-white dark:bg-[var(--background)] border-[#cbb692] dark:border-slate-600"
+              ? "bg-amber-50 dark:bg-amber-950/40 border-amber-500"
+              : "bg-white dark:bg-slate-900/90 border-[#cbb692] dark:border-slate-700"
           }`}
         >
           {placedTokens.length === 0 ? (
             <span
               dir="ltr"
-              className="w-full text-center text-xs font-bold text-[var(--muted)] select-none py-3"
+              className="w-full text-center text-xs font-bold text-[var(--muted)] dark:text-slate-300 select-none py-3"
             >
               Aşağıdaki kelime havuzundan kelimelere sırayla dokunun...
             </span>
@@ -870,14 +870,14 @@ export default function SentenceBuilder({
                 normalizeWordForCompare(currentQ.words[idx] || "");
 
               let tokenColor =
-                "bg-[#F3F0FF] dark:bg-indigo-950/70 border-[#6741D9] text-[#4C28B5] dark:text-indigo-200";
+                "bg-[#F3F0FF] dark:bg-indigo-950/85 border-[#6741D9] dark:border-indigo-500 text-[#4C28B5] dark:text-indigo-100";
               if (evalState === "correct" || evalState === "revealed") {
                 tokenColor =
                   "bg-emerald-600 border-emerald-800 text-white shadow-xs";
               } else if (evalState === "wrong") {
                 tokenColor = isWordRightInPlace
-                  ? "bg-emerald-100 dark:bg-emerald-950 border-emerald-500 text-emerald-900 dark:text-emerald-200"
-                  : "bg-rose-100 dark:bg-rose-950 border-rose-500 text-rose-900 dark:text-rose-200 animate-shake";
+                  ? "bg-emerald-100 dark:bg-emerald-950/90 border-emerald-500 text-emerald-900 dark:text-emerald-200"
+                  : "bg-rose-100 dark:bg-rose-950/90 border-rose-500 text-rose-900 dark:text-rose-200 animate-shake";
               }
 
               return (
@@ -973,7 +973,7 @@ export default function SentenceBuilder({
         </span>
         <div
           dir="rtl"
-          className="flex flex-wrap justify-center gap-2 min-h-[68px] p-3 rounded-2xl bg-[#FDFBF7] dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)]"
+          className="flex flex-wrap justify-center gap-2 min-h-[68px] p-3 rounded-2xl bg-[#FDFBF7] dark:bg-slate-900/90 border-2 border-[#E6D7BE] dark:border-slate-700"
         >
           {poolTokens.length === 0 ? (
             <span
@@ -988,7 +988,7 @@ export default function SentenceBuilder({
                 key={tok.tokenId}
                 type="button"
                 onClick={() => handleSelectFromPool(tok)}
-                className="min-h-[42px] px-3.5 py-2 text-lg sm:text-xl font-arabic arabic font-bold select-none active:scale-95 transition-transform rounded-xl bg-white dark:bg-[var(--surface)] hover:bg-[#F3F0FF] text-[var(--foreground)] border-2 border-[#E6D7BE] dark:border-slate-600 border-b-4 hover:border-[#6741D9] cursor-pointer shadow-2xs"
+                className="min-h-[42px] px-3.5 py-2 text-lg sm:text-xl font-arabic arabic font-bold select-none active:scale-95 transition-transform rounded-xl bg-white dark:bg-slate-800 hover:bg-[#F3F0FF] dark:hover:bg-indigo-950/80 text-[var(--foreground)] dark:text-slate-100 border-2 border-[#E6D7BE] dark:border-slate-600 border-b-4 hover:border-[#6741D9] dark:hover:border-indigo-400 cursor-pointer shadow-2xs"
               >
                 {formatAr(tok.text)}
               </button>

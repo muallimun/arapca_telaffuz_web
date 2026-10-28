@@ -30,6 +30,7 @@ import { useSettings } from "@/store/settings";
 import { playClick } from "@/lib/sfxManager";
 import ShadowingModal from "@/components/ui/ShadowingModal";
 import { formatArabicText, splitMixedBidiText } from "@/lib/arabicTextUtils";
+import { getCombinedIdiomsCatalog } from "@/lib/arabicIdioms";
 
 type StatusFilter = "all" | "learned" | "unlearned" | "favorites";
 type TypeFilter = "all" | "isim" | "ozel-isim" | "fiil" | "edat";
@@ -116,6 +117,25 @@ export default function DictionaryPage() {
   const getDisplayArabic = (text: string) =>
     formatArabicText(text, !mounted || showHareke, arabicFont);
 
+  // Kalıp ifade (idiom_ / idm_) ID'lerini DictionaryItem formatına çözümleyen katalog haritası
+  const idiomsByIdMap = useMemo(() => {
+    const map = new Map<string, DictionaryItem>();
+    const catalog = getCombinedIdiomsCatalog();
+    for (const idm of catalog) {
+      const item: DictionaryItem = {
+        id: `idiom_${idm.id}`,
+        mufret: idm.arabic,
+        anlam_tr: idm.meaningTr,
+        kok: "-",
+        tur: "ifade",
+      };
+      map.set(idm.id, item);
+      map.set(`idiom_${idm.id}`, item);
+      map.set(`idm_${idm.id}`, item);
+    }
+    return map;
+  }, []);
+
   // Seçili diyaloğun morfolojik kelime haritası (getDialogueVocabulary ile)
   const dialogueContextMap = useMemo(() => {
     if (selectedDialogueId === "all") return null;
@@ -128,23 +148,69 @@ export default function DictionaryPage() {
   const filteredWords = useMemo(() => {
     let result: DictionaryItem[] = dialogueContextMap
       ? Array.from(dialogueContextMap.values()).map((e) => e.item)
-      : sozluk;
+      : [...sozluk];
 
-    // 1. Kelime türüne göre filtreleme (getWordCategory ile)
-    if (typeFilter !== "all") {
-      result = result.filter((w) => getWordCategory(w) === typeFilter);
-    }
-
-    // 2. Öğrenilme / Favori durumuna göre filtreleme
+    // 1. Öğrenilme / Favori durumuna göre filtreleme ve idiom_ kayıtlarının güvenli çözümlenmesi
     if (mounted) {
       if (statusFilter === "learned") {
-        result = result.filter((w) => learnedWords.includes(w.id));
+        const baseIds = new Set(result.map((w) => w.id));
+        const extraLearnedIdioms: DictionaryItem[] = [];
+        if (!dialogueContextMap) {
+          for (const lId of learnedWords) {
+            if (!baseIds.has(lId) && idiomsByIdMap.has(lId)) {
+              const resolved = idiomsByIdMap.get(lId)!;
+              if (!baseIds.has(resolved.id)) {
+                baseIds.add(resolved.id);
+                extraLearnedIdioms.push(resolved);
+              }
+            }
+          }
+        }
+        const learnedSet = new Set(learnedWords);
+        result = [...result, ...extraLearnedIdioms].filter(
+          (w) =>
+            Boolean(w && w.id && (w.mufret || w.mazi) && w.anlam_tr) &&
+            (learnedSet.has(w.id) ||
+              learnedSet.has(w.id.replace(/^idiom_/, "")))
+        );
       } else if (statusFilter === "unlearned") {
-        result = result.filter((w) => !learnedWords.includes(w.id));
+        const learnedSet = new Set(learnedWords);
+        result = result.filter((w) => !learnedSet.has(w.id));
       } else if (statusFilter === "favorites") {
-        const favIds = new Set(favoriteWords.map((fw) => fw.id));
-        result = result.filter((w) => favIds.has(w.id));
+        const baseMap = new Map<string, DictionaryItem>();
+        result.forEach((w) => baseMap.set(w.id, w));
+
+        const resolvedFavorites: DictionaryItem[] = [];
+        const seenFavIds = new Set<string>();
+
+        for (const fw of favoriteWords) {
+          if (!fw || !fw.id) continue;
+          const fromBase = baseMap.get(fw.id);
+          const fromIdiom = idiomsByIdMap.get(fw.id);
+          const candidate: DictionaryItem | undefined =
+            fromBase ||
+            (fw.mufret || fw.mazi ? fw : undefined) ||
+            fromIdiom;
+
+          if (
+            candidate &&
+            (candidate.mufret || candidate.mazi) &&
+            candidate.anlam_tr &&
+            !seenFavIds.has(candidate.id)
+          ) {
+            if (!dialogueContextMap || baseMap.has(candidate.id)) {
+              seenFavIds.add(candidate.id);
+              resolvedFavorites.push(candidate);
+            }
+          }
+        }
+        result = resolvedFavorites;
       }
+    }
+
+    // 2. Kelime türüne göre filtreleme (getWordCategory ile)
+    if (typeFilter !== "all") {
+      result = result.filter((w) => getWordCategory(w) === typeFilter);
     }
 
     // 3. Arapça (çekimli/yalın) veya Türkçe Anlık Arama
@@ -175,7 +241,9 @@ export default function DictionaryPage() {
       });
     }
 
-    return result;
+    return result.filter((w) =>
+      Boolean(w && w.id && (w.mufret || w.mazi) && w.anlam_tr)
+    );
   }, [
     dialogueContextMap,
     typeFilter,
@@ -184,6 +252,7 @@ export default function DictionaryPage() {
     mounted,
     learnedWords,
     favoriteWords,
+    idiomsByIdMap,
   ]);
 
   // Kelimeyi sesli dinle (MP3 varsa MP3, yoksa TTS)

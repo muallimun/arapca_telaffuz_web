@@ -20,7 +20,13 @@ interface AudioState {
   lastPlayedDurationSec: number;
   isShadowingPause: boolean;
   shadowingPauseMs: number;
+  shadowingTimerId: ReturnType<typeof setTimeout> | null;
   setShadowingPause: (isPaused: boolean, durationMs?: number) => void;
+  waitShadowingPause: (
+    durationMs: number,
+    showVisualPause?: boolean
+  ) => Promise<boolean>;
+  clearShadowingTimer: () => void;
   playAudio: (
     url: string,
     lineId: number,
@@ -34,16 +40,31 @@ interface AudioState {
     voice?: VoiceOption
   ) => Promise<void>;
   setPlaybackRate: (rate: number) => void;
+  pause: () => void;
   stop: () => void;
 }
 
 let currentResolve: (() => void) | null = null;
 let trackingRafId: number | null = null;
+let activeShadowingTimerId: ReturnType<typeof setTimeout> | null = null;
+let activeShadowingResolve: ((completed: boolean) => void) | null = null;
 
 function stopWordTrackingLoop() {
   if (trackingRafId !== null && typeof window !== "undefined") {
     cancelAnimationFrame(trackingRafId);
     trackingRafId = null;
+  }
+}
+
+function cancelActiveShadowingTimer() {
+  if (activeShadowingTimerId !== null) {
+    clearTimeout(activeShadowingTimerId);
+    activeShadowingTimerId = null;
+  }
+  if (activeShadowingResolve) {
+    const res = activeShadowingResolve;
+    activeShadowingResolve = null;
+    res(false);
   }
 }
 
@@ -111,11 +132,53 @@ export const useAudioStore = create<AudioState>((set, get) => {
     lastPlayedDurationSec: 2.5,
     isShadowingPause: false,
     shadowingPauseMs: 0,
+    shadowingTimerId: null,
 
     setShadowingPause: (isPaused: boolean, durationMs = 0) => {
+      if (!isPaused) {
+        cancelActiveShadowingTimer();
+      }
       set({
         isShadowingPause: isPaused,
         shadowingPauseMs: isPaused ? durationMs : 0,
+        shadowingTimerId: isPaused ? activeShadowingTimerId : null,
+      });
+    },
+
+    clearShadowingTimer: () => {
+      cancelActiveShadowingTimer();
+      set({
+        shadowingTimerId: null,
+        isShadowingPause: false,
+        shadowingPauseMs: 0,
+      });
+    },
+
+    waitShadowingPause: (durationMs: number, showVisualPause = false) => {
+      cancelActiveShadowingTimer();
+      return new Promise<boolean>((resolve) => {
+        activeShadowingResolve = resolve;
+        const timerId = setTimeout(() => {
+          if (activeShadowingTimerId === timerId) {
+            activeShadowingTimerId = null;
+          }
+          if (activeShadowingResolve === resolve) {
+            activeShadowingResolve = null;
+          }
+          set({
+            shadowingTimerId: null,
+            isShadowingPause: false,
+            shadowingPauseMs: 0,
+          });
+          resolve(true);
+        }, durationMs);
+
+        activeShadowingTimerId = timerId;
+        set({
+          shadowingTimerId: timerId,
+          isShadowingPause: showVisualPause,
+          shadowingPauseMs: showVisualPause ? durationMs : 0,
+        });
       });
     },
 
@@ -133,7 +196,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
       }
     },
 
-    stop: () => {
+    pause: () => {
+      cancelActiveShadowingTimer();
       stopWordTrackingLoop();
       stopAllAudio();
       void releaseWakeLock("audio");
@@ -144,6 +208,28 @@ export const useAudioStore = create<AudioState>((set, get) => {
         activeWordProgress: 0,
         isShadowingPause: false,
         shadowingPauseMs: 0,
+        shadowingTimerId: null,
+      });
+
+      if (currentResolve) {
+        currentResolve();
+        currentResolve = null;
+      }
+    },
+
+    stop: () => {
+      cancelActiveShadowingTimer();
+      stopWordTrackingLoop();
+      stopAllAudio();
+      void releaseWakeLock("audio");
+      set({
+        activeAudio: null,
+        playingLineId: null,
+        activeWordIndex: null,
+        activeWordProgress: 0,
+        isShadowingPause: false,
+        shadowingPauseMs: 0,
+        shadowingTimerId: null,
       });
 
       if (currentResolve) {
@@ -153,13 +239,18 @@ export const useAudioStore = create<AudioState>((set, get) => {
     },
 
     playAudio: async (url, lineId, rate, sentenceText) => {
+      cancelActiveShadowingTimer();
       stopWordTrackingLoop();
       stopAllAudio();
       if (currentResolve) {
         currentResolve();
         currentResolve = null;
       }
-      set({ isShadowingPause: false, shadowingPauseMs: 0 });
+      set({
+        isShadowingPause: false,
+        shadowingPauseMs: 0,
+        shadowingTimerId: null,
+      });
       void requestWakeLock("audio");
 
       const startedAt =
@@ -249,6 +340,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
     },
 
     playTTS: async (text, lineId, rate, voice = "male") => {
+      cancelActiveShadowingTimer();
       stopWordTrackingLoop();
       stopAllAudio();
       if (currentResolve) {
@@ -260,6 +352,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
         playingLineId: lineId,
         isShadowingPause: false,
         shadowingPauseMs: 0,
+        shadowingTimerId: null,
       });
 
       const startedAt =

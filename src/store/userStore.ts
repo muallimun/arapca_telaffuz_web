@@ -119,16 +119,28 @@ export const useUserStore = create<UserState>()(
 
       toggleFavoriteWord: (word) =>
         set((state) => {
-          const exists = state.favoriteWords.find((w) => w.id === word.id);
+          if (
+            !word ||
+            !word.id ||
+            !(word.mufret || word.mazi) ||
+            !word.anlam_tr
+          ) {
+            return state;
+          }
+          const validFavorites = state.favoriteWords.filter(
+            (w) => w && w.id && (w.mufret || w.mazi) && w.anlam_tr
+          );
+          const exists = validFavorites.find((w) => w.id === word.id);
           return {
             favoriteWords: exists
-              ? state.favoriteWords.filter((w) => w.id !== word.id)
-              : [...state.favoriteWords, word],
+              ? validFavorites.filter((w) => w.id !== word.id)
+              : [...validFavorites, word],
           };
         }),
 
       toggleLearnedWord: (id) =>
         set((state) => {
+          if (!id || typeof id !== "string") return state;
           const isLearned = state.learnedWords.includes(id);
           const today = getTodayDateString();
           const baseMinutes =
@@ -150,6 +162,7 @@ export const useUserStore = create<UserState>()(
 
       addWeakWord: (word) =>
         set((state) => {
+          if (!word || !word.id || !(word.mufret || word.mazi)) return state;
           const exists = state.weakWords.find((w) => w.id === word.id);
           if (exists) return state;
           return { weakWords: [...state.weakWords, word] };

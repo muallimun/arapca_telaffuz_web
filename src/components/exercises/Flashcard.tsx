@@ -128,15 +128,28 @@ export default function Flashcard({
       .filter((c) => c.arabic.trim().length > 0);
 
     const idiomCards: FlashcardItem[] = idioms
-      .map((idm) => ({
-        id: `idm_${idm.id}`,
-        kind: "idiom" as const,
-        arabic: idm.arabic,
-        turkish: idm.meaningTr,
-        badgeText: `✨ Kalıp İfade · Seviye ${idm.level || "A1-B2"}`,
-        literalTr: idm.literalTr,
-        usageNote: idm.usageNote,
-      }))
+      .map((idm) => {
+        const normalizedId = idm.id.startsWith("idiom_")
+          ? idm.id
+          : `idiom_${idm.id}`;
+        const idiomAsWord: DictionaryItem = {
+          id: normalizedId,
+          mufret: idm.arabic,
+          anlam_tr: idm.meaningTr,
+          kok: "-",
+          tur: "ifade",
+        };
+        return {
+          id: normalizedId,
+          kind: "idiom" as const,
+          arabic: idm.arabic,
+          turkish: idm.meaningTr,
+          badgeText: `✨ Kalıp İfade · Seviye ${idm.level || "A1-B2"}`,
+          literalTr: idm.literalTr,
+          usageNote: idm.usageNote,
+          wordItem: idiomAsWord,
+        };
+      })
       .filter((c) => c.arabic.trim().length > 0);
 
     const sentenceCards = getShortDialogueSentences(dialogues);

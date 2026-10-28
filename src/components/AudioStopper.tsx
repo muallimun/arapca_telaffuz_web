@@ -8,16 +8,19 @@ import { useAudioStore } from "@/store/audioStore";
 export default function AudioStopper() {
   const pathname = usePathname();
   const stopStoreAudio = useAudioStore((state) => state.stop);
+  const clearShadowingTimer = useAudioStore((state) => state.clearShadowingTimer);
 
   useEffect(() => {
+    clearShadowingTimer();
     stopStoreAudio();
     stopAllAudio();
 
     return () => {
+      clearShadowingTimer();
       stopStoreAudio();
       stopAllAudio();
     };
-  }, [pathname, stopStoreAudio]);
+  }, [pathname, stopStoreAudio, clearShadowingTimer]);
 
   return null;
 }
