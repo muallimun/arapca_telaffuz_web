@@ -373,7 +373,7 @@ export default function DialoguePdfModal({
       vocabEntries.length > 0 &&
       vocabLanguageMode !== "both") ||
     (includeIdioms && idioms.length > 0 && idiomsBlankMode) ||
-    includeWorksheet;
+    (includeVocabulary && includeWorksheet);
 
   // Herhangi bir çalışma kağıdı / boşluk modu seçildiğinde Öğrenci Bilgi Şeridi ve Cevap Anahtarını otomatik aktif et
   useEffect(() => {
@@ -1758,14 +1758,14 @@ export default function DialoguePdfModal({
       />
 
       <div
-        className="w-full max-w-4xl max-h-[92vh] bg-[#FDFBF7] dark:bg-[var(--surface)] rounded-3xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-4xl max-h-[94vh] bg-[#FDFBF7] dark:bg-[var(--surface)] rounded-3xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* MODAL ÜST BAŞLIK (print:hidden) */}
-        <div className="print:hidden bg-[#F7EFE1] dark:bg-[var(--background)] px-4 sm:px-5 py-3 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-3 shrink-0">
+        <div className="print:hidden bg-[#F7EFE1] dark:bg-[var(--background)] px-4 sm:px-5 py-2.5 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-[#0CA678] border-b-3 border-[#087F5B] text-white flex items-center justify-center shrink-0">
-              <FileText size={18} />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#0CA678] border-b-3 border-[#087F5B] text-white flex items-center justify-center shrink-0">
+              <FileText size={17} />
             </div>
             <div className="min-w-0">
               <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)] truncate">
@@ -1784,7 +1784,7 @@ export default function DialoguePdfModal({
             <button
               type="button"
               onClick={handleGenerateAndPrintPdf}
-              className="hidden sm:flex px-3.5 py-2 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs border-b-3 border-[#087F5B] active:translate-y-0.5 transition-all items-center gap-1.5 cursor-pointer shadow-sm"
+              className="hidden sm:flex px-3.5 py-1.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs border-b-3 border-[#087F5B] active:translate-y-0.5 transition-all items-center gap-1.5 cursor-pointer shadow-sm"
             >
               <Printer size={15} />
               <span>Yazdır / PDF İndir</span>
@@ -1795,10 +1795,10 @@ export default function DialoguePdfModal({
                 playClick();
                 onClose();
               }}
-              className="w-9 h-9 rounded-xl bg-white dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
               aria-label="Kapat"
             >
-              <X size={18} />
+              <X size={17} />
             </button>
           </div>
         </div>
@@ -1837,17 +1837,17 @@ export default function DialoguePdfModal({
 
         {/* KOMPAKT SEÇİM ÇİPLERİ / SEGMENTED CONTROLS BARI (print:hidden) */}
         <div
-          className={`print:hidden bg-[#FDFBF7] dark:bg-[var(--surface)] px-3 sm:px-5 py-3 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] space-y-2.5 overflow-y-auto md:overflow-visible ${
+          className={`print:hidden bg-[#FDFBF7] dark:bg-[var(--surface)] px-3 sm:px-4 py-2 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] space-y-1.5 overflow-y-auto md:overflow-visible ${
             mobileTab === "settings"
               ? "flex-1 md:flex-none block"
               : "hidden md:block shrink-0"
           }`}
         >
           {/* 1. Satır: Görsel Modu + Çeviri Modu */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {/* PDF-1: Görsel Seçici */}
-            <div className="flex flex-wrap items-center gap-1.5 bg-[#F7EFE1] dark:bg-[var(--background)] px-2.5 py-1.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
-              <ImageIcon size={14} className="text-[#087F5B] shrink-0" />
+            <div className="flex flex-wrap items-center gap-1 bg-[#F7EFE1] dark:bg-[var(--background)] px-2 py-1 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
+              <ImageIcon size={13} className="text-[#087F5B] shrink-0" />
               <span className="text-[11px] font-extrabold text-[var(--foreground)]">
                 Görsel:
               </span>
@@ -1866,7 +1866,7 @@ export default function DialoguePdfModal({
                       playClick();
                       setImageMode(opt.id);
                     }}
-                    className={`px-2 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                    className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
                       imageMode === opt.id
                         ? "bg-[#0CA678] text-white shadow-xs"
                         : "text-[var(--muted)] hover:text-[var(--foreground)]"
@@ -1879,8 +1879,8 @@ export default function DialoguePdfModal({
             </div>
 
             {/* PDF-2: Çeviri & Boşluklu Çalışma Kağıdı Görünüm Seçici */}
-            <div className="flex flex-wrap items-center gap-1.5 bg-[#F7EFE1] dark:bg-[var(--background)] px-2.5 py-1.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
-              <Languages size={14} className="text-[#6741D9] shrink-0" />
+            <div className="flex flex-wrap items-center gap-1 bg-[#F7EFE1] dark:bg-[var(--background)] px-2 py-1 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
+              <Languages size={13} className="text-[#6741D9] shrink-0" />
               <span className="text-[11px] font-extrabold text-[var(--foreground)]">
                 Dil & Çeviri:
               </span>
@@ -1900,7 +1900,7 @@ export default function DialoguePdfModal({
                       playClick();
                       setTranslationMode(opt.id);
                     }}
-                    className={`px-2 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                    className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
                       translationMode === opt.id
                         ? "bg-[#6741D9] text-white shadow-xs"
                         : "text-[var(--muted)] hover:text-[var(--foreground)]"
@@ -1914,7 +1914,7 @@ export default function DialoguePdfModal({
           </div>
 
           {/* 2. Satır: Boşluk Doldurma + Harekeler + QR Kod + Kelime Tablosu + Kalıp İfadeler + Öğrenci Şeridi + Cevap Anahtarı */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
             <div className="flex flex-wrap items-center gap-1.5">
               {/* PDF-3: Boşluk Doldurma (Etkinlik) Toggle */}
               <button
@@ -1923,13 +1923,13 @@ export default function DialoguePdfModal({
                   playClick();
                   setClozeMode((v) => !v);
                 }}
-                className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
                   clozeMode
                     ? "bg-[#6741D9] text-white border-[#5230B5] shadow-xs"
                     : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
                 }`}
               >
-                <PenTool size={13} />
+                <PenTool size={12} />
                 <span>Boşluk Doldurma: {clozeMode ? "Açık" : "Kapalı"}</span>
               </button>
 
@@ -1940,13 +1940,13 @@ export default function DialoguePdfModal({
                   playClick();
                   setIncludeHarakat((v) => !v);
                 }}
-                className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
                   includeHarakat
                     ? "bg-[#0CA678] text-white border-[#087F5B] shadow-xs"
                     : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
                 }`}
               >
-                <Sparkles size={13} />
+                <Sparkles size={12} />
                 <span>Harekeler: {includeHarakat ? "Açık" : "Kapalı"}</span>
               </button>
 
@@ -1957,13 +1957,13 @@ export default function DialoguePdfModal({
                   playClick();
                   setIncludeQrCode((v) => !v);
                 }}
-                className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
                   includeQrCode
                     ? "bg-[#0CA678] text-white border-[#087F5B] shadow-xs"
                     : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
                 }`}
               >
-                <QrCode size={13} />
+                <QrCode size={12} />
                 <span>QR Kod: {includeQrCode ? "Açık" : "Kapalı"}</span>
               </button>
 
@@ -1974,17 +1974,17 @@ export default function DialoguePdfModal({
                   playClick();
                   setIncludeVocabulary((v) => !v);
                 }}
-                className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
                   includeVocabulary
                     ? "bg-[#0CA678] text-white border-[#087F5B] shadow-xs"
                     : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
                 }`}
               >
-                <BookOpen size={13} />
+                <BookOpen size={12} />
                 <span>Kelime Tablosu ({vocabEntries.length})</span>
               </button>
 
-              {/* ✨ Kalıp İfadeler Tablosu Toggle (Yalnızca diyalogda kalıp ifade varsa gösterilir) */}
+              {/* Kalıp İfadeler Tablosu Toggle (Yalnızca diyalogda kalıp ifade varsa gösterilir — Çift ikon temizlendi) */}
               {dialogueIdioms.length > 0 && (
                 <button
                   type="button"
@@ -1992,45 +1992,56 @@ export default function DialoguePdfModal({
                     playClick();
                     setIncludeIdioms((v) => !v);
                   }}
-                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
                     includeIdioms
                       ? "bg-[#6741D9] text-white border-[#5230B5] shadow-xs"
                       : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
                   }`}
                 >
-                  <span>✨ Kalıp İfadeler Tablosu ({dialogueIdioms.length})</span>
+                  <Sparkles size={12} />
+                  <span>Kalıp İfadeler Tablosu ({dialogueIdioms.length})</span>
                 </button>
               )}
 
-              {/* ✨ Kalıp İfade Anlamlarını Boş Bırak Alt Seçeneği */}
-              {dialogueIdioms.length > 0 && includeIdioms && (
+              {/* Kalıp İfade Anlamlarını Boş Bırak Alt Seçeneği (Tablo kapalıyken pasif) */}
+              {dialogueIdioms.length > 0 && (
                 <button
                   type="button"
+                  disabled={!includeIdioms}
+                  title={
+                    !includeIdioms
+                      ? "Önce Kalıp İfadeler Tablosunu etkinleştirin"
+                      : "Kalıp ifade anlamlarını çalışma kağıdında boş bırakır"
+                  }
                   onClick={() => {
+                    if (!includeIdioms) return;
                     playClick();
                     setIdiomsBlankMode((v) => !v);
                   }}
-                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    idiomsBlankMode
-                      ? "bg-amber-600 text-white border-amber-700 shadow-xs"
-                      : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
+                  className={`px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all ${
+                    !includeIdioms
+                      ? "opacity-45 pointer-events-none select-none bg-stone-100/60 dark:bg-slate-800/40 text-[var(--muted)] border-[#E6D7BE]"
+                      : idiomsBlankMode
+                      ? "bg-amber-600 text-white border-amber-700 shadow-xs cursor-pointer"
+                      : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)] cursor-pointer"
                   }`}
                 >
+                  <PenTool size={12} />
                   <span>
-                    📝 Kalıp İfade Anlamlarını Boş Bırak:{" "}
-                    {idiomsBlankMode ? "Açık" : "Kapalı"}
+                    Kalıp İfade Anlamlarını Boş Bırak:{" "}
+                    {includeIdioms && idiomsBlankMode ? "Açık" : "Kapalı"}
                   </span>
                 </button>
               )}
 
-              {/* 👤 Öğrenci Bilgi Şeridi Toggle */}
+              {/* Öğrenci Bilgi Şeridi Toggle */}
               <button
                 type="button"
                 onClick={() => {
                   playClick();
                   setIncludeStudentHeader((v) => !v);
                 }}
-                className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
                   includeStudentHeader
                     ? "bg-[#0CA678] text-white border-[#087F5B] shadow-xs"
                     : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
@@ -2042,7 +2053,7 @@ export default function DialoguePdfModal({
                 </span>
               </button>
 
-              {/* 🗝️ Sayfa Sonuna Cevap Anahtarı Ekle (Yalnızca boşluklu bir etkinlik aktifse) */}
+              {/* 🗝️ Sayfa Sonuna Cevap Anahtarı Ekle (Boşluklu çalışma kağıdı modlarından herhangi biri aktifse görünür) */}
               {hasAnyBlankActivity && (
                 <button
                   type="button"
@@ -2050,7 +2061,7 @@ export default function DialoguePdfModal({
                     playClick();
                     setIncludeAnswerKey((v) => !v);
                   }}
-                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
                     includeAnswerKey
                       ? "bg-emerald-700 text-white border-emerald-900 shadow-xs"
                       : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
@@ -2070,9 +2081,9 @@ export default function DialoguePdfModal({
                 playClick();
                 setShowAdvancedLayout((v) => !v);
               }}
-              className="px-2.5 py-1.5 rounded-xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] text-[11px] font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center gap-1 cursor-pointer"
+              className="px-2.5 py-1 rounded-xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] text-[11px] font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center gap-1 cursor-pointer"
             >
-              <Columns2 size={13} />
+              <Columns2 size={12} />
               <span>
                 {showAdvancedLayout
                   ? "Mizanpajı Gizle"
@@ -2083,12 +2094,26 @@ export default function DialoguePdfModal({
 
           {/* Genişletilebilir Tablo & Sütun Mizanpaj Seçenekleri */}
           {showAdvancedLayout && (
-            <div className="pt-2 border-t border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-              {/* Sütun & Tercüme Yerleşimi */}
-              <div className="p-2.5 rounded-xl bg-[#F7EFE1]/70 dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1.5">
-                <span className="block text-[11px] font-extrabold text-[#6741D9]">
-                  Tercüme Yerleşimi & Sütun Yönü:
-                </span>
+            <div className="pt-1.5 border-t border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              {/* Sütun & Tercüme Yerleşimi ("Sadece Arapça" seçiliyse pasif) */}
+              <div
+                aria-disabled={translationMode === "hide"}
+                className={`p-2 rounded-xl border border-[#E6D7BE] space-y-1 transition-all ${
+                  translationMode === "hide"
+                    ? "opacity-45 pointer-events-none select-none bg-stone-100/60 dark:bg-slate-800/40"
+                    : "bg-[#F7EFE1]/70 dark:bg-[var(--background)]"
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-1">
+                  <span className="text-[11px] font-extrabold text-[#6741D9]">
+                    Tercüme Yerleşimi & Sütun Yönü:
+                  </span>
+                  {translationMode === "hide" && (
+                    <span className="text-[10px] font-bold text-[var(--muted)]">
+                      (Sadece Arapça modunda çeviri sütunu bulunmaz)
+                    </span>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-1">
                   {[
                     {
@@ -2116,7 +2141,7 @@ export default function DialoguePdfModal({
                           playClick();
                           setTranslationLayout(l.id);
                         }}
-                        className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer ${
+                        className={`px-2 py-0.5 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer ${
                           translationLayout === l.id
                             ? "bg-[#6741D9] text-white"
                             : "bg-white dark:bg-[var(--surface)] text-[var(--muted)]"
@@ -2128,10 +2153,25 @@ export default function DialoguePdfModal({
                     );
                   })}
                 </div>
-                {translationLayout === "side-by-side" && (
-                  <div className="flex flex-wrap gap-1 pt-1">
+
+                {/* Sütun Yönü Butonları ("Alt Alta" veya "Sonda Toplu" seçildiğinde pasif) */}
+                <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                  <div
+                    title={
+                      translationLayout !== "side-by-side"
+                        ? "Sütun yönü sadece Yan Yana görünümde geçerlidir"
+                        : undefined
+                    }
+                    className={`flex flex-wrap gap-1 ${
+                      translationLayout !== "side-by-side"
+                        ? "opacity-40 pointer-events-none select-none"
+                        : ""
+                    }`}
+                  >
                     <button
                       type="button"
+                      disabled={translationLayout !== "side-by-side"}
+                      title="Sütun yönü sadece Yan Yana görünümde geçerlidir"
                       onClick={() => {
                         playClick();
                         setSideBySideOrder("ar-right");
@@ -2146,6 +2186,8 @@ export default function DialoguePdfModal({
                     </button>
                     <button
                       type="button"
+                      disabled={translationLayout !== "side-by-side"}
+                      title="Sütun yönü sadece Yan Yana görünümde geçerlidir"
                       onClick={() => {
                         playClick();
                         setSideBySideOrder("ar-left");
@@ -2159,46 +2201,57 @@ export default function DialoguePdfModal({
                       Solda Arapça / Sağda Türkçe
                     </button>
                   </div>
-                )}
-                {translationLayout === "grouped-end" && (
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        playClick();
-                        setTranslationPageBreak("same");
-                      }}
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold cursor-pointer ${
-                        translationPageBreak === "same"
-                          ? "bg-emerald-700 text-white"
-                          : "bg-white text-[var(--muted)]"
-                      }`}
-                    >
-                      Konum: Aynı Sayfada
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        playClick();
-                        setTranslationPageBreak("new");
-                      }}
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold cursor-pointer ${
-                        translationPageBreak === "new"
-                          ? "bg-emerald-700 text-white"
-                          : "bg-white text-[var(--muted)]"
-                      }`}
-                    >
-                      Konum: Arka Sayfada
-                    </button>
-                  </div>
-                )}
+
+                  {translationLayout === "grouped-end" && (
+                    <div className="flex flex-wrap gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setTranslationPageBreak("same");
+                        }}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold cursor-pointer ${
+                          translationPageBreak === "same"
+                            ? "bg-emerald-700 text-white"
+                            : "bg-white text-[var(--muted)]"
+                        }`}
+                      >
+                        Konum: Aynı Sayfada
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setTranslationPageBreak("new");
+                        }}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold cursor-pointer ${
+                          translationPageBreak === "new"
+                            ? "bg-emerald-700 text-white"
+                            : "bg-white text-[var(--muted)]"
+                        }`}
+                      >
+                        Konum: Arka Sayfada
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Kelime Tablosu Test Modu & Konumu */}
-              <div className="p-2.5 rounded-xl bg-[#F7EFE1]/70 dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1.5">
-                <span className="block text-[11px] font-extrabold text-[#087F5B]">
-                  Kelime Tablosu Modu & Konumu:
-                </span>
+              {/* Kelime Tablosu Test Modu & Konumu ("Kelime Tablosu" kapalıysa pasif) */}
+              <div
+                aria-disabled={!includeVocabulary}
+                className={`p-2 rounded-xl border border-[#E6D7BE] space-y-1 transition-all ${
+                  !includeVocabulary
+                    ? "opacity-45 pointer-events-none select-none bg-stone-100/60 dark:bg-slate-800/40"
+                    : "bg-[#F7EFE1]/70 dark:bg-[var(--background)]"
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-1">
+                  <span className="text-[11px] font-extrabold text-[#087F5B]">
+                    Kelime Tablosu Modu & Konumu{" "}
+                    {!includeVocabulary ? "(Kapalı)" : ""}:
+                  </span>
+                </div>
                 <div className="flex flex-wrap gap-1">
                   {[
                     { id: "both" as VocabLanguageMode, label: "Arapça + Türkçe" },
@@ -2218,7 +2271,7 @@ export default function DialoguePdfModal({
                         playClick();
                         setVocabLanguageMode(m.id);
                       }}
-                      className={`px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer ${
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold cursor-pointer ${
                         vocabLanguageMode === m.id
                           ? "bg-[#0CA678] text-white"
                           : "bg-white dark:bg-[var(--surface)] text-[var(--muted)]"
@@ -2228,7 +2281,7 @@ export default function DialoguePdfModal({
                     </button>
                   ))}
                 </div>
-                <div className="flex flex-wrap items-center gap-1 pt-1">
+                <div className="flex flex-wrap items-center gap-1 pt-0.5">
                   <button
                     type="button"
                     onClick={() => {
@@ -2853,7 +2906,7 @@ export default function DialoguePdfModal({
         </div>
 
         {/* MODAL ALT AKSİYON ÇUBUĞU (print:hidden - Her iki sekmede de sabit görünür) */}
-        <div className="print:hidden bg-[#F7EFE1] dark:bg-[var(--background)] px-4 sm:px-5 py-3 border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-3 shrink-0">
+        <div className="print:hidden bg-[#F7EFE1] dark:bg-[var(--background)] px-4 sm:px-5 py-2.5 border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-3 shrink-0">
           <span className="text-xs font-extrabold text-[#087F5B] hidden sm:inline">
             www.muallimun.net • Kurumsal A4 Vektörel Çalışma Kağıdı
           </span>
@@ -2864,7 +2917,7 @@ export default function DialoguePdfModal({
                 playClick();
                 onClose();
               }}
-              className="px-4 py-2.5 rounded-xl bg-white dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 text-xs font-extrabold text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-white dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 text-xs font-extrabold text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
             >
               Vazgeç
             </button>
@@ -2872,10 +2925,10 @@ export default function DialoguePdfModal({
             <button
               type="button"
               onClick={handleGenerateAndPrintPdf}
-              className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              className="flex-1 sm:flex-initial px-5 py-2 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
             >
               <Printer size={17} />
-              <span>🖨️ Yazdır / PDF Kaydet</span>
+              <span>Yazdır / PDF Kaydet</span>
             </button>
           </div>
         </div>
