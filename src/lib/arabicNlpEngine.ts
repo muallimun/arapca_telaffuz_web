@@ -1290,6 +1290,27 @@ export function explainVerbAffixMorphology(rawWord: string): string | null {
   const bare = normalizeArabicForPronunciation(rawWord);
   if (!bare || bare.length < 4) return null;
 
+  if (bare.endsWith("تموني")) {
+    return "تُمْ (siz - mazi) + نِي (beni/bana - 1. tekil nesne zamiri)";
+  }
+  if (bare.endsWith("تموها") || bare.endsWith("تموه")) {
+    return "تُمْ (siz - mazi) + هُ/هَا (onu - 3. tekil nesne zamiri)";
+  }
+  if (bare.endsWith("تكم")) {
+    return "تُ (ben - mazi) + كُمْ (sizi/size - 2. çoğul nesne zamiri)";
+  }
+  if (bare.endsWith("تكما")) {
+    return "تُ (ben - mazi) + كُمَا (ikinizi/ikinize - 2. ikil nesne zamiri)";
+  }
+  if (bare.endsWith("ينني")) {
+    return "ينَ (sen [مؤنث] - muzari) + نِي (beni/bana - 1. tekil nesne zamiri)";
+  }
+  if (bare.endsWith("ونني")) {
+    return "ونَ (siz/onlar - muzari) + نِي (beni/bana - 1. tekil nesne zamiri)";
+  }
+  if (bare.endsWith("وننا")) {
+    return "ونَ (siz/onlar - muzari) + نَا (bizi/bize - 1. çoğul nesne zamiri)";
+  }
   if (bare.endsWith("تاني")) {
     return "تَا (müennes ikil eki) + نِي (beni - 1. tekil nesne zamiri)";
   }

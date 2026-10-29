@@ -980,6 +980,109 @@ export const ARABIC_IDIOMS_LIBRARY: ArabicIdiom[] = [
     usageNote: "Bir meslek sahibinin ilgisizliğine veya hatasına tepki gösterirken kullanılan sitem/beddua kalıbıdır (dlg_41).",
     variants: ["لا كان طبيب مثلك"],
   },
+  {
+    id: "idm_122",
+    arabic: "سُرِرْتُ لِمَعْرِفَتِكِ / سُرِرْتُ لِمَعْرِفَتِكَ",
+    meaningTr: "Seninle tanıştığıma memnun oldum.",
+    literalTr: "Seni tanımaktan dolayı sevindim / mutlu oldum.",
+    usageNote: "Tanışma diyaloglarında 'تَشَرَّفْنَا' veya 'فُرْصَةٌ سَعِيدَةٌ' ifadeleriyle eş anlamlı olarak kullanılan kibar tanışma kalıbıdır (dlg_03).",
+    variants: [
+      "سُرِرْتُ لِمَعْرِفَتِكِ",
+      "سُرِرْتُ لِمَعْرِفَتِكَ",
+      "سُرِرْتُ بِمَعْرِفَتِكَ",
+      "سُرِرْتُ بِمَعْرِفَتِكِ",
+      "سررت لمعرفتك",
+      "سررت بمعرفتك",
+    ],
+  },
+  {
+    id: "idm_123",
+    arabic: "أَعْمَالاً مُوَفَّقَةً / عَمَلاً مُوَفَّقاً",
+    meaningTr: "Hayırlı işler / Kolay gelsin.",
+    literalTr: "Başarılı (muvaffak) işler (dilerim).",
+    usageNote: "Çalışan birine veya iş yerine girerken/çıkarken söylenen 'Hayırlı işler, kolay gelsin' temennisidir (dlg_11, dlg_13).",
+    variants: [
+      "أَعْمَالاً مُوَفَّقَةً",
+      "عَمَلاً مُوَفَّقاً",
+      "أَعْمَالٌ مُوَفَّقَةٌ",
+      "اعمالا موفقه",
+      "عملا موفقا",
+    ],
+  },
+  {
+    id: "idm_124",
+    arabic: "سَهَّلَ اللَّهُ عَمَلَكَ",
+    meaningTr: "Allah işini kolaylaştırsın / Kolay gelsin.",
+    literalTr: "Allah senin işini kolay kılsın.",
+    usageNote: "Çalışmakta olan bir kimseye 'Kolay gelsin' anlamında söylenen geleneksel dua ve nezaket ifadesidir (dlg_11, dlg_22).",
+    variants: [
+      "سَهَّلَ اللَّهُ عَمَلَكَ",
+      "سَهَّلَ اللّٰهُ عَمَلَكَ",
+      "سَهَّلَ اللَّهُ عَمَلَكِ",
+      "سَهَّلَ اللّٰهُ عَمَلَكِ",
+      "سَهَّلَ اللَّهُ عَمَلَكُمْ",
+      "سهل الله عملك",
+      "سهل الله عملكم",
+    ],
+  },
+  {
+    id: "idm_125",
+    arabic: "طَهُورٌ إِنْ شَاءَ اللَّهُ",
+    meaningTr: "Geçmiş olsun (Allah şifa versin / günahlara kefaret olsun).",
+    literalTr: "İnşallah arındırıcıdır (temizleyicidir).",
+    usageNote: "Hasta ziyaretinde veya bir rahatsızlık geçiren kişiye 'Geçmiş olsun, şifa olsun' anlamında söylenen nebevi dua kalıbıdır (dlg_21).",
+    variants: [
+      "طَهُورٌ إِنْ شَاءَ اللَّهُ",
+      "طَهُورٌ إِنْ شَاءَ اللّٰهُ",
+      "طهور ان شاء الله",
+    ],
+  },
+  {
+    id: "idm_126",
+    arabic: "لَاقَ بِكِ كَثِيراً",
+    meaningTr: "Size çok yakıştı.",
+    literalTr: "Sana çok uygun düştü / yakıştı.",
+    usageNote: "Yeni bir kıyafet, eşya veya görünüm için karşı tarafa söylenen 'Üzerinizde çok güzel durdu / size çok yakıştı' iltifat kalıbıdır (dlg_22).",
+    variants: [
+      "لَاقَ بِكِ كَثِيراً",
+      "لَاقَ بِكَ كَثِيراً",
+      "يَلِيقُ بِكِ كَثِيراً",
+      "يَلِيقُ بِكَ كَثِيراً",
+      "لاق بك كثيرا",
+      "يليق بك كثيرا",
+    ],
+  },
+  {
+    id: "idm_127",
+    arabic: "بَارَكَ اللَّهُ لَكُمْ",
+    meaningTr: "Bereket versin / Allah bereket versin.",
+    literalTr: "Allah sizin için mübarek ve bereketli kılsın.",
+    usageNote: "Alışveriş sonrasında, ikramda veya tebrik makamında 'Allah bereket versin, hayırlı-mübarek olsun' anlamında kullanılan dua ifadesidir (dlg_22).",
+    variants: [
+      "بَارَكَ اللَّهُ لَكُمْ",
+      "بَارَكَ اللّٰهُ لَكُمْ",
+      "بَارَكَ اللَّهُ لَكَ",
+      "بَارَكَ اللّٰهُ لَكَ",
+      "بَارَكَ اللَّهُ لَكِ",
+      "بَارَكَ اللّٰهُ لَكِ",
+      "بارك الله لكم",
+      "بارك الله لك",
+    ],
+  },
+  {
+    id: "idm_128",
+    arabic: "بِحَاجَةٍ إِلَى ...",
+    meaningTr: "...-e ihtiyacı olmak (بِحَاجَةٍ إِلَى الرَّاحَةِ: dinlenmeye ihtiyacım var).",
+    literalTr: "...-e ihtiyaç içinde.",
+    usageNote: "Bir şeye duyulan ihtiyacı ifade etmek için 'بِحَاجَةٍ' kelimesinin her zaman 'إِلَى' harf-i cerri ile birlikte kullanıldığı yaygın kalıptır (dlg_24).",
+    variants: [
+      "بِحَاجَةٍ إِلَى",
+      "بِحَاجَةٍ إِلَى الرَّاحَةِ",
+      "أَنَا بِحَاجَةٍ إِلَى",
+      "بحاجه الي",
+      "بحاجه الي الراحه",
+    ],
+  },
 ];
 
 
@@ -990,7 +1093,7 @@ export const ARABIC_IDIOMS_LIBRARY: ArabicIdiom[] = [
 export function normalizeForIdiomMatch(text: string): string {
   if (!text) return "";
   return text
-    .replace(/[\u064B-\u065F\u0670\u0640]/g, "") // Harekeler ve tatweel
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g, "") // Harekeler (\u0670 dahil) ve tatweel
     .replace(/[.,،؛؟?!()"'«»\-–—:]/g, " ")
     .replace(/[أإآٱ]/g, "ا")
     .replace(/ى/g, "ي")
@@ -1013,6 +1116,11 @@ export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
     if (!normTitle || seenNormalized.has(normTitle)) continue;
 
     seenNormalized.add(normTitle);
+    item.arabic
+      .split("/")
+      .map((s) => s.replace(/\.\.\./g, "").trim())
+      .filter(Boolean)
+      .forEach((part) => seenNormalized.add(normalizeForIdiomMatch(part)));
     item.variants?.forEach((v) => seenNormalized.add(normalizeForIdiomMatch(v)));
     catalog.push({
       ...item,
@@ -1026,12 +1134,17 @@ export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
   let dictIdx = 0;
   for (const entry of dictSources) {
     if (entry.tur !== "ifade") continue;
-    const rawAr = (entry.mufret || entry.mazi || "").split("/")[0].trim();
+    const allParts = (entry.mufret || entry.mazi || "")
+      .split("/")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const rawAr = allParts[0] || "";
     if (!rawAr) continue;
     const norm = normalizeForIdiomMatch(rawAr);
     if (!norm || seenNormalized.has(norm)) continue;
 
     seenNormalized.add(norm);
+    allParts.forEach((p) => seenNormalized.add(normalizeForIdiomMatch(p)));
     const assignedLevel =
       dictIdx % 3 === 0 ? "A1-A2" : dictIdx % 3 === 1 ? "B1" : "B2";
     dictIdx++;
@@ -1041,7 +1154,7 @@ export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
       meaningTr: entry.anlam_tr,
       literalTr: entry.kok && entry.kok !== "-" ? `Kök: ${entry.kok}` : "Kalıp İfade",
       usageNote: "Günlük konuşma ve diyaloglarda kalıplaşmış ifade olarak kullanılır.",
-      variants: [rawAr],
+      variants: allParts,
       level: assignedLevel,
     });
   }
@@ -1072,7 +1185,14 @@ export function extractDialogueIdioms(
     const normIdiomTitle = normalizeForIdiomMatch(idiom.arabic);
     if (!normIdiomTitle || foundByNormKey.has(normIdiomTitle)) continue;
 
-    const candidates = [idiom.arabic, ...(idiom.variants || [])];
+    const slashParts = idiom.arabic
+      .split("/")
+      .map((s) => s.replace(/\.\.\./g, "").trim())
+      .filter(Boolean);
+    const candidates = [
+      ...slashParts,
+      ...(idiom.variants || []).map((v) => v.replace(/\.\.\./g, "").trim()),
+    ];
     for (const candidate of candidates) {
       const normCand = normalizeForIdiomMatch(candidate);
       if (!normCand || normCand.length < 3) continue;

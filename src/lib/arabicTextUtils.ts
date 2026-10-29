@@ -108,11 +108,15 @@ export function fixArabicTypography(
 }
 
 /**
- * Harekeleri soyar (Harekesiz okuma modu için)
+ * Harekeleri soyar (Harekesiz okuma modu ve arama/eşleştirme için \u0670 Asâ/Superscript Alef dahil)
  */
 export function removeArabicHarakat(text: string): string {
   if (!text) return "";
-  return text.replace(/[\u064B-\u065F\u0670]/g, "");
+  return text.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "");
+}
+
+export function removeDiacritics(text: string): string {
+  return removeArabicHarakat(text);
 }
 
 /**

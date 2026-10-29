@@ -328,6 +328,7 @@ interface IndexedCandidate {
 const dictIndex = new Map<string, DictionaryItem>();
 const dictMultiIndex = new Map<string, IndexedCandidate[]>();
 const rootIndex = new Map<string, DictionaryItem[]>();
+const muzariBareIndex = new Map<string, DictionaryItem>();
 let candidateOrderCounter = 0;
 
 function addCandidateToMultiIndex(
@@ -419,6 +420,25 @@ function indexDictionaryItem(item: DictionaryItem) {
       } else {
         // Çok kelimeli ifadeyi yalnızca tam haliyle indeksle
         addCandidateToMultiIndex(norm, cleanedItem, v, isMasdar);
+      }
+    }
+  }
+
+  // Muzari fiillerin baştaki muzari harfi (ي / ت / أ / ن) soyulmuş çıplak gövdesini de indeksle
+  // (Örn: يَزُورُ -> زور, يَسِيلُ -> سيل, يُقْلِعُ -> قلع, يَطِيبُ -> طيب, يَقُولُ -> قول, يَكُونُ -> كون)
+  if (category === "fiil" && item.muzari && item.muzari !== "-") {
+    const muzVariants = item.muzari
+      .replace(/\(.*?\)/g, " ")
+      .split(/[\/\-،,]/)
+      .map((v) => cleanArabicText(v))
+      .filter(Boolean);
+    for (const mv of muzVariants) {
+      const strippedSin = mv.startsWith("س") && mv.length >= 4 ? mv.slice(1) : mv;
+      if (/^[ينتأا]/.test(strippedSin) && strippedSin.length >= 3) {
+        const bareMuz = strippedSin.slice(1);
+        if (bareMuz.length >= 2 && !muzariBareIndex.has(bareMuz)) {
+          muzariBareIndex.set(bareMuz, cleanedItem);
+        }
       }
     }
   }
@@ -709,6 +729,29 @@ const PROTECTED_NO_DUAL_PLURAL_SPLIT = new Set<string>([
   "غفران",
   "طيران",
   "حيوان",
+  // Onluk ve yüzlük sayılar (Asla ون / ين çoğul eki soyularak 3..9 tekil sayılarına düşürülmez!)
+  "عشرون",
+  "عشرين",
+  "ثلاثون",
+  "ثلاثين",
+  "اربعون",
+  "اربعين",
+  "خمسون",
+  "خمسين",
+  "ستون",
+  "ستين",
+  "سبعون",
+  "سبعين",
+  "ثمانون",
+  "ثمانين",
+  "تسعون",
+  "تسعين",
+  "ثلاثمئه",
+  "ثلاثمائه",
+  "اربعمئه",
+  "اربعمائه",
+  "خمسمئه",
+  "خمسمائه",
 ]);
 
 // ==============================================================================
@@ -828,6 +871,11 @@ export function hasDefiniteNounMarker(
 ): boolean {
   const bare = stripHarakat(cleanedRaw);
 
+  // 0. Gelecek zaman öneki (سَـ + muzari harfi: سَنَزُورُ، سَتَقْتُلِينَنِي، سَنَرْكَبُ) taşıyan kelimeler %100 FİİLDİR, asla isim olamaz!
+  if (/^(وَ|فَ)?(أَ)?سَ[أإآانيت]/.test(cleanedRaw)) {
+    return false;
+  }
+
   // 1. Tâ-i Merbûta (ة) veya Tenvin (ً ٌ ٍ)
   if (bare.endsWith("ة") || /[\u064B\u064C\u064D]/.test(cleanedRaw)) {
     return true;
@@ -873,13 +921,14 @@ export function hasDefiniteNounMarker(
   }
 
   // 5. İyelik zamirinden hemen önceki harfte kesra (ِ) bulunması (Fiiller zamirden önce kesra almaz: ظَهْرِكَ، مَعْرِفَتِكَ، اِبْنِكُمْ، مَجِيئِكَ)
+  // Not: 2. tekil müennes muzari (تَقْتُلِينَنِي / تُعْطِينَنِي) hariç
   if (
     /\u0650(كَ|كِ|كُمْ|كُنَّ|كُمَا|هُ|هَا|هِمْ|هُمَا|نَا)$/.test(cleanedRaw)
   ) {
     return true;
   }
 
-  // 6. Önceki kelime (prevWordAr) bir harf-i cer veya zarf ise
+  // 6. Önceki kelime (prevWordAr) bir harf-i cer ise (ancak حَتَّى / قَبْلَ / بَعْدَ sonrası muzari fiil gelebileceği için muzari fiilleri dışla)
   if (prevWordAr) {
     const cleanPrev = cleanArabicText(
       prevWordAr.replace(/[.,!?؟،;؛:"'()\[\]{}\d]/g, "")
@@ -888,9 +937,19 @@ export function hasDefiniteNounMarker(
       cleanPrev.length > 2 && /^[وف]/.test(cleanPrev)
         ? cleanPrev.slice(1)
         : cleanPrev;
+    const isVerbFollowableParticle =
+      cleanPrev === "حتي" ||
+      cleanPrev === "حتى" ||
+      cleanPrev === "قبل" ||
+      cleanPrev === "بعد" ||
+      cleanPrev === "منذ";
+    const looksLikeMuzariVerb =
+      /^(يَ|يُ|تَ|تُ|نَ|نُ|أَ|أُ)/.test(cleanedRaw) &&
+      muzariBareIndex.has(norm.slice(1));
     if (
-      PREPOSITION_PREV_WORDS.has(cleanPrev) ||
-      PREPOSITION_PREV_WORDS.has(strippedPrevConj)
+      (PREPOSITION_PREV_WORDS.has(cleanPrev) ||
+        PREPOSITION_PREV_WORDS.has(strippedPrevConj)) &&
+      !(isVerbFollowableParticle && looksLikeMuzariVerb)
     ) {
       return true;
     }
@@ -1488,6 +1547,12 @@ const SUFFIX_RULES: Array<{
   isNiswaVerbSuffix?: boolean;
 }> = [
   { raw: "تموني", label: "تُمْ (siz) + نِي (beni/bana)", verbOnly: true, isPronoun: true },
+  { raw: "تموها", label: "تُمْ (siz) + هَا (onu [مؤنث])", verbOnly: true, isPronoun: true },
+  { raw: "تموه", label: "تُمْ (siz) + هُ (onu [مذكر])", verbOnly: true, isPronoun: true },
+  { raw: "تكما", label: "تُ / تَ + كُمَا (ikinizi / ikinize)", verbOnly: true, isPronoun: true },
+  { raw: "تكم", label: "تُ + كُمْ (sizi / size)", verbOnly: true, isPronoun: true },
+  { raw: "تكن", label: "تُ + كُنَّ (siz kadınları / size)", verbOnly: true, isPronoun: true },
+  { raw: "تهم", label: "تُ / تَ / تْ + هُمْ (onları / onlara)", verbOnly: true, isPronoun: true },
   {
     raw: "تاني",
     label: "تَا (müennes ikil eki) + نِي (beni - 1. tekil nesne zamiri)",
@@ -1537,6 +1602,12 @@ const SUFFIX_RULES: Array<{
     isPronoun: true,
   },
   {
+    raw: "وننا",
+    label: "ونَ (siz/onlar - muzari) + نَا (bizi / bize)",
+    verbOnly: true,
+    isPronoun: true,
+  },
+  {
     raw: "ينها",
     label: "ينَ (sen [مؤنث] - muzari) + هَا (onu [مؤنث])",
     verbOnly: true,
@@ -1551,6 +1622,12 @@ const SUFFIX_RULES: Array<{
   {
     raw: "ينني",
     label: "ينَ (sen [مؤنث] - muzari) + نِي (beni / bana)",
+    verbOnly: true,
+    isPronoun: true,
+  },
+  {
+    raw: "يننا",
+    label: "ينَ (sen [مؤنث] - muzari) + نَا (bizi / bize)",
     verbOnly: true,
     isPronoun: true,
   },
@@ -1619,6 +1696,8 @@ const SUFFIX_RULES: Array<{
   { raw: "وها", label: "وا (onlar/çoğul) + هَا (onu)", verbOnly: true, isPronoun: true },
   { raw: "وه", label: "وا (onlar/çoğul) + هُ (onu)", verbOnly: true, isPronoun: true },
   { raw: "وك", label: "وا (onlar/çoğul) + كَ / كِ (seni/sana)", verbOnly: true, isPronoun: true },
+  { raw: "وني", label: "وا (onlar/siz) + نِي (beni / bana)", verbOnly: true, isPronoun: true },
+  { raw: "ونا", label: "وا (onlar/siz) + نَا (bizi / bize)", verbOnly: true, isPronoun: true },
   { raw: "وهم", label: "وا (onlar/çoğul) + هُمْ (onları)", verbOnly: true, isPronoun: true },
   { raw: "يها", label: "ي (muhataba) + هَا (onu)", verbOnly: true, isPronoun: true },
   { raw: "يه", label: "ي (muhataba) + هُ (onu)", verbOnly: true, isPronoun: true },
@@ -2326,6 +2405,19 @@ function matchStemWithRules(
     }
 
     const bareAfterPrefix = stem.slice(1);
+
+    // KURAL 1 (Yeni): İndekslenmiş muzari çıplak gövdesi (زور -> زار/يزور, سيل -> سال/يسيل, قلع -> أقلع/يقلع, طيب -> طاب/يطيب)
+    if (bareAfterPrefix.length >= 2 && muzariBareIndex.has(bareAfterPrefix)) {
+      const muzBareCand = muzariBareIndex.get(bareAfterPrefix)!;
+      if (getWordCategory(muzBareCand) === "fiil") {
+        return {
+          item: muzBareCand,
+          stage: "verb",
+          extraNote: getPersonNote(muzBareCand),
+          isImperative: isImp,
+        };
+      }
+    }
 
     // KURAL 1.1 & KURAL 1.4: Muzaaf (Şeddeli 2 Harfli Gövde) ve Muzaaf İf'âl (أَحَبَّ / سَتُحِبُّ / تُحِبِّينَ) Fiil Kuralı
     if (bareAfterPrefix.length === 2) {
@@ -3659,6 +3751,82 @@ export function analyzeAndMatchWord(
     }
   }
 
+  // 0.999. KURAL 3 & KURAL 5: Onluk/Yüzlük Sayılar (20..90, 300..500) ve "كَرِيم" (Özel İsim vs الْكَرِيم Sıfat) Koruması
+  const tensOrHundredsMatch = normalized.match(
+    /^(و|ف|ب|ل|ك|وب|فب|ول|فل|ال|وال|بال|لل)?(عشرون|عشرين|ثلاثون|ثلاثين|اربعون|اربعين|خمسون|خمسين|ستون|ستين|سبعون|سبعين|ثمانون|ثمانين|تسعون|تسعين|ثلاثمئه|ثلاثمائه|اربعمئه|اربعمائه|خمسمئه|خمسمائه)$/
+  );
+  if (tensOrHundredsMatch) {
+    const prefRaw = tensOrHundredsMatch[1] || "";
+    const numCore = tensOrHundredsMatch[2];
+    const numItem = dictIndex.get(numCore);
+    if (numItem) {
+      const prefObj = NOMINAL_PREFIX_RULES.find((p) => p.raw === prefRaw);
+      return {
+        item: numItem,
+        originalWord: cleanedRaw,
+        matchedStem: numCore,
+        prefixLabel: prefObj?.label,
+        morphologyNote: buildMorphologyNote(numItem, prefObj?.label),
+        matchStage: prefRaw ? "affix" : "exact",
+      };
+    }
+  }
+
+  // "كَرِيمٌ" (Özel İsim: مَرْحَباً يَا كَرِيمُ) vs "الْكَرِيمُ" (Sıfat: cömert, değerli)
+  const karimMatch = normalized.match(
+    /^(و|ف|ب|ل|ك|ال|وال|بال|لل)?كريم$/
+  );
+  if (karimMatch) {
+    const prefRaw = karimMatch[1] || "";
+    const hasAl = prefRaw.includes("ال") || prefRaw === "لل";
+    const prevClean = prevWordAr ? cleanArabicText(prevWordAr) : "";
+    const trHasKerim =
+      contextSentenceTr && /\bkerim\b/i.test(contextSentenceTr);
+    if (!hasAl && (prevClean === "يا" || trHasKerim)) {
+      const karimProper: DictionaryItem =
+        unifiedDictionary.find((d) => d.id === "prop_karim") || {
+          id: "prop_karim",
+          tur: "ozel-isim",
+          kok: "ك ر م",
+          mufret: "كَرِيمٌ",
+          cemi: "-",
+          anlam_tr: "Kerim (Özel İsim / Erkek İsmi)",
+        };
+      const prefObj = NOMINAL_PREFIX_RULES.find((p) => p.raw === prefRaw);
+      return {
+        item: karimProper,
+        originalWord: cleanedRaw,
+        matchedStem: "كريم",
+        prefixLabel: prefObj?.label,
+        morphologyNote: buildMorphologyNote(karimProper, prefObj?.label),
+        matchStage: prefRaw ? "affix" : "exact",
+      };
+    } else if (hasAl) {
+      const karimAdj =
+        unifiedDictionary.find(
+          (d) =>
+            getWordCategory(d) === "isim" &&
+            cleanArabicText(d.mufret || "") === "كريم"
+        ) || {
+          id: "supp_karim_sifat",
+          tur: "isim",
+          kok: "ك ر م",
+          mufret: "كَرِيمٌ",
+          cemi: "كِرَامٌ / كُرَمَاءُ",
+          anlam_tr: "cömert, kerim, değerli, asil",
+        };
+      const prefObj = NOMINAL_PREFIX_RULES.find((p) => p.raw === prefRaw);
+      return {
+        item: karimAdj,
+        originalWord: cleanedRaw,
+        matchedStem: "كريم",
+        prefixLabel: prefObj?.label,
+        morphologyNote: buildMorphologyNote(karimAdj, prefObj?.label),
+        matchStage: "affix",
+      };
+    }
+  }
+
   // Kademe 1: Doğrudan Eşleşme (Önce İsim / Tam Eşleşme - Bağlam & Hareke Puanlamalı)
   const directNominal = matchNominalOrExactStem(
     normalized,
@@ -3755,7 +3923,7 @@ export function analyzeAndMatchWord(
           cleanedRaw,
           contextSentenceTr,
           isDefinitelyNoun,
-          false,
+          Boolean(suff.verbOnly),
           Boolean(suff.isPronoun),
           Boolean(suff.isFeminineDual)
         );
@@ -3898,7 +4066,7 @@ export function analyzeAndMatchWord(
               cleanedRaw,
               contextSentenceTr,
               effectiveNounGuard,
-              false,
+              Boolean(suff.verbOnly),
               Boolean(suff.isPronoun),
               Boolean(suff.isFeminineDual)
             );
