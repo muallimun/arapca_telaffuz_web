@@ -2279,6 +2279,7 @@ export default function DialogueDetailPage({
                 <div className="blur-0 opacity-100 transition-all duration-300">
                   <WordTooltip
                     text={line.arapca}
+                    contextSentenceTr={line.turkce}
                     isLineSpeaking={isPlaying}
                     activeWordIndex={isPlaying ? activeWordIndex : null}
                     activeWordProgress={isPlaying ? activeWordProgress : 0}

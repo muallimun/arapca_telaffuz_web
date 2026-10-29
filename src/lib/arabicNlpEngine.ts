@@ -1228,3 +1228,27 @@ export function evaluateAdaptiveCoaching(
         : "Zorlandığınız sarı veya kırmızı kelimenin üzerine tıklayarak doğal telaffuzunu dinleyin ve mahreç ipucunu inceleyip tekrar deneyin.",
   };
 }
+
+/**
+ * Elif veya fiil önekiyle başlayan Arapça bir kelimenin Emir Fiil (فعل أمر) mi
+ * yoksa 1. Tekil Şahıs Muzari (أَ - ben) mi olduğunu hareke ve hemze tipine göre sınıflandırır.
+ */
+export function classifyArabicVerbMood(
+  rawWord: string
+): "imperative" | "mudari_1s" | "other" {
+  const cleaned = rawWord
+    .replace(/^[.,!?؟،;؛:"'()\[\]{}\d]+|[.,!?؟،;؛:"'()\[\]{}\d]+$/g, "")
+    .replace(/^(وَ|فَ)/, "");
+  if (!cleaned) return "other";
+
+  const startsWithKatHamzaFathaOrDamma = /^(سَ)?(أَ|أُ|آ)/.test(cleaned);
+  const endsWithSukun = /\u0652$/.test(cleaned);
+
+  if (startsWithKatHamzaFathaOrDamma && !endsWithSukun) {
+    return "mudari_1s";
+  }
+  if (/^[اٱإ]/.test(cleaned) || endsWithSukun) {
+    return "imperative";
+  }
+  return "other";
+}

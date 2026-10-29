@@ -7683,5 +7683,273 @@
     "mufret": "مَوْعِدٌ",
     "cemi": "مَوَاعِيدُ",
     "anlam_tr": "randevu, buluşma zamanı/yeri"
+  },
+  {
+    "id": "kelime_926",
+    "tur": "edat",
+    "kok": "ق ب ل",
+    "mufret": "قَبْلَ / قَبْلُ / قَبْلِي / قَبْلَكَ / قَبْلَكِ",
+    "cemi": "-",
+    "anlam_tr": "önce, -den önce (قَبْلَكِ: senden önce)"
+  },
+  {
+    "id": "kelime_927",
+    "tur": "edat",
+    "kok": "ب ع د",
+    "mufret": "بَعْدَ / بَعْدُ / بَعْدِي / بَعْدَكَ",
+    "cemi": "-",
+    "anlam_tr": "sonra, henüz (لَمْ ... بَعْدُ: henüz ...-medi)"
+  },
+  {
+    "id": "kelime_928",
+    "tur": "fiil",
+    "kok": "س ل م",
+    "mazi": "سَلِمَ / سَلِمَتْ / سَلِمْتَ / سَلِمْتِ",
+    "muzari": "يَسْلَمُ",
+    "masdar": "سَلَامَة",
+    "anlam_tr": "sağ olmak, selamette kalmak, kurtulmak (سَلِمَتْ يَدَاكَ: eline sağlık)"
+  },
+  {
+    "id": "kelime_929",
+    "tur": "isim",
+    "kok": "ب أ س",
+    "mufret": "بَأْسٌ / الْبَأْسُ / لَا بَأْسَ",
+    "cemi": "-",
+    "anlam_tr": "zarar, sakınca, sıkıntı, hastalık şiddeti (لَا بَأْسَ: zararı yok / geçmiş olsun)"
+  },
+  {
+    "id": "kelime_930",
+    "tur": "isim",
+    "kok": "ذ هـ ب",
+    "mufret": "ذَهَبٌ / ذَهَبِيٌّ / الذَّهَبِيَّةُ",
+    "cemi": "-",
+    "anlam_tr": "altın, altın sarısı (الذَّهَبِيَّةُ: altın rengi / altın olan)"
+  },
+  {
+    "id": "kelime_931",
+    "tur": "isim",
+    "kok": "ع م ن",
+    "mufret": "عَمَّانُ / عَمَّانَ",
+    "cemi": "-",
+    "anlam_tr": "Amman (Ürdün'ün başkenti)"
+  },
+  {
+    "id": "kelime_932",
+    "tur": "isim",
+    "kok": "-",
+    "mufret": "بَيْرُوتُ / بَيْرُوتَ",
+    "cemi": "-",
+    "anlam_tr": "Beyrut (Lübnan'ın başkenti)"
+  },
+  {
+    "id": "kelime_933",
+    "tur": "isim",
+    "kok": "ف ت ر",
+    "mufret": "فَتْرَةٌ",
+    "cemi": "فَتَرَاتٌ",
+    "anlam_tr": "süre, dönem, müddet, zaman aralığı"
+  },
+  {
+    "id": "kelime_934",
+    "tur": "isim",
+    "kok": "خ ط ط",
+    "mufret": "خَطٌّ",
+    "cemi": "خُطُوطٌ",
+    "anlam_tr": "hat, çizgi, yazı (الْخُطُوطُ الْجَوِّيَّةُ: hava yolları)"
+  },
+  {
+    "id": "kelime_935",
+    "tur": "isim",
+    "kok": "ش غ ر",
+    "mufret": "شَاغِرٌ / شَاغِرَةٌ",
+    "cemi": "شَوَاغِرُ",
+    "anlam_tr": "boş, müsait, tutulmamış (koltuk, oda veya kadro)"
+  },
+  {
+    "id": "kelime_936",
+    "tur": "isim",
+    "kok": "ج ي أ",
+    "mufret": "مَجِيءٌ / مَجِيئُكَ / مَجِيئِكَ",
+    "cemi": "-",
+    "anlam_tr": "geliş, gelme (مَجِيئِكَ: gelişin)"
+  },
+  {
+    "id": "kelime_937",
+    "tur": "fiil",
+    "kok": "ج ي أ",
+    "mazi": "جَاءَ / جَاءَتْ / جِئْتُ / جِئْتَ",
+    "muzari": "يَجِيءُ / تَجِيءُ",
+    "masdar": "مَجِيءٌ",
+    "anlam_tr": "gelmek"
+  },
+  {
+    "id": "kelime_938",
+    "tur": "fiil",
+    "kok": "أ ت ي",
+    "mazi": "أَتَى / أَتَيْتُ",
+    "muzari": "يَأْتِي / تَأْتِي / آتِي / سَآتِي",
+    "masdar": "إِتْيَانٌ / مَأْتًى",
+    "anlam_tr": "gelmek (بِـ ile: getirmek)"
+  },
+  {
+    "id": "kelime_939",
+    "tur": "fiil",
+    "kok": "ز و ل",
+    "mazi": "زَالَ / مَا زَالَ / مَا زَالَتْ",
+    "muzari": "يَزُولُ / لَا يَزَالُ",
+    "masdar": "زَوَالٌ",
+    "anlam_tr": "sona ermek, gitmek (مَا زَالَ: hâlâ; طَهُورٌ إِنْ شَاءَ اللّٰهُ: geçmiş olsun)"
+  },
+  {
+    "id": "kelime_940",
+    "tur": "isim",
+    "kok": "ط هـ ر",
+    "mufret": "طَهُورٌ",
+    "cemi": "-",
+    "anlam_tr": "temizleyici, günahlardan arındırıcı, şifa (طَهُورٌ إِنْ شَاءَ اللّٰهُ: geçmiş olsun, şifa olsun)"
+  },
+  {
+    "id": "kelime_941",
+    "tur": "isim",
+    "kok": "ن ز ل",
+    "mufret": "نَزْلَةٌ / نَزْلَةُ بَرْدٍ",
+    "cemi": "نَزَلَاتٌ",
+    "anlam_tr": "soğuk algınlığı, nezle, üşütme"
+  },
+  {
+    "id": "kelime_942",
+    "tur": "fiil",
+    "kok": "ص ب غ",
+    "mazi": "صَبَغَ",
+    "muzari": "يَصْبَغُ / أَصْبَغُ",
+    "masdar": "صَبْغٌ / صِبَاغَةٌ",
+    "anlam_tr": "boyamak (saç, kumaş vb.)"
+  },
+  {
+    "id": "kelime_943",
+    "tur": "fiil",
+    "kok": "ل ي ق",
+    "mazi": "لَاقَ",
+    "muzari": "يَلِيقُ / تَلِيقُ",
+    "masdar": "لِيَاقَةٌ",
+    "anlam_tr": "yakışmak, uymak, yaraşmak (بِـ ile)"
+  },
+  {
+    "id": "kelime_944",
+    "tur": "isim",
+    "kok": "ز ح م",
+    "mufret": "مُزْدَحِمٌ / مُزْدَحِمَةٌ / اِزْدِحَامٌ",
+    "cemi": "-",
+    "anlam_tr": "kalabalık, sıkışık, izdiham (trafik vb.)"
+  },
+  {
+    "id": "kelime_945",
+    "tur": "isim",
+    "kok": "د ر ج",
+    "mufret": "مَدْرَجٌ / مُدَرَّجٌ",
+    "cemi": "مَدَارِجُ / مُدَرَّجَاتٌ",
+    "anlam_tr": "uçak pisti; amfi, tribün"
+  },
+  {
+    "id": "kelime_946",
+    "tur": "fiil",
+    "kok": "ق ل ع",
+    "mazi": "أَقْلَعَ / أَقْلَعَتْ",
+    "muzari": "يُقْلِعُ / تُقْلِعُ",
+    "masdar": "إِقْلَاعٌ",
+    "anlam_tr": "havalanmak, kalkış yapmak (uçak)"
+  },
+  {
+    "id": "kelime_947",
+    "tur": "fiil",
+    "kok": "غ ر ق",
+    "mazi": "اِسْتَغْرَقَ",
+    "muzari": "يَسْتَغْرِقُ / تَسْتَغْرِقُ",
+    "masdar": "اِسْتِغْرَاقٌ",
+    "anlam_tr": "(zaman/süre) almak, sürmek"
+  },
+  {
+    "id": "kelime_948",
+    "tur": "fiil",
+    "kok": "ز ع ج",
+    "mazi": "أَزْعَجَ",
+    "muzari": "يُزْعِجُ / يُزْعِجُنِي / تُزْعِجُ",
+    "masdar": "إِزْعَاجٌ",
+    "anlam_tr": "rahatsız etmek, huzursuz etmek, can sıkmak"
+  },
+  {
+    "id": "kelime_949",
+    "tur": "fiil",
+    "kok": "ع ذ ر",
+    "mazi": "اِعْتَذَرَ",
+    "muzari": "يَعْتَذِرُ / أَعْتَذِرُ",
+    "masdar": "اِعْتِذَارٌ / مَعْذِرَةٌ",
+    "anlam_tr": "özür dilemek, mazeret beyan etmek"
+  },
+  {
+    "id": "kelime_950",
+    "tur": "fiil",
+    "kok": "ع ط ف",
+    "mazi": "اِنْعَطَفَ",
+    "muzari": "يَنْعَطِفُ / تَنْعَطِفُ / اِنْعَطِفْ",
+    "masdar": "اِنْعِطَافٌ / مُنْعَطَفٌ",
+    "anlam_tr": "sapmak, dönmek (yolda sağa/sola)"
+  },
+  {
+    "id": "kelime_951",
+    "tur": "isim",
+    "kok": "أ د ب",
+    "mufret": "مَأْدُبَةٌ",
+    "cemi": "مَآدِبُ",
+    "anlam_tr": "ziyafet, davet sofrası"
+  },
+  {
+    "id": "kelime_952",
+    "tur": "isim",
+    "kok": "-",
+    "mufret": "فُشَارٌ / بُوشَارٌ",
+    "cemi": "-",
+    "anlam_tr": "patlamış mısır"
+  },
+  {
+    "id": "kelime_953",
+    "tur": "isim",
+    "kok": "ل ص ق",
+    "mufret": "مُلْصَقٌ",
+    "cemi": "مُلْصَقَاتٌ",
+    "anlam_tr": "afiş, poster, etiket"
+  },
+  {
+    "id": "kelime_954",
+    "tur": "isim",
+    "kok": "ح س س",
+    "mufret": "حَسَاسِيَّةٌ",
+    "cemi": "حَسَاسِيَّاتٌ",
+    "anlam_tr": "alerji, hassasiyet"
+  },
+  {
+    "id": "kelime_955",
+    "tur": "fiil",
+    "kok": "ع ط س",
+    "mazi": "عَطَسَ",
+    "muzari": "يَعْطِسُ / أَعْطِسُ",
+    "masdar": "عُطَاسٌ / عَطْسٌ",
+    "anlam_tr": "hapşırmak, aksırmak"
+  },
+  {
+    "id": "kelime_956",
+    "tur": "isim",
+    "kok": "ع ي د",
+    "mufret": "عِيدِيَّةٌ / مُعَايَدَةٌ",
+    "cemi": "عِيدِيَّاتٌ / مُعَايَدَاتٌ",
+    "anlam_tr": "bayram harçlığı/hediyesi; bayramlaşma"
+  },
+  {
+    "id": "kelime_957",
+    "tur": "isim",
+    "kok": "ف ر غ",
+    "mufret": "مُتَفَرِّغٌ / مُتَفَرِّغَةٌ",
+    "cemi": "مُتَفَرِّغُونَ",
+    "anlam_tr": "müsait, boş vakti olan, kendini bir işe adamış"
   }
 ]

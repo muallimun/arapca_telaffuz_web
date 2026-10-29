@@ -15,6 +15,7 @@ import { formatArabicText, splitMixedBidiText } from "@/lib/arabicTextUtils";
 
 interface Props {
   text: string;
+  contextSentenceTr?: string;
   isLineSpeaking?: boolean;
   activeWordIndex?: number | null;
   activeWordProgress?: number;
@@ -102,6 +103,7 @@ function getCategoryStyle(category: WordCategory) {
 
 export default function WordTooltip({
   text,
+  contextSentenceTr,
   isLineSpeaking = false,
   activeWordIndex = null,
   activeWordProgress = 0,
@@ -330,7 +332,12 @@ export default function WordTooltip({
           }
 
           const [, prefix, coreWord, suffix] = match;
-          const analysis = analyzeAndMatchWord(coreWord);
+          const prevWordAr = index > 0 ? words[index - 1] : undefined;
+          const analysis = analyzeAndMatchWord(
+            coreWord,
+            contextSentenceTr,
+            prevWordAr
+          );
 
           if (!analysis) {
             return (
@@ -613,12 +620,12 @@ export default function WordTooltip({
                       )}
                     </div>
 
-                    {/* Alt Aksiyon Butonları (Dinle | Telaffuz | Kartlara Ekle | Öğrendim) */}
-                    <div className="pt-1 flex flex-nowrap items-center justify-between gap-1.5 font-sans">
+                    {/* Alt Aksiyon Butonları (Dinle | Telaffuz | Kartlar | Öğrendim) */}
+                    <div className="pt-1 flex items-center gap-1.5 w-full font-sans">
                       <button
                         type="button"
                         onClick={(e) => handlePlayWord(e)}
-                        className={`whitespace-nowrap px-2.5 py-1.5 text-xs font-medium shrink-0 rounded-xl font-sans font-extrabold flex items-center justify-center gap-1 border-b-3 transition-all cursor-pointer ${
+                        className={`whitespace-nowrap px-2.5 py-2 text-xs font-semibold shrink-0 rounded-xl font-sans flex items-center justify-center gap-1 border-b-3 transition-all cursor-pointer ${
                           isSpeaking
                             ? "bg-[#087F5B] text-white border-[#065F46]"
                             : "bg-[#0CA678] hover:bg-[#099268] text-white border-[#087F5B]"
@@ -643,7 +650,7 @@ export default function WordTooltip({
                             forms,
                           });
                         }}
-                        className="whitespace-nowrap px-2.5 py-1.5 text-xs font-medium shrink-0 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 font-sans font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center justify-center gap-1 transition-all cursor-pointer"
+                        className="whitespace-nowrap px-2.5 py-2 text-xs font-semibold shrink-0 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 font-sans text-[#6741D9] dark:text-[#d0bfff] flex items-center justify-center gap-1 transition-all cursor-pointer"
                       >
                         <Mic size={12} className="shrink-0" />
                         <span>Telaffuz</span>
@@ -656,7 +663,7 @@ export default function WordTooltip({
                           playClick();
                           toggleFavoriteWord(dictItem);
                         }}
-                        className={`whitespace-nowrap px-2.5 py-1.5 text-xs font-medium shrink-0 flex-1 rounded-xl border-2 border-b-3 font-sans font-extrabold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        className={`whitespace-nowrap px-2.5 py-2 text-xs font-semibold min-w-0 flex-1 rounded-xl border-2 border-b-3 font-sans flex items-center justify-center gap-1 transition-all cursor-pointer ${
                           isFav
                             ? "bg-red-50 border-red-300 text-red-600"
                             : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--foreground)] hover:border-red-400"
@@ -667,7 +674,12 @@ export default function WordTooltip({
                           className="shrink-0"
                           fill={isFav ? "currentColor" : "none"}
                         />
-                        <span>{isFav ? "Kartlarımda" : "Kartlara Ekle"}</span>
+                        <span className="sm:hidden">
+                          {isFav ? "Kartlarımda" : "Kartlar"}
+                        </span>
+                        <span className="hidden sm:inline">
+                          {isFav ? "Kartlarımda" : "Kartlara Ekle"}
+                        </span>
                       </button>
 
                       <button
