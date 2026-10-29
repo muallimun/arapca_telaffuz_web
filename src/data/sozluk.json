@@ -7975,5 +7975,205 @@
     "mufret": "إِيَابٌ",
     "cemi": "-",
     "anlam_tr": "dönüş (ذَهَاباً وَإِيَاباً: gidiş-dönüş)"
+  },
+  {
+    "id": "kelime_961",
+    "tur": "isim",
+    "kok": "ك ل ل",
+    "mufret": "كُلّ",
+    "cemi": "-",
+    "anlam_tr": "her, bütün, tüm, hepsi (فَكُلُّ زَمَانٍ: her zamanın..., كُلُّ شَيْءٍ: her şey)"
+  },
+  {
+    "id": "kelime_962",
+    "tur": "edat",
+    "kok": "ج د د",
+    "mufret": "جِدّاً",
+    "cemi": "-",
+    "anlam_tr": "çok, oldukça, son derece (جَيِّدٌ جِدّاً: çok iyi, كَبِيرٌ جِدّاً: çok büyük)"
+  },
+  {
+    "id": "kelime_963",
+    "tur": "edat",
+    "kok": "ع ب ر",
+    "mufret": "عَبْرَ",
+    "cemi": "-",
+    "anlam_tr": "üzerinden, aracılığıyla, yoluyla (عَبْرَ شَبَكَةِ الْإِنْتَرْنِتِ: internet üzerinden / internetten)"
+  },
+  {
+    "id": "kelime_964",
+    "tur": "isim",
+    "kok": "ب ر د",
+    "mufret": "بَرِيد",
+    "cemi": "-",
+    "anlam_tr": "posta (سَاعِي الْبَرِيدِ / سُعَاةُ الْبَرِيدِ: postacı, postacılar)"
+  },
+  {
+    "id": "kelime_965",
+    "tur": "isim",
+    "kok": "س ع ي",
+    "mufret": "سَاعِي الْبَرِيدِ",
+    "cemi": "سُعَاةُ الْبَرِيدِ",
+    "anlam_tr": "postacı"
+  },
+  {
+    "id": "kelime_966",
+    "tur": "edat",
+    "kok": "-",
+    "mufret": "مُنْذُ",
+    "cemi": "-",
+    "anlam_tr": "-den beri, -dir (مُنْذُ زَمَنٍ طَوِيلٍ: uzun zamandır)"
+  },
+  {
+    "id": "kelime_967",
+    "tur": "isim",
+    "kok": "س ب ب",
+    "mufret": "سَبَب",
+    "cemi": "أَسْبَاب",
+    "anlam_tr": "sebep, neden (لِهَذَا السَّبَبِ: bu yüzden, bu sebeple)"
+  },
+  {
+    "id": "kelime_968",
+    "tur": "edat",
+    "kok": "غ ل ب",
+    "mufret": "غَالِباً / فِي الْغَالِبِ",
+    "cemi": "-",
+    "anlam_tr": "genellikle, çoğunlukla, ekseriyetle"
+  },
+  {
+    "id": "kelime_969",
+    "tur": "edat",
+    "kok": "-",
+    "mufret": "مَتَى",
+    "cemi": "-",
+    "anlam_tr": "ne zaman?"
+  },
+  {
+    "id": "kelime_970",
+    "tur": "isim",
+    "kok": "ح ف ل",
+    "mufret": "حَفْل / حَفْلَة",
+    "cemi": "حَفَلَات",
+    "anlam_tr": "tören, kutlama, merasim (حَفْلُ زَفَافٍ: düğün töreni)"
+  },
+  {
+    "id": "kelime_971",
+    "tur": "isim",
+    "kok": "أ ص ل",
+    "mufret": "أَصْل",
+    "cemi": "أُصُول",
+    "anlam_tr": "asıl, köken (فِي الْأَصْلِ: aslında, zaten)"
+  },
+  {
+    "id": "kelime_972",
+    "tur": "isim",
+    "kok": "ح ظ ظ",
+    "mufret": "مَحْظُوظ",
+    "cemi": "مَحْظُوظُونَ",
+    "anlam_tr": "şanslı, talihli"
+  },
+  {
+    "id": "kelime_973",
+    "tur": "edat",
+    "kok": "أ خ ر",
+    "mufret": "أَخِيراً",
+    "cemi": "-",
+    "anlam_tr": "sonunda, nihayet, son olarak"
+  },
+  {
+    "id": "kelime_974",
+    "tur": "isim",
+    "kok": "ع د د",
+    "mufret": "عَدِيد / الْعَدِيد",
+    "cemi": "-",
+    "anlam_tr": "pek çok, birçok, çok sayıda"
+  },
+  {
+    "id": "kelime_975",
+    "tur": "isim",
+    "kok": "ب ر ك",
+    "mufret": "مُبَارَك",
+    "cemi": "-",
+    "anlam_tr": "mübarek, kutlu (عِيدٌ مُبَارَكٌ: İyi bayramlar / Bayramınız mübarek olsun)"
+  },
+  {
+    "id": "kelime_976",
+    "tur": "isim",
+    "kok": "ب ن ي",
+    "mufret": "بُنَيَّ",
+    "cemi": "-",
+    "anlam_tr": "yavrucuğum, oğulcuğum (sevgi hitabı: يَا بُنَيَّ)"
+  },
+  {
+    "id": "kelime_977",
+    "tur": "fiil",
+    "kok": "ع و د",
+    "mazi": "أَعَادَ",
+    "muzari": "يُعِيدُ",
+    "masdar": "إِعَادَة",
+    "anlam_tr": "tekrar kavuşturmak, geri döndürmek, iade etmek (أَعَادَهُ اللَّهُ عَلَيْنَا بِالْخَيْرِ: Allah bizi nice bayramlara kavuşturtsun)"
+  },
+  {
+    "id": "kelime_978",
+    "tur": "fiil",
+    "kok": "ل ق ي",
+    "mazi": "اِلْتَقَى",
+    "muzari": "يَلْتَقِي",
+    "masdar": "اِلْتِقَاء",
+    "anlam_tr": "buluşmak, görüşmek, karşılaşmak"
+  },
+  {
+    "id": "kelime_979",
+    "tur": "fiil",
+    "kok": "ر د ي",
+    "mazi": "اِرْتَدَى",
+    "muzari": "يَرْتَدِي",
+    "masdar": "اِرْتِدَاء",
+    "anlam_tr": "giymek, giyinmek"
+  },
+  {
+    "id": "kelime_980",
+    "tur": "fiil",
+    "kok": "ض م م",
+    "mazi": "اِنْضَمَّ",
+    "muzari": "يَنْضَمُّ",
+    "masdar": "اِنْضِمَام",
+    "anlam_tr": "katılmak, üye olmak, dahil olmak"
+  },
+  {
+    "id": "kelime_981",
+    "tur": "fiil",
+    "kok": "ض ر ر",
+    "mazi": "ضَرَّ",
+    "muzari": "يَضُرُّ",
+    "masdar": "ضَرَر",
+    "anlam_tr": "zarar vermek, dokunmak"
+  },
+  {
+    "id": "kelime_982",
+    "tur": "fiil",
+    "kok": "ر ب و",
+    "mazi": "رَبَّى",
+    "muzari": "يُرَبِّي",
+    "masdar": "تَرْبِيَة",
+    "anlam_tr": "yetiştirmek, büyütmek, terbiye etmek, beslemek"
+  },
+  {
+    "id": "kelime_983",
+    "tur": "fiil",
+    "kok": "ن ي ل",
+    "mazi": "نَالَ",
+    "muzari": "يَنَالُ",
+    "masdar": "نَيْل",
+    "anlam_tr": "elde etmek, kavuşmak, kazanmak"
+  },
+  {
+    "id": "kelime_984",
+    "tur": "fiil",
+    "kok": "ب ق ي",
+    "mazi": "بَقِيَ",
+    "muzari": "يَبْقَى",
+    "masdar": "بَقَاء",
+    "anlam_tr": "kalmak, geriye kalmak"
   }
 ]

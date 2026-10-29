@@ -422,7 +422,7 @@ export const ARABIC_IDIOMS_LIBRARY: ArabicIdiom[] = [
     meaningTr: "Bu arada / Aklıma gelmişken",
     literalTr: "Bir fikir üzerine",
     usageNote: "Sohbet esnasında yeni bir konuya veya hatırlatmaya geçiş yaparken söylenir.",
-    variants: ["على فكرة", "بالمناسبة"],
+    variants: ["على فكرة"],
   },
   {
     id: "idm_051",
@@ -529,14 +529,6 @@ export const ARABIC_IDIOMS_LIBRARY: ArabicIdiom[] = [
     variants: ["بالتأكيد"],
   },
   {
-    id: "idm_064",
-    arabic: "لَا بَأْسَ",
-    meaningTr: "Sorun değil, zararı yok",
-    literalTr: "Bir sıkıntı/zarar yoktur",
-    usageNote: "Özür dileyen birini rahatlatmak veya önemli bir sorun olmadığını belirtmek için kullanılır.",
-    variants: ["لا بأس", "لا بأس بذلك", "لا بأس عليك"],
-  },
-  {
     id: "idm_065",
     arabic: "مَعَكَ حَقٌّ",
     meaningTr: "Haklısın (Erkek için)",
@@ -545,36 +537,12 @@ export const ARABIC_IDIOMS_LIBRARY: ArabicIdiom[] = [
     variants: ["معك حق", "معكم حق"],
   },
   {
-    id: "idm_066",
-    arabic: "مَعَكِ حَقٌّ",
-    meaningTr: "Haklısın (Kadın için)",
-    literalTr: "Seninle birlikte hak vardır",
-    usageNote: "Karşıdaki hanımın görüşüne veya tespitine tamamen katıldığını ifade eder.",
-    variants: ["معك حق"],
-  },
-  {
     id: "idm_067",
-    arabic: "عَلَى فِكْرَةٍ",
-    meaningTr: "Bu arada, aklıma gelmişken",
-    literalTr: "Bir fikir üzerine",
-    usageNote: "Konuşma esnasında aniden hatırlanan ek bir konuya geçiş yaparken kullanılır.",
-    variants: ["على فكرة"],
-  },
-  {
-    id: "idm_068",
-    arabic: "إِلَى اللِّقَاءِ",
-    meaningTr: "Görüşmek üzere, hoşça kal",
-    literalTr: "Buluşmaya/kavuşmaya kadar",
-    usageNote: "Vedalaşırken tekrar görüşme dileğiyle kullanılan en yaygın kalıptır.",
-    variants: ["إلى اللقاء", "الى اللقاء"],
-  },
-  {
-    id: "idm_069",
-    arabic: "فِي أَمَانِ اللّٰهِ",
-    meaningTr: "Allah'a emanet ol",
-    literalTr: "Allah'ın güvencesi ve koruması içinde",
-    usageNote: "Vedalaşırken veya birini uğurlarken hayır duası olarak söylenir.",
-    variants: ["في أمان الله", "في امان الله"],
+    arabic: "بِالْمُنَاسَبَةِ",
+    meaningTr: "Bu arada, yeri gelmişken, sırası gelmişken",
+    literalTr: "Vesile / münasebet ile",
+    usageNote: "Konuşma esnasında konuyla bağlantılı yeni bir noktaya veya hatırlatmaya değinirken kullanılır.",
+    variants: ["بالمناسبة", "وبالمناسبة"],
   },
   {
     id: "idm_070",
@@ -591,38 +559,6 @@ export const ARABIC_IDIOMS_LIBRARY: ArabicIdiom[] = [
     literalTr: "Mutlu/uğurlu bir talih ile",
     usageNote: "Sınava, mülakata veya önemli bir işe girecek kişiye başarı dilemek için kullanılır.",
     variants: ["حظا سعيدا", "حظاً سعيداً", "حظ سعيد"],
-  },
-  {
-    id: "idm_072",
-    arabic: "بِالتَّوْفِيقِ",
-    meaningTr: "Başarılar dilerim (Allah muvaffak etsin)",
-    literalTr: "Başarı ve muvaffakiyet ile",
-    usageNote: "Çalışma, sınav veya yeni bir başlangıç öncesinde başarı temennisi olarak söylenir.",
-    variants: ["بالتوفيق", "أتمنى لك التوفيق", "اتمنى لك التوفيق"],
-  },
-  {
-    id: "idm_073",
-    arabic: "عَلَى الرَّحْبِ وَالسَّعَةِ",
-    meaningTr: "Baş üstüne, memnuniyetle, ne demek",
-    literalTr: "Genişlik ve ferahlık üzerine",
-    usageNote: "Teşekkür eden veya bir ricada bulunan kişiye büyük bir memnuniyetle karşılık verirken kullanılır.",
-    variants: ["على الرحب والسعة"],
-  },
-  {
-    id: "idm_074",
-    arabic: "كُلُّ عَامٍ وَأَنْتُمْ بِخَيْرٍ",
-    meaningTr: "Bayramınız / Yeni yılınız kutlu olsun, nice mutlu yıllara",
-    literalTr: "Her yıl siz hayır ve iyilik içinde olun",
-    usageNote: "Bayramlarda, kandillerde ve özel kutlama günlerinde kullanılan klasik tebrik kalıbıdır.",
-    variants: ["كل عام وأنتم بخير", "كل عام وأنت بخير", "كل عام وانت بخير"],
-  },
-  {
-    id: "idm_075",
-    arabic: "بِالْهَنَاءِ وَالشِّفَاءِ",
-    meaningTr: "Afiyet olsun!",
-    literalTr: "Mutluluk, afiyet ve şifa ile",
-    usageNote: "Yemek yiyen veya ikram sunulan kişiye 'Afiyet olsun' anlamında söylenir.",
-    variants: ["بالهناء والشفاء", "هنيئا مريئا"],
   },
   {
     id: "idm_076",
@@ -728,6 +664,69 @@ export const ARABIC_IDIOMS_LIBRARY: ArabicIdiom[] = [
     usageNote: "Bir olayın gerçekleşmesine çok az zaman kaldığını belirtirken kullanılır.",
     variants: ["على وشك"],
   },
+  {
+    id: "idm_089",
+    arabic: "عِيدٌ مُبَارَكٌ",
+    meaningTr: "İyi bayramlar! / Bayramınız mübarek olsun!",
+    literalTr: "Mübarek / kutlu bayram",
+    usageNote: "Ramazan ve Kurban bayramlarında tebrikleşirken kullanılan en yaygın kutlama ifadesidir.",
+    variants: ["عيد مبارك", "عيدك مبارك", "عيدكم مبارك", "وعيدك مبارك", "وعيدكم مبارك"],
+  },
+  {
+    id: "idm_090",
+    arabic: "أَعَادَهُ اللَّهُ عَلَيْكَ بِالْخَيْرِ",
+    meaningTr: "Allah nice mutlu/sağlıklı bayramlara kavuşturtsun.",
+    literalTr: "Allah onu senin üzerine hayırla tekrar döndürsün",
+    usageNote: "Bayram tebriğine karşılık olarak sağlık, mutluluk ve afiyetle nice bayramlara erişme duasıdır.",
+    variants: [
+      "أعاده الله عليك بالخير",
+      "أعاده الله عليك بالسعادة",
+      "أعاده الله عليك بالصحة والعافية",
+      "أعاده الله علينا وعليكم بالخير",
+      "أعاده الله علينا بالخير",
+      "أعاده الله عليك",
+    ],
+  },
+  {
+    id: "idm_091",
+    arabic: "تَقَبَّلَ اللَّهُ مِنَّا وَمِنْكُمْ",
+    meaningTr: "Allah bizden de sizden de kabul etsin (Allah razı olsun).",
+    literalTr: "Allah bizden ve sizden kabul buyursun",
+    usageNote: "Bayramlaşma ve ibadetler sonrasında yapılan geleneksel kabul ve hayır duasıdır.",
+    variants: ["تقبل الله منا ومنكم", "تقبل الله منا ومنك"],
+  },
+  {
+    id: "idm_092",
+    arabic: "لِهَذَا السَّبَبِ",
+    meaningTr: "Bu yüzden, bu sebeple",
+    literalTr: "Bu sebep için",
+    usageNote: "Önceki cümlede belirtilen durumun sonucunu veya gerekçesini açıklarken kullanılır.",
+    variants: ["لهذا السبب", "ولهذا السبب"],
+  },
+  {
+    id: "idm_093",
+    arabic: "فِي الْغَالِبِ",
+    meaningTr: "Genellikle, çoğunlukla",
+    literalTr: "Baskın / çoğunluk olan durumda",
+    usageNote: "Alışkanlıkları veya çoğunlukla gerçekleşen durumları ifade ederken kullanılır.",
+    variants: ["في الغالب", "غالبا", "غالباً"],
+  },
+  {
+    id: "idm_094",
+    arabic: "مُنْذُ زَمَنٍ طَوِيلٍ",
+    meaningTr: "Uzun zamandır, uzun süredir",
+    literalTr: "Uzun bir zamandan beri",
+    usageNote: "Uzun süredir devam eden veya yapılmayan bir durumu vurgulamak için kullanılır.",
+    variants: ["منذ زمن طويل", "منذ وقت طويل", "منذ مدة طويلة"],
+  },
+  {
+    id: "idm_095",
+    arabic: "فِي الْأَصْلِ",
+    meaningTr: "Aslında, zaten",
+    literalTr: "Aslında / kökeninde",
+    usageNote: "Bir işin veya durumun gerçek/asıl halini belirtirken kullanılır.",
+    variants: ["في الأصل", "في الاصل"],
+  },
 ];
 
 /**
@@ -748,20 +747,25 @@ export function normalizeForIdiomMatch(text: string): string {
 
 /**
  * sozluk.json ve supplementDict.ts içindeki 'ifade' türündeki kayıtları da
- * ana kütüphaneyle birleştirir.
+ * ana kütüphaneyle birleştirir (normalizeForIdiomMatch ile kesin tekilleştirilmiş).
  */
 export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
-  const catalog: ArabicIdiom[] = ARABIC_IDIOMS_LIBRARY.map((item, idx) => ({
-    ...item,
-    level:
-      item.level ||
-      (idx < 28 ? "A1-A2" : idx < 52 ? "B1" : "B2"),
-  }));
+  const catalog: ArabicIdiom[] = [];
   const seenNormalized = new Set<string>();
 
-  for (const item of catalog) {
-    seenNormalized.add(normalizeForIdiomMatch(item.arabic));
+  for (let idx = 0; idx < ARABIC_IDIOMS_LIBRARY.length; idx++) {
+    const item = ARABIC_IDIOMS_LIBRARY[idx];
+    const normTitle = normalizeForIdiomMatch(item.arabic);
+    if (!normTitle || seenNormalized.has(normTitle)) continue;
+
+    seenNormalized.add(normTitle);
     item.variants?.forEach((v) => seenNormalized.add(normalizeForIdiomMatch(v)));
+    catalog.push({
+      ...item,
+      level:
+        item.level ||
+        (idx < 28 ? "A1-A2" : idx < 52 ? "B1" : "B2"),
+    });
   }
 
   const dictSources = [...sozluk, ...SUPPLEMENT_DICTIONARY];
@@ -793,6 +797,7 @@ export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
 
 /**
  * Verilen diyalog satırlarında geçen kalıp ifadeleri otomatik tespit eder.
+ * Aynı normalize Arapça başlığa sahip kalıp ifadeler kesin olarak tekilleştirilir (deduplicate).
  */
 export function extractDialogueIdioms(
   dialogueLines: DialogueLine[]
@@ -800,7 +805,7 @@ export function extractDialogueIdioms(
   if (!dialogueLines || dialogueLines.length === 0) return [];
 
   const catalog = getCombinedIdiomsCatalog();
-  const foundMap = new Map<string, ExtractedDialogueIdiom>();
+  const foundByNormKey = new Map<string, ExtractedDialogueIdiom>();
 
   const normalizedLines = dialogueLines.map((line) => ({
     sira: line.sira,
@@ -810,6 +815,9 @@ export function extractDialogueIdioms(
   }));
 
   for (const idiom of catalog) {
+    const normIdiomTitle = normalizeForIdiomMatch(idiom.arabic);
+    if (!normIdiomTitle || foundByNormKey.has(normIdiomTitle)) continue;
+
     const candidates = [idiom.arabic, ...(idiom.variants || [])];
     for (const candidate of candidates) {
       const normCand = normalizeForIdiomMatch(candidate);
@@ -819,8 +827,8 @@ export function extractDialogueIdioms(
         nl.normalized.includes(` ${normCand} `)
       );
 
-      if (matchedLine && !foundMap.has(idiom.id)) {
-        foundMap.set(idiom.id, {
+      if (matchedLine) {
+        foundByNormKey.set(normIdiomTitle, {
           ...idiom,
           level: idiom.level || "A1-A2",
           lineNumber: matchedLine.sira,
@@ -833,7 +841,7 @@ export function extractDialogueIdioms(
     }
   }
 
-  return Array.from(foundMap.values()).sort(
+  return Array.from(foundByNormKey.values()).sort(
     (a, b) => a.lineNumber - b.lineNumber
   );
 }
@@ -849,8 +857,9 @@ export function extractDialoguesIdioms(
   for (const dlg of dialogues) {
     const extracted = extractDialogueIdioms(dlg.satirlar);
     for (const item of extracted) {
-      if (!uniqueMap.has(item.id)) {
-        uniqueMap.set(item.id, {
+      const normKey = normalizeForIdiomMatch(item.arabic);
+      if (normKey && !uniqueMap.has(normKey)) {
+        uniqueMap.set(normKey, {
           ...item,
           level: dlg.seviye || item.level || "A1-A2",
         });
