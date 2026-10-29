@@ -230,7 +230,7 @@ export default function HomePage() {
             <h1 className="text-lg sm:text-xl font-extrabold text-[var(--foreground)] tracking-tight">
               Çalışma Modülleri
             </h1>
-            <p className="text-xs font-medium text-[var(--muted)]">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
               Başlamak istediğiniz Arapça eğitim modülüne tıklayın
             </p>
           </div>
@@ -269,13 +269,13 @@ export default function HomePage() {
                   <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)] group-hover:text-[#087F5B] dark:group-hover:text-[#20c997] leading-snug transition-colors">
                     {mod.title}
                   </h2>
-                  <p className="text-xs text-[var(--muted)] mt-1 leading-snug line-clamp-2">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-snug line-clamp-2">
                     {mod.subtitle}
                   </p>
                 </div>
 
                 <div className="mt-2.5 pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex items-center justify-between text-[11px] font-bold">
-                  <span className="text-[var(--muted)] truncate">{mod.meta}</span>
+                  <span className="text-slate-600 dark:text-slate-300 truncate">{mod.meta}</span>
                   <span className="inline-flex items-center gap-1 shrink-0 text-[#087F5B] dark:text-[#20c997] group-hover:translate-x-0.5 transition-transform">
                     <span>Başla</span>
                     <ArrowRight size={12} />
@@ -295,7 +295,7 @@ export default function HomePage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-3">
           <div className="space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-[#0CA678] text-white text-xs font-extrabold">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-600 dark:bg-emerald-600 text-white text-xs font-extrabold">
                 <Target size={13} />
                 <span>🎯 Bugün Ne Çalışmalıyım?</span>
               </span>
@@ -303,7 +303,7 @@ export default function HomePage() {
                 ~12 Dakikalık Akıllı Paket
               </span>
             </div>
-            <p className="text-xs font-semibold text-[var(--muted)]">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
               Aralıklı tekrar (SRS) geçmişinize, hata defterinize ve seviyenize göre hazırlanan günlük kişisel çalışma planınız
             </p>
           </div>
@@ -314,14 +314,14 @@ export default function HomePage() {
               onClick={() => playClick()}
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all whitespace-nowrap"
             >
-              <BookOpen size={14} className="text-[#0CA678]" />
+              <BookOpen size={14} className="text-emerald-600" />
               <span>📖 Günün Diyaloğuna Git</span>
             </Link>
 
             <Link
               href="/alistirmalar?plan=daily"
               onClick={() => playClick()}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all whitespace-nowrap shadow-xs"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 text-white border-b-3 border-emerald-800 text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all whitespace-nowrap shadow-xs"
             >
               <Play size={14} fill="currentColor" />
               <span>🚀 12 Dakikalık Günlük Paketi Başlat</span>
@@ -533,7 +533,7 @@ export default function HomePage() {
             <Link
               href={`/diyalog/${featuredDialogue.dlg.id}`}
               onClick={() => playClick()}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all whitespace-nowrap"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 text-white border-b-3 border-emerald-800 text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all whitespace-nowrap"
             >
               <span>Diyaloğa Git</span>
               <ArrowRight size={14} />

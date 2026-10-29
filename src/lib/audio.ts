@@ -384,12 +384,32 @@ function playSingleAudioUrl(url: string, rate: number = 1): Promise<void> {
 
 /**
  * Herhangi bir ses URL'sini (Yerel MP3 veya Neural TTS Blob URL) oynatır.
+ * Eğer çevrimdışı ders paketi ("muallimun-offline-audio-v1") indirilmişse önbellekten okur.
  */
 export async function playAudioElement(
   url: string,
   rate: number = 1
 ): Promise<void> {
-  await playSingleAudioUrl(url, rate);
+  let effectiveUrl = url;
+  if (
+    typeof window !== "undefined" &&
+    "caches" in window &&
+    url.startsWith("/")
+  ) {
+    try {
+      const cache = await caches.open("muallimun-offline-audio-v1");
+      const matched = await cache.match(url);
+      if (matched && matched.ok) {
+        const blob = await matched.blob();
+        if (blob.size > 128) {
+          effectiveUrl = URL.createObjectURL(blob);
+        }
+      }
+    } catch {
+      // ignore cache lookup failure
+    }
+  }
+  await playSingleAudioUrl(effectiveUrl, rate);
 }
 
 /**

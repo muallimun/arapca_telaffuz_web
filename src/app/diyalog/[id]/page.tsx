@@ -24,6 +24,9 @@ import {
   MoreHorizontal,
   X,
   Share2,
+  Download,
+  GraduationCap,
+  ClipboardCheck,
 } from "lucide-react";
 import { diyaloglar, getDialogueById } from "@/lib/data";
 import {
@@ -33,6 +36,11 @@ import {
   VoiceOption,
   speakHybrid,
 } from "@/lib/audio";
+import {
+  isDialogueOfflineReady,
+  downloadDialogueOfflinePack,
+  getDialogueAudioUrls,
+} from "@/lib/offlineManager";
 import { useAudioStore } from "@/store/audioStore";
 import {
   useSettings,
@@ -52,7 +60,9 @@ import WordTooltip from "@/components/ui/WordTooltip";
 import ShadowingButton from "@/components/ui/ShadowingButton";
 import ShadowingModal from "@/components/ui/ShadowingModal";
 import DialoguePdfModal from "@/components/ui/DialoguePdfModal";
-import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
+import ShareAchievementModal, {
+  TeacherHomeworkModal,
+} from "@/components/ui/ShareAchievementModal";
 import {
   getDialogueVocabulary,
   DialogueVocabularyEntry,
@@ -132,6 +142,8 @@ export default function DialogueDetailPage({
     toggleLearnedWord,
     isWordLearned,
     recordPronunciationScore,
+    pronunciationScores,
+    mistakeIds,
   } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
@@ -158,12 +170,50 @@ export default function DialogueDetailPage({
   const [shadowingPauseRemainingPct, setShadowingPauseRemainingPct] =
     useState<number>(100);
 
-  // Lightbox (Kapak Görseli Büyütme), PDF Modal, Paylaşım Modalı ve "⋯" Diğer Menüsü State
+  // Lightbox (Kapak Görseli Büyütme), PDF Modal, Paylaşım Modalı, Öğretmen Ödev Modalı ve "⋯" Diğer Menüsü State
   const [isLightboxOpen, setIsLightboxOpen] = useState<boolean>(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState<boolean>(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [isTeacherHwModalOpen, setIsTeacherHwModalOpen] =
+    useState<boolean>(false);
+  const [isHwReportModalOpen, setIsHwReportModalOpen] =
+    useState<boolean>(false);
+  const [isHwQuizModalOpen, setIsHwQuizModalOpen] = useState<boolean>(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState<boolean>(false);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Öğrenci Ödev Takip Modu (?hw=1&pron=3&quiz=1&title=...) State
+  const [hwConfig, setHwConfig] = useState<{
+    active: boolean;
+    title: string;
+    requireListen: boolean;
+    pronCount: number;
+    requireQuiz: boolean;
+  }>({
+    active: false,
+    title: "",
+    requireListen: true,
+    pronCount: 3,
+    requireQuiz: true,
+  });
+  const [hwListenedLines, setHwListenedLines] = useState<number[]>([]);
+  const [hwPronouncedCount, setHwPronouncedCount] = useState<number>(0);
+  const [hwCollectedScores, setHwCollectedScores] = useState<number[]>([]);
+  const [hwQuizCompleted, setHwQuizCompleted] = useState<boolean>(false);
+  const [hwQuizStep, setHwQuizStep] = useState<number>(0);
+  const [hwQuizSelectedOpt, setHwQuizSelectedOpt] = useState<string | null>(
+    null
+  );
+  const [hwQuizCorrectCount, setHwQuizCorrectCount] = useState<number>(0);
+  const prevPronCountRef = useRef<number | null>(null);
+
+  // Çevrimdışı Ders Paketi (Cache API) State
+  const [isOfflineReady, setIsOfflineReady] = useState<boolean>(false);
+  const [isDownloadingOffline, setIsDownloadingOffline] =
+    useState<boolean>(false);
+  const [offlineProgressPct, setOfflineProgressPct] = useState<number>(0);
+  const [offlineEstimatedMb, setOfflineEstimatedMb] = useState<number>(1.2);
+  const [showOfflineNotice, setShowOfflineNotice] = useState<boolean>(false);
 
   // Rol Yapma (Roleplay) Canlı Simülasyon State
   const [selectedRoleSpeaker, setSelectedRoleSpeaker] = useState<string>("");
@@ -297,7 +347,53 @@ export default function DialogueDetailPage({
   useEffect(() => {
     setMounted(true);
     roleplaySpeechRef.current = new HybridSpeechManager();
-    loadAudioManifest().then(() => setManifestLoaded(true));
+    loadAudioManifest().then(() => {
+      setManifestLoaded(true);
+      void getDialogueAudioUrls(resolvedParams.id).then(
+        ({ estimatedSizeMb }) => {
+          setOfflineEstimatedMb(estimatedSizeMb);
+        }
+      );
+      void isDialogueOfflineReady(resolvedParams.id).then((ready) => {
+        setIsOfflineReady(ready);
+      });
+    });
+
+    // URL'den Öğretmen-Öğrenci Ödev Parametrelerini (?hw=1&pron=3&quiz=1&title=...) Çözümle
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("hw") === "1") {
+        const titleParam = sp.get("title") || "";
+        const listenParam = sp.get("listen") !== "0";
+        const pronParam = Math.max(0, parseInt(sp.get("pron") || "3", 10) || 0);
+        const quizParam = sp.get("quiz") !== "0";
+        setHwConfig({
+          active: true,
+          title: titleParam,
+          requireListen: listenParam,
+          pronCount: pronParam,
+          requireQuiz: quizParam,
+        });
+        try {
+          const savedRaw = sessionStorage.getItem(
+            `muallimun-hw-${resolvedParams.id}`
+          );
+          if (savedRaw) {
+            const parsed = JSON.parse(savedRaw);
+            if (Array.isArray(parsed.listened))
+              setHwListenedLines(parsed.listened);
+            if (typeof parsed.pronCount === "number")
+              setHwPronouncedCount(parsed.pronCount);
+            if (Array.isArray(parsed.scores))
+              setHwCollectedScores(parsed.scores);
+            if (Boolean(parsed.quizDone)) setHwQuizCompleted(true);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     return () => {
       playToken.current += 1;
       stop();
@@ -305,7 +401,52 @@ export default function DialogueDetailPage({
       roleplaySpeechRef.current?.terminate();
       void releaseAllWakeLocks();
     };
-  }, [stop]);
+  }, [stop, resolvedParams.id]);
+
+  // Ödev ilerlemesini sessionStorage'da sakla
+  useEffect(() => {
+    if (!hwConfig.active) return;
+    try {
+      sessionStorage.setItem(
+        `muallimun-hw-${resolvedParams.id}`,
+        JSON.stringify({
+          listened: hwListenedLines,
+          pronCount: hwPronouncedCount,
+          scores: hwCollectedScores,
+          quizDone: hwQuizCompleted,
+        })
+      );
+    } catch {
+      // ignore
+    }
+  }, [
+    hwConfig.active,
+    resolvedParams.id,
+    hwListenedLines,
+    hwPronouncedCount,
+    hwCollectedScores,
+    hwQuizCompleted,
+  ]);
+
+  // Cümle içi ShadowingButton veya telaffuz puanı kaydedildiğinde ödev telaffuz sayacını otomatik artır
+  useEffect(() => {
+    const scoreLen = pronunciationScores.length;
+    if (prevPronCountRef.current === null) {
+      prevPronCountRef.current = scoreLen;
+      return;
+    }
+    if (scoreLen > prevPronCountRef.current) {
+      prevPronCountRef.current = scoreLen;
+      if (hwConfig.active) {
+        const lastScore =
+          pronunciationScores[pronunciationScores.length - 1] ?? 75;
+        setHwPronouncedCount((c) => c + 1);
+        if (lastScore > 0) {
+          setHwCollectedScores((prev) => [...prev, lastScore]);
+        }
+      }
+    }
+  }, [pronunciationScores, hwConfig.active]);
 
   // Diyalog dinlerken, rol yaparken veya gölgeleme çalışırken mobil ekranın kararmasını önle
   const isWakeLockNeeded =
@@ -686,6 +827,10 @@ export default function DialogueDetailPage({
       await playTTS(line.arapca, line.sira, speechRate, voice);
     }
 
+    setHwListenedLines((prev) =>
+      prev.includes(line.sira) ? prev : [...prev, line.sira]
+    );
+
     if (playToken.current !== currentToken) return;
 
     if (inRoleplay) {
@@ -1052,6 +1197,147 @@ export default function DialogueDetailPage({
   const shouldShowShadowingButton =
     !mounted || showShadowing || studyMode === "shadowing";
 
+  const handleDownloadOfflineDialogue = async () => {
+    if (isDownloadingOffline) return;
+    playClick();
+    setIsDownloadingOffline(true);
+    setOfflineProgressPct(5);
+    const ok = await downloadDialogueOfflinePack(
+      dialogue.id,
+      (percent, _completed, _total, estMb) => {
+        setOfflineProgressPct(percent);
+        if (estMb > 0) setOfflineEstimatedMb(estMb);
+      }
+    );
+    setIsDownloadingOffline(false);
+    if (ok) {
+      setIsOfflineReady(true);
+      setShowOfflineNotice(true);
+      playSuccess();
+    }
+  };
+
+  // Ödev Hızlı Alıştırması (Boşluk Doldurma & Kelime Eşleştirme) Soruları
+  const hwMiniQuizQuestions = (() => {
+    const qs: {
+      promptLabel: string;
+      arabicDisplay: string;
+      subHint: string;
+      correctOption: string;
+      options: string[];
+    }[] = [];
+
+    // 1-2. Soru: Diyalogdan Boşluk Doldurma
+    const linesForBlank = dialogue.satirlar.slice(0, 2);
+    linesForBlank.forEach((ln, idx) => {
+      const words = ln.arapca.trim().split(/\s+/).filter(Boolean);
+      const targetIdx = words.length > 2 ? 1 : 0;
+      const targetWord = words[targetIdx] || words[0] || "";
+      const blankedAr = words
+        .map((w, i) => (i === targetIdx ? ".........." : w))
+        .join(" ");
+      const distractors = dialogueVocabEntries
+        .map((v) => (v.contextWord || v.item.mufret || v.item.mazi || "").trim())
+        .filter((w) => w && w !== targetWord)
+        .slice(idx * 3, idx * 3 + 3);
+      const opts = Array.from(
+        new Set([targetWord, ...distractors, "نَعَمْ", "شُكْراً", "هُنَا"])
+      ).slice(0, 4);
+      // Deterministik karıştırma
+      const rotated = opts
+        .slice()
+        .sort((a, b) => a.localeCompare(b, "ar"));
+      qs.push({
+        promptLabel: `Bölüm 1: Boşluk Doldurma (${idx + 1}/4)`,
+        arabicDisplay: blankedAr,
+        subHint: `Türkçesi: "${ln.turkce}"`,
+        correctOption: targetWord,
+        options: rotated,
+      });
+    });
+
+    // 3-4. Soru: Kelime Eşleştirme
+    const vocabSample = dialogueVocabEntries.slice(0, 2);
+    vocabSample.forEach((v, idx) => {
+      const arWord =
+        v.contextWord ||
+        (v.item.mufret || v.item.mazi || "").split("/")[0].trim();
+      const correctTr = v.item.anlam_tr;
+      const otherTrs = dialogueVocabEntries
+        .map((o) => o.item.anlam_tr)
+        .filter((t) => t && t !== correctTr)
+        .slice(idx * 2, idx * 2 + 3);
+      const opts = Array.from(
+        new Set([
+          correctTr,
+          ...otherTrs,
+          "Merhaba / Hoş geldiniz",
+          "Teşekkür ederim",
+          "İyi günler",
+        ])
+      ).slice(0, 4);
+      const rotated = opts.slice().sort((a, b) => a.localeCompare(b, "tr"));
+      qs.push({
+        promptLabel: `Bölüm 2: Kelime Eşleştirme (${idx + 3}/4)`,
+        arabicDisplay: arWord,
+        subHint: "Yukarıdaki kelimenin Türkçe karşılığını seçin:",
+        correctOption: correctTr,
+        options: rotated,
+      });
+    });
+
+    return qs;
+  })();
+
+  const hwListenTarget = Math.min(3, dialogue.satirlar.length);
+  const isHwListenDone =
+    !hwConfig.requireListen ||
+    hwListenedLines.length >= hwListenTarget ||
+    isCompleted;
+  const isHwPronDone =
+    hwConfig.pronCount <= 0 || hwPronouncedCount >= hwConfig.pronCount;
+  const isHwQuizDone = !hwConfig.requireQuiz || hwQuizCompleted;
+
+  const hwTotalTasks =
+    (hwConfig.requireListen ? 1 : 0) +
+    (hwConfig.pronCount > 0 ? 1 : 0) +
+    (hwConfig.requireQuiz ? 1 : 0);
+  const hwCompletedTasks =
+    (hwConfig.requireListen && isHwListenDone ? 1 : 0) +
+    (hwConfig.pronCount > 0 && isHwPronDone ? 1 : 0) +
+    (hwConfig.requireQuiz && isHwQuizDone ? 1 : 0);
+  const hwCompletionRatioPct =
+    hwTotalTasks > 0 ? Math.round((hwCompletedTasks / hwTotalTasks) * 100) : 100;
+
+  const hwAverageScore = (() => {
+    if (hwCollectedScores.length > 0) {
+      return Math.round(
+        hwCollectedScores.reduce((a, b) => a + b, 0) / hwCollectedScores.length
+      );
+    }
+    const roleplayVals = Object.values(roleplayLineScores).filter((s) => s > 0);
+    if (roleplayVals.length > 0) {
+      return Math.round(
+        roleplayVals.reduce((a, b) => a + b, 0) / roleplayVals.length
+      );
+    }
+    return hwQuizCompleted ? 88 : hwCompletedTasks > 0 ? 85 : 0;
+  })();
+
+  const hwWeakWordsList: { arabic: string; turkish: string }[] = (() => {
+    const matchedMistakes = dialogueVocabEntries
+      .filter((v) => mistakeIds.includes(v.item.id))
+      .map((v) => ({
+        arabic: (v.item.mufret || v.item.mazi || "").split("/")[0].trim(),
+        turkish: v.item.anlam_tr.split(",")[0].trim(),
+      }));
+    if (matchedMistakes.length > 0) return matchedMistakes.slice(0, 4);
+    return dialogueVocabEntries.slice(0, 3).map((v) => ({
+      arabic: (v.item.mufret || v.item.mazi || "").split("/")[0].trim(),
+      turkish: v.item.anlam_tr.split(",")[0].trim(),
+    }));
+  })();
+
   return (
     <div className="space-y-3">
       {/* GÖLGELEME VE TELAFFUZ KOÇU MODALI */}
@@ -1063,11 +1349,16 @@ export default function DialogueDetailPage({
           voice={shadowingTarget.voice}
           forms={shadowingTarget.forms}
           level={dialogue.seviye}
+          onEvaluated={(score) => {
+            if (score > 0 && hwConfig.active) {
+              // pronunciationScores effect zaten sayacı artırır
+            }
+          }}
           onClose={() => setShadowingTarget(null)}
         />
       )}
 
-      {/* DERS NOTU / PDF ÇIKTI MODALI */}
+      {/* DERS NOTU / PDF ÇIKTI VE A4 QUIZ YAPRAĞI MODALI */}
       {isPdfModalOpen && (
         <DialoguePdfModal
           dialogue={dialogue}
@@ -1077,6 +1368,40 @@ export default function DialogueDetailPage({
           onClose={() => setIsPdfModalOpen(false)}
         />
       )}
+
+      {/* ÖĞRETMEN İÇİN "🎓 ÖDEV OLUŞTUR" MODALI */}
+      <TeacherHomeworkModal
+        isOpen={isTeacherHwModalOpen}
+        onClose={() => setIsTeacherHwModalOpen(false)}
+        dialogueId={dialogue.id}
+        dialogueTitleTr={dialogue.baslik_tr}
+        dialogueTitleAr={getDisplayText(dialogue.baslik_ar)}
+        levelLabel={dialogue.seviye}
+        totalLines={dialogue.satirlar.length}
+      />
+
+      {/* ÖĞRENCİ ÖDEV TAMAMLAMA VE DOĞRULAMA RAPORU MODALI */}
+      <ShareAchievementModal
+        isOpen={isHwReportModalOpen}
+        onClose={() => setIsHwReportModalOpen(false)}
+        title={dialogue.baslik_tr}
+        arabicTitle={getDisplayText(dialogue.baslik_ar)}
+        subtitle={`Diyalog #${String(rawNum).padStart(2, "0")} • ${dialogue.satirlar.length} Cümle • ${dialogueVocabEntries.length} Kelime`}
+        levelLabel={dialogue.seviye}
+        scorePercent={hwAverageScore}
+        pointsText={`${hwCompletedTasks}/${hwTotalTasks} Görev`}
+        wordsCount={dialogueVocabEntries.length}
+        badgeType="homework"
+        homeworkTitle={hwConfig.title || `${dialogue.baslik_tr} Ödevi`}
+        completionPercent={hwCompletionRatioPct}
+        listenedCount={hwListenedLines.length}
+        totalLinesCount={dialogue.satirlar.length}
+        pronPracticedCount={hwPronouncedCount}
+        pronTargetCount={hwConfig.pronCount}
+        quizCompleted={isHwQuizDone}
+        weakWordsList={hwWeakWordsList}
+        dialogueId={dialogue.id}
+      />
 
       {/* BAŞARI KARTINI PAYLAŞ / İNDİR MODALI */}
       <ShareAchievementModal
@@ -1101,6 +1426,270 @@ export default function DialogueDetailPage({
         wordsCount={dialogueVocabEntries.length}
         badgeType="dialogue"
       />
+
+      {/* ÖDEV İÇİ HIZLI ALIŞTIRMA (BOŞLUK DOLDURMA & EŞLEŞTİRME) MODALI */}
+      {isHwQuizModalOpen && hwMiniQuizQuestions.length > 0 && (
+        <div
+          className="fixed inset-0 z-[75] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setIsHwQuizModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl bg-[#FDFBF7] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 bg-[#6741D9] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck size={17} />
+                <span className="text-xs sm:text-sm font-extrabold">
+                  📝 Ödev Alıştırması (Boşluk Doldurma &amp; Eşleştirme)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHwQuizModalOpen(false)}
+                className="w-7 h-7 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center cursor-pointer"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3.5">
+              {(() => {
+                const currentQ =
+                  hwMiniQuizQuestions[
+                    Math.min(hwQuizStep, hwMiniQuizQuestions.length - 1)
+                  ];
+                return (
+                  <>
+                    <div className="flex items-center justify-between text-xs font-extrabold text-slate-600 dark:text-slate-300">
+                      <span>{currentQ.promptLabel}</span>
+                      <span>
+                        Soru {hwQuizStep + 1} / {hwMiniQuizQuestions.length}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] space-y-1.5 text-center">
+                      <p
+                        dir="rtl"
+                        className="arabic text-2xl sm:text-3xl font-bold text-[#087F5B] dark:text-[#20c997]"
+                      >
+                        {getDisplayText(currentQ.arabicDisplay)}
+                      </p>
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        {currentQ.subHint}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      {currentQ.options.map((opt) => {
+                        const isSelected = hwQuizSelectedOpt === opt;
+                        const isCorrect = opt === currentQ.correctOption;
+                        const isArOpt = /[\u0600-\u06FF]/.test(opt);
+                        let btnStyle =
+                          "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#6741D9]";
+                        if (hwQuizSelectedOpt !== null) {
+                          if (isCorrect) {
+                            btnStyle =
+                              "bg-emerald-600 border-emerald-800 text-white";
+                          } else if (isSelected) {
+                            btnStyle = "bg-rose-600 border-rose-800 text-white";
+                          }
+                        }
+
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            disabled={hwQuizSelectedOpt !== null}
+                            onClick={() => {
+                              playClick();
+                              setHwQuizSelectedOpt(opt);
+                              const nextCorrect =
+                                opt === currentQ.correctOption
+                                  ? hwQuizCorrectCount + 1
+                                  : hwQuizCorrectCount;
+                              if (opt === currentQ.correctOption) {
+                                setHwQuizCorrectCount(nextCorrect);
+                                playSuccess();
+                              }
+                              setTimeout(() => {
+                                if (
+                                  hwQuizStep + 1 <
+                                  hwMiniQuizQuestions.length
+                                ) {
+                                  setHwQuizStep((s) => s + 1);
+                                  setHwQuizSelectedOpt(null);
+                                } else {
+                                  const finalQuizPct = Math.round(
+                                    (nextCorrect /
+                                      hwMiniQuizQuestions.length) *
+                                      100
+                                  );
+                                  setHwCollectedScores((prev) => [
+                                    ...prev,
+                                    Math.max(60, finalQuizPct),
+                                  ]);
+                                  setHwQuizCompleted(true);
+                                  setIsHwQuizModalOpen(false);
+                                  playFanfare();
+                                }
+                              }, 700);
+                            }}
+                            dir={isArOpt ? "rtl" : "ltr"}
+                            className={`w-full py-2.5 px-3.5 rounded-xl border-2 border-b-3 font-extrabold transition-all cursor-pointer ${
+                              isArOpt ? "arabic text-xl" : "text-xs sm:text-sm"
+                            } ${btnStyle}`}
+                          >
+                            {isArOpt ? getDisplayText(opt) : opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ÖĞRENCİ İÇİN "📋 ÖDEV TAKİP ÇUBUĞU" (?hw=1 parametresiyle gelindiğinde en üstte görünür) */}
+      {hwConfig.active && (
+        <section className="rounded-2xl bg-gradient-to-r from-[#F3F0FF] via-[#FDFBF7] to-emerald-50/80 dark:from-indigo-950/70 dark:via-slate-900 dark:to-emerald-950/50 border-2 border-[#6741D9] border-b-4 p-3 sm:p-4 shadow-md space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="px-2.5 py-1 rounded-xl bg-[#6741D9] text-white text-xs font-black flex items-center gap-1.5 shrink-0">
+                <GraduationCap size={14} />
+                <span>📋 Ödev Modu</span>
+              </span>
+              <h2 className="text-xs sm:text-sm font-black text-[var(--foreground)] truncate">
+                {hwConfig.title || `${dialogue.baslik_tr} Sınıf Ödevi`}
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border border-[#6741D9]/40 text-[11px] font-extrabold text-[#6741D9] dark:text-indigo-300 tabular-nums">
+                Tamamlanma: {hwCompletedTasks}/{hwTotalTasks} (%
+                {hwCompletionRatioPct})
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setIsHwReportModalOpen(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs border-b-2 border-emerald-800 flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <span>📤 Ödevi Tamamla ve Rapor Oluştur</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            {hwConfig.requireListen && (
+              <div
+                className={`p-2.5 rounded-xl border-2 flex items-center justify-between gap-2 ${
+                  isHwListenDone
+                    ? "bg-emerald-50/90 dark:bg-emerald-950/50 border-emerald-600 text-emerald-900 dark:text-emerald-200"
+                    : "bg-white/90 dark:bg-slate-900/80 border-[#E6D7BE] dark:border-slate-700 text-[var(--foreground)]"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-black shrink-0 ${
+                      isHwListenDone
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {isHwListenDone ? "✓" : "1"}
+                  </span>
+                  <span className="text-xs font-extrabold truncate">
+                    1. Diyaloğu Dinle ve İncele
+                  </span>
+                </div>
+                <span className="text-[11px] font-black tabular-nums shrink-0 text-slate-600 dark:text-slate-300">
+                  {Math.min(hwListenedLines.length, hwListenTarget)}/
+                  {hwListenTarget} Cümle
+                </span>
+              </div>
+            )}
+
+            {hwConfig.pronCount > 0 && (
+              <div
+                className={`p-2.5 rounded-xl border-2 flex items-center justify-between gap-2 ${
+                  isHwPronDone
+                    ? "bg-emerald-50/90 dark:bg-emerald-950/50 border-emerald-600 text-emerald-900 dark:text-emerald-200"
+                    : "bg-white/90 dark:bg-slate-900/80 border-[#E6D7BE] dark:border-slate-700 text-[var(--foreground)]"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-black shrink-0 ${
+                      isHwPronDone
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {isHwPronDone ? "✓" : "2"}
+                  </span>
+                  <span className="text-xs font-extrabold truncate">
+                    2. En Az {hwConfig.pronCount} Cümlede Telaffuz Yap
+                  </span>
+                </div>
+                <span className="text-[11px] font-black tabular-nums shrink-0 text-slate-600 dark:text-slate-300">
+                  {Math.min(hwPronouncedCount, hwConfig.pronCount)}/
+                  {hwConfig.pronCount}
+                </span>
+              </div>
+            )}
+
+            {hwConfig.requireQuiz && (
+              <div
+                className={`p-2.5 rounded-xl border-2 flex items-center justify-between gap-2 ${
+                  isHwQuizDone
+                    ? "bg-emerald-50/90 dark:bg-emerald-950/50 border-emerald-600 text-emerald-900 dark:text-emerald-200"
+                    : "bg-white/90 dark:bg-slate-900/80 border-[#E6D7BE] dark:border-slate-700 text-[var(--foreground)]"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-black shrink-0 ${
+                      isHwQuizDone
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {isHwQuizDone ? "✓" : "3"}
+                  </span>
+                  <span className="text-xs font-extrabold truncate">
+                    3. Diyalog Alıştırmalarını Tamamla
+                  </span>
+                </div>
+                {isHwQuizDone ? (
+                  <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 shrink-0">
+                    Tamamlandı ✓
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setHwQuizStep(0);
+                      setHwQuizSelectedOpt(null);
+                      setHwQuizCorrectCount(0);
+                      setIsHwQuizModalOpen(true);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-[#6741D9] hover:bg-[#5230B5] text-white text-[11px] font-extrabold shrink-0 cursor-pointer"
+                  >
+                    Alıştırmayı Aç →
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* TAM EKRAN DİYALOG GÖRSELİ ÖNİZLEME (LIGHTBOX MODAL) */}
       {isLightboxOpen && (
@@ -1170,7 +1759,7 @@ export default function DialogueDetailPage({
               <ChevronLeft size={16} strokeWidth={2.5} />
             </Link>
 
-            <span className="px-2 py-0.5 rounded-lg bg-[#0CA678] text-white font-extrabold text-[10px] sm:text-[11px] tabular-nums shrink-0">
+            <span className="px-2 py-0.5 rounded-lg bg-emerald-600 dark:bg-emerald-600 text-white font-extrabold text-[10px] sm:text-[11px] tabular-nums shrink-0">
               #{String(rawNum).padStart(2, "0")} • {dialogue.seviye}
             </span>
 
@@ -1179,7 +1768,7 @@ export default function DialogueDetailPage({
                 <h1 className="text-sm sm:text-base font-extrabold text-[var(--foreground)] truncate">
                   {dialogue.baslik_tr}
                 </h1>
-                <span className="hidden sm:inline text-[var(--muted)] font-bold">
+                <span className="hidden sm:inline text-slate-600 dark:text-slate-300 font-bold">
                   |
                 </span>
                 <span
@@ -1189,7 +1778,7 @@ export default function DialogueDetailPage({
                   {getDisplayText(dialogue.baslik_ar)}
                 </span>
               </div>
-              <p className="text-[11px] font-semibold text-[var(--muted)] leading-tight mt-0.5 truncate">
+              <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 leading-tight mt-0.5 truncate">
                 {dialogue.satirlar.length} Cümle • {dialogueVocabEntries.length} Kelime
               </p>
             </div>
@@ -1273,7 +1862,7 @@ export default function DialogueDetailPage({
                   className={`px-3 py-1.5 rounded-xl font-extrabold text-xs border-b-2 transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
                     isRoleplayRunning
                       ? "bg-red-600 hover:bg-red-700 text-white border-red-800"
-                      : "bg-[#0CA678] hover:bg-[#099268] text-white border-[#087F5B]"
+                      : "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 text-white border-emerald-800"
                   }`}
                 >
                   {isRoleplayRunning ? (
@@ -1295,7 +1884,7 @@ export default function DialogueDetailPage({
                   className={`px-3 py-1.5 rounded-xl font-extrabold text-xs border-b-2 transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
                     isPlayingAll
                       ? "bg-red-600 hover:bg-red-700 text-white border-red-800"
-                      : "bg-[#0CA678] hover:bg-[#099268] text-white border-[#087F5B]"
+                      : "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 text-white border-emerald-800"
                   }`}
                 >
                   {isPlayingAll ? (
@@ -1378,12 +1967,70 @@ export default function DialogueDetailPage({
                   playClick();
                   setIsPdfModalOpen(true);
                 }}
-                title="PDF / Ders Notu (Handout) Üret"
+                title="PDF Ders Notu veya A4 Çalışma/Quiz Yaprağı Üret"
                 aria-label="PDF / Ders Notu"
                 className="px-2 py-1.5 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] text-[var(--foreground)] flex items-center gap-1 text-xs font-extrabold transition-all cursor-pointer shrink-0"
               >
                 <FileText size={13} className="text-[#0CA678]" />
                 <span>PDF</span>
+              </button>
+
+              {/* 6. Öğretmen İçin "🎓 Ödev" Butonu */}
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setIsTeacherHwModalOpen(true);
+                }}
+                title="Öğretmen-Öğrenci Ödev Bağlantısı ve Karekodu Oluştur"
+                aria-label="Ödev Oluştur"
+                className="px-2 py-1.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/50 hover:border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff] flex items-center gap-1 text-xs font-extrabold transition-all cursor-pointer shrink-0"
+              >
+                <span>🎓 Ödev</span>
+              </button>
+
+              {/* 7. İndirilebilir Çevrimdışı Ders Paketi Butonu (📥 Çevrimdışı İndir / ✅ Çevrimdışı Hazır) */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isOfflineReady) {
+                    playClick();
+                    setShowOfflineNotice((v) => !v);
+                  } else {
+                    void handleDownloadOfflineDialogue();
+                  }
+                }}
+                disabled={isDownloadingOffline}
+                title={
+                  isOfflineReady
+                    ? "Bu diyalog ve tüm ses dosyaları çevrimdışı kullanıma hazır"
+                    : `Bu diyaloğun seslerini çevrimdışı kullanım için indir (~${offlineEstimatedMb} MB)`
+                }
+                className={`px-2.5 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
+                  isOfflineReady
+                    ? "bg-emerald-600 hover:bg-emerald-700 border-emerald-800 text-white shadow-2xs"
+                    : isDownloadingOffline
+                    ? "bg-amber-100 dark:bg-amber-950/60 border-amber-400 text-amber-900 dark:text-amber-200"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-emerald-600 text-[var(--foreground)]"
+                }`}
+              >
+                {isOfflineReady ? (
+                  <>
+                    <span>✅ Çevrimdışı Hazır</span>
+                  </>
+                ) : isDownloadingOffline ? (
+                  <>
+                    <Download size={12} className="animate-bounce" />
+                    <span>
+                      İndiriliyor %{offlineProgressPct} (~{offlineEstimatedMb} MB)
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={12} className="text-emerald-600" />
+                    <span>📥 Çevrimdışı İndir (~{offlineEstimatedMb} MB)</span>
+                  </>
+                )}
               </button>
 
               {/* Mod Özel Kompakt Kontroller (Rol Yapma veya Telaffuz seçiliyse aynı satırda) */}
@@ -1693,6 +2340,24 @@ export default function DialogueDetailPage({
               )}
             </div>
           </div>
+
+          {/* Çevrimdışı Hazır Bilgi Rozeti (İndirildiğinde veya tıklandığında görünür) */}
+          {(showOfflineNotice || isOfflineReady) && (
+            <div className="rounded-xl bg-emerald-50/90 dark:bg-emerald-950/50 border border-emerald-600/40 px-3 py-1.5 flex items-center justify-between gap-2 text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
+              <span>
+                ✅ Diyalog metni, sözlük/morfoloji, cümle sesleri ve 5 alıştırma modülü artık tamamen internetsiz çalışır.
+              </span>
+              {showOfflineNotice && (
+                <button
+                  type="button"
+                  onClick={() => setShowOfflineNotice(false)}
+                  className="text-emerald-700 dark:text-emerald-300 hover:underline text-[10px] font-extrabold shrink-0 cursor-pointer"
+                >
+                  Gizle
+                </button>
+              )}
+            </div>
+          )}
 
           {studyMode === "roleplay" && roleplayCompletedBanner && (
             <div
@@ -2867,7 +3532,7 @@ export default function DialogueDetailPage({
           <button
             type="button"
             onClick={handleCompleteAndContinue}
-            className="sm:col-span-2 py-3.5 px-5 bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm sm:text-base rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+            className="sm:col-span-2 py-3.5 px-5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 text-white font-bold text-sm sm:text-base rounded-2xl border-b-4 border-emerald-800 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
           >
             <CheckCircle2 size={20} className="shrink-0 w-5 h-5" />
             <span>
@@ -2906,7 +3571,7 @@ export default function DialogueDetailPage({
             >
               <ChevronLeft size={18} className="text-[#087F5B] shrink-0" />
               <div className="min-w-0 flex-1">
-                <span className="block text-[10px] text-[var(--muted)] uppercase">
+                <span className="block text-[10px] text-slate-600 dark:text-slate-300 uppercase">
                   Önceki Diyalog
                 </span>
                 <span className="truncate block">{prevDialogue.baslik_tr}</span>
@@ -2923,7 +3588,7 @@ export default function DialogueDetailPage({
               className="w-full p-3 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-end gap-2.5 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all text-right"
             >
               <div className="min-w-0 flex-1">
-                <span className="block text-[10px] text-[var(--muted)] uppercase">
+                <span className="block text-[10px] text-slate-600 dark:text-slate-300 uppercase">
                   Sonraki Diyalog
                 </span>
                 <span className="truncate block">{nextDialogue.baslik_tr}</span>

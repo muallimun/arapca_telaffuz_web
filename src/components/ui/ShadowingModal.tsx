@@ -77,6 +77,7 @@ interface Props {
   forms?: TargetForm[];
   voice?: VoiceOption;
   level?: string;
+  onEvaluated?: (score: number, evaluatedText: string) => void;
   onClose: () => void;
 }
 
@@ -90,6 +91,7 @@ export default function ShadowingModal({
   forms,
   voice = "male",
   level = "A1",
+  onEvaluated,
   onClose,
 }: Props) {
   const [activeText, setActiveText] = useState<string>(text);
@@ -808,6 +810,7 @@ export default function ShadowingModal({
       setFluencyScore(null);
       setAdaptiveResult(null);
       setActiveWordTip(null);
+      onEvaluated?.(dspRes.rhythmScore ?? currentRhythm ?? 0, activeText);
       playPartial();
       return;
     }
@@ -822,6 +825,7 @@ export default function ShadowingModal({
     if (result.overallScore > 0) {
       recordPronunciationScore(result.overallScore);
     }
+    onEvaluated?.(result.overallScore, activeText);
 
     if (result.overallScore >= 80) playSuccess();
     else if (result.overallScore >= 50) playPartial();

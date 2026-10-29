@@ -256,10 +256,33 @@ export const useAudioStore = create<AudioState>((set, get) => {
       const startedAt =
         typeof performance !== "undefined" ? performance.now() : Date.now();
 
-      const tryPlayUrl = (targetUrl: string) =>
-        new Promise<void>((resolve, reject) => {
+      const resolveCachedUrlIfAvailable = async (rawUrl: string) => {
+        if (
+          typeof window !== "undefined" &&
+          "caches" in window &&
+          rawUrl.startsWith("/")
+        ) {
+          try {
+            const cache = await caches.open("muallimun-offline-audio-v1");
+            const matched = await cache.match(rawUrl);
+            if (matched && matched.ok) {
+              const blob = await matched.blob();
+              if (blob.size > 128) {
+                return URL.createObjectURL(blob);
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+        return rawUrl;
+      };
+
+      const tryPlayUrl = async (targetUrl: string) => {
+        const playableUrl = await resolveCachedUrlIfAvailable(targetUrl);
+        return new Promise<void>((resolve, reject) => {
           currentResolve = resolve;
-          const audio = new Audio(targetUrl);
+          const audio = new Audio(playableUrl);
           audio.preload = "auto";
           audio.defaultPlaybackRate = rate;
           audio.playbackRate = rate;
@@ -335,6 +358,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
             reject(err);
           });
         });
+      };
 
       await tryPlayUrl(url);
     },

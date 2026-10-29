@@ -40,8 +40,14 @@ import {
 import { useSfxStore } from "@/store/sfxStore";
 import { useUserStore } from "@/store/userStore";
 import { usePwaInstall } from "@/lib/usePwaInstall";
-import { playClick } from "@/lib/sfxManager";
-import { playTTS } from "@/lib/audio";
+import { playClick, playSuccess } from "@/lib/sfxManager";
+import { playTTS, loadAudioManifest } from "@/lib/audio";
+import { diyaloglar } from "@/lib/data";
+import {
+  getDownloadedDialogueIds,
+  downloadAllDialoguesOffline,
+  clearOfflineAudioCache,
+} from "@/lib/offlineManager";
 import {
   ARABIC_FONT_OPTIONS,
   ARABIC_FONT_SIZE_PRESETS,
@@ -107,10 +113,23 @@ export default function SettingsPage() {
   const [showIosGuide, setShowIosGuide] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Çevrimdışı İndirilen Dersler (Cache API) State
+  const [offlineDownloadedIds, setOfflineDownloadedIds] = useState<string[]>(
+    []
+  );
+  const [isDownloadingAllOffline, setIsDownloadingAllOffline] =
+    useState<boolean>(false);
+  const [offlineAllProgressPct, setOfflineAllProgressPct] = useState<number>(0);
+
   useEffect(() => {
     setMounted(true);
     if (theme === "dark") document.documentElement.classList.add("dark");
     else document.documentElement.classList.remove("dark");
+    void loadAudioManifest().then(() => {
+      void getDownloadedDialogueIds().then((ids) =>
+        setOfflineDownloadedIds(ids)
+      );
+    });
   }, [theme]);
 
   useEffect(() => {
@@ -1257,6 +1276,115 @@ export default function SettingsPage() {
               <Share2 size={14} />
               <span>Uygulamayı Paylaş</span>
             </button>
+          </div>
+
+          {/* 2C. 📦 Çevrimdışı İndirilen Dersler (Cache API Ses Önbelleği) */}
+          <div className="bg-white dark:bg-[var(--background)] p-3.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <Download
+                  size={18}
+                  className="text-emerald-600 shrink-0 mt-0.5"
+                />
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                      📦 Çevrimdışı İndirilen Dersler
+                    </span>
+                    <span className="px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-400/60 text-[11px] font-black text-emerald-800 dark:text-emerald-300 tabular-nums">
+                      {offlineDownloadedIds.length} / {diyaloglar.length} Diyalog İndirildi
+                    </span>
+                  </div>
+                  <span className="block text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                    İndirilen diyalogların cümle sesleri, sözlük/morfoloji verileri ve 5 alıştırma modülü uçakta, metroda veya internetin olmadığı sınıflarda tamamen çevrimdışı çalışır.
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  disabled={
+                    isDownloadingAllOffline ||
+                    offlineDownloadedIds.length >= diyaloglar.length
+                  }
+                  onClick={async () => {
+                    playClick();
+                    setIsDownloadingAllOffline(true);
+                    setOfflineAllProgressPct(2);
+                    const downloadedCount = await downloadAllDialoguesOffline(
+                      (pct) => {
+                        setOfflineAllProgressPct(pct);
+                        void getDownloadedDialogueIds().then((ids) =>
+                          setOfflineDownloadedIds(ids)
+                        );
+                      }
+                    );
+                    setIsDownloadingAllOffline(false);
+                    const updatedIds = await getDownloadedDialogueIds();
+                    setOfflineDownloadedIds(updatedIds);
+                    if (downloadedCount > 0) {
+                      playSuccess();
+                      setDataMessage({
+                        type: "success",
+                        text: `Tüm ${updatedIds.length} diyalog çevrimdışı ses önbelleğine başarıyla indirildi!`,
+                      });
+                    }
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border-b-3 text-xs font-extrabold transition-all cursor-pointer ${
+                    offlineDownloadedIds.length >= diyaloglar.length
+                      ? "bg-emerald-600 border-emerald-800 text-white"
+                      : isDownloadingAllOffline
+                      ? "bg-amber-500 border-amber-700 text-white"
+                      : "bg-emerald-600 hover:bg-emerald-700 border-emerald-800 text-white"
+                  }`}
+                >
+                  <Download size={14} />
+                  <span>
+                    {offlineDownloadedIds.length >= diyaloglar.length
+                      ? "✅ Tüm Dersler Çevrimdışı Hazır"
+                      : isDownloadingAllOffline
+                      ? `İndiriliyor... %${offlineAllProgressPct}`
+                      : "Tümünü Çevrimdışı İndir"}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    isDownloadingAllOffline || offlineDownloadedIds.length === 0
+                  }
+                  onClick={async () => {
+                    playClick();
+                    await clearOfflineAudioCache();
+                    setOfflineDownloadedIds([]);
+                    setDataMessage({
+                      type: "success",
+                      text: "Çevrimdışı ses önbelleği başarıyla temizlendi.",
+                    });
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-rose-300 dark:border-rose-800 border-b-3 text-xs font-extrabold text-rose-700 dark:text-rose-300 hover:bg-rose-50 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  <Trash2 size={14} />
+                  <span>Çevrimdışı Ses Önbelleğini Temizle</span>
+                </button>
+              </div>
+            </div>
+
+            {isDownloadingAllOffline && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-extrabold text-emerald-800 dark:text-emerald-300">
+                  <span>Çevrimdışı ders ses paketleri indiriliyor...</span>
+                  <span>%{offlineAllProgressPct}</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-emerald-100 dark:bg-emerald-950 overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-600 transition-all duration-150 rounded-full"
+                    style={{ width: `${offlineAllProgressPct}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 3. Veri Yönetimi ve Yedekleme */}

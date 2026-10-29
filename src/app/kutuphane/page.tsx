@@ -15,6 +15,7 @@ import {
   Filter,
   ArrowRight,
   X,
+  Download,
 } from "lucide-react";
 import { diyaloglar } from "@/lib/data";
 import { Level, DictionaryItem } from "@/types/data";
@@ -22,7 +23,12 @@ import { extractDialogueVocabulary, cleanArabicText } from "@/lib/dict";
 import { normalizeArabicText } from "@/lib/arabicTextUtils";
 import { useUserStore } from "@/store/userStore";
 import { useSettings } from "@/store/settings";
-import { playClick } from "@/lib/sfxManager";
+import { playClick, playSuccess } from "@/lib/sfxManager";
+import { loadAudioManifest } from "@/lib/audio";
+import {
+  getDownloadedDialogueIds,
+  downloadDialogueOfflinePack,
+} from "@/lib/offlineManager";
 import ShadowingModal from "@/components/ui/ShadowingModal";
 
 type StatusFilter = "all" | "completed" | "ongoing" | "favorites";
@@ -54,8 +60,15 @@ export default function LibraryPage() {
     forms: { label: string; arabic: string }[];
   } | null>(null);
 
+  const [offlineIds, setOfflineIds] = useState<string[]>([]);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingPct, setDownloadingPct] = useState<number>(0);
+
   useEffect(() => {
     setMounted(true);
+    void loadAudioManifest().then(() => {
+      void getDownloadedDialogueIds().then((ids) => setOfflineIds(ids));
+    });
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const lvl = params.get("seviye") as Level | null;
@@ -68,6 +81,24 @@ export default function LibraryPage() {
       }
     }
   }, []);
+
+  const handleDownloadDialogueCardOffline = async (dlgId: string) => {
+    if (downloadingId) return;
+    playClick();
+    setDownloadingId(dlgId);
+    setDownloadingPct(5);
+    const ok = await downloadDialogueOfflinePack(
+      dlgId,
+      (pct) => {
+        setDownloadingPct(pct);
+      }
+    );
+    setDownloadingId(null);
+    if (ok) {
+      setOfflineIds((prev) => (prev.includes(dlgId) ? prev : [...prev, dlgId]));
+      playSuccess();
+    }
+  };
 
   const removeTashkeel = (text: string) => text.replace(/[\u064B-\u0652]/g, "");
   const getDisplayArabic = (text: string) =>
@@ -590,6 +621,58 @@ export default function LibraryPage() {
                           <ArrowRight size={14} />
                         </Link>
                       </div>
+
+                      {/* Çevrimdışı Ders Paketi İndirme Satırı */}
+                      {(() => {
+                        const isOffline = offlineIds.includes(dlg.id);
+                        const isDownloadingThis = downloadingId === dlg.id;
+                        const audioCount = dlg.satirlar.length;
+                        const estMb = Math.max(
+                          0.4,
+                          Number(((audioCount * 145) / 1024).toFixed(1))
+                        );
+                        return (
+                          <div className="pt-1 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] space-y-1">
+                            <button
+                              type="button"
+                              disabled={Boolean(downloadingId) && !isOffline}
+                              onClick={() => {
+                                if (!isOffline) {
+                                  void handleDownloadDialogueCardOffline(dlg.id);
+                                }
+                              }}
+                              className={`w-full py-1.5 px-2.5 rounded-xl border text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                                isOffline
+                                  ? "bg-emerald-600 border-emerald-800 text-white"
+                                  : isDownloadingThis
+                                  ? "bg-amber-100 dark:bg-amber-950/60 border-amber-400 text-amber-900 dark:text-amber-200"
+                                  : "bg-white/90 dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-emerald-600 text-slate-700 dark:text-slate-200"
+                              }`}
+                            >
+                              {isOffline ? (
+                                <span>✅ Çevrimdışı Hazır (~{estMb} MB)</span>
+                              ) : isDownloadingThis ? (
+                                <>
+                                  <Download size={12} className="animate-bounce" />
+                                  <span>
+                                    İndiriliyor %{downloadingPct} (~{estMb} MB)
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <Download size={12} className="text-emerald-600" />
+                                  <span>📥 Çevrimdışı İndir (~{estMb} MB)</span>
+                                </>
+                              )}
+                            </button>
+                            {isOffline && (
+                              <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 text-center leading-tight">
+                                ✅ Metin, sözlük, sesler ve 5 alıştırma internetsiz çalışır.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 );
