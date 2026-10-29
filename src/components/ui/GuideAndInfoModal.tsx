@@ -255,6 +255,56 @@ export default function GuideAndInfoModal() {
                     Telegram&apos;da paylaşın.
                   </p>
                 </div>
+
+                <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
+                  <h3 className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-emerald-300">
+                    6. 🎯 Bugün Ne Çalışmalıyım? &amp; Aralıklı Tekrar (SRS)
+                  </h3>
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">
+                    5 aşamalı (1, 3, 7, 14, 30 gün) akıllı hafıza sistemi,
+                    seviye dengeli diyalog önerisi ve günlük 12 dakikalık
+                    kişisel çalışma paketi.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
+                  <h3 className="text-xs sm:text-sm font-extrabold text-[#6741D9] dark:text-indigo-300">
+                    7. 🌿 Sözlükte Kök Ailesi (İştikak) &amp; Canlı Örnek Cümleler
+                  </h3>
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">
+                    Bir kelimenin üçlü kökünden türeyen tüm kardeş kelimeleri
+                    filtreleyin ve diyaloglardaki gerçek sesli örnek cümlelerini
+                    anında dinleyin.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
+                  <h3 className="text-xs sm:text-sm font-extrabold text-amber-700 dark:text-amber-300">
+                    8. 🎓 Öğretmen Ödev &amp; QR Sistemi + A4 Quiz Üretici
+                  </h3>
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">
+                    Öğretmenler için karekodlu ödev linki, öğrenciler için
+                    doğrulama kodlu ödev karnesi ve cevap anahtarlı tek sayfa A4
+                    Çalışma/Quiz kağıdı.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
+                  <h3 className="text-xs sm:text-sm font-extrabold text-sky-700 dark:text-sky-300">
+                    9. 📥 Çevrimdışı Ders Paketleri &amp; Kör Dinleme / Akıllı Tahta Modu
+                  </h3>
+                  <p className="text-xs text-[var(--muted)] leading-relaxed">
+                    İnternetsiz ses indirme (Cache API), bulanık metinle{" "}
+                    <strong className="text-[var(--foreground)]">
+                      👁️ Kör Dinleme
+                    </strong>{" "}
+                    ve sınıfta{" "}
+                    <strong className="text-[var(--foreground)]">
+                      🖥️ Akıllı Tahta Sunum Modu
+                    </strong>
+                    .
+                  </p>
+                </div>
               </div>
 
               {/* Diğer 10 Uygulamamıza Hızlı Geçiş Butonu */}

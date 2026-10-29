@@ -156,6 +156,14 @@ export default function DialogueDetailPage({
   const [revealedArLines, setRevealedArLines] = useState<
     Record<number, boolean>
   >({});
+  const [blurArabic, setBlurArabic] = useState<boolean>(false);
+  const [unblurredLines, setUnblurredLines] = useState<Record<number, boolean>>(
+    {}
+  );
+  const [isClassroomMode, setIsClassroomMode] = useState<boolean>(false);
+  const [selectedClassroomLine, setSelectedClassroomLine] = useState<
+    number | null
+  >(null);
   const [flowMode, setFlowMode] = useState<FlowMode>("single");
   const [isPlayingAll, setIsPlayingAll] = useState(false);
   const [dialogueLoopTurn, setDialogueLoopTurn] = useState<number>(1);
@@ -2033,6 +2041,43 @@ export default function DialogueDetailPage({
                 )}
               </button>
 
+              {/* 8. 👁️ Kör Dinleme (Bulanık Metin) Modu Butonu */}
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setBlurArabic((v) => !v);
+                  setUnblurredLines({});
+                }}
+                title="👁️ Kör Dinleme (Metni Gizle): Arapça metni bulanıklaştırır; cümle çalarken veya üzerine gelince/dokununca netleşir"
+                aria-label="Kör Dinleme (Metni Gizle)"
+                className={`px-2 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
+                  blurArabic
+                    ? "bg-amber-600 border-amber-800 text-white shadow-2xs"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-amber-500 text-[var(--foreground)]"
+                }`}
+              >
+                <span>👁️ Kör Dinleme</span>
+              </button>
+
+              {/* 9. 🖥️ Akıllı Tahta / Sınıf Sunum Modu Butonu (Sadece Tablet/Masaüstü/Tahta: hidden sm:inline-flex) */}
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setIsClassroomMode((v) => !v);
+                }}
+                title="🖥️ Sınıf / Tahta Modu: Arapça metinleri sınıfın en arkasından okunacak boyuta büyütür ve aktif satırı öne çıkarır"
+                aria-label="Sınıf / Tahta Modu"
+                className={`hidden sm:inline-flex px-2.5 py-1.5 rounded-xl border text-xs font-extrabold items-center gap-1 transition-all cursor-pointer shrink-0 ${
+                  isClassroomMode
+                    ? "bg-[#0CA678] border-[#087F5B] text-white shadow-2xs"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] text-[var(--foreground)]"
+                }`}
+              >
+                <span>🖥️ Sınıf / Tahta Modu</span>
+              </button>
+
               {/* Mod Özel Kompakt Kontroller (Rol Yapma veya Telaffuz seçiliyse aynı satırda) */}
               {studyMode === "roleplay" && (
                 <>
@@ -2995,8 +3040,38 @@ export default function DialogueDetailPage({
                 );
               }
 
+              const isThisLinePlaying =
+                isPlaying ||
+                isLooping ||
+                isAppSpeakingRoleplay ||
+                isWaitingUser;
+              const shouldBlurLine =
+                blurArabic &&
+                !isThisLinePlaying &&
+                !unblurredLines[line.sira];
+
               return (
-                <div className="blur-0 opacity-100 transition-all duration-300">
+                <div
+                  onClick={() => {
+                    if (shouldBlurLine) {
+                      playClick();
+                      setUnblurredLines((prev) => ({
+                        ...prev,
+                        [line.sira]: true,
+                      }));
+                    }
+                  }}
+                  title={
+                    shouldBlurLine
+                      ? "Kör Dinleme aktif: Metni netleştirmek için üzerine gelin veya dokunun"
+                      : undefined
+                  }
+                  className={`transition-all duration-300 ${
+                    shouldBlurLine
+                      ? "blur-md select-none hover:blur-none cursor-pointer"
+                      : "blur-0 opacity-100"
+                  }`}
+                >
                   <WordTooltip
                     text={line.arapca}
                     contextSentenceTr={line.turkce}
@@ -3008,11 +3083,23 @@ export default function DialogueDetailPage({
               );
             };
 
+            const isClassroomActiveLine =
+              isPlaying ||
+              isLooping ||
+              isWaitingUser ||
+              isAppSpeakingRoleplay ||
+              selectedClassroomLine === line.sira;
+
             return (
               <div
                 key={line.sira}
                 ref={(el) => {
                   lineRefs.current[line.sira] = el;
+                }}
+                onClick={() => {
+                  if (isClassroomMode) {
+                    setSelectedClassroomLine(line.sira);
+                  }
                 }}
                 className={`rounded-2xl border-2 border-b-4 p-3.5 transition-all scroll-mt-14 ${
                   isWaitingUser
@@ -3022,6 +3109,12 @@ export default function DialogueDetailPage({
                     : isUserRoleTurn
                     ? "bg-[#FDFBF7] dark:bg-[var(--background)] border-[#0CA678]/70"
                     : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
+                } ${
+                  isClassroomMode
+                    ? isClassroomActiveLine
+                      ? "ring-2 ring-emerald-500 scale-[1.01] shadow-lg"
+                      : "opacity-75 hover:opacity-100"
+                    : ""
                 }`}
               >
                 {/* Aktif Cümle Kartının Üstünde Karşı Karakter Dinleme Göstergesi (Rol Yapma Modu) */}
@@ -3201,10 +3294,18 @@ export default function DialogueDetailPage({
 
                     <div
                       dir="rtl"
-                      style={{
-                        fontSize: `calc(${arabicFontSize}px * var(--font-arabic-scale, 1))`,
-                      }}
-                      className="order-1 md:order-2 arabic font-bold text-[var(--foreground)] text-right py-1.5"
+                      style={
+                        isClassroomMode
+                          ? undefined
+                          : {
+                              fontSize: `calc(${arabicFontSize}px * var(--font-arabic-scale, 1))`,
+                            }
+                      }
+                      className={`order-1 md:order-2 arabic font-bold text-[var(--foreground)] text-right py-1.5 ${
+                        isClassroomMode
+                          ? "text-3xl md:text-4xl leading-loose"
+                          : ""
+                      }`}
                     >
                       {renderArabicLineWithHint()}
                     </div>
@@ -3231,10 +3332,18 @@ export default function DialogueDetailPage({
                     {isArRevealed ? (
                       <div
                         dir="rtl"
-                        style={{
-                          fontSize: `calc(${arabicFontSize}px * var(--font-arabic-scale, 1))`,
-                        }}
-                        className="arabic font-bold text-[var(--foreground)] text-right py-1.5"
+                        style={
+                          isClassroomMode
+                            ? undefined
+                            : {
+                                fontSize: `calc(${arabicFontSize}px * var(--font-arabic-scale, 1))`,
+                              }
+                        }
+                        className={`arabic font-bold text-[var(--foreground)] text-right py-1.5 ${
+                          isClassroomMode
+                            ? "text-3xl md:text-4xl leading-loose"
+                            : ""
+                        }`}
                       >
                         {renderArabicLineWithHint()}
                       </div>

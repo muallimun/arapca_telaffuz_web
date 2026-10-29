@@ -323,14 +323,24 @@ export default function OnboardingTourModal() {
               {formatAr("عَلَى خَيْرٍ")}
             </span>
           </div>
+
+          <div className="p-2.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-400 text-[11px] space-y-0.5">
+            <span className="font-extrabold text-[#087F5B] dark:text-emerald-300 block">
+              🌿 Sözlükte Kök Ailesi (İştikak) &amp; Canlı Örnek Cümleler:
+            </span>
+            <p className="text-[var(--muted)] leading-snug">
+              Bir kelimenin kökünden türeyen tüm kardeş kelimeleri ve
+              diyaloglardaki gerçek sesli örnek cümlelerini tek tıkla inceleyin.
+            </p>
+          </div>
         </div>
       ),
     },
     {
-      badge: "ADIM 5 / 6 — ALIŞTIRMA MERKEZİ",
-      title: "5 İnteraktif Alıştırma & Sınav Modu",
+      badge: "ADIM 5 / 6 — ALIŞTIRMA MERKEZİ & SRS HAFIZA SİSTEMİ",
+      title: "5 İnteraktif Alıştırma & Aralıklı Tekrar (SRS)",
       subtitle:
-        "Artık 5 farklı interaktif mod! İster '⚡ Hemen Göster' ister '🏁 Bitince Göster (Sınav Modu)' ile kelime ve cümleleri pekiştirin:",
+        "🎯 'Bugün Ne Çalışmalıyım?' günlük 12 dk kişisel çalışma paketi ve 5 aşamalı (1, 3, 7, 14, 30 gün) akıllı hafıza sistemi:",
       visual: (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div className="p-3 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] flex items-start gap-2.5">
@@ -395,11 +405,12 @@ export default function OnboardingTourModal() {
             </div>
             <div>
               <span className="block text-xs font-extrabold text-[#4C28B5] dark:text-[#d0bfff]">
-                🧩 Dinle ve Sırala (Cümle Kurma)
+                🧩 Dinle ve Sırala + 🎯 Aralıklı Tekrar (SRS)
               </span>
               <span className="block text-[11px] text-[var(--muted)]">
-                Cümleyi dinleyin, kelimelere dokunarak sağdan sola doğru Arapça
-                cümleyi inşa edin.
+                Cümleyi dinleyip sağdan sola inşa edin; 5 aşamalı (1, 3, 7, 14,
+                30 gün) akıllı tekrar sistemiyle kelimeleri kalıcı hafızaya
+                taşıyın.
               </span>
             </div>
           </div>
@@ -407,24 +418,24 @@ export default function OnboardingTourModal() {
       ),
     },
     {
-      badge: "ADIM 6 / 6 — PDF DERS NOTU, TİPOGRAFİ & BAŞARI KARTI",
-      title: "Kurumsal A4 PDF, 5 Arapça Font & Başarı Kartı",
+      badge: "ADIM 6 / 6 — ÖDEV SİSTEMİ, A4 QUİZ, ÇEVRİMDIŞI & TAHTA MODU",
+      title: "QR Ödev Sistemi, A4 Quiz, Çevrimdışı & Akıllı Tahta",
       subtitle:
-        "Her diyaloğu çalışma kağıdı olarak yazdırabilir, hattı seçebilir ve başarı karnenizi paylaşabilirsiniz:",
+        "Sınıf içi ve bireysel çalışmalarda öğretmen ve öğrenciler için tam donanımlı araçlar:",
       visual: (
-        <div className="space-y-3">
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#0CA678] flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0CA678] text-white flex items-center justify-center shrink-0">
-              <FileText size={20} />
+        <div className="space-y-2.5">
+          <div className="p-3 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#0CA678] flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#0CA678] text-white flex items-center justify-center shrink-0">
+              <FileText size={18} />
             </div>
-            <div className="space-y-1">
-              <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
-                Özelleştirilebilir Vektörel A4 Ders Notu (PDF)
+            <div className="space-y-0.5">
+              <span className="block text-xs font-extrabold text-[var(--foreground)]">
+                🎓 Öğretmen Ödev &amp; QR Sistemi + A4 Quiz Üretici
               </span>
               <p className="text-[11px] font-medium text-[var(--muted)] leading-snug">
-                Harekeli/Harekesiz, Sağda Arapça – Solda Türkçe iki sütunlu
-                tablo, noktalı boşluklu Kelime/İmla Testi tablosu ve Boşluk
-                Doldurma çalışma kağıdı üretimi.
+                Öğretmenler için karekodlu ödev linki, öğrenciler için doğrulama
+                kodlu ödev karnesi ve cevap anahtarlı tek sayfa A4 Çalışma/Quiz
+                kağıdı.
               </p>
             </div>
           </div>
@@ -435,17 +446,18 @@ export default function OnboardingTourModal() {
             </div>
             <div>
               <span className="block text-xs font-extrabold text-amber-900 dark:text-amber-200">
-                🏆 Başarı Kartını Paylaş / İndir
+                📥 Çevrimdışı Ders Paketleri &amp; Kör Dinleme / Akıllı Tahta Modu
               </span>
               <p className="text-[11px] font-medium text-[var(--muted)] leading-snug">
-                Diyalog ve alıştırma sonunda oluşan görsel çalışma karnenizi tek
-                tıkla PNG olarak indirip öğretmeniniz veya arkadaşlarınızla
-                paylaşın.
+                İnternetsiz ses indirme, bulanık metinle{" "}
+                <strong>👁️ Kör Dinleme</strong>, sınıfta{" "}
+                <strong>🖥️ Akıllı Tahta Sunum Modu</strong> ve PNG Başarı
+                Karnesi paylaşımı.
               </p>
             </div>
           </div>
 
-          <div className="p-3 rounded-2xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1.5">
+          <div className="p-2.5 rounded-2xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1.5">
             <span className="block text-xs font-extrabold text-[#4C28B5] dark:text-[#d0bfff]">
               🔤 5 Seçkin Arapça Font & Lafzatullah Tipografi Motoru:
             </span>

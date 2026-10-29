@@ -4578,3 +4578,181 @@ export function extractDialogueVocabulary(
 
   return Array.from(foundItems.values());
 }
+
+export type Kelime = DictionaryItem;
+
+export interface ExampleSentenceMatch {
+  dialogueId: string;
+  dialogueTitle: string;
+  rawNum: string;
+  sira: number;
+  arapca: string;
+  turkce: string;
+}
+
+const rootFamilyCache = new Map<string, DictionaryItem[]>();
+const exampleSentencesCache = new Map<string, ExampleSentenceMatch[]>();
+
+export function getAllWords(): DictionaryItem[] {
+  return unifiedDictionary;
+}
+
+/**
+ * Verilen kök (ör. "ع ل م") değerine sahip olan tüm sözlük kayıtlarını
+ * getAllWords() içinden bulup döndürür (en fazla 8 kelime).
+ */
+export function getWordsByRoot(
+  kok: string,
+  excludeId?: string
+): DictionaryItem[] {
+  if (!kok || kok === "-" || kok.trim().length === 0) return [];
+  const targetClean = cleanArabicText(kok).replace(/\s+/g, "");
+  if (!targetClean || targetClean.length < 2) return [];
+
+  const cacheKey = `${targetClean}__${excludeId || ""}`;
+  if (rootFamilyCache.has(cacheKey)) {
+    return rootFamilyCache.get(cacheKey)!;
+  }
+
+  const all = getAllWords();
+  const results: DictionaryItem[] = [];
+  const seenPrimary = new Set<string>();
+
+  for (const item of all) {
+    if (excludeId && item.id === excludeId) continue;
+    if (!item.kok || item.kok === "-" || item.kok.trim().length === 0) continue;
+    const itemRootClean = cleanArabicText(item.kok).replace(/\s+/g, "");
+    if (itemRootClean !== targetClean) continue;
+
+    const primaryKey = `${getWordCategory(item)}_${cleanArabicText(
+      formatPrimaryWord(item)
+    )}`;
+    if (seenPrimary.has(primaryKey)) continue;
+    seenPrimary.add(primaryKey);
+
+    results.push(item);
+    if (results.length >= 8) break;
+  }
+
+  rootFamilyCache.set(cacheKey, results);
+  return results;
+}
+
+/**
+ * diyaloglar.json içindeki tüm diyalog satırlarını tarayarak kelimenin
+ * mufret, cemi, mazi, muzari veya masdar formlarından herhangi birini içeren
+ * en fazla maxCount adet gerçek diyalog cümlesini ({ dialogueId, dialogueTitle, rawNum, sira, arapca, turkce }) döndürür.
+ * Performans için bellek içi önbellek (cache) kullanır.
+ */
+export function getExampleSentencesForWord(
+  word: DictionaryItem,
+  maxCount = 3
+): ExampleSentenceMatch[] {
+  if (!word) return [];
+  const cacheKey = `${word.id}__${maxCount}`;
+  if (exampleSentencesCache.has(cacheKey)) {
+    return exampleSentencesCache.get(cacheKey)!;
+  }
+
+  const dialogues = diyaloglarRaw as Dialogue[];
+  const results: ExampleSentenceMatch[] = [];
+  const seenSentences = new Set<string>();
+
+  const rawForms = [
+    word.mufret,
+    word.cemi,
+    word.mazi,
+    word.muzari,
+    word.masdar,
+  ]
+    .filter((f): f is string => Boolean(f && f !== "-" && f.trim().length > 0))
+    .flatMap((f) => f.split(/[\/،,]/))
+    .map((f) => cleanArabicText(f.replace(/\(.*?\)/g, "").trim()))
+    .filter((f) => f.length >= 2);
+
+  if (rawForms.length === 0) {
+    exampleSentencesCache.set(cacheKey, []);
+    return [];
+  }
+
+  const targetFormsSet = new Set<string>(rawForms);
+  // Belirlilik takısı (ال) soyulmuş hallerini de ekle
+  for (const f of rawForms) {
+    if (f.startsWith("ال") && f.length >= 4) {
+      targetFormsSet.add(f.slice(2));
+    }
+  }
+
+  const isMultiWordPhrase = rawForms.some((f) => f.includes(" "));
+
+  for (const dlg of dialogues) {
+    if (results.length >= maxCount) break;
+    const rawNum = dlg.id.replace("dlg_", "");
+
+    for (const line of dlg.satirlar) {
+      if (results.length >= maxCount) break;
+      const cleanedLine = cleanArabicText(line.arapca);
+
+      let matched = false;
+      if (isMultiWordPhrase) {
+        for (const f of targetFormsSet) {
+          if (f.includes(" ") && cleanedLine.includes(f)) {
+            matched = true;
+            break;
+          }
+        }
+      }
+
+      if (!matched) {
+        const tokens = line.arapca
+          .replace(/[.,!?؟،;؛:"'()\[\]{}\d]/g, " ")
+          .split(/\s+/)
+          .filter(Boolean);
+
+        for (const tok of tokens) {
+          const cleanTok = cleanArabicText(tok);
+          if (!cleanTok || cleanTok.length < 2) continue;
+
+          if (targetFormsSet.has(cleanTok)) {
+            matched = true;
+            break;
+          }
+
+          // Yaygın ön ekleri (ال، وال، بال، فال، لل، و، ف، ب، ل، س) soyarak kontrol et
+          const strippedCandidates: string[] = [];
+          for (const pref of ["وال", "بال", "فال", "كال", "لل", "ال", "و", "ف", "ب", "ل", "س"]) {
+            if (cleanTok.startsWith(pref) && cleanTok.length - pref.length >= 2) {
+              strippedCandidates.push(cleanTok.slice(pref.length));
+            }
+          }
+          // Yaygın iyelik zamiri son eklerini (ه، ها، هم، ك، كم، ي، نا) soyarak kontrol et
+          for (const suff of ["كما", "هما", "هم", "هن", "كم", "نا", "ها", "ه", "ك", "ي"]) {
+            if (cleanTok.endsWith(suff) && cleanTok.length - suff.length >= 3) {
+              strippedCandidates.push(cleanTok.slice(0, -suff.length));
+            }
+          }
+
+          if (strippedCandidates.some((c) => targetFormsSet.has(c))) {
+            matched = true;
+            break;
+          }
+        }
+      }
+
+      if (matched && !seenSentences.has(cleanedLine)) {
+        seenSentences.add(cleanedLine);
+        results.push({
+          dialogueId: dlg.id,
+          dialogueTitle: dlg.baslik_tr,
+          rawNum,
+          sira: line.sira,
+          arapca: line.arapca,
+          turkce: line.turkce,
+        });
+      }
+    }
+  }
+
+  exampleSentencesCache.set(cacheKey, results);
+  return results;
+}

@@ -12,6 +12,8 @@ import {
   X,
   Sparkles,
   SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { sozluk, diyaloglar } from "@/lib/data";
 import { DictionaryItem } from "@/types/data";
@@ -22,8 +24,11 @@ import {
   analyzeAndMatchWord,
   getWordCategory,
   WordCategory,
+  getWordsByRoot,
+  getExampleSentencesForWord,
+  ExampleSentenceMatch,
 } from "@/lib/dict";
-import { loadAudioManifest, playTTS } from "@/lib/audio";
+import { loadAudioManifest, playTTS, hasMp3, getMp3Path } from "@/lib/audio";
 import { useAudioStore } from "@/store/audioStore";
 import { useUserStore } from "@/store/userStore";
 import { useSettings } from "@/store/settings";
@@ -96,6 +101,13 @@ export default function DictionaryPage() {
   const [selectedDialogueId, setSelectedDialogueId] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [rootFilter, setRootFilter] = useState<string | null>(null);
+  const [expandedCardIds, setExpandedCardIds] = useState<
+    Record<string, boolean>
+  >({});
+  const [playingSentenceKey, setPlayingSentenceKey] = useState<string | null>(
+    null
+  );
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [speakingWordId, setSpeakingWordId] = useState<string | null>(null);
   const [manifest, setManifest] = useState<Record<string, string[]>>({});
@@ -129,8 +141,10 @@ export default function DictionaryPage() {
       const params = new URLSearchParams(window.location.search);
       const durum = params.get("durum");
       const dlg = params.get("diyalog");
+      const kokParam = params.get("kok");
       if (durum === "learned") setStatusFilter("learned");
       if (dlg) setSelectedDialogueId(dlg);
+      if (kokParam) setRootFilter(kokParam);
     }
   }, []);
 
@@ -350,6 +364,18 @@ export default function DictionaryPage() {
       );
     }
 
+    // 2.5. Kök Ailesi (İştikak) Filtresi
+    if (rootFilter && rootFilter !== "-") {
+      const targetRootClean = cleanArabicText(rootFilter).replace(/\s+/g, "");
+      if (targetRootClean.length >= 2) {
+        result = result.filter(
+          (w) =>
+            Boolean(w.kok && w.kok !== "-") &&
+            cleanArabicText(w.kok || "").replace(/\s+/g, "") === targetRootClean
+        );
+      }
+    }
+
     // 3. Arapça (çekimli/yalın/harekesiz/fonetik) veya Türkçe Anlık Arama
     if (search.trim()) {
       const qLower = search.trim().toLowerCase();
@@ -399,6 +425,7 @@ export default function DictionaryPage() {
     dialogueContextMap,
     selectedDialogueId,
     typeFilter,
+    rootFilter,
     statusFilter,
     search,
     mounted,
@@ -468,10 +495,29 @@ export default function DictionaryPage() {
     }
   };
 
+  const handlePlayExampleSentence = async (ex: ExampleSentenceMatch) => {
+    playClick();
+    const key = `${ex.dialogueId}_${ex.sira}`;
+    const rate = mounted ? speechRate : 1;
+    setPlayingSentenceKey(key);
+    try {
+      if (hasMp3(ex.dialogueId, ex.sira)) {
+        await playAudio(getMp3Path(ex.dialogueId, ex.sira), 0, rate);
+      } else {
+        await playTTS(ex.arapca, rate);
+      }
+    } catch {
+      await playTTS(ex.arapca, rate);
+    } finally {
+      setPlayingSentenceKey(null);
+    }
+  };
+
   const hasActiveFilter =
     selectedDialogueId !== "all" ||
     statusFilter !== "all" ||
-    typeFilter !== "all";
+    typeFilter !== "all" ||
+    Boolean(rootFilter);
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -768,6 +814,36 @@ export default function DictionaryPage() {
             </div>
           </div>
         )}
+
+        {/* Aktif Kök Ailesi (İştikak) Filtresi Şeridi */}
+        {rootFilter && (
+          <div className="pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-wrap items-center justify-between gap-2 bg-emerald-50/90 dark:bg-emerald-950/40 px-3 py-2 rounded-xl border border-emerald-300 dark:border-emerald-700/60">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-extrabold text-[#087F5B] dark:text-emerald-300">
+                🌿 Kök Ailesi:
+              </span>
+              <bdi
+                dir="rtl"
+                className="arabic font-arabic text-base sm:text-lg font-bold text-[#087F5B] dark:text-emerald-200 px-2 py-0.5 rounded-lg bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700"
+              >
+                {getDisplayArabic(rootFilter)}
+              </bdi>
+              <span className="text-[11px] font-semibold text-[var(--muted)]">
+                ({filteredWords.length} türemiş kelime gösteriliyor)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setRootFilter(null);
+              }}
+              className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 hover:bg-rose-50 border border-emerald-400 hover:border-rose-400 text-xs font-extrabold text-[var(--foreground)] hover:text-rose-600 transition-all cursor-pointer shrink-0"
+            >
+              ✕ Kök Filtresini Kaldır
+            </button>
+          </div>
+        )}
       </section>
 
       {/* SÖZLÜK KARTLARI IZGARASI */}
@@ -786,6 +862,7 @@ export default function DictionaryPage() {
               setSelectedDialogueId("all");
               setStatusFilter("all");
               setTypeFilter("all");
+              setRootFilter(null);
             }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0CA678] text-white text-xs font-bold border-b-4 border-[#087F5B] cursor-pointer"
           >
@@ -852,18 +929,34 @@ export default function DictionaryPage() {
                           </span>
                         )}
                         {!isIdiomCard && word.kok && word.kok !== "-" && (
-                          <span
+                          <button
+                            type="button"
                             dir="ltr"
-                            className="inline-flex items-center gap-1 text-xs font-bold text-[var(--muted)]"
+                            onClick={() => {
+                              playClick();
+                              setRootFilter((prev) =>
+                                prev === word.kok ? null : word.kok || null
+                              );
+                            }}
+                            title="Bu kökten türeyen tüm kelimeleri (Kök Ailesini) filtrelemek için tıklayın"
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-xs font-bold transition-all cursor-pointer ${
+                              rootFilter === word.kok
+                                ? "bg-emerald-600 border-emerald-700 text-white shadow-2xs"
+                                : "bg-white/80 dark:bg-slate-800/80 border-[#E6D7BE] dark:border-slate-700 text-[var(--muted)] hover:border-[#0CA678] hover:text-[#087F5B]"
+                            }`}
                           >
-                            <span>Kök:</span>
+                            <span>🌿 Kök:</span>
                             <bdi
                               dir="rtl"
-                              className="arabic font-arabic text-sm font-bold text-[var(--foreground)] inline-block"
+                              className={`arabic font-arabic text-sm font-bold inline-block ${
+                                rootFilter === word.kok
+                                  ? "text-white"
+                                  : "text-[var(--foreground)]"
+                              }`}
                             >
                               {getDisplayArabic(word.kok)}
                             </bdi>
-                          </span>
+                          </button>
                         )}
                       </div>
 
@@ -1097,6 +1190,169 @@ export default function DictionaryPage() {
                       )}
                     </div>
                   )}
+
+                  {/* Sözlük Kartı Altında Açılır/Kapanır "📖 Örnek Cümleler & Kök Ailesi" Çekmecesi */}
+                  {(() => {
+                    const isDrawerOpen = Boolean(expandedCardIds[word.id]);
+                    const rootSiblings =
+                      isDrawerOpen && word.kok && word.kok !== "-"
+                        ? getWordsByRoot(word.kok, word.id)
+                        : [];
+                    const exampleSentences = isDrawerOpen
+                      ? getExampleSentencesForWord(word, 2)
+                      : [];
+
+                    return (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            setExpandedCardIds((prev) => ({
+                              ...prev,
+                              [word.id]: !prev[word.id],
+                            }));
+                          }}
+                          className={`w-full px-2.5 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center justify-between gap-1.5 transition-all cursor-pointer ${
+                            isDrawerOpen
+                              ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff]"
+                              : "bg-white/75 dark:bg-[var(--background)]/75 border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[#6741D9]/60"
+                          }`}
+                        >
+                          <span>📖 Örnek Cümleler &amp; Kök Ailesi</span>
+                          {isDrawerOpen ? (
+                            <ChevronUp size={13} />
+                          ) : (
+                            <ChevronDown size={13} />
+                          )}
+                        </button>
+
+                        {isDrawerOpen && (
+                          <div className="mt-2 p-2.5 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] space-y-2.5 text-left animate-in fade-in duration-150">
+                            {/* 1. Aynı Kökten Türeyen Kelimeler (Kök Ailesi / İştikak) */}
+                            {word.kok && word.kok !== "-" && (
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#087F5B] dark:text-emerald-300">
+                                    🌿 Aynı Kökten Türeyenler ({word.kok})
+                                  </span>
+                                  {rootSiblings.length > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        playClick();
+                                        setRootFilter(word.kok || null);
+                                      }}
+                                      className="text-[10px] font-extrabold text-[#6741D9] dark:text-indigo-300 hover:underline cursor-pointer"
+                                    >
+                                      Tümünü Filtrele →
+                                    </button>
+                                  )}
+                                </div>
+
+                                {rootSiblings.length === 0 ? (
+                                  <p className="text-[11px] font-medium text-[var(--muted)]">
+                                    Sözlükte bu kökten kayıtlı başka türev bulunmuyor.
+                                  </p>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {rootSiblings.map((sib) => {
+                                      const sibAr =
+                                        (sib.mufret || sib.mazi || "").split(
+                                          "/"
+                                        )[0];
+                                      return (
+                                        <button
+                                          key={sib.id}
+                                          type="button"
+                                          onClick={() => handleListenWord(sib)}
+                                          title={`${sib.anlam_tr} — Dinlemek için tıkla`}
+                                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#F7EFE1] dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] text-[11px] transition-all cursor-pointer"
+                                        >
+                                          <bdi
+                                            dir="rtl"
+                                            className="arabic font-arabic text-sm font-bold text-[#087F5B] dark:text-emerald-300"
+                                          >
+                                            {getDisplayArabic(sibAr)}
+                                          </bdi>
+                                          <span className="font-semibold text-[var(--foreground)] max-w-[120px] truncate">
+                                            {sib.anlam_tr.split(",")[0]}
+                                          </span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* 2. Diyaloglardan Gerçek Örnek Cümleler */}
+                            <div className="space-y-1.5">
+                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#6741D9] dark:text-indigo-300 block">
+                                📖 Diyaloglardan Örnek Cümleler
+                              </span>
+                              {exampleSentences.length === 0 ? (
+                                <p className="text-[11px] font-medium text-[var(--muted)]">
+                                  Bu ifade için doğrudan eşleşen diyalog satırı bulunamadı.
+                                </p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {exampleSentences.map((ex) => {
+                                    const exKey = `${ex.dialogueId}_${ex.sira}`;
+                                    const isExPlaying =
+                                      playingSentenceKey === exKey;
+                                    return (
+                                      <div
+                                        key={exKey}
+                                        className="p-2 rounded-lg bg-[#F7EFE1]/70 dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] space-y-1"
+                                      >
+                                        <div className="flex items-center justify-between gap-1.5">
+                                          <Link
+                                            href={`/diyalog/${ex.dialogueId}`}
+                                            onClick={() => playClick()}
+                                            className="text-[10px] font-extrabold text-[#087F5B] dark:text-emerald-300 hover:underline truncate"
+                                          >
+                                            #{ex.rawNum} {ex.dialogueTitle}
+                                          </Link>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              void handlePlayExampleSentence(ex)
+                                            }
+                                            title="Örnek cümleyi sesli dinle"
+                                            className={`px-2 py-0.5 rounded-md border text-[10px] font-extrabold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
+                                              isExPlaying
+                                                ? "bg-[#0CA678] border-[#087F5B] text-white"
+                                                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--foreground)] hover:border-[#0CA678]"
+                                            }`}
+                                          >
+                                            <Volume2 size={11} />
+                                            <span>Dinle</span>
+                                          </button>
+                                        </div>
+                                        <p
+                                          dir="rtl"
+                                          className="arabic font-arabic text-base font-bold text-[var(--foreground)] text-right leading-snug"
+                                        >
+                                          {getDisplayArabic(ex.arapca)}
+                                        </p>
+                                        <p
+                                          dir="ltr"
+                                          className="text-[11px] font-medium text-[var(--muted)] leading-snug"
+                                        >
+                                          {ex.turkce}
+                                        </p>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Alt Aksiyon Butonları */}

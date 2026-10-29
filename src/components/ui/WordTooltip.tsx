@@ -3,7 +3,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Volume2, Heart, CheckCircle2, X, Sparkles, Mic } from "lucide-react";
-import { analyzeAndMatchWord, getWordCategory, WordCategory } from "@/lib/dict";
+import {
+  analyzeAndMatchWord,
+  getWordCategory,
+  WordCategory,
+  getWordsByRoot,
+} from "@/lib/dict";
 import { useSettings } from "@/store/settings";
 import { useUserStore } from "@/store/userStore";
 import { useAudioStore } from "@/store/audioStore";
@@ -137,6 +142,7 @@ export default function WordTooltip({
     itemId?: string;
     forms: TargetForm[];
   } | null>(null);
+  const [showDesktopRootFamily, setShowDesktopRootFamily] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   const containerRef = useRef<HTMLSpanElement>(null);
@@ -194,6 +200,7 @@ export default function WordTooltip({
   }, []);
 
   useEffect(() => {
+    setShowDesktopRootFamily(false);
     if (activeIndex !== null && activeWordElRef.current) {
       const raf = requestAnimationFrame(() => {
         if (activeWordElRef.current) {
@@ -203,6 +210,17 @@ export default function WordTooltip({
       return () => cancelAnimationFrame(raf);
     }
   }, [activeIndex, computePosition]);
+
+  useEffect(() => {
+    if (activeIndex !== null && activeWordElRef.current) {
+      const raf = requestAnimationFrame(() => {
+        if (activeWordElRef.current) {
+          computePosition(activeWordElRef.current);
+        }
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [showDesktopRootFamily, activeIndex, computePosition]);
 
   useEffect(() => {
     if (activeIndex === null) return;
@@ -685,6 +703,72 @@ export default function WordTooltip({
                         )}
                       </div>
                     )}
+
+                    {/* SADECE MASAÜSTÜ (hidden md:block): Başlangıçta kapalı "🌿 Kök Ailesi" çekmecesi (Mobil kompakt boyutu %100 korur) */}
+                    {dictItem.kok &&
+                      dictItem.kok !== "-" &&
+                      (() => {
+                        const rootSiblings = getWordsByRoot(
+                          dictItem.kok,
+                          dictItem.id
+                        );
+                        if (rootSiblings.length === 0) return null;
+                        return (
+                          <div
+                            dir="ltr"
+                            className="hidden md:block py-0.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] font-sans"
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playClick();
+                                setShowDesktopRootFamily((v) => !v);
+                              }}
+                              className="w-full flex items-center justify-between px-2 py-1 rounded-lg bg-white/80 dark:bg-[var(--background)] border border-[#E6D7BE] hover:border-[#0CA678] text-[11px] font-extrabold text-[#087F5B] dark:text-emerald-300 transition-all cursor-pointer"
+                            >
+                              <span>
+                                🌿 Kök Ailesi ({rootSiblings.length} kelime){" "}
+                                {showDesktopRootFamily ? "▴" : "▾"}
+                              </span>
+                              <bdi
+                                dir="rtl"
+                                className="arabic font-arabic text-xs font-bold text-[var(--foreground)]"
+                              >
+                                ({dictItem.kok})
+                              </bdi>
+                            </button>
+
+                            {showDesktopRootFamily && (
+                              <div className="mt-1.5 flex flex-wrap gap-1">
+                                {rootSiblings.slice(0, 6).map((sib) => {
+                                  const sibAr = (
+                                    sib.mufret ||
+                                    sib.mazi ||
+                                    ""
+                                  ).split("/")[0];
+                                  return (
+                                    <span
+                                      key={sib.id}
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[10px]"
+                                    >
+                                      <bdi
+                                        dir="rtl"
+                                        className="arabic font-arabic text-xs font-bold text-[#087F5B] dark:text-emerald-300"
+                                      >
+                                        {formatAr(sibAr)}
+                                      </bdi>
+                                      <span className="font-semibold text-[var(--muted)] max-w-[95px] truncate">
+                                        {sib.anlam_tr.split(",")[0]}
+                                      </span>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                     {/* Alt Aksiyon Butonları (Dinle | Telaffuz | Kartlar | Öğrendim) */}
                     <div className="pt-1 flex items-center gap-1.5 w-full font-sans">
