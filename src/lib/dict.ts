@@ -122,7 +122,6 @@ const ARABIC_PARTICLES_SET = new Set<string>([
   "او",
   "ام",
   "الا",
-  "اولا",
   "ثم",
   "بل",
   "لكن",
@@ -1283,6 +1282,15 @@ function pickBestCandidateForKey(
       }
     }
 
+    // 1d. KURAL 1.1: "أَوَّلاً" (önce, ilk olarak — şeddeli/tenvinli) vs "أَوَلَا" (... değil mi? / bilmez miyim?) Koruması:
+    if (cand.item.id === "supp_awala_ala_edat") {
+      const hasShaddaOrTanwin = /[\u0651\u064B]/.test(cleanedRaw);
+      const isExplicitAwala = /أَوَلَا/.test(cleanedRaw);
+      if (hasShaddaOrTanwin || !isExplicitAwala) {
+        score -= 2500;
+      }
+    }
+
     // 2. Türkçe Cümle Çevirisi Bağlamı (+500 Puan)
     score += computeTurkishContextScore(cand.item, contextSentenceTr);
 
@@ -1477,8 +1485,15 @@ const SUFFIX_RULES: Array<{
   isDualOrPlural?: boolean;
   isFeminineDual?: boolean;
   isPronoun?: boolean;
+  isNiswaVerbSuffix?: boolean;
 }> = [
   { raw: "تموني", label: "تُمْ (siz) + نِي (beni/bana)", verbOnly: true, isPronoun: true },
+  {
+    raw: "تاني",
+    label: "تَا (müennes ikil eki) + نِي (beni - 1. tekil nesne zamiri)",
+    verbOnly: true,
+    isPronoun: true,
+  },
   {
     raw: "انها",
     label: "انِ (ikiniz/ikisi - muzari) + هَا (onu [مؤنث])",
@@ -1539,7 +1554,12 @@ const SUFFIX_RULES: Array<{
     verbOnly: true,
     isPronoun: true,
   },
-  { raw: "تني", label: "تَ / تْ + نِي (beni/bana)", verbOnly: true, isPronoun: true },
+  {
+    raw: "تني",
+    label: "تْ (o [مؤنث]) / تَ + نِي (beni - 1. tekil nesne zamiri)",
+    verbOnly: true,
+    isPronoun: true,
+  },
   { raw: "نني", label: "نِي (beni/bana)", verbOnly: true, isPronoun: true },
   {
     raw: "كما",
@@ -1667,6 +1687,12 @@ const SUFFIX_RULES: Array<{
     isPronoun: true,
   },
   { raw: "ت", label: "تُ / تَ / تِ / تْ (mazi şahıs eki)", verbOnly: true },
+  {
+    raw: "ن",
+    label: "نَ (cemî müennes / kadın çoğul şahıs eki: onlar)",
+    verbOnly: true,
+    isNiswaVerbSuffix: true,
+  },
   {
     raw: "ا",
     label: "اً (tenvin / mansub eki)",
@@ -2301,9 +2327,9 @@ function matchStemWithRules(
 
     const bareAfterPrefix = stem.slice(1);
 
-    // KURAL 1.1: Muzaaf (Şeddeli 2 Harfli Gövde) Fiil Kuralı (سَتَمُرُّ، نَمُرُّ، يَدُقُّ، تَدُقُّ، تَضُرَّنَا، يَظُنُّ، يَسْتَعِدَّ)
+    // KURAL 1.1 & KURAL 1.4: Muzaaf (Şeddeli 2 Harfli Gövde) ve Muzaaf İf'âl (أَحَبَّ / سَتُحِبُّ / تُحِبِّينَ) Fiil Kuralı
     if (bareAfterPrefix.length === 2) {
-      // 1) 2 harfli şeddeli mazi gövdesi (مر، دق، ضر، ظن)
+      // 1) 2 harfli şeddeli mazi gövdesi (مر، دق، ضر، ظن) veya İf'âl muzaaf (أحب، أعد، أصر)
       const geminateCand = pickBestCandidateForKey(
         bareAfterPrefix,
         cleanedRaw,
@@ -2319,7 +2345,22 @@ function matchStemWithRules(
           isImperative: isImp,
         };
       }
-      // 2) Son harfin tekrarlandığı 3 harfli muzaaf kök (مر -> مرر، دق -> دقق، ضر -> ضرر، ظن -> ظنن)
+      const ifalGeminateCand = pickBestCandidateForKey(
+        "ا" + bareAfterPrefix,
+        cleanedRaw,
+        contextSentenceTr,
+        false,
+        true
+      );
+      if (ifalGeminateCand && getWordCategory(ifalGeminateCand) === "fiil") {
+        return {
+          item: ifalGeminateCand,
+          stage: "verb",
+          extraNote: getPersonNote(ifalGeminateCand),
+          isImperative: isImp,
+        };
+      }
+      // 2) Son harfin tekrarlandığı 3 harfli muzaaf kök (مر -> مرر، دق -> دقق، ضر -> ضرر، ظن -> ظنن، حب -> حبب)
       const doubledRoot = bareAfterPrefix + bareAfterPrefix[1];
       if (rootIndex.has(doubledRoot)) {
         const verbFromRoot = rootIndex
@@ -3569,6 +3610,55 @@ export function analyzeAndMatchWord(
     }
   }
 
+  // 0.998. KURAL 1.1: "أَوَّلاً / أَوَّلُ / بِأَوَّلِ / الْأُولَى" (ilk, birinci; önce) vs "أَوَلَا" (... değil mi? / bilmez miyim?) KESİN AYRIMI
+  const awwalMatch = normalized.match(
+    /^(و|ف|ب|ل|ك|وب|فب|ول|فل|ال|وال|بال|لل)?(اول|اولا|اولي|اوائل)$/
+  );
+  if (awwalMatch) {
+    const prefRaw = awwalMatch[1] || "";
+    const coreAwwal = awwalMatch[2];
+    const hasShaddaOrTanwin = /[\u0651\u064B]/.test(cleanedRaw);
+    const isInterrogativeAwala =
+      !prefRaw &&
+      coreAwwal === "اولا" &&
+      !hasShaddaOrTanwin &&
+      (/أَوَلَا/.test(cleanedRaw) ||
+        Boolean(
+          contextSentenceTr &&
+            /bilmez miyim|değil mi/i.test(contextSentenceTr)
+        ));
+
+    if (isInterrogativeAwala) {
+      const awalaItem = unifiedDictionary.find(
+        (d) => d.id === "supp_awala_ala_edat"
+      );
+      if (awalaItem) {
+        return {
+          item: awalaItem,
+          originalWord: cleanedRaw,
+          matchedStem: "اولا",
+          morphologyNote: buildMorphologyNote(awalaItem),
+          matchStage: "exact",
+        };
+      }
+    } else {
+      const awwalItem = unifiedDictionary.find(
+        (d) => d.id === "supp_awwal_isim"
+      );
+      if (awwalItem) {
+        const prefObj = NOMINAL_PREFIX_RULES.find((p) => p.raw === prefRaw);
+        return {
+          item: awwalItem,
+          originalWord: cleanedRaw,
+          matchedStem: coreAwwal,
+          prefixLabel: prefObj?.label,
+          morphologyNote: buildMorphologyNote(awwalItem, prefObj?.label),
+          matchStage: prefRaw ? "affix" : "exact",
+        };
+      }
+    }
+  }
+
   // Kademe 1: Doğrudan Eşleşme (Önce İsim / Tam Eşleşme - Bağlam & Hareke Puanlamalı)
   const directNominal = matchNominalOrExactStem(
     normalized,
@@ -3643,6 +3733,9 @@ export function analyzeAndMatchWord(
     }
 
     for (const suff of SUFFIX_RULES) {
+      if (suff.isNiswaVerbSuffix) {
+        continue;
+      }
       // Korumalı kelimelerde (عمان، رمضان vb.) "ان" / "ات" / "ين" soyma!
       if (suff.isDualOrPlural && PROTECTED_NO_DUAL_PLURAL_SPLIT.has(normalized)) {
         continue;
@@ -3783,6 +3876,9 @@ export function analyzeAndMatchWord(
         }
 
         for (const suff of SUFFIX_RULES) {
+          if (suff.isNiswaVerbSuffix) {
+            continue;
+          }
           if (
             suff.isDualOrPlural &&
             PROTECTED_NO_DUAL_PLURAL_SPLIT.has(afterPref)
@@ -3937,6 +4033,14 @@ export function analyzeAndMatchWord(
         normalized.length - suff.raw.length >= 2
       ) {
         const stem = normalized.slice(0, -suff.raw.length);
+        // KURAL 1.3: Cemî müennes "ن" (Nûnu'n-Nisve: يَفْتَحْنَ، يَضَعْنَ) yalnızca muzari (ي/ت) veya sükun+نَ (\u0652نَ) fiillerde soyulur
+        if (
+          suff.isNiswaVerbSuffix &&
+          !/^[يت]/.test(stem) &&
+          !/\u0652ن\u064E?$/.test(cleanedRaw)
+        ) {
+          continue;
+        }
         const matched = matchStemWithRules(
           stem,
           cleanedRaw,
@@ -3987,6 +4091,13 @@ export function analyzeAndMatchWord(
             afterPref.length - suff.raw.length >= 2
           ) {
             const stem = afterPref.slice(0, -suff.raw.length);
+            if (
+              suff.isNiswaVerbSuffix &&
+              !/^[يت]/.test(stem) &&
+              !/\u0652ن\u064E?$/.test(cleanedRaw)
+            ) {
+              continue;
+            }
             if (
               isFutureSin &&
               !canStripFutureSinPrefix(
@@ -4072,6 +4183,7 @@ export function analyzeAndMatchWord(
     candidateCore = candidateCore.slice(0, -1);
   } else if (!PROTECTED_NO_DUAL_PLURAL_SPLIT.has(candidateCore)) {
     for (const suff of SUFFIX_RULES) {
+      if (suff.isNiswaVerbSuffix) continue;
       if (isDefinitelyNoun && suff.verbOnly) continue;
       if (
         candidateCore.endsWith(suff.raw) &&
@@ -4172,13 +4284,23 @@ export function analyzeAndMatchWord(
       }
       const pool = filteredPool.length > 0 ? filteredPool : rootItems;
 
-      // Kök adaylarını Türkçe cümle bağlamı ve Gramer Kalkanına göre puanla
+      // Kök adaylarını Türkçe cümle bağlamı, Gramer Kalkanı ve "م" (İsm-i Mef'ûl / Mekan) Kalkanına göre puanla
       let bestItem = pool[0];
       let bestScore = -9999;
       for (const it of pool) {
         let sc = computeTurkishContextScore(it, contextSentenceTr);
         if (isDefinitelyNoun) {
           sc += getWordCategory(it) === "fiil" ? -500 : 200;
+        }
+        // KURAL 1.2: "مُـ" ile başlamayan bir kelimenin (örn: أَرْبَع، أَرْبَعُونَ) kök eşleşmesiyle
+        // "مُـ" ile başlayan bir ism-i mef'ûle (مُرَبَّع: kare) düşmesini engelle!
+        const primaryCandClean = cleanArabicText(formatPrimaryWord(it));
+        if (
+          !candidateCore.startsWith("م") &&
+          primaryCandClean.startsWith("م") &&
+          !skel.startsWith("م")
+        ) {
+          sc -= 900;
         }
         if (sc > bestScore) {
           bestScore = sc;

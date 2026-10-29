@@ -1281,3 +1281,23 @@ export function classifyArabicVerbMood(
   }
   return "other";
 }
+
+/**
+ * Birleşik mazi/muzari fiil son eklerini (ـَتَانِي، ـَتْنِي، ـْنَ Nûnu'n-Nisve vb.)
+ * morfolojik olarak çözümler ve Türkçe dilbilgisel açıklamasını döndürür.
+ */
+export function explainVerbAffixMorphology(rawWord: string): string | null {
+  const bare = normalizeArabicForPronunciation(rawWord);
+  if (!bare || bare.length < 4) return null;
+
+  if (bare.endsWith("تاني")) {
+    return "تَا (müennes ikil eki) + نِي (beni - 1. tekil nesne zamiri)";
+  }
+  if (bare.endsWith("تني")) {
+    return "تْ (müennes mazi eki) + نِي (beni - 1. tekil nesne zamiri)";
+  }
+  if (/^[وف]?[يت]/.test(bare) && bare.endsWith("ن")) {
+    return "نَ (cemî müennes / kadın çoğul şahıs eki: onlar)";
+  }
+  return null;
+}

@@ -932,7 +932,56 @@ export const ARABIC_IDIOMS_LIBRARY: ArabicIdiom[] = [
     usageNote: "Biriken borçların veya taksitlerin ödenmesine rağmen bir türlü tükenmediğinden yakınırken kullanılır.",
     variants: ["لا تنتهي ديوننا بالدفع", "لا تنتهي ديوننا"],
   },
+  {
+    id: "idm_116",
+    arabic: "كَمْ هُوَ جَمِيلٌ!",
+    meaningTr: "Ne kadar güzel!",
+    literalTr: "O ne kadar güzeldir!",
+    usageNote: "Bir manzarayı, eşyayı veya durumu beğenirken hayranlık bildirmek için kullanılır (dlg_49, dlg_55).",
+    variants: ["كم هو جميل", "كم هي جميله"],
+  },
+  {
+    id: "idm_117",
+    arabic: "آهْ لَا أُصَدِّقُ! / لَا أُصَدِّقُ!",
+    meaningTr: "Aaa! İnanmıyorum!",
+    literalTr: "Ah, doğrulamıyorum / inanamıyorum!",
+    usageNote: "Beklenmedik, şaşırtıcı veya sevindirici bir durum karşısında hayret bildirmek için kullanılır (dlg_40, dlg_49).",
+    variants: ["اه لا اصدق", "لا اصدق"],
+  },
+  {
+    id: "idm_118",
+    arabic: "مِنْ أَجْلِ ...",
+    meaningTr: "... için, ... amacıyla, ... uğruna",
+    literalTr: "... sebebiyle / ...-den dolayı",
+    usageNote: "Bir eylemin amacını, sebebini veya kimin/neyin uğruna yapıldığını belirtmek için kullanılır (dlg_49, dlg_51).",
+    variants: ["من اجل", "من اجلك", "من اجلي", "من اجلنا"],
+  },
+  {
+    id: "idm_119",
+    arabic: "آهِ كَمْ أَنْتَ جَافٌّ!",
+    meaningTr: "Ay ne kadar kabasınız! / Ne kadar soğuksun!",
+    literalTr: "Ah, sen ne kadar kurusun / katısın!",
+    usageNote: "Karşı tarafın ilgisiz, duygusuz veya kaba tavrına sitem etmek için kullanılır (dlg_44).",
+    variants: ["اه كم انت جاف", "كم انت جاف"],
+  },
+  {
+    id: "idm_120",
+    arabic: "يَا لَكَ مِنْ رَجُلٍ!",
+    meaningTr: "Bre adam! / Ne adamsın!",
+    literalTr: "Sen ne biçim bir adamsın!",
+    usageNote: "Taaccüp (şaşkınlık, sitem veya hayret) bildiren ünlem kalıbıdır (dlg_41).",
+    variants: ["يا لك من رجل"],
+  },
+  {
+    id: "idm_121",
+    arabic: "لَا كَانَ طَبِيبٌ مِثْلُكَ!",
+    meaningTr: "Senin gibi doktor olmaz olsun!",
+    literalTr: "Senin gibi bir doktor var olmasın!",
+    usageNote: "Bir meslek sahibinin ilgisizliğine veya hatasına tepki gösterirken kullanılan sitem/beddua kalıbıdır (dlg_41).",
+    variants: ["لا كان طبيب مثلك"],
+  },
 ];
+
 
 /**
  * Hareke, tatweel ve noktalama işaretlerini temizleyip hemze/elif varyasyonlarını
