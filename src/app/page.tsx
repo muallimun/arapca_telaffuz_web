@@ -15,6 +15,9 @@ import {
   Award,
   Clock,
   Flame,
+  Target,
+  Sparkles,
+  Play,
 } from "lucide-react";
 import { diyaloglar, sozluk } from "@/lib/data";
 import { useUserStore } from "@/store/userStore";
@@ -23,6 +26,7 @@ import { playClick } from "@/lib/sfxManager";
 import { playTTS, loadAudioManifest, hasMp3, getMp3Path } from "@/lib/audio";
 import { useAudioStore } from "@/store/audioStore";
 import ShadowingModal from "@/components/ui/ShadowingModal";
+import { buildDailyStudyPackage } from "@/lib/mistakeUtils";
 
 type ModuleKey = "kutuphane" | "telaffuz" | "alistirmalar" | "sozluk";
 
@@ -49,6 +53,8 @@ export default function HomePage() {
   const {
     completedDialogues,
     learnedWords,
+    mistakeIds,
+    srsRecords,
     pronunciationScores,
     studyMinutes,
     streakDays,
@@ -68,21 +74,25 @@ export default function HomePage() {
     loadAudioManifest().then(() => setManifestLoaded(true));
   }, [syncDailyProgress]);
 
-  // Seçilen seviyeye uygun önerilen ilk diyaloğu bul
-  const recommendedDialogueId = useMemo(() => {
-    const targetLevels =
-      preferredLevel === "Başlangıç"
-        ? ["A1"]
-        : preferredLevel === "Orta"
-        ? ["A2"]
-        : ["B1", "B2"];
-    const candidate = diyaloglar.find(
-      (d) =>
-        targetLevels.includes(d.seviye) &&
-        (!mounted || !completedDialogues.includes(d.id))
-    );
-    return candidate?.id || diyaloglar[0]?.id || "dlg_01";
-  }, [preferredLevel, mounted, completedDialogues]);
+  const dailyPackage = useMemo(() => {
+    return buildDailyStudyPackage({
+      srsRecords: mounted ? srsRecords || {} : {},
+      mistakeIds: mounted ? mistakeIds || [] : [],
+      completedDialogues: mounted ? completedDialogues || [] : [],
+      learnedWords: mounted ? learnedWords || [] : [],
+      preferredLevel,
+    });
+  }, [
+    mounted,
+    srsRecords,
+    mistakeIds,
+    completedDialogues,
+    learnedWords,
+    preferredLevel,
+  ]);
+
+  const recommendedDialogueId =
+    dailyPackage.dailyDialogue.dialogue.id || "dlg_01";
 
   const modules: ModuleItem[] = useMemo(
     () => [
@@ -274,6 +284,189 @@ export default function HomePage() {
               </Link>
             );
           })}
+        </div>
+      </section>
+
+      {/* BÖLÜM 1.5: BUGÜN NE ÇALIŞMALIYIM? (~12 DAKİKALIK AKILLI PAKET) */}
+      <section
+        aria-label="Bugün Ne Çalışmalıyım? Akıllı Günlük Çalışma Paketi"
+        className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#0CA678] dark:border-[#0CA678]/80 border-b-4 p-3.5 sm:p-4 space-y-3"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-3">
+          <div className="space-y-0.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-[#0CA678] text-white text-xs font-extrabold">
+                <Target size={13} />
+                <span>🎯 Bugün Ne Çalışmalıyım?</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-lg bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/30 text-[11px] font-extrabold text-[#6741D9] dark:text-[#d0bfff]">
+                ~12 Dakikalık Akıllı Paket
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-[var(--muted)]">
+              Aralıklı tekrar (SRS) geçmişinize, hata defterinize ve seviyenize göre hazırlanan günlük kişisel çalışma planınız
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Link
+              href={`/diyalog/${dailyPackage.dailyDialogue.dialogue.id}`}
+              onClick={() => playClick()}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all whitespace-nowrap"
+            >
+              <BookOpen size={14} className="text-[#0CA678]" />
+              <span>📖 Günün Diyaloğuna Git</span>
+            </Link>
+
+            <Link
+              href="/alistirmalar?plan=daily"
+              onClick={() => playClick()}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all whitespace-nowrap shadow-xs"
+            >
+              <Play size={14} fill="currentColor" />
+              <span>🚀 12 Dakikalık Günlük Paketi Başlat</span>
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+          {/* 1. Günün Diyaloğu (3 sütun) */}
+          <div className="lg:col-span-4 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] p-3 flex flex-col justify-between gap-2">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997] uppercase tracking-wide">
+                  📖 1. Günün Diyaloğu
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-[#087F5B] dark:text-emerald-300 text-[10px] font-extrabold">
+                  Seviye {dailyPackage.dailyDialogue.dialogue.seviye}
+                </span>
+              </div>
+
+              <h3 className="text-sm font-extrabold text-[var(--foreground)] leading-snug">
+                #{dailyPackage.dailyDialogue.dialogue.id.replace("dlg_", "")} —{" "}
+                {dailyPackage.dailyDialogue.dialogue.baslik_tr}
+              </h3>
+              <p
+                dir="rtl"
+                className="arabic text-lg font-bold text-[#087F5B] dark:text-[#20c997]"
+              >
+                {displayArabic(dailyPackage.dailyDialogue.dialogue.baslik_ar)}
+              </p>
+            </div>
+
+            <div className="pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/50 border border-amber-300/80 dark:border-amber-700/60 text-[10px] font-extrabold text-amber-800 dark:text-amber-300">
+                <Sparkles size={11} className="shrink-0" />
+                <span>{dailyPackage.dailyDialogue.reasonBadge}</span>
+              </span>
+              <Link
+                href={`/diyalog/${dailyPackage.dailyDialogue.dialogue.id}`}
+                onClick={() => playClick()}
+                className="text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997] inline-flex items-center gap-0.5 hover:underline shrink-0"
+              >
+                <span>Aç</span>
+                <ArrowRight size={11} />
+              </Link>
+            </div>
+          </div>
+
+          {/* 2. Zamanı Gelen 6 Kelime (5 sütun) */}
+          <div className="lg:col-span-5 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] p-3 space-y-2">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-[11px] font-extrabold text-[#6741D9] dark:text-[#d0bfff] uppercase tracking-wide">
+                🔄 2. Zamanı Gelen 6 Kelime
+              </span>
+              <Link
+                href="/alistirmalar?plan=daily"
+                onClick={() => playClick()}
+                className="text-[10px] font-extrabold text-[#6741D9] dark:text-[#d0bfff] hover:underline"
+              >
+                Tümünü Çalış →
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+              {dailyPackage.dailyWords.map((dw) => {
+                const ar = (dw.item.mufret || dw.item.mazi || "")
+                  .split("/")[0]
+                  .trim();
+                const badgeCls =
+                  dw.badgeTone === "mistake"
+                    ? "bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/50 dark:text-rose-200 dark:border-rose-700"
+                    : dw.badgeTone === "due"
+                    ? "bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-700"
+                    : "bg-emerald-50 text-emerald-900 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-200 dark:border-emerald-700";
+
+                return (
+                  <button
+                    key={dw.item.id}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      playTTS(ar, mounted ? speechRate : 1);
+                    }}
+                    title="Dinlemek için dokunun"
+                    className="p-2 rounded-lg bg-[#F7EFE1]/60 dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] text-left flex flex-col justify-between gap-1 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between gap-1 w-full">
+                      <span className="text-[10px] font-bold text-[var(--foreground)] line-clamp-1">
+                        {dw.item.anlam_tr}
+                      </span>
+                      <span
+                        dir="rtl"
+                        className="arabic text-base font-bold text-[#087F5B] dark:text-[#20c997] leading-none shrink-0"
+                      >
+                        {displayArabic(ar)}
+                      </span>
+                    </div>
+                    <span
+                      className={`inline-block text-[9px] font-extrabold px-1.5 py-0.5 rounded border truncate w-full text-center ${badgeCls}`}
+                    >
+                      {dw.statusBadge}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. Zorlandığınız / Günlük 2 Kalıp İfade (3 sütun) */}
+          <div className="lg:col-span-3 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] p-3 flex flex-col justify-between gap-2">
+            <span className="text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997] uppercase tracking-wide block">
+              💬 3. Günün 2 Kalıp İfadesi
+            </span>
+
+            <div className="space-y-1.5 flex-1 flex flex-col justify-center">
+              {dailyPackage.dailyIdioms.map((di) => (
+                <button
+                  key={di.idiom.id}
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    playTTS(di.idiom.arabic, mounted ? speechRate : 1);
+                  }}
+                  title="Dinlemek için dokunun"
+                  className="w-full p-2 rounded-lg bg-[#F3F0FF]/70 dark:bg-[var(--lavender-bg)] border border-[#6741D9]/30 hover:border-[#6741D9] text-left space-y-0.5 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[10px] font-extrabold text-[#6741D9] dark:text-[#d0bfff]">
+                      {di.statusBadge}
+                    </span>
+                    <Volume2 size={11} className="text-[#6741D9] shrink-0" />
+                  </div>
+                  <p
+                    dir="rtl"
+                    className="arabic text-base font-bold text-[var(--foreground)] text-right leading-snug"
+                  >
+                    {displayArabic(di.idiom.arabic)}
+                  </p>
+                  <p className="text-[10px] font-bold text-[var(--muted)] line-clamp-1">
+                    {di.idiom.meaningTr}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

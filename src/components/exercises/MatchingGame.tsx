@@ -86,7 +86,7 @@ export default function MatchingGame({
   const fanfarePlayedRef = useRef(false);
   const wrongAttemptedMatchIdsRef = useRef<Set<string>>(new Set());
   const { speechRate, showHareke, arabicFont } = useSettings();
-  const { addStudyMinutes, addMistake, removeMistake } = useUserStore();
+  const { addStudyMinutes, addMistake, recordItemAttempt } = useUserStore();
   const formatAr = (t: string) => formatArabicText(t, showHareke, arabicFont);
 
   const [currentPairs, setCurrentPairs] = useState<PairDefinition[]>([]);
@@ -357,6 +357,12 @@ export default function MatchingGame({
     }
   }, [isInstantCompleted, isGameOver, addStudyMinutes]);
 
+  const inferMatchType = (cid: string): "word" | "idiom" | "sentence" => {
+    if (cid.startsWith("idiom_") || cid.startsWith("idm_")) return "idiom";
+    if (cid.startsWith("sent_")) return "sentence";
+    return "word";
+  };
+
   const recordWrongPair = (trMatchId: string, arMatchId: string) => {
     wrongAttemptedMatchIdsRef.current.add(trMatchId);
     wrongAttemptedMatchIdsRef.current.add(arMatchId);
@@ -364,8 +370,14 @@ export default function MatchingGame({
     const p2 = currentPairs.find((p) => p.matchId === arMatchId);
     const id1 = normalizeToCanonicalMistakeId(trMatchId, p1?.arText);
     const id2 = normalizeToCanonicalMistakeId(arMatchId, p2?.arText);
-    if (id1) addMistake(id1);
-    if (id2) addMistake(id2);
+    if (id1) {
+      addMistake(id1);
+      recordItemAttempt(id1, inferMatchType(id1), false, false);
+    }
+    if (id2) {
+      addMistake(id2);
+      recordItemAttempt(id2, inferMatchType(id2), false, false);
+    }
 
     setWrongAttemptsCount((c) => c + 1);
     setWrongPairsHistory((prev) => {
@@ -395,16 +407,20 @@ export default function MatchingGame({
         playSuccess();
         setExerciseScore((s) => s + 10);
         setTotalCumulativeScore((s) => s + 10);
-        if (
-          isMistakesMode &&
-          !wrongAttemptedMatchIdsRef.current.has(trMatchId)
-        ) {
+        if (!wrongAttemptedMatchIdsRef.current.has(trMatchId)) {
           const p = currentPairs.find((item) => item.matchId === trMatchId);
           const canonicalId = normalizeToCanonicalMistakeId(
             trMatchId,
             p?.arText
           );
-          if (canonicalId) removeMistake(canonicalId);
+          if (canonicalId) {
+            recordItemAttempt(
+              canonicalId,
+              inferMatchType(canonicalId),
+              true,
+              false
+            );
+          }
         }
       } else {
         playError();
@@ -487,16 +503,20 @@ export default function MatchingGame({
         if (!previouslyCorrectIds.has(c.trMatchId)) {
           gained += 10;
         }
-        if (
-          isMistakesMode &&
-          !wrongAttemptedMatchIdsRef.current.has(c.trMatchId)
-        ) {
+        if (!wrongAttemptedMatchIdsRef.current.has(c.trMatchId)) {
           const p = currentPairs.find((item) => item.matchId === c.trMatchId);
           const canonicalId = normalizeToCanonicalMistakeId(
             c.trMatchId,
             p?.arText
           );
-          if (canonicalId) removeMistake(canonicalId);
+          if (canonicalId) {
+            recordItemAttempt(
+              canonicalId,
+              inferMatchType(canonicalId),
+              true,
+              false
+            );
+          }
         }
       } else {
         wrongs += 1;
@@ -516,7 +536,15 @@ export default function MatchingGame({
       if (!connectedRight) {
         wrongAttemptedMatchIdsRef.current.add(p.matchId);
         const canonicalId = normalizeToCanonicalMistakeId(p.matchId, p.arText);
-        if (canonicalId) addMistake(canonicalId);
+        if (canonicalId) {
+          addMistake(canonicalId);
+          recordItemAttempt(
+            canonicalId,
+            inferMatchType(canonicalId),
+            false,
+            false
+          );
+        }
         setWrongPairsHistory((prev) =>
           prev.some((x) => x.matchId === p.matchId) ? prev : [...prev, p]
         );

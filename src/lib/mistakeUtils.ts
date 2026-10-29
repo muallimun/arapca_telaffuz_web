@@ -1,11 +1,17 @@
 import { sozluk, diyaloglar } from "@/lib/data";
 import { DictionaryItem, Dialogue } from "@/types/data";
-import { cleanArabicText, analyzeAndMatchWord } from "@/lib/dict";
+import {
+  cleanArabicText,
+  analyzeAndMatchWord,
+  getDialogueVocabulary,
+} from "@/lib/dict";
 import {
   ArabicIdiom,
   getCombinedIdiomsCatalog,
   extractDialoguesIdioms,
+  extractDialogueIdioms,
 } from "@/lib/arabicIdioms";
+import type { SrsItemRecord } from "@/store/userStore";
 
 /**
  * Herhangi bir alıştırma veya telaffuz öğesinin ID'sini veya Arapça metnini
@@ -227,3 +233,403 @@ export function resolveMistakesPool(mistakeIds: string[]): ResolvedMistakesPool 
     totalMistakeItems: words.length + sentenceCount,
   };
 }
+
+export interface SrsBadgeInfo {
+  status: "learning" | "reviewing" | "mastered";
+  label: string;
+  badgeClass: string;
+  statsText: string | null;
+  daysUntilNext: number;
+}
+
+export function formatSrsBadgeInfo(
+  record?: SrsItemRecord | null
+): SrsBadgeInfo | null {
+  if (!record) return null;
+  const nowMs = Date.now();
+  const nextMs = new Date(record.nextReviewAt).getTime();
+  const diffDays = Number.isFinite(nextMs)
+    ? Math.max(0, Math.ceil((nextMs - nowMs) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  const totalAttempts = (record.correctCount || 0) + (record.wrongCount || 0);
+  const statsParts: string[] = [];
+  if (totalAttempts > 0) {
+    statsParts.push(`Doğru: ${record.correctCount || 0}`);
+    statsParts.push(`Yanlış: ${record.wrongCount || 0}`);
+    if ((record.hintUsedCount || 0) > 0) {
+      statsParts.push(`İpucu: ${record.hintUsedCount}`);
+    }
+  }
+  const statsText = statsParts.length > 0 ? statsParts.join(" • ") : null;
+
+  if (record.status === "mastered" || record.stage >= 3) {
+    return {
+      status: "mastered",
+      label: "🟢 Uzun Süreli Öğrenildi ✓",
+      badgeClass:
+        "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-200 dark:border-emerald-700/60",
+      statsText,
+      daysUntilNext: diffDays,
+    };
+  }
+
+  if (record.status === "reviewing" && record.stage >= 1) {
+    const nextText =
+      diffDays <= 0
+        ? "Bugün"
+        : diffDays === 1
+        ? "1 gün sonra"
+        : `${diffDays} gün sonra`;
+    return {
+      status: "reviewing",
+      label: `🔵 Pekiştiriliyor (Kademe ${record.stage}/5 • Sonraki: ${nextText})`,
+      badgeClass:
+        "bg-sky-100 text-sky-900 border-sky-300 dark:bg-sky-950/70 dark:text-sky-200 dark:border-sky-700/60",
+      statsText,
+      daysUntilNext: diffDays,
+    };
+  }
+
+  return {
+    status: "learning",
+    label: "🟠 Öğreniliyor (Tekrar: Bugün)",
+    badgeClass:
+      "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/70 dark:text-amber-200 dark:border-amber-700/60",
+    statsText,
+    daysUntilNext: 0,
+  };
+}
+
+export function formatSrsReviewBanner(
+  record?: SrsItemRecord | null,
+  isInMistakes?: boolean
+): string | null {
+  if (!record && !isInMistakes) return null;
+  if (!record) {
+    return "📌 Neden tekrar ediyorsunuz? Hata Defteri kaydı • Kademe: 0/3 • Hedef: 3 ipucusuz doğru ile uzun süreli hafıza";
+  }
+
+  const lastDate = new Date(record.lastReviewedAt);
+  const now = new Date();
+  const diffHours = Math.max(
+    0,
+    Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60))
+  );
+  const lastStudyLabel =
+    diffHours < 1
+      ? "Az önce"
+      : diffHours < 24
+      ? "Bugün"
+      : diffHours < 48
+      ? "Dün"
+      : `${Math.floor(diffHours / 24)} gün önce`;
+
+  const reasonPart = record.reasonTag ? `${record.reasonTag} • ` : "";
+  return `📌 Neden tekrar ediyorsunuz? ${reasonPart}Son çalışma: ${lastStudyLabel} • Kademe: ${record.stage}/5 • Hedef: Uzun süreli hafıza`;
+}
+
+export function formatMistakeStageProgressText(
+  record?: SrsItemRecord | null
+): string {
+  const stage = Math.min(3, Math.max(0, record?.stage ?? 0));
+  if (stage >= 3) {
+    return "🎉 Tekrar Kademesi: 3/3 — Uzun süreli hafızaya alındı ve Hata Defteri'nden mezun oldu!";
+  }
+  const nextLabel =
+    stage === 1 ? "Yarın (+1 gün)" : stage === 2 ? "3 gün sonra" : "Bugün";
+  return `🔄 Tekrar Kademesi: ${stage}/3 — Sonraki tekrar: ${nextLabel} (Hata Defteri'nden çıkmak için ${
+    3 - stage
+  } ipucusuz doğru daha gerekli)`;
+}
+
+export interface DailyWordRecommendation {
+  item: DictionaryItem;
+  statusBadge: string;
+  badgeTone: "due" | "mistake" | "new";
+}
+
+export interface DailyIdiomRecommendation {
+  idiom: ArabicIdiom;
+  statusBadge: string;
+}
+
+export interface DailyStudyPackage {
+  dailyDialogue: {
+    dialogue: Dialogue;
+    reasonBadge: string;
+  };
+  dailyWords: DailyWordRecommendation[];
+  dailyIdioms: DailyIdiomRecommendation[];
+  dueReviewPool: {
+    words: DictionaryItem[];
+    idioms: ArabicIdiom[];
+    dialogues: Dialogue[];
+    totalDueCount: number;
+  };
+}
+
+export function buildDailyStudyPackage(params: {
+  srsRecords: Record<string, SrsItemRecord>;
+  mistakeIds: string[];
+  completedDialogues: string[];
+  learnedWords: string[];
+  preferredLevel?: string;
+}): DailyStudyPackage {
+  const {
+    srsRecords = {},
+    mistakeIds = [],
+    completedDialogues = [],
+    learnedWords = [],
+    preferredLevel = "Başlangıç",
+  } = params;
+
+  const nowMs = Date.now();
+  const learnedSet = new Set(learnedWords);
+  const mistakeSet = new Set(mistakeIds);
+
+  // 1. Zamanı gelen (due) veya learning/mistake durumundaki SRS kayıtlarını bul
+  const dueSrsEntries = Object.values(srsRecords).filter((rec) => {
+    const nextMs = new Date(rec.nextReviewAt).getTime();
+    const isDue = !Number.isFinite(nextMs) || nextMs <= nowMs;
+    return isDue || rec.status === "learning" || mistakeSet.has(rec.id);
+  });
+
+  // 2. Günün Diyaloğu Seçimi:
+  // Önce içinde en çok zorlanılan/hata yapılan kelime bulunan diyaloğu kontrol et, yoksa kullanıcının seviyesindeki sıradaki tamamlanmamış diyaloğu seç
+  const targetLevels =
+    preferredLevel === "Başlangıç"
+      ? ["A1"]
+      : preferredLevel === "Orta"
+      ? ["A2"]
+      : ["B1", "B2"];
+
+  let bestDialogue: Dialogue = diyaloglar[0];
+  let reasonBadge = `Sıradaki ${bestDialogue.seviye} diyaloğunuz`;
+
+  const uncompletedInLevel = diyaloglar.filter(
+    (d) =>
+      targetLevels.includes(d.seviye) && !completedDialogues.includes(d.id)
+  );
+  const candidateDialogues =
+    uncompletedInLevel.length > 0 ? uncompletedInLevel : diyaloglar;
+
+  let maxMistakeHits = 0;
+  let mistakeMatchedDialogue: Dialogue | null = null;
+
+  if (mistakeIds.length > 0 || dueSrsEntries.length > 0) {
+    for (const dlg of candidateDialogues) {
+      const dlgVocab = getDialogueVocabulary(dlg.id);
+      let hits = 0;
+      for (const v of dlgVocab) {
+        const srs = srsRecords[v.item.id];
+        if (
+          mistakeSet.has(v.item.id) ||
+          (srs && (srs.wrongCount > 0 || srs.status === "learning"))
+        ) {
+          hits++;
+        }
+      }
+      if (hits > maxMistakeHits) {
+        maxMistakeHits = hits;
+        mistakeMatchedDialogue = dlg;
+      }
+    }
+  }
+
+  if (mistakeMatchedDialogue && maxMistakeHits > 0) {
+    bestDialogue = mistakeMatchedDialogue;
+    reasonBadge = `Bu diyalogda zorlandığınız ${maxMistakeHits} kelime var`;
+  } else if (uncompletedInLevel.length > 0) {
+    bestDialogue = uncompletedInLevel[0];
+    reasonBadge = `Sıradaki ${bestDialogue.seviye} diyaloğunuz`;
+  } else {
+    const firstUncompleted = diyaloglar.find(
+      (d) => !completedDialogues.includes(d.id)
+    );
+    if (firstUncompleted) {
+      bestDialogue = firstUncompleted;
+      reasonBadge = `Sıradaki ${firstUncompleted.seviye} diyaloğunuz`;
+    } else {
+      bestDialogue = diyaloglar[0];
+      reasonBadge = "Günlük pekiştirme diyaloğunuz";
+    }
+  }
+
+  // 3. Zamanı Gelen 6 Kelime Seçimi
+  const dailyWords: DailyWordRecommendation[] = [];
+  const pickedWordIds = new Set<string>();
+
+  // 3a. Önce nextReviewAt <= now olan SRS kelimeleri
+  for (const rec of dueSrsEntries) {
+    if (dailyWords.length >= 6) break;
+    if (rec.type !== "word") continue;
+    const stripped = rec.id.replace(/^word_/, "");
+    const w = sozluk.find((item) => item.id === stripped || item.id === rec.id);
+    if (!w || pickedWordIds.has(w.id)) continue;
+    pickedWordIds.add(w.id);
+
+    const statusBadge =
+      rec.wrongCount > 0
+        ? `⚠️ ${rec.wrongCount} hata yapıldı`
+        : "⏰ Tekrar günü geldi";
+    const badgeTone = rec.wrongCount > 0 ? "mistake" : "due";
+    dailyWords.push({ item: w, statusBadge, badgeTone });
+  }
+
+  // 3b. Hata defterindeki kelimeler
+  const resolvedMistakes = resolveMistakesPool(mistakeIds);
+  for (const w of resolvedMistakes.words) {
+    if (dailyWords.length >= 6) break;
+    if (w.id.startsWith("idiom_") || w.tur === "ifade") continue;
+    if (pickedWordIds.has(w.id)) continue;
+    pickedWordIds.add(w.id);
+    const rec = srsRecords[w.id];
+    const wrongCnt = rec?.wrongCount || 1;
+    dailyWords.push({
+      item: w,
+      statusBadge: `⚠️ ${wrongCnt} hata yapıldı`,
+      badgeTone: "mistake",
+    });
+  }
+
+  // 3c. Günün diyaloğundaki yeni (öğrenilmemiş) kelimeler
+  const dlgVocabEntries = getDialogueVocabulary(bestDialogue.id);
+  for (const entry of dlgVocabEntries) {
+    if (dailyWords.length >= 6) break;
+    const w = entry.item;
+    if (pickedWordIds.has(w.id) || learnedSet.has(w.id)) continue;
+    pickedWordIds.add(w.id);
+    dailyWords.push({
+      item: w,
+      statusBadge: "✨ Yeni kelime",
+      badgeTone: "new",
+    });
+  }
+
+  // 3d. Hâlâ 6 kelimeden azsa genel sözlükten tamamla
+  for (const w of sozluk) {
+    if (dailyWords.length >= 6) break;
+    if (pickedWordIds.has(w.id) || learnedSet.has(w.id)) continue;
+    pickedWordIds.add(w.id);
+    dailyWords.push({
+      item: w,
+      statusBadge: "✨ Yeni kelime",
+      badgeTone: "new",
+    });
+  }
+
+  // 4. Zorlanılan veya Günün Diyaloğundan 2 Kalıp İfade Seçimi
+  const dailyIdioms: DailyIdiomRecommendation[] = [];
+  const pickedIdiomIds = new Set<string>();
+  const allCatalogIdioms = getCombinedIdiomsCatalog();
+
+  // 4a. Hata defterindeki veya SRS'de zamanı gelen kalıp ifadeler
+  for (const idm of resolvedMistakes.idioms) {
+    if (dailyIdioms.length >= 2) break;
+    if (pickedIdiomIds.has(idm.id)) continue;
+    pickedIdiomIds.add(idm.id);
+    dailyIdioms.push({
+      idiom: idm,
+      statusBadge: "⚠️ Zorlandığınız kalıp",
+    });
+  }
+
+  for (const rec of dueSrsEntries) {
+    if (dailyIdioms.length >= 2) break;
+    if (rec.type !== "idiom") continue;
+    const stripped = rec.id.replace(/^idiom_/, "");
+    const idm = allCatalogIdioms.find(
+      (i) => i.id === stripped || `idiom_${i.id}` === rec.id
+    );
+    if (!idm || pickedIdiomIds.has(idm.id)) continue;
+    pickedIdiomIds.add(idm.id);
+    dailyIdioms.push({
+      idiom: idm,
+      statusBadge: "⏰ Tekrar günü geldi",
+    });
+  }
+
+  // 4b. Günün diyaloğundaki kalıp ifadeler
+  const dlgIdioms = extractDialogueIdioms(
+    bestDialogue.satirlar,
+    bestDialogue.seviye
+  );
+  for (const idm of dlgIdioms) {
+    if (dailyIdioms.length >= 2) break;
+    if (pickedIdiomIds.has(idm.id)) continue;
+    pickedIdiomIds.add(idm.id);
+    dailyIdioms.push({
+      idiom: idm,
+      statusBadge: "💬 Günün diyaloğundan",
+    });
+  }
+
+  // 4c. Katalogdan tamamla
+  for (const idm of allCatalogIdioms) {
+    if (dailyIdioms.length >= 2) break;
+    if (pickedIdiomIds.has(idm.id)) continue;
+    pickedIdiomIds.add(idm.id);
+    dailyIdioms.push({
+      idiom: idm,
+      statusBadge: "✨ Günlük kalıp ifade",
+    });
+  }
+
+  // 5. Alıştırma Merkezi SRS Günlük Tekrar Kuyruğu Havuzu
+  const poolWordsMap = new Map<string, DictionaryItem>();
+  const poolIdiomsMap = new Map<string, ArabicIdiom>();
+  const poolDialoguesMap = new Map<string, Dialogue>();
+
+  // Due & mistake kelimeleri ekle
+  for (const w of resolvedMistakes.words) {
+    poolWordsMap.set(w.id, w);
+  }
+  for (const dw of dailyWords) {
+    poolWordsMap.set(dw.item.id, dw.item);
+  }
+  for (const rec of dueSrsEntries) {
+    if (rec.type === "word") {
+      const stripped = rec.id.replace(/^word_/, "");
+      const found = sozluk.find((w) => w.id === stripped || w.id === rec.id);
+      if (found) poolWordsMap.set(found.id, found);
+    }
+  }
+
+  // Due & daily kalıp ifadeleri ekle
+  for (const idm of resolvedMistakes.idioms) {
+    poolIdiomsMap.set(idm.id, idm);
+  }
+  for (const di of dailyIdioms) {
+    poolIdiomsMap.set(di.idiom.id, di.idiom);
+  }
+
+  // Due & daily diyalogları ekle
+  for (const d of resolvedMistakes.dialogues) {
+    poolDialoguesMap.set(d.id, d);
+  }
+  if (!poolDialoguesMap.has(bestDialogue.id)) {
+    poolDialoguesMap.set(bestDialogue.id, bestDialogue);
+  }
+
+  const dueCount = Math.max(
+    dueSrsEntries.length + mistakeIds.length,
+    dailyWords.length + dailyIdioms.length
+  );
+
+  return {
+    dailyDialogue: {
+      dialogue: bestDialogue,
+      reasonBadge,
+    },
+    dailyWords,
+    dailyIdioms,
+    dueReviewPool: {
+      words: Array.from(poolWordsMap.values()),
+      idioms: Array.from(poolIdiomsMap.values()),
+      dialogues: Array.from(poolDialoguesMap.values()),
+      totalDueCount: dueCount,
+    },
+  };
+}
+

@@ -12,6 +12,7 @@ import { playClick } from "@/lib/sfxManager";
 import ShadowingModal, { TargetForm } from "@/components/ui/ShadowingModal";
 import { DictionaryItem } from "@/types/data";
 import { formatArabicText, splitMixedBidiText } from "@/lib/arabicTextUtils";
+import { formatSrsBadgeInfo } from "@/lib/mistakeUtils";
 
 interface Props {
   text: string;
@@ -120,6 +121,7 @@ export default function WordTooltip({
     isWordFavorite,
     toggleLearnedWord,
     isWordLearned,
+    getSrsRecord,
   } = useUserStore();
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -132,6 +134,7 @@ export default function WordTooltip({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [coachTarget, setCoachTarget] = useState<{
     text: string;
+    itemId?: string;
     forms: TargetForm[];
   } | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -291,6 +294,7 @@ export default function WordTooltip({
       {coachTarget && (
         <ShadowingModal
           text={coachTarget.text}
+          itemId={coachTarget.itemId}
           forms={coachTarget.forms}
           onClose={() => setCoachTarget(null)}
         />
@@ -393,6 +397,8 @@ export default function WordTooltip({
           const isOpen = activeIndex === index;
           const isFav = isWordFavorite(dictItem.id);
           const isLearned = isWordLearned(dictItem.id);
+          const srsRecord = mounted ? getSrsRecord(dictItem.id) : undefined;
+          const srsBadge = formatSrsBadgeInfo(srsRecord);
           const primaryAr = (dictItem.mufret || dictItem.mazi || coreWord)
             .split("/")[0]
             .trim();
@@ -661,6 +667,25 @@ export default function WordTooltip({
                       )}
                     </div>
 
+                    {/* Öğe Bazlı Hafıza Durumu & Deneme Geçmişi Rozeti (SRS) */}
+                    {srsBadge && (
+                      <div
+                        dir="ltr"
+                        className="flex flex-wrap items-center justify-between gap-1.5 py-1 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]"
+                      >
+                        <span
+                          className={`px-2 py-0.5 rounded-md border text-[10px] font-sans font-extrabold ${srsBadge.badgeClass}`}
+                        >
+                          {srsBadge.label}
+                        </span>
+                        {srsBadge.statsText && (
+                          <span className="text-[10px] font-sans font-bold text-[var(--muted)] tabular-nums">
+                            {srsBadge.statsText}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     {/* Alt Aksiyon Butonları (Dinle | Telaffuz | Kartlar | Öğrendim) */}
                     <div className="pt-1 flex items-center gap-1.5 w-full font-sans">
                       <button
@@ -688,6 +713,7 @@ export default function WordTooltip({
                           setActiveIndex(null);
                           setCoachTarget({
                             text: defaultText,
+                            itemId: dictItem.id,
                             forms,
                           });
                         }}

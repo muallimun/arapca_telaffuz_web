@@ -665,7 +665,7 @@
   },
   {
     "id": "dlg_11",
-    "seviye": "A1",
+    "seviye": "A2",
     "baslik_ar": "دُكَّانُ الْخُضَارِ وَالْفَوَاكِهِ",
     "baslik_tr": "Sebze ve Meyve Dükkânı (Manav)",
     "satirlar": [
@@ -801,7 +801,7 @@
   },
   {
     "id": "dlg_12",
-    "seviye": "A1",
+    "seviye": "A2",
     "baslik_ar": "عَرَبَةُ التَّسَوُّقِ",
     "baslik_tr": "Alışveriş Arabası",
     "satirlar": [
@@ -1009,7 +1009,7 @@
   },
   {
     "id": "dlg_14",
-    "seviye": "A1",
+    "seviye": "A2",
     "baslik_ar": "صَدِيقَتِي بَتُولُ",
     "baslik_tr": "Arkadaşım Betül",
     "satirlar": [
@@ -1441,7 +1441,7 @@
   },
   {
     "id": "dlg_19",
-    "seviye": "A1",
+    "seviye": "A2",
     "baslik_ar": "مَاذَا يُوجَدُ فِي الطَّعَامِ؟",
     "baslik_tr": "Yemekte Neler Var?",
     "satirlar": [
@@ -1577,7 +1577,7 @@
   },
   {
     "id": "dlg_20",
-    "seviye": "A2",
+    "seviye": "B1",
     "baslik_ar": "مِهْنَةُ رَابِعَةَ",
     "baslik_tr": "Rabia'nın Mesleği",
     "satirlar": [
@@ -1657,7 +1657,7 @@
   },
   {
     "id": "dlg_21",
-    "seviye": "A1",
+    "seviye": "A2",
     "baslik_ar": "فِي مَرْكَزِ صِحَّةِ الْأُسْرَةِ",
     "baslik_tr": "Aile Sağlığı Merkezinde",
     "satirlar": [
@@ -1777,7 +1777,7 @@
   },
   {
     "id": "dlg_22",
-    "seviye": "A1",
+    "seviye": "A2",
     "baslik_ar": "عِنْدَ مُصَفِّفِ الشَّعْرِ (الْكُوَافَيْر)",
     "baslik_tr": "Kuaförde",
     "satirlar": [
@@ -2001,7 +2001,7 @@
   },
   {
     "id": "dlg_24",
-    "seviye": "A1",
+    "seviye": "A2",
     "baslik_ar": "فِي الْمَطَارِ",
     "baslik_tr": "Havalimanında",
     "satirlar": [
@@ -2105,7 +2105,7 @@
   },
   {
     "id": "dlg_25",
-    "seviye": "A1",
+    "seviye": "A2",
     "baslik_ar": "أَيْنَ الْفُنْدُقُ؟",
     "baslik_tr": "Otel Nerede?",
     "satirlar": [
@@ -2313,7 +2313,7 @@
   },
   {
     "id": "dlg_27",
-    "seviye": "A1",
+    "seviye": "A2",
     "baslik_ar": "أَرْخَصُ تَذْكِرَةِ طَائِرَةٍ",
     "baslik_tr": "En Ucuz Uçak Bileti",
     "satirlar": [
@@ -2577,7 +2577,7 @@
   },
   {
     "id": "dlg_29",
-    "seviye": "A2",
+    "seviye": "B1",
     "baslik_ar": "نَشْتَرِي هَاتِفاً نَقَّالاً",
     "baslik_tr": "Cep Telefonu Alıyoruz",
     "satirlar": [
@@ -2761,7 +2761,7 @@
   },
   {
     "id": "dlg_30",
-    "seviye": "A2",
+    "seviye": "B1",
     "baslik_ar": "الْاِتِّصَالُ بِالْحَاسُوبِ",
     "baslik_tr": "Bilgisayarla İletişim",
     "satirlar": [
@@ -2857,7 +2857,7 @@
   },
   {
     "id": "dlg_31",
-    "seviye": "A2",
+    "seviye": "B1",
     "baslik_ar": "أَتَزَوَّجُ",
     "baslik_tr": "Evleniyorum",
     "satirlar": [
@@ -3057,7 +3057,7 @@
   },
   {
     "id": "dlg_32",
-    "seviye": "A2",
+    "seviye": "B1",
     "baslik_ar": "مَعْرِفَةُ نَتِيجَةِ الْاِمْتِحَانِ",
     "baslik_tr": "Sınav Sonucunu Öğrenme",
     "satirlar": [
@@ -3985,7 +3985,7 @@
   },
   {
     "id": "dlg_38",
-    "seviye": "A1",
+    "seviye": "A2",
     "baslik_ar": "فِي الْمِنَصَّةِ (الرَّصِيفِ)",
     "baslik_tr": "Peronda",
     "satirlar": [
@@ -4329,7 +4329,7 @@
   },
   {
     "id": "dlg_41",
-    "seviye": "B1",
+    "seviye": "B2",
     "baslik_ar": "بِسَبَبِ الشَّيْخُوخَةِ",
     "baslik_tr": "İhtiyarlıktandır",
     "satirlar": [
@@ -4553,7 +4553,7 @@
   },
   {
     "id": "dlg_43",
-    "seviye": "B1",
+    "seviye": "B2",
     "baslik_ar": "مَوْسِمُ الصَّيْدِ",
     "baslik_tr": "Av Mevsimi",
     "satirlar": [
@@ -5097,7 +5097,7 @@
   },
   {
     "id": "dlg_48",
-    "seviye": "B1",
+    "seviye": "B2",
     "baslik_ar": "ذَاهِبُونَ إِلَى الْمَهْرَجَانِ",
     "baslik_tr": "Festivale Gidiyoruz",
     "satirlar": [
@@ -5257,7 +5257,7 @@
   },
   {
     "id": "dlg_49",
-    "seviye": "B1",
+    "seviye": "B2",
     "baslik_ar": "فُنْدُقُ النُّورِ عِنْدَ النَّهْرِ",
     "baslik_tr": "Nehir Kenarında Nur Oteli",
     "satirlar": [
@@ -5545,7 +5545,7 @@
   },
   {
     "id": "dlg_51",
-    "seviye": "B1",
+    "seviye": "B2",
     "baslik_ar": "اَلتَّسَوُّقُ مِنْ أَجْلِ الْخَرِيفِ وَالشِّتَاءِ",
     "baslik_tr": "Sonbahar ve Kış İçin Alışveriş",
     "satirlar": [
@@ -5697,7 +5697,7 @@
   },
   {
     "id": "dlg_52",
-    "seviye": "A2",
+    "seviye": "B1",
     "baslik_ar": "شَهْرُ رَمَضَانَ قَادِمٌ!",
     "baslik_tr": "Ramazan Geliyor!",
     "satirlar": [
@@ -5905,7 +5905,7 @@
   },
   {
     "id": "dlg_54",
-    "seviye": "A2",
+    "seviye": "B1",
     "baslik_ar": "اِبْنُ الْخَالَةِ (الْكُوزِين)",
     "baslik_tr": "Kuzen",
     "satirlar": [
@@ -6017,7 +6017,7 @@
   },
   {
     "id": "dlg_55",
-    "seviye": "A2",
+    "seviye": "B1",
     "baslik_ar": "جَارُنَا الْجَدِيدُ",
     "baslik_tr": "Yeni Komşumuz",
     "satirlar": [
@@ -6225,7 +6225,7 @@
   },
   {
     "id": "dlg_57",
-    "seviye": "B1",
+    "seviye": "B2",
     "baslik_ar": "أَجْهِزَةٌ ضَرُورِيَّةٌ جِدّاً",
     "baslik_tr": "Çok Gerekli Eşyalar",
     "satirlar": [
@@ -6561,7 +6561,7 @@
   },
   {
     "id": "dlg_60",
-    "seviye": "B1",
+    "seviye": "B2",
     "baslik_ar": "السَّيِّدُ صَالِحٌ يَتَخَلَّصُ مِنْ مَخَاوِفِهِ",
     "baslik_tr": "Salih Bey Kaygılarından Kurtuluyor",
     "satirlar": [

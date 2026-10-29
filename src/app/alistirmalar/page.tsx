@@ -21,12 +21,16 @@ import { diyaloglar, sozluk } from "@/lib/data";
 import { getDialogueVocabulary } from "@/lib/dict";
 import { Dialogue, DictionaryItem } from "@/types/data";
 import { useUserStore } from "@/store/userStore";
+import { useSettings } from "@/store/settings";
 import {
   ArabicIdiom,
   getCombinedIdiomsCatalog,
   extractDialoguesIdioms,
 } from "@/lib/arabicIdioms";
-import { resolveMistakesPool } from "@/lib/mistakeUtils";
+import {
+  resolveMistakesPool,
+  buildDailyStudyPackage,
+} from "@/lib/mistakeUtils";
 
 import Flashcard, {
   getShortDialogueSentences,
@@ -59,8 +63,16 @@ function ExercisesPageContent() {
     isMistakesMode: boolean;
   } | null>(null);
 
-  const { favoriteWords, weakWords, mistakeIds, clearMistakes } =
-    useUserStore();
+  const {
+    favoriteWords,
+    weakWords,
+    mistakeIds,
+    srsRecords,
+    completedDialogues,
+    learnedWords,
+    clearMistakes,
+  } = useUserStore();
+  const { preferredLevel } = useSettings();
 
   // Kompakt Ayar Barı State
   const [rangePreset, setRangePreset] = useState<string>("all-dict");
@@ -73,10 +85,57 @@ function ExercisesPageContent() {
   const [feedbackMode, setFeedbackMode] = useState<FeedbackMode>("instant");
   const [fillSubMode, setFillSubMode] = useState<FillSubMode>("choices");
 
-  // Diyalog sayfasından "?source=idioms&dialogueId=dlg_XX" veya "?source=mistakes" ile gelindiğinde otomatik seç
+  const dailyPackage = useMemo(
+    () =>
+      buildDailyStudyPackage({
+        srsRecords: srsRecords || {},
+        mistakeIds: mistakeIds || [],
+        completedDialogues: completedDialogues || [],
+        learnedWords: learnedWords || [],
+        preferredLevel,
+      }),
+    [srsRecords, mistakeIds, completedDialogues, learnedWords, preferredLevel]
+  );
+
+  // Diyalog sayfasından "?source=idioms&dialogueId=dlg_XX", "?source=mistakes" veya "?plan=daily" ile gelindiğinde otomatik seç
   useEffect(() => {
     const sourceParam = searchParams.get("source");
     const dlgParam = searchParams.get("dialogueId");
+    const planParam = searchParams.get("plan");
+    if (planParam === "daily") {
+      setSingleDialogueId("all");
+      setRangePreset("srs-daily");
+      setContentType("mixed");
+      setSelectedType("multiple-choice");
+      const dueVocab =
+        dailyPackage.dueReviewPool.words.length >= 4
+          ? dailyPackage.dueReviewPool.words
+          : [
+              ...dailyPackage.dueReviewPool.words,
+              ...sozluk
+                .filter(
+                  (w) =>
+                    !dailyPackage.dueReviewPool.words.some(
+                      (dw) => dw.id === w.id
+                    )
+                )
+                .slice(0, 8),
+            ];
+      setFrozenPools({
+        vocabulary: dueVocab,
+        idioms:
+          dailyPackage.dueReviewPool.idioms.length > 0
+            ? dailyPackage.dueReviewPool.idioms
+            : getCombinedIdiomsCatalog().slice(0, 4),
+        dialogues:
+          dailyPackage.dueReviewPool.dialogues.length > 0
+            ? dailyPackage.dueReviewPool.dialogues
+            : [dailyPackage.dailyDialogue.dialogue],
+        isMistakesMode: true,
+      });
+      setIsPlaying(true);
+      return;
+    }
     if (sourceParam === "idioms") {
       setContentType("idioms");
     } else if (sourceParam === "mistakes") {
@@ -85,6 +144,7 @@ function ExercisesPageContent() {
     if (dlgParam && diyaloglar.some((d) => d.id === dlgParam)) {
       setSingleDialogueId(dlgParam);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const mistakesResolved = useMemo(
@@ -96,6 +156,11 @@ function ExercisesPageContent() {
     if (singleDialogueId !== "all") {
       return diyaloglar.filter((dlg) => dlg.id === singleDialogueId);
     }
+    if (rangePreset === "srs-daily") {
+      return dailyPackage.dueReviewPool.dialogues.length > 0
+        ? dailyPackage.dueReviewPool.dialogues
+        : [dailyPackage.dailyDialogue.dialogue];
+    }
     if (rangePreset === "mistakes" && mistakesResolved.dialogues.length > 0) {
       return mistakesResolved.dialogues;
     }
@@ -103,7 +168,14 @@ function ExercisesPageContent() {
       const num = parseInt(dlg.id.replace("dlg_", ""), 10);
       return num >= startNum && num <= endNum;
     });
-  }, [singleDialogueId, rangePreset, mistakesResolved.dialogues, startNum, endNum]);
+  }, [
+    singleDialogueId,
+    rangePreset,
+    dailyPackage,
+    mistakesResolved.dialogues,
+    startNum,
+    endNum,
+  ]);
 
   const sentenceCountInPool = useMemo(() => {
     return selectedDialogues.reduce(
@@ -122,6 +194,11 @@ function ExercisesPageContent() {
     if (singleDialogueId !== "all") {
       const dlgExtracted = extractDialoguesIdioms(selectedDialogues);
       return dlgExtracted.length > 0 ? dlgExtracted : allCatalog;
+    }
+    if (rangePreset === "srs-daily") {
+      return dailyPackage.dueReviewPool.idioms.length > 0
+        ? dailyPackage.dueReviewPool.idioms
+        : allCatalog;
     }
     if (rangePreset === "mistakes") {
       return mistakesResolved.idioms.length > 0
@@ -150,7 +227,13 @@ function ExercisesPageContent() {
       return Array.from(map.values());
     }
     return allCatalog;
-  }, [singleDialogueId, rangePreset, selectedDialogues, mistakesResolved.idioms]);
+  }, [
+    singleDialogueId,
+    rangePreset,
+    selectedDialogues,
+    dailyPackage.dueReviewPool.idioms,
+    mistakesResolved.idioms,
+  ]);
 
   const { combinedVocabulary, poolNotice } = useMemo(() => {
     if (singleDialogueId !== "all") {
@@ -159,6 +242,26 @@ function ExercisesPageContent() {
           (e) => e.item
         ),
         poolNotice: null as string | null,
+      };
+    }
+
+    if (rangePreset === "srs-daily") {
+      const dueWords = dailyPackage.dueReviewPool.words;
+      if (dueWords.length >= 4) {
+        return {
+          combinedVocabulary: dueWords,
+          poolNotice: `⏰ Günlük Aralıklı Tekrar (SRS) paketinizde bugün tekrar edilmesi gereken ${dueWords.length} kelime ve ${dailyPackage.dueReviewPool.idioms.length} kalıp ifade hazır.`,
+        };
+      }
+      const padded = [
+        ...dueWords,
+        ...sozluk
+          .filter((w) => !dueWords.some((dw) => dw.id === w.id))
+          .slice(0, Math.max(4, 8 - dueWords.length)),
+      ];
+      return {
+        combinedVocabulary: padded,
+        poolNotice: `⏰ Günlük Aralıklı Tekrar (SRS) kuyruğunuz hazırlandı.`,
       };
     }
 
@@ -185,8 +288,8 @@ function ExercisesPageContent() {
         combinedVocabulary: padded,
         poolNotice:
           mistakesResolved.words.length > 0
-            ? `Hata defterinizde ${mistakesResolved.words.length} kelime/ifade bulunduğu için şık havuzu genel sözlükle desteklendi. İlk denemede doğru bildikleriniz hata defterinden otomatik silinir.`
-            : `Hata defterinizdeki diyalog cümleleriyle pratik yapabilirsiniz. İlk denemede doğru bildikleriniz hata defterinden otomatik silinir.`,
+            ? `Hata defterinizde ${mistakesResolved.words.length} kelime/ifade bulunduğu için şık havuzu genel sözlükle desteklendi. 3 kez ipucusuz doğru bildikleriniz (Kademe 3/3) hata defterinden mezun edilir.`
+            : `Hata defterinizdeki diyalog cümleleriyle pratik yapabilirsiniz. 3 kez ipucusuz doğru bildikleriniz (Kademe 3/3) hata defterinden mezun edilir.`,
       };
     }
 
@@ -252,6 +355,7 @@ function ExercisesPageContent() {
     weakWords,
     mistakeIds.length,
     mistakesResolved.words,
+    dailyPackage.dueReviewPool,
   ]);
 
   const exerciseCards: {
@@ -300,6 +404,12 @@ function ExercisesPageContent() {
 
   const rangeOptions = [
     { id: "all-dict", label: `Tüm Sözlük (${sozluk.length})`, s: 1, e: 60 },
+    {
+      id: "srs-daily",
+      label: `⏰ Bugün Tekrar Edilecekler (${dailyPackage.dueReviewPool.totalDueCount})`,
+      s: 1,
+      e: 60,
+    },
     {
       id: "mistakes",
       label: `⚡ Zorlandıklarım / Hata Defteri (${mistakeIds.length})`,
@@ -351,7 +461,8 @@ function ExercisesPageContent() {
       vocabulary: [...combinedVocabulary],
       idioms: [...idiomsPool],
       dialogues: [...selectedDialogues],
-      isMistakesMode: rangePreset === "mistakes",
+      isMistakesMode:
+        rangePreset === "mistakes" || rangePreset === "srs-daily",
     });
     setIsPlaying(true);
   };
@@ -504,6 +615,48 @@ function ExercisesPageContent() {
 
           {/* 2. KOMPAKT AYAR PANELİ + HER ZAMAN GÖRÜNÜR BAŞLAT BUTONU */}
           <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-2.5 space-y-2.5">
+            {/* Hızlı SRS Günlük Tekrar & Hata Defteri Sekme Şeridi */}
+            <div className="flex flex-wrap items-center gap-1.5 pb-1 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)]">
+              <button
+                type="button"
+                onClick={() => handlePoolSelectChange("srs-daily")}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  singleDialogueId === "all" && rangePreset === "srs-daily"
+                    ? "bg-[#6741D9] border-[#5230B5] text-white shadow-2xs"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[#6741D9] dark:text-[#d0bfff] hover:border-[#6741D9]"
+                }`}
+              >
+                <span>
+                  ⏰ Bugün Tekrar Edilecekler (
+                  {dailyPackage.dueReviewPool.totalDueCount})
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handlePoolSelectChange("mistakes")}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  singleDialogueId === "all" && rangePreset === "mistakes"
+                    ? "bg-amber-600 border-amber-700 text-white shadow-2xs"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-amber-800 dark:text-amber-300 hover:border-amber-400"
+                }`}
+              >
+                <span>⚡ Hata Defteri ({mistakeIds.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handlePoolSelectChange("all-dict")}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  singleDialogueId === "all" && rangePreset === "all-dict"
+                    ? "bg-[#0CA678] border-[#087F5B] text-white shadow-2xs"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <span>📚 Tüm Sözlük ({sozluk.length})</span>
+              </button>
+            </div>
+
             {/* Üst Ayar Satırı: Mobilde 2 Sütunlu Grid, Masaüstünde Flex */}
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
               {/* 1. Kelime Havuzu Select */}
@@ -754,7 +907,7 @@ function ExercisesPageContent() {
               mistakeIds.length > 0 && (
                 <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl px-3.5 py-2 border border-amber-300 dark:border-amber-700/60 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-amber-900 dark:text-amber-200">
                   <span>
-                    ⚡ Akıllı Hata Defterinizde <strong>{mistakeIds.length}</strong> öğe kayıtlı. İlk denemede doğru cevapladığınız sorular listeden otomatik çıkarılır.
+                    ⚡ Akıllı Hata Defterinizde <strong>{mistakeIds.length}</strong> öğe kayıtlı. 3 kez ipucusuz doğru cevapladığınız (Kademe 3/3) sorular uzun süreli hafızaya alınarak listeden otomatik mezun edilir.
                   </span>
                   <button
                     type="button"

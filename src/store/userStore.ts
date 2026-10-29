@@ -83,6 +83,90 @@ function sanitizeDictionaryItems(arr: unknown): DictionaryItem[] {
   return validItems;
 }
 
+export interface SrsItemRecord {
+  id: string; // kelime id, kalıp id veya cümle/hata id
+  type: "word" | "idiom" | "sentence";
+  stage: number; // 0: Hemen/Bugün, 1: 1 gün, 2: 3 gün, 3: 7 gün, 4: 14 gün, 5: 30 gün (Uzun Süreli Öğrenildi)
+  status: "learning" | "reviewing" | "mastered"; // "Bugün doğru cevapladım" (reviewing) vs "Uzun süreli öğrendim" (mastered)
+  lastReviewedAt: string; // ISO date
+  nextReviewAt: string; // ISO date
+  correctCount: number;
+  wrongCount: number;
+  hintUsedCount: number;
+  lastScore?: number;
+  reasonTag?: string; // Örn: "Telaffuzda zorlanıldı", "2 kez yanlış yapıldı", "Tekrar zamanı geldi"
+}
+
+const SRS_STAGE_DAYS: Record<number, number> = {
+  0: 0,
+  1: 1,
+  2: 3,
+  3: 7,
+  4: 14,
+  5: 30,
+};
+
+function computeNextReviewIso(stage: number, forceDays?: number): string {
+  const days =
+    forceDays !== undefined
+      ? forceDays
+      : SRS_STAGE_DAYS[Math.max(0, Math.min(5, stage))] ?? 0;
+  if (days <= 0) {
+    return new Date().toISOString();
+  }
+  const target = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  return target.toISOString();
+}
+
+function sanitizeSrsRecords(raw: unknown): Record<string, SrsItemRecord> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
+  const result: Record<string, SrsItemRecord> = {};
+  for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof val !== "object" || val === null || Array.isArray(val)) continue;
+    const rec = val as Record<string, unknown>;
+    const id = typeof rec.id === "string" && rec.id.trim() ? rec.id.trim() : key.trim();
+    if (!id) continue;
+    const rawType = rec.type;
+    const type: "word" | "idiom" | "sentence" =
+      rawType === "idiom" || rawType === "sentence" ? rawType : "word";
+    const stage = Math.max(0, Math.min(5, Math.floor(Number(rec.stage) || 0)));
+    const rawStatus = rec.status;
+    const status: "learning" | "reviewing" | "mastered" =
+      rawStatus === "mastered" || rawStatus === "reviewing"
+        ? rawStatus
+        : stage >= 3
+        ? "mastered"
+        : stage >= 1
+        ? "reviewing"
+        : "learning";
+    const lastReviewedAt =
+      typeof rec.lastReviewedAt === "string" && rec.lastReviewedAt
+        ? rec.lastReviewedAt
+        : new Date().toISOString();
+    const nextReviewAt =
+      typeof rec.nextReviewAt === "string" && rec.nextReviewAt
+        ? rec.nextReviewAt
+        : lastReviewedAt;
+    result[id] = {
+      id,
+      type,
+      stage,
+      status,
+      lastReviewedAt,
+      nextReviewAt,
+      correctCount: Math.max(0, Math.floor(Number(rec.correctCount) || 0)),
+      wrongCount: Math.max(0, Math.floor(Number(rec.wrongCount) || 0)),
+      hintUsedCount: Math.max(0, Math.floor(Number(rec.hintUsedCount) || 0)),
+      lastScore:
+        typeof rec.lastScore === "number" && Number.isFinite(rec.lastScore)
+          ? Math.round(rec.lastScore)
+          : undefined,
+      reasonTag: typeof rec.reasonTag === "string" ? rec.reasonTag : undefined,
+    };
+  }
+  return result;
+}
+
 interface UserState {
   favoriteDialogues: string[];
   completedDialogues: string[];
@@ -91,6 +175,7 @@ interface UserState {
   learnedWords: string[];
   weakWords: DictionaryItem[];
   mistakeIds: string[];
+  srsRecords: Record<string, SrsItemRecord>;
   pronunciationScores: number[];
   studyMinutes: number;
   streakDays: number;
@@ -107,6 +192,15 @@ interface UserState {
   removeMistake: (id: string) => void;
   clearMistakes: () => void;
   isMistake: (id: string) => boolean;
+  recordItemAttempt: (
+    id: string,
+    type: "word" | "idiom" | "sentence",
+    isCorrect: boolean,
+    usedHint?: boolean,
+    score?: number,
+    reason?: string
+  ) => SrsItemRecord | null;
+  getSrsRecord: (id: string) => SrsItemRecord | undefined;
   recordPronunciationScore: (score: number) => void;
   addStudyMinutes: (minutes: number) => void;
   setDailyGoalMinutes: (minutes: number) => void;
@@ -132,6 +226,7 @@ export const useUserStore = create<UserState>()(
       learnedWords: [],
       weakWords: [],
       mistakeIds: [],
+      srsRecords: {},
       pronunciationScores: [],
       studyMinutes: 0,
       streakDays: 0,
@@ -206,7 +301,8 @@ export const useUserStore = create<UserState>()(
       toggleLearnedWord: (id) =>
         set((state) => {
           if (!id || typeof id !== "string") return state;
-          const isLearned = state.learnedWords.includes(id);
+          const cleanId = id.trim();
+          const isLearned = state.learnedWords.includes(cleanId);
           const today = getTodayDateString();
           const yesterday = getYesterdayDateString();
           const baseMinutes =
@@ -221,10 +317,47 @@ export const useUserStore = create<UserState>()(
                 lastStudyDate: state.lastStudyDate,
               }
             : computeNextStreak(currentEffectiveStreak, state.lastStudyDate);
+
+          const existingSrs = state.srsRecords[cleanId];
+          const inferredType: "word" | "idiom" | "sentence" = cleanId.startsWith(
+            "idiom_"
+          ) || cleanId.startsWith("idm_")
+            ? "idiom"
+            : cleanId.startsWith("sent_")
+            ? "sentence"
+            : "word";
+
+          const nextSrsRecords = { ...state.srsRecords };
+          if (!isLearned) {
+            const nextStage = Math.max(3, existingSrs?.stage ?? 3);
+            nextSrsRecords[cleanId] = {
+              id: cleanId,
+              type: existingSrs?.type || inferredType,
+              stage: nextStage,
+              status: "mastered",
+              lastReviewedAt: new Date().toISOString(),
+              nextReviewAt: computeNextReviewIso(nextStage),
+              correctCount: Math.max(1, existingSrs?.correctCount ?? 1),
+              wrongCount: existingSrs?.wrongCount ?? 0,
+              hintUsedCount: existingSrs?.hintUsedCount ?? 0,
+              lastScore: existingSrs?.lastScore,
+              reasonTag: "Uzun süreli hafızaya alındı",
+            };
+          } else if (existingSrs) {
+            nextSrsRecords[cleanId] = {
+              ...existingSrs,
+              stage: 0,
+              status: "learning",
+              nextReviewAt: new Date().toISOString(),
+              reasonTag: "Tekrar çalışılmak üzere işaretlendi",
+            };
+          }
+
           return {
             learnedWords: isLearned
-              ? state.learnedWords.filter((wId) => wId !== id)
-              : [...state.learnedWords, id],
+              ? state.learnedWords.filter((wId) => wId !== cleanId)
+              : [...state.learnedWords, cleanId],
+            srsRecords: nextSrsRecords,
             studyMinutes: isLearned ? baseMinutes : baseMinutes + 1,
             ...streakUpdate,
           };
@@ -286,6 +419,142 @@ export const useUserStore = create<UserState>()(
           list.includes(`idiom_${stripped}`) ||
           list.includes(`word_${stripped}`) ||
           list.includes(`sent_${stripped}`)
+        );
+      },
+
+      recordItemAttempt: (id, type, isCorrect, usedHint = false, score, reason) => {
+        const cleanId = (id || "").trim();
+        if (!cleanId) return null;
+        let updatedRecord: SrsItemRecord | null = null;
+
+        set((state) => {
+          const stripped = cleanId.replace(
+            /^(word_|idiom_|idm_|mc_w_|mc_idm_|mc_sent_|mg_w_|mg_idm_|mg_s_|sb_idm_|sb_)/,
+            ""
+          );
+          const existing =
+            state.srsRecords[cleanId] ||
+            state.srsRecords[`idiom_${stripped}`] ||
+            state.srsRecords[stripped];
+          const canonicalKey = existing?.id || cleanId;
+
+          const prevStage = existing?.stage ?? 0;
+          const prevCorrect = existing?.correctCount ?? 0;
+          const prevWrong = existing?.wrongCount ?? 0;
+          const prevHint = existing?.hintUsedCount ?? 0;
+          const nowIso = new Date().toISOString();
+
+          let nextStage = prevStage;
+          let nextStatus: "learning" | "reviewing" | "mastered" = "learning";
+          let nextReviewAt = nowIso;
+          let nextCorrect = prevCorrect;
+          let nextWrong = prevWrong;
+          let nextHint = prevHint;
+          let nextReasonTag = reason || existing?.reasonTag;
+
+          if (isCorrect && !usedHint) {
+            nextStage = Math.min(5, prevStage + 1);
+            nextCorrect = prevCorrect + 1;
+            nextStatus = nextStage >= 3 ? "mastered" : "reviewing";
+            nextReviewAt = computeNextReviewIso(nextStage);
+            if (!reason) {
+              nextReasonTag =
+                nextStage >= 3
+                  ? "Uzun süreli hafızaya alındı"
+                  : `Tekrar Kademesi: ${nextStage}/3`;
+            }
+          } else if (isCorrect && usedHint) {
+            nextStage = prevStage;
+            nextCorrect = prevCorrect + 1;
+            nextHint = prevHint + 1;
+            nextStatus = "reviewing";
+            nextReviewAt = computeNextReviewIso(prevStage, 1);
+            nextReasonTag = reason || "İpucu kullanılarak çözüldü";
+          } else {
+            nextStage = 0;
+            nextWrong = prevWrong + 1;
+            nextStatus = "learning";
+            nextReviewAt = nowIso;
+            nextReasonTag =
+              reason ||
+              (nextWrong >= 2
+                ? `${nextWrong} kez yanlış yapıldı`
+                : "Son denemede hata yapıldı");
+          }
+
+          const record: SrsItemRecord = {
+            id: canonicalKey,
+            type,
+            stage: nextStage,
+            status: nextStatus,
+            lastReviewedAt: nowIso,
+            nextReviewAt,
+            correctCount: nextCorrect,
+            wrongCount: nextWrong,
+            hintUsedCount: nextHint,
+            lastScore:
+              typeof score === "number" && Number.isFinite(score)
+                ? Math.round(score)
+                : existing?.lastScore,
+            reasonTag: nextReasonTag,
+          };
+          updatedRecord = record;
+
+          const nextSrsRecords = {
+            ...state.srsRecords,
+            [canonicalKey]: record,
+          };
+
+          let nextMistakeIds = state.mistakeIds;
+          let nextLearnedWords = state.learnedWords;
+
+          if (!isCorrect) {
+            if (!nextMistakeIds.includes(canonicalKey)) {
+              nextMistakeIds = [canonicalKey, ...nextMistakeIds];
+            }
+          } else if (isCorrect && !usedHint && nextStage >= 3) {
+            // Hata Defterinden Çıkarma Kuralı: Yalnızca stage >= 3 (en az 3 ipucusuz doğru deneme) olduğunda sil!
+            nextMistakeIds = nextMistakeIds.filter(
+              (m) =>
+                m !== canonicalKey &&
+                m !== cleanId &&
+                m !== stripped &&
+                m !== `idiom_${stripped}` &&
+                m !== `word_${stripped}` &&
+                m !== `sent_${stripped}`
+            );
+            if (
+              (type === "word" || type === "idiom") &&
+              !nextLearnedWords.includes(canonicalKey)
+            ) {
+              nextLearnedWords = [...nextLearnedWords, canonicalKey];
+            }
+          }
+
+          return {
+            srsRecords: nextSrsRecords,
+            mistakeIds: nextMistakeIds,
+            learnedWords: nextLearnedWords,
+          };
+        });
+
+        return updatedRecord;
+      },
+
+      getSrsRecord: (id) => {
+        const cleanId = (id || "").trim();
+        if (!cleanId) return undefined;
+        const records = get().srsRecords || {};
+        if (records[cleanId]) return records[cleanId];
+        const stripped = cleanId.replace(
+          /^(word_|idiom_|idm_|mc_w_|mc_idm_|mc_sent_|mg_w_|mg_idm_|mg_s_|sb_idm_|sb_)/,
+          ""
+        );
+        return (
+          records[stripped] ||
+          records[`idiom_${stripped}`] ||
+          records[`idm_${stripped}`] ||
+          records[`sent_${stripped}`]
         );
       },
 
@@ -357,7 +626,7 @@ export const useUserStore = create<UserState>()(
       exportProgress: () => {
         const state = get();
         const payload = {
-          version: 2,
+          version: 3,
           exportedAt: new Date().toISOString(),
           favoriteDialogues: state.favoriteDialogues,
           completedDialogues: state.completedDialogues,
@@ -366,6 +635,7 @@ export const useUserStore = create<UserState>()(
           learnedWords: state.learnedWords,
           weakWords: state.weakWords,
           mistakeIds: state.mistakeIds,
+          srsRecords: state.srsRecords || {},
           pronunciationScores: state.pronunciationScores,
           studyMinutes: state.studyMinutes,
           streakDays: state.streakDays,
@@ -405,6 +675,7 @@ export const useUserStore = create<UserState>()(
             "learnedWords",
             "weakWords",
             "mistakeIds",
+            "srsRecords",
             "pronunciationScores",
             "studyMinutes",
             "streakDays",
@@ -424,6 +695,7 @@ export const useUserStore = create<UserState>()(
             : completedDialogues;
           const learnedWords = sanitizeStringArray(data.learnedWords);
           const mistakeIds = sanitizeStringArray(data.mistakeIds);
+          const srsRecords = sanitizeSrsRecords(data.srsRecords);
           const favoriteWords = sanitizeDictionaryItems(data.favoriteWords);
           const weakWords = sanitizeDictionaryItems(data.weakWords);
 
@@ -483,6 +755,7 @@ export const useUserStore = create<UserState>()(
             learnedWords,
             weakWords,
             mistakeIds,
+            srsRecords,
             pronunciationScores,
             studyMinutes,
             streakDays,
@@ -504,6 +777,7 @@ export const useUserStore = create<UserState>()(
           learnedWords: [],
           weakWords: [],
           mistakeIds: [],
+          srsRecords: {},
           pronunciationScores: [],
           studyMinutes: 0,
           streakDays: 0,

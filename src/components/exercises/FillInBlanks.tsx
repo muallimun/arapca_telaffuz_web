@@ -47,7 +47,11 @@ import ArabicVirtualKeyboard from "@/components/ui/ArabicVirtualKeyboard";
 import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
 import { FeedbackMode, QuizContentType } from "./MultipleChoice";
 import { ArabicIdiom, extractDialoguesIdioms } from "@/lib/arabicIdioms";
-import { normalizeToCanonicalMistakeId } from "@/lib/mistakeUtils";
+import {
+  normalizeToCanonicalMistakeId,
+  formatSrsReviewBanner,
+  formatMistakeStageProgressText,
+} from "@/lib/mistakeUtils";
 
 export type FillSubMode = "choices" | "dictation";
 
@@ -148,7 +152,13 @@ export default function FillInBlanks({
 
   const { speechRate, showHareke, arabicFont } = useSettings();
   const { playAudio, playTTS } = useAudioStore();
-  const { addStudyMinutes, addMistake, removeMistake } = useUserStore();
+  const {
+    addStudyMinutes,
+    addMistake,
+    isMistake,
+    recordItemAttempt,
+    getSrsRecord,
+  } = useUserStore();
   const formatAr = (t: string) => formatArabicText(t, showHareke, arabicFont);
 
   useEffect(() => {
@@ -467,14 +477,50 @@ export default function FillInBlanks({
       q.correctWord
     );
     const hadPreviousAttempt = wrongAttemptedQuestionsRef.current.has(q.id);
+    const usedHint = hintCount > 0 || showWordBank;
+    const inferKind = (cid: string): "word" | "idiom" | "sentence" => {
+      if (cid.startsWith("idiom_") || cid.startsWith("idm_")) return "idiom";
+      if (cid.startsWith("sent_")) return "sentence";
+      return "word";
+    };
 
     if (!isRight) {
       wrongAttemptedQuestionsRef.current.add(q.id);
-      if (canonicalSentId) addMistake(canonicalSentId);
-      if (canonicalWordId) addMistake(canonicalWordId);
-    } else if (isMistakesMode && !hadPreviousAttempt && hintCount === 0) {
-      if (canonicalSentId) removeMistake(canonicalSentId);
-      if (canonicalWordId) removeMistake(canonicalWordId);
+      if (canonicalSentId) {
+        addMistake(canonicalSentId);
+        recordItemAttempt(
+          canonicalSentId,
+          inferKind(canonicalSentId),
+          false,
+          usedHint
+        );
+      }
+      if (canonicalWordId && canonicalWordId !== canonicalSentId) {
+        addMistake(canonicalWordId);
+        recordItemAttempt(
+          canonicalWordId,
+          inferKind(canonicalWordId),
+          false,
+          usedHint
+        );
+      }
+    } else if (!hadPreviousAttempt) {
+      if (canonicalSentId) {
+        recordItemAttempt(
+          canonicalSentId,
+          inferKind(canonicalSentId),
+          true,
+          usedHint
+        );
+      }
+      if (canonicalWordId && canonicalWordId !== canonicalSentId) {
+        recordItemAttempt(
+          canonicalWordId,
+          inferKind(canonicalWordId),
+          true,
+          usedHint
+        );
+      }
     }
   };
 
@@ -1572,6 +1618,31 @@ export default function FillInBlanks({
             </div>
           )}
         </div>
+
+        {(() => {
+          const cid =
+            normalizeToCanonicalMistakeId(currentQ.id, currentQ.fullArabic) ||
+            normalizeToCanonicalMistakeId(undefined, currentQ.correctWord);
+          const srsRec = cid ? getSrsRecord(cid) : undefined;
+          const inMistakes = cid ? isMistake(cid) : false;
+          const banner = formatSrsReviewBanner(srsRec, inMistakes);
+          return (
+            <>
+              {banner && (
+                <div className="rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/35 px-3 py-1.5 text-[11px] font-bold text-[#4C28B5] dark:text-[#d0bfff] text-left">
+                  {banner}
+                </div>
+              )}
+              {feedback === "correct" &&
+                (isMistakesMode || inMistakes) &&
+                srsRec && (
+                  <div className="rounded-xl bg-emerald-100/90 dark:bg-emerald-950/50 border border-emerald-400 px-3 py-1.5 text-[11px] font-extrabold text-[#087F5B] dark:text-emerald-300 text-left">
+                    {formatMistakeStageProgressText(srsRec)}
+                  </div>
+                )}
+            </>
+          );
+        })()}
       </div>
 
       {/* ALT BÖLÜM: SEÇMELİ MODDA 4 ŞIK, İMLA MODUNDA CÜMLENİN HEMEN ALTINDA ARAPÇA SANAL KLAVYE */}

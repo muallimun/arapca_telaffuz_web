@@ -34,7 +34,11 @@ import {
 import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
 import { ArabicIdiom, extractDialoguesIdioms } from "@/lib/arabicIdioms";
 import { QuizContentType } from "./MultipleChoice";
-import { normalizeToCanonicalMistakeId } from "@/lib/mistakeUtils";
+import {
+  normalizeToCanonicalMistakeId,
+  formatSrsReviewBanner,
+  formatMistakeStageProgressText,
+} from "@/lib/mistakeUtils";
 
 export interface SentenceBuilderQuestion {
   id: string;
@@ -104,8 +108,15 @@ export default function SentenceBuilder({
 }: SentenceBuilderProps) {
   const { playAudio, playTTS, stop } = useAudioStore();
   const { showHareke, arabicFont, speechRate } = useSettings();
-  const { addStudyMinutes, addMistake, removeMistake } = useUserStore();
+  const {
+    addStudyMinutes,
+    addMistake,
+    isMistake,
+    recordItemAttempt,
+    getSrsRecord,
+  } = useUserStore();
   const wrongAttemptedQuestionsRef = useRef<Set<string>>(new Set());
+  const usedHintQuestionsRef = useRef<Set<string>>(new Set());
   const lastLoadedQuestionKeyRef = useRef<string>("");
 
   const [roundSeed, setRoundSeed] = useState(0);
@@ -345,12 +356,21 @@ export default function SentenceBuilder({
     const hadPreviousAttempt = wrongAttemptedQuestionsRef.current.has(
       currentQ.id
     );
+    const usedHint = usedHintQuestionsRef.current.has(currentQ.id);
+    const inferType = (cid: string): "word" | "idiom" | "sentence" => {
+      if (cid.startsWith("idiom_") || cid.startsWith("idm_")) return "idiom";
+      if (cid.startsWith("sent_")) return "sentence";
+      return "word";
+    };
 
     if (!isRight) {
       wrongAttemptedQuestionsRef.current.add(currentQ.id);
-      if (canonicalId) addMistake(canonicalId);
-    } else if (isMistakesMode && !hadPreviousAttempt && canonicalId) {
-      removeMistake(canonicalId);
+      if (canonicalId) {
+        addMistake(canonicalId);
+        recordItemAttempt(canonicalId, inferType(canonicalId), false, usedHint);
+      }
+    } else if (!hadPreviousAttempt && canonicalId) {
+      recordItemAttempt(canonicalId, inferType(canonicalId), true, usedHint);
     }
 
     setUserAnswers((prev) => ({
@@ -430,6 +450,7 @@ export default function SentenceBuilder({
   const handleHintNextWord = () => {
     if (evalState === "correct" || evalState === "revealed") return;
     playClick();
+    usedHintQuestionsRef.current.add(currentQ.id);
 
     // Önce yanlış dizilmiş kelime varsa onları havuza geri al
     const validPrefix: WordToken[] = [];
@@ -483,7 +504,20 @@ export default function SentenceBuilder({
       currentQ.id,
       currentQ.fullArabic
     );
-    if (canonicalId) addMistake(canonicalId);
+    if (canonicalId) {
+      addMistake(canonicalId);
+      const inferType = canonicalId.startsWith("idiom_")
+        ? "idiom"
+        : "sentence";
+      recordItemAttempt(
+        canonicalId,
+        inferType,
+        false,
+        true,
+        undefined,
+        "Doğru cevap gösterildi"
+      );
+    }
 
     const ordered: WordToken[] = currentQ.words.map((w, idx) => ({
       tokenId: `${currentQ.id}_ans_${idx}`,
@@ -848,6 +882,32 @@ export default function SentenceBuilder({
             “{currentQ.turkish}”
           </p>
         </div>
+
+        {(() => {
+          const cid = normalizeToCanonicalMistakeId(
+            currentQ.id,
+            currentQ.fullArabic
+          );
+          const srsRec = cid ? getSrsRecord(cid) : undefined;
+          const inMistakes = cid ? isMistake(cid) : false;
+          const banner = formatSrsReviewBanner(srsRec, inMistakes);
+          return (
+            <>
+              {banner && (
+                <div className="rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/35 px-3 py-1.5 text-[11px] font-bold text-[#4C28B5] dark:text-[#d0bfff] text-left">
+                  {banner}
+                </div>
+              )}
+              {evalState === "correct" &&
+                (isMistakesMode || inMistakes) &&
+                srsRec && (
+                  <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 px-3 py-1.5 text-[11px] font-extrabold text-[#087F5B] dark:text-emerald-300 text-left">
+                    {formatMistakeStageProgressText(srsRec)}
+                  </div>
+                )}
+            </>
+          );
+        })()}
       </div>
 
       {/* 2. CÜMLE KURMA ALANI (ÜST KUTU — RTL Sağdan Sola Dizilim) */}

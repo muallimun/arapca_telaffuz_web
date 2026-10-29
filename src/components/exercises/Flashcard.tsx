@@ -34,7 +34,10 @@ import ShadowingModal from "@/components/ui/ShadowingModal";
 import { formatArabicText } from "@/lib/arabicTextUtils";
 import { QuizContentType } from "./MultipleChoice";
 import { ArabicIdiom } from "@/lib/arabicIdioms";
-import { normalizeToCanonicalMistakeId } from "@/lib/mistakeUtils";
+import {
+  normalizeToCanonicalMistakeId,
+  formatSrsReviewBanner,
+} from "@/lib/mistakeUtils";
 
 export interface FlashcardItem {
   id: string;
@@ -201,8 +204,9 @@ export default function Flashcard({
     toggleLearnedWord,
     isWordLearned,
     addMistake,
-    removeMistake,
     isMistake,
+    recordItemAttempt,
+    getSrsRecord,
     addStudyMinutes,
   } = useUserStore();
   const { speechRate, showHareke, arabicFont } = useSettings();
@@ -396,11 +400,15 @@ export default function Flashcard({
     currentWord?.id || currentCard.id,
     currentCard.arabic
   );
+  const currentSrsRecord = canonicalCardMistakeId
+    ? getSrsRecord(canonicalCardMistakeId)
+    : undefined;
   const isInMistakes = canonicalCardMistakeId
     ? isMistake(canonicalCardMistakeId)
     : false;
   const isMarkedHard =
     hardItems.some((h) => h.id === currentCard.id) || isInMistakes;
+  const srsBannerText = formatSrsReviewBanner(currentSrsRecord, isInMistakes);
 
   const primaryArabic = currentCard.arabic;
   const cleanArabic = primaryArabic.split("/")[0].trim();
@@ -532,6 +540,12 @@ export default function Flashcard({
         </span>
       </div>
 
+      {srsBannerText && (
+        <div className="w-full bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/40 rounded-xl px-3 py-1.5 text-[11px] font-bold text-[#4C28B5] dark:text-[#d0bfff]">
+          {srsBannerText}
+        </div>
+      )}
+
       {/* 3B DÖNEN KART ALANI */}
       <div
         className="relative w-full h-76 sm:h-82 cursor-pointer [perspective:1000px]"
@@ -607,12 +621,17 @@ export default function Flashcard({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleLearnedWord(currentWord.id);
-                    if (
-                      (!isLearned && isMistakesMode && canonicalCardMistakeId) ||
-                      (!isLearned && isInMistakes && canonicalCardMistakeId)
-                    ) {
-                      removeMistake(canonicalCardMistakeId);
+                    const targetId =
+                      canonicalCardMistakeId || currentWord.id;
+                    if (isMistakesMode || isInMistakes) {
+                      recordItemAttempt(
+                        targetId,
+                        currentCard.kind,
+                        true,
+                        false
+                      );
+                    } else {
+                      toggleLearnedWord(currentWord.id);
                     }
                     playClick();
                   }}
@@ -623,7 +642,13 @@ export default function Flashcard({
                   }`}
                 >
                   <CheckCircle2 size={13} />
-                  <span>{isLearned ? "Öğrendim" : "Öğren"}</span>
+                  <span>
+                    {isLearned
+                      ? "Öğrendim"
+                      : isInMistakes && currentSrsRecord
+                      ? `Pekiştir (${currentSrsRecord.stage}/3)`
+                      : "Öğren"}
+                  </span>
                 </button>
               ) : (
                 <button
@@ -636,12 +661,25 @@ export default function Flashcard({
                         prev.filter((h) => h.id !== currentCard.id)
                       );
                       if (canonicalCardMistakeId) {
-                        removeMistake(canonicalCardMistakeId);
+                        recordItemAttempt(
+                          canonicalCardMistakeId,
+                          currentCard.kind,
+                          true,
+                          false
+                        );
                       }
                     } else {
                       setHardItems((prev) => [...prev, currentCard]);
                       if (canonicalCardMistakeId) {
                         addMistake(canonicalCardMistakeId);
+                        recordItemAttempt(
+                          canonicalCardMistakeId,
+                          currentCard.kind,
+                          false,
+                          false,
+                          undefined,
+                          "Kartlarda tekrara eklendi"
+                        );
                       }
                     }
                   }}
@@ -653,7 +691,11 @@ export default function Flashcard({
                 >
                   <Target size={13} />
                   <span>
-                    {isMarkedHard ? "Hata Defterinde" : "Tekrara Ekle"}
+                    {isMarkedHard
+                      ? currentSrsRecord && currentSrsRecord.stage > 0
+                        ? `Kademe ${currentSrsRecord.stage}/3`
+                        : "Hata Defterinde"
+                      : "Tekrara Ekle"}
                   </span>
                 </button>
               )}

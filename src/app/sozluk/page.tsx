@@ -39,7 +39,7 @@ import {
   getCombinedIdiomsCatalog,
   extractDialogueIdioms,
 } from "@/lib/arabicIdioms";
-import { resolveMistakesPool } from "@/lib/mistakeUtils";
+import { resolveMistakesPool, formatSrsBadgeInfo } from "@/lib/mistakeUtils";
 
 type StatusFilter = "all" | "learned" | "unlearned" | "favorites" | "mistakes";
 type TypeFilter =
@@ -116,6 +116,7 @@ export default function DictionaryPage() {
     mistakeIds,
     removeMistake,
     isMistake,
+    getSrsRecord,
   } = useUserStore();
 
   const { speechRate, showHareke, arabicFont } = useSettings();
@@ -807,6 +808,11 @@ export default function DictionaryPage() {
               word.id.startsWith("idiom_") ||
               idiomDetailsByIdMap.has(word.id);
             const idiomDetail = idiomDetailsByIdMap.get(word.id);
+            const srsRecord = mounted
+              ? getSrsRecord(word.id) ||
+                getSrsRecord(word.id.replace(/^idiom_/, ""))
+              : undefined;
+            const srsBadge = formatSrsBadgeInfo(srsRecord);
             const category = getWordCategory(word);
             const theme = isIdiomCard
               ? {
@@ -1069,6 +1075,25 @@ export default function DictionaryPage() {
                             )
                           )}
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Öğe Bazlı Hafıza Durumu & Deneme Geçmişi Rozeti (SRS) */}
+                  {srsBadge && (
+                    <div
+                      dir="ltr"
+                      className="flex flex-wrap items-center justify-between gap-1.5 pt-1"
+                    >
+                      <span
+                        className={`px-2 py-0.5 rounded-md border text-[10px] font-extrabold ${srsBadge.badgeClass}`}
+                      >
+                        {srsBadge.label}
+                      </span>
+                      {srsBadge.statsText && (
+                        <span className="text-[10px] font-bold text-[var(--muted)] tabular-nums">
+                          {srsBadge.statsText}
+                        </span>
                       )}
                     </div>
                   )}

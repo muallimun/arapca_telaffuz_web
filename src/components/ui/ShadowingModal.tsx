@@ -147,8 +147,7 @@ export default function ShadowingModal({
   const {
     addWeakWord,
     addMistake,
-    removeMistake,
-    isMistake,
+    recordItemAttempt,
     recordPronunciationScore,
     pronunciationScores,
   } = useUserStore();
@@ -850,15 +849,32 @@ export default function ShadowingModal({
     );
     setAdaptiveResult(coaching);
 
-    // Akıllı Hata Defteri (Spaced Repetition): <%70 ise ekle, >=%85 ise çıkar (yalnızca metin gerçekten algılandığında!)
+    // Akıllı Hata Defteri & Gerçek Aralıklı Tekrar (SRS): <%70 ise hata kaydet, >=%80 ise doğru deneme kaydet (yalnızca metin gerçekten algılandığında!)
     const canonicalTargetId = normalizeToCanonicalMistakeId(itemId, activeText);
-    if (result.overallScore < 70) {
-      if (canonicalTargetId) {
+    const inferItemType = (cid: string): "word" | "idiom" | "sentence" => {
+      if (cid.startsWith("idiom_") || cid.startsWith("idm_")) return "idiom";
+      if (cid.startsWith("sent_")) return "sentence";
+      return "word";
+    };
+    if (canonicalTargetId) {
+      if (result.overallScore < 70) {
         addMistake(canonicalTargetId);
-      }
-    } else if (result.overallScore >= 85) {
-      if (canonicalTargetId && isMistake(canonicalTargetId)) {
-        removeMistake(canonicalTargetId);
+        recordItemAttempt(
+          canonicalTargetId,
+          inferItemType(canonicalTargetId),
+          false,
+          false,
+          result.overallScore,
+          "Telaffuzda zorlanıldı"
+        );
+      } else if (result.overallScore >= 80) {
+        recordItemAttempt(
+          canonicalTargetId,
+          inferItemType(canonicalTargetId),
+          true,
+          false,
+          result.overallScore
+        );
       }
     }
 
@@ -877,6 +893,14 @@ export default function ShadowingModal({
           addWeakWord(dictWord);
           if (result.overallScore < 70) {
             addMistake(dictWord.id);
+            recordItemAttempt(
+              dictWord.id,
+              "word",
+              false,
+              false,
+              w.score,
+              "Telaffuzda zorlanıldı"
+            );
           }
         }
       }
