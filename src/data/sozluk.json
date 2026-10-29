@@ -3070,9 +3070,9 @@
     "id": "kelime_369",
     "tur": "isim",
     "kok": "ل ي ل",
-    "mufret": "لَيْل / لَيْلَة",
+    "mufret": "لَيْل / لَيْلَة / لَيْلاً",
     "cemi": "لَيَالٍ / لَيَالِي",
-    "anlam_tr": "gece"
+    "anlam_tr": "gece, geceleyin"
   },
   {
     "id": "kelime_370",
@@ -8549,5 +8549,86 @@
     "mufret": "سَاحَة",
     "cemi": "سَاحَات",
     "anlam_tr": "meydan, alan"
+  },
+  {
+    "id": "kelime_1031",
+    "tur": "isim",
+    "kok": "د خ ل",
+    "mufret": "دُخُولٌ",
+    "cemi": "-",
+    "anlam_tr": "giriş, girme (امْتِحَانُ الدُّخُولِ لِلْجَامِعَةِ: üniversiteye giriş sınavı)"
+  },
+  {
+    "id": "kelime_1032",
+    "tur": "fiil",
+    "kok": "د خ ل",
+    "mazi": "دَخَلَ",
+    "muzari": "يَدْخُلُ",
+    "masdar": "دُخُولٌ",
+    "anlam_tr": "girmek"
+  },
+  {
+    "id": "kelime_1033",
+    "tur": "isim",
+    "kok": "ل ي ق",
+    "mufret": "لَائِقٌ / لَائِقَةٌ",
+    "cemi": "لَائِقُونَ",
+    "anlam_tr": "yakışan, uygun, münasip"
+  },
+  {
+    "id": "kelime_1034",
+    "tur": "isim",
+    "kok": "هـ ن أ",
+    "mufret": "هَنَاءٌ",
+    "cemi": "-",
+    "anlam_tr": "mutluluk, saadet, afiyet"
+  },
+  {
+    "id": "kelime_1035",
+    "tur": "isim",
+    "kok": "و ق ع",
+    "mufret": "وَاقِعٌ",
+    "cemi": "وَقَائِعُ",
+    "anlam_tr": "gerçek, hakikat, vakıa"
+  },
+  {
+    "id": "kelime_1036",
+    "tur": "isim",
+    "kok": "ن ح و",
+    "mufret": "نَحْوٌ",
+    "cemi": "أَنْحَاءٌ",
+    "anlam_tr": "şekil, tarz, yön, yaklaşık"
+  },
+  {
+    "id": "kelime_1037",
+    "tur": "isim",
+    "kok": "خ ل ف",
+    "mufret": "خِلَافٌ",
+    "cemi": "خِلَافَاتٌ",
+    "anlam_tr": "aksi, ters, anlaşmazlık"
+  },
+  {
+    "id": "kelime_1038",
+    "tur": "isim",
+    "kok": "ن ص ب",
+    "mufret": "نُصُبٌ",
+    "cemi": "أَنْصَابٌ",
+    "anlam_tr": "anıt, abide, dikili taş"
+  },
+  {
+    "id": "kelime_1039",
+    "tur": "isim",
+    "kok": "ر أ ي",
+    "mufret": "رُؤْيَةٌ",
+    "cemi": "رُؤًى",
+    "anlam_tr": "görme, görüş, izleme"
+  },
+  {
+    "id": "kelime_1040",
+    "tur": "isim",
+    "kok": "س و ف",
+    "mufret": "مَسَافَةٌ",
+    "cemi": "مَسَافَاتٌ",
+    "anlam_tr": "mesafe, uzaklık"
   }
 ]
