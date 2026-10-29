@@ -511,6 +511,7 @@ export default function DialogueDetailPage({
       roleplayActiveLine ??
       roleplaySpeakingLine ??
       playingLineId ??
+      shadowingPauseLineSira ??
       (isClassroomMode ? selectedClassroomLine : null);
     if (targetLine !== null && lineRefs.current[targetLine]) {
       lineRefs.current[targetLine]?.scrollIntoView({
@@ -520,6 +521,7 @@ export default function DialogueDetailPage({
     }
   }, [
     playingLineId,
+    shadowingPauseLineSira,
     roleplayActiveLine,
     roleplaySpeakingLine,
     isClassroomMode,
@@ -529,8 +531,10 @@ export default function DialogueDetailPage({
   useEffect(() => {
     if (playingLineId !== null) {
       setSelectedClassroomLine(playingLineId);
+    } else if (shadowingPauseLineSira !== null) {
+      setSelectedClassroomLine(shadowingPauseLineSira);
     }
-  }, [playingLineId]);
+  }, [playingLineId, shadowingPauseLineSira]);
 
   // Gölgeleme Boşluğu (Shadowing Pause) görsel geri sayım animasyonu
   useEffect(() => {
@@ -1061,6 +1065,59 @@ export default function DialogueDetailPage({
     }
   };
 
+  // Sınıf Modu: Sadece seçili tek cümleyi seslendirir ve durur
+  const handlePlaySingleClassroomLine = (line: DialogueLine) => {
+    playClick();
+    if (!isPlayingAll && playingLineId === line.sira) {
+      playToken.current += 1;
+      stop();
+      setLoopingLineSira(null);
+      setSentenceLoopRemaining(null);
+      return;
+    }
+    playToken.current += 1;
+    stop();
+    cleanupRoleplayMic();
+    setIsPlayingAll(false);
+    setLoopingLineSira(null);
+    setSentenceLoopRemaining(null);
+    setRoleplayActiveLine(null);
+    setRoleplaySpeakingLine(null);
+    setRoleplayTransitionNotice(false);
+    setIsRoleplayRunning(false);
+    setSelectedClassroomLine(line.sira);
+    playSentence(line, false, false, false, null, 1);
+  };
+
+  // Sınıf Modu: Odaklanılan cümleden itibaren (veya baştan) tüm diyaloğu sırayla oynatır / duraklatır
+  const handleToggleClassroomPlayAll = (startLineOverride?: DialogueLine) => {
+    playClick();
+    setLoopingLineSira(null);
+    setSentenceLoopRemaining(null);
+    cleanupRoleplayMic();
+    setIsRoleplayRunning(false);
+    setRoleplayActiveLine(null);
+    setRoleplaySpeakingLine(null);
+    setRoleplayTransitionNotice(false);
+
+    if (isPlayingAll) {
+      playToken.current += 1;
+      stop();
+      setIsPlayingAll(false);
+      setDialogueLoopTurn(1);
+    } else {
+      setFlowMode("sequential");
+      setIsPlayingAll(true);
+      setDialogueLoopTurn(1);
+      playToken.current += 1;
+      const targetStartLine = startLineOverride || dialogue.satirlar[0];
+      if (targetStartLine) {
+        setSelectedClassroomLine(targetStartLine.sira);
+        playSentence(targetStartLine, true, false, false, null, 1);
+      }
+    }
+  };
+
   const togglePlayAllShortcutRef = useRef<() => void>(() => {});
   togglePlayAllShortcutRef.current = () => {
     if (isRoleplayRunning) return;
@@ -1084,6 +1141,7 @@ export default function DialogueDetailPage({
     const totalLines = dialogue.satirlar.length;
     const currentSira =
       playingLineId ??
+      shadowingPauseLineSira ??
       loopingLineSira ??
       selectedClassroomLine ??
       dialogue.satirlar[0]?.sira ??
@@ -1092,10 +1150,17 @@ export default function DialogueDetailPage({
       0,
       dialogue.satirlar.findIndex((s) => s.sira === currentSira)
     );
+    const activeLineObj =
+      dialogue.satirlar[currentIdx] || dialogue.satirlar[0];
 
     if (isClassroomMode && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
       e.preventDefault();
       playClick();
+      if (isPlayingAll || playingLineId !== null) {
+        playToken.current += 1;
+        stop();
+        setIsPlayingAll(false);
+      }
       const nextIdx =
         e.key === "ArrowDown"
           ? Math.min(totalLines - 1, currentIdx + 1)
@@ -1107,20 +1172,24 @@ export default function DialogueDetailPage({
       return;
     }
 
+    // Sınıf Modunda Shift+Space veya P tuşu: Tüm Diyaloğu Oynat / Duraklat
+    if (
+      isClassroomMode &&
+      !e.repeat &&
+      ((e.code === "Space" && e.shiftKey) ||
+        e.key === "p" ||
+        e.key === "P")
+    ) {
+      e.preventDefault();
+      handleToggleClassroomPlayAll(activeLineObj);
+      return;
+    }
+
     if (e.code === "Space" && !e.repeat) {
       e.preventDefault();
-      if (isClassroomMode && !isPlayingAll) {
-        const activeLineObj =
-          dialogue.satirlar[currentIdx] || dialogue.satirlar[0];
-        if (playingLineId === activeLineObj.sira) {
-          playClick();
-          playToken.current += 1;
-          stop();
-          setLoopingLineSira(null);
-          setSentenceLoopRemaining(null);
-        } else if (activeLineObj) {
-          setSelectedClassroomLine(activeLineObj.sira);
-          handlePlayLine(activeLineObj);
+      if (isClassroomMode) {
+        if (activeLineObj) {
+          handlePlaySingleClassroomLine(activeLineObj);
         }
         return;
       }
@@ -1130,10 +1199,13 @@ export default function DialogueDetailPage({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.code !== "Space" &&
-        !(isClassroomMode && (e.key === "ArrowDown" || e.key === "ArrowUp"))
-      ) {
+      const isClassroomNavKey =
+        isClassroomMode &&
+        (e.key === "ArrowDown" ||
+          e.key === "ArrowUp" ||
+          e.key === "p" ||
+          e.key === "P");
+      if (e.code !== "Space" && !isClassroomNavKey) {
         return;
       }
       if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -1426,6 +1498,7 @@ export default function DialogueDetailPage({
 
   const activeClassroomSira =
     playingLineId ??
+    shadowingPauseLineSira ??
     loopingLineSira ??
     roleplayActiveLine ??
     roleplaySpeakingLine ??
@@ -2649,12 +2722,12 @@ export default function DialogueDetailPage({
           aria-label="Akıllı Tahta ve Sınıf Sunum Modu Kontrol Çubuğu"
           className="rounded-2xl bg-gradient-to-r from-emerald-900 via-[#087F5B] to-teal-900 text-white border-2 border-emerald-400/60 border-b-4 p-3 sm:p-4 shadow-xl flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-200"
         >
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
             <span className="px-3 py-1 rounded-xl bg-white/15 border border-white/25 text-xs sm:text-sm font-black tracking-wide flex items-center gap-1.5">
               <span>🖥️ Akıllı Tahta &amp; Sınıf Sunum Modu</span>
             </span>
-            <span className="hidden xl:inline text-xs font-semibold text-emerald-100">
-              Ok tuşları (↑/↓) ile cümle değiştirin, Boşluk (Space) ile dinleyin
+            <span className="hidden lg:inline text-xs font-semibold text-emerald-100">
+              Ok tuşları (↑/↓): Cümle Seç • Space (Boşluk): Cümleyi Dinle • Shift+Space (veya P): Tüm Diyaloğu Oynat
             </span>
           </div>
 
@@ -3791,51 +3864,73 @@ export default function DialogueDetailPage({
       {isClassroomMode && studyMode !== "vocabulary" && activeClassroomLineObj && (
         <div
           aria-label="Sınıf Modu Alt Sunum Kumandası"
-          className="sticky bottom-4 z-40 mx-auto max-w-2xl w-full rounded-2xl bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md text-white border-2 border-emerald-500/70 border-b-4 p-2.5 sm:p-3 shadow-2xl flex flex-wrap items-center justify-between gap-2"
+          className="sticky bottom-4 z-40 mx-auto w-fit max-w-full overflow-x-auto rounded-2xl bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md text-white border-2 border-emerald-500/70 border-b-4 px-4 py-2.5 shadow-2xl flex items-center justify-center gap-2 md:gap-3 flex-nowrap whitespace-nowrap"
         >
+          {/* 1. Önceki */}
           <button
             type="button"
             disabled={activeClassroomLineIndex <= 0}
             onClick={() => {
               playClick();
+              if (isPlayingAll || playingLineId !== null) {
+                playToken.current += 1;
+                stop();
+                setIsPlayingAll(false);
+              }
               const prevObj =
                 dialogue.satirlar[Math.max(0, activeClassroomLineIndex - 1)];
               if (prevObj) {
                 setSelectedClassroomLine(prevObj.sira);
               }
             }}
-            className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 disabled:opacity-40 text-xs sm:text-sm font-extrabold flex items-center gap-1.5 cursor-pointer transition-all"
+            className="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 disabled:opacity-40 text-xs sm:text-sm font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all"
           >
-            <span>⏮️ Önceki Cümle</span>
+            <span>⏮️ Önceki</span>
           </button>
 
+          {/* 2. Ortada Sayaç Rozeti [1 / 9] */}
+          <span
+            title={`Cümle ${activeClassroomLineIndex + 1} / ${dialogue.satirlar.length}`}
+            className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs sm:text-sm font-black tabular-nums shrink-0"
+          >
+            {activeClassroomLineIndex + 1} / {dialogue.satirlar.length}
+          </span>
+
+          {/* 3. Cümleyi Dinle (Aktifse Durdur) */}
           <button
             type="button"
-            onClick={() => {
-              if (playingLineId === activeClassroomLineObj.sira) {
-                playClick();
-                playToken.current += 1;
-                stop();
-                setLoopingLineSira(null);
-                setSentenceLoopRemaining(null);
-              } else {
-                setSelectedClassroomLine(activeClassroomLineObj.sira);
-                handlePlayLine(activeClassroomLineObj);
-              }
-            }}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black border-b-2 flex items-center gap-1.5 cursor-pointer transition-all ${
-              playingLineId === activeClassroomLineObj.sira
+            onClick={() => handlePlaySingleClassroomLine(activeClassroomLineObj)}
+            title="Sadece seçili cümleyi seslendirir ve durur (Kısayol: Space)"
+            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black border-b-2 flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
+              !isPlayingAll && playingLineId === activeClassroomLineObj.sira
                 ? "bg-red-600 hover:bg-red-700 border-red-800 text-white"
                 : "bg-emerald-600 hover:bg-emerald-500 border-emerald-800 text-white"
             }`}
           >
             <span>
-              {playingLineId === activeClassroomLineObj.sira
-                ? "⏸️ Duraklat"
-                : "🔊 Dinle"}
+              {!isPlayingAll && playingLineId === activeClassroomLineObj.sira
+                ? "⏹️ Durdur"
+                : "🔊 Cümleyi Dinle"}
             </span>
           </button>
 
+          {/* 4. Tümünü Oynat (Aktifse Duraklat) */}
+          <button
+            type="button"
+            onClick={() => handleToggleClassroomPlayAll(activeClassroomLineObj)}
+            title="Seçili cümleden itibaren tüm diyaloğu sırayla oynatır (Kısayol: Shift+Space veya P)"
+            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black border-b-2 flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
+              isPlayingAll
+                ? "bg-amber-500 hover:bg-amber-600 border-amber-700 text-slate-950"
+                : "bg-teal-600 hover:bg-teal-500 border-teal-800 text-white"
+            }`}
+          >
+            <span>
+              {isPlayingAll ? "⏸️ Duraklat" : "▶️ Tümünü Oynat"}
+            </span>
+          </button>
+
+          {/* 5. Telaffuz Et */}
           <button
             type="button"
             onClick={() => {
@@ -3853,16 +3948,22 @@ export default function DialogueDetailPage({
                 voice: getSpeakerVoice(activeClassroomLineObj),
               });
             }}
-            className="px-3.5 py-2 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] border-b-2 border-indigo-900 text-white text-xs sm:text-sm font-extrabold flex items-center gap-1.5 cursor-pointer transition-all"
+            className="px-3.5 py-2 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] border-b-2 border-indigo-900 text-white text-xs sm:text-sm font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all"
           >
             <span>🎙️ Telaffuz Et</span>
           </button>
 
+          {/* 6. Sonraki */}
           <button
             type="button"
             disabled={activeClassroomLineIndex >= dialogue.satirlar.length - 1}
             onClick={() => {
               playClick();
+              if (isPlayingAll || playingLineId !== null) {
+                playToken.current += 1;
+                stop();
+                setIsPlayingAll(false);
+              }
               const nextObj =
                 dialogue.satirlar[
                   Math.min(
@@ -3874,14 +3975,10 @@ export default function DialogueDetailPage({
                 setSelectedClassroomLine(nextObj.sira);
               }
             }}
-            className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 disabled:opacity-40 text-xs sm:text-sm font-extrabold flex items-center gap-1.5 cursor-pointer transition-all"
+            className="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 disabled:opacity-40 text-xs sm:text-sm font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all"
           >
-            <span>⏭️ Sonraki Cümle</span>
+            <span>⏭️ Sonraki</span>
           </button>
-
-          <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs sm:text-sm font-black tabular-nums">
-            Cümle {activeClassroomLineIndex + 1} / {dialogue.satirlar.length}
-          </span>
         </div>
       )}
 
