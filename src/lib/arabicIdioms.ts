@@ -890,6 +890,48 @@ export const ARABIC_IDIOMS_LIBRARY: ArabicIdiom[] = [
     usageNote: "Günlük konuşmada şaşkınlık belirterek açıklama istemek veya bir durumu reddetmek için kullanılır.",
     variants: ["كيف يعني", "هذا لا ينفع", "لا ينفع"],
   },
+  {
+    id: "idm_112",
+    arabic: "لِمَاذَا أَتْعَبَتْ نَفْسَهَا؟",
+    meaningTr: "Niye zahmet etti?",
+    literalTr: "Neden kendisini yordu?",
+    usageNote: "Nezaket gösterip hediye veya ikram hazırlayan bir kişi hakkında teşekkür ve mahcubiyet ifade etmek için kullanılır.",
+    variants: [
+      "لماذا اتعبت نفسها",
+      "لماذا اتعبت نفسك",
+      "اتعبت نفسها",
+      "اتعبت نفسك",
+    ],
+  },
+  {
+    id: "idm_113",
+    arabic: "لَابُدَّ مِنْ أَنْ نَتَوَخَّى الْحَذَرَ",
+    meaningTr: "Tedbirli (dikkatli) olmak lazım.",
+    literalTr: "Dikkat ve tedbiri gözetmemiz kaçınılmazdır.",
+    usageNote: "Olası bir tehlike veya olumsuz duruma karşı önceden önlem alınması gerektiğini vurgularken kullanılır.",
+    variants: [
+      "لابد من ان نتوخي الحذر",
+      "لا بد من ان نتوخي الحذر",
+      "نتوخي الحذر",
+      "توخي الحذر",
+    ],
+  },
+  {
+    id: "idm_114",
+    arabic: "طَوِيلَةُ الْأَمَدِ",
+    meaningTr: "Uzun vadeli",
+    literalTr: "Uzun süreli / vadeli",
+    usageNote: "Taksit, kredi, plan veya projelerin uzun bir zamana yayıldığını belirtmek için kullanılır.",
+    variants: ["طويله الامد", "طويل الامد"],
+  },
+  {
+    id: "idm_115",
+    arabic: "لَا تَنْتَهِي دُيُونُنَا بِالدَّفْعِ",
+    meaningTr: "Borcumuz öde öde bitmiyor.",
+    literalTr: "Borçlarımız ödemekle sona ermiyor.",
+    usageNote: "Biriken borçların veya taksitlerin ödenmesine rağmen bir türlü tükenmediğinden yakınırken kullanılır.",
+    variants: ["لا تنتهي ديوننا بالدفع", "لا تنتهي ديوننا"],
+  },
 ];
 
 /**
