@@ -246,6 +246,19 @@ export function getWordCategory(item: DictionaryItem): WordCategory {
   return "isim";
 }
 
+/**
+ * Bir sözlük kaydının Özel İsim (ozel-isim / ozel_isim) olup olmadığını döndürür.
+ * Özel isimler diyalog içinde tıklanabilir kalır ancak günlük 6 kelime, SRS ve alıştırma havuzlarına dahil edilmez.
+ */
+export function isProperNounItem(item: DictionaryItem): boolean {
+  if (!item) return false;
+  return (
+    getWordCategory(item) === "ozel-isim" ||
+    item.tur === "ozel-isim" ||
+    item.tur === "ozel_isim"
+  );
+}
+
 // Anlamları kısalt (Eşleştirme oyununda ve kısa kartlarda taşmayı önler; Özel İsim parantezini korur)
 function cleanMeaning(meaning: string, category?: WordCategory): string {
   if (category === "ozel-isim" || /özel isim/i.test(meaning)) {
@@ -3412,6 +3425,96 @@ export function analyzeAndMatchWord(
           sLabel
         ),
         matchStage: prefRaw || suffRaw ? "affix" : "exact",
+      };
+    }
+  }
+
+  // 0.985. KURAL: "مَرْحَباً" (merhaba — asla تَرْحِيب masdarına düşmez!), "بِخَيْرٍ" (iyi), "شُكْراً" (teşekkürler), "أَيْضاً" (de/da)
+  if (normalized === "مرحبا" || normalized === "ومرحبا" || normalized === "فمرحبا") {
+    const marhabanItem = unifiedDictionary.find(
+      (d) => d.id === "supp_marhaban_edat"
+    );
+    if (marhabanItem) {
+      const prefRaw =
+        normalized.startsWith("و") || normalized.startsWith("ف")
+          ? normalized[0]
+          : "";
+      const prefObj = NOMINAL_PREFIX_RULES.find((p) => p.raw === prefRaw);
+      return {
+        item: marhabanItem,
+        originalWord: cleanedRaw,
+        matchedStem: "مرحبا",
+        prefixLabel: prefObj?.label,
+        morphologyNote: buildMorphologyNote(marhabanItem, prefObj?.label),
+        matchStage: prefRaw ? "affix" : "exact",
+      };
+    }
+  }
+
+  if (normalized === "بخير" || normalized === "وبخير" || normalized === "فبخير") {
+    const bikhayrItem = unifiedDictionary.find(
+      (d) => d.id === "supp_bikhayrin_isim"
+    );
+    if (bikhayrItem) {
+      const prefRaw =
+        normalized.startsWith("و") || normalized.startsWith("ف")
+          ? normalized[0]
+          : "";
+      const prefObj = NOMINAL_PREFIX_RULES.find((p) => p.raw === prefRaw);
+      return {
+        item: bikhayrItem,
+        originalWord: cleanedRaw,
+        matchedStem: "بخير",
+        prefixLabel: prefObj?.label,
+        morphologyNote: buildMorphologyNote(
+          bikhayrItem,
+          prefObj?.label,
+          undefined,
+          "بِـ (ile / içinde) + خَيْرٍ (hayır, iyilik)"
+        ),
+        matchStage: prefRaw ? "affix" : "exact",
+      };
+    }
+  }
+
+  if (normalized === "شكرا" || normalized === "وشكرا" || normalized === "فشكرا") {
+    const shukranItem = unifiedDictionary.find(
+      (d) => d.id === "supp_shukran_isim"
+    );
+    if (shukranItem) {
+      const prefRaw =
+        normalized.startsWith("و") || normalized.startsWith("ف")
+          ? normalized[0]
+          : "";
+      const prefObj = NOMINAL_PREFIX_RULES.find((p) => p.raw === prefRaw);
+      return {
+        item: shukranItem,
+        originalWord: cleanedRaw,
+        matchedStem: "شكرا",
+        prefixLabel: prefObj?.label,
+        morphologyNote: buildMorphologyNote(shukranItem, prefObj?.label),
+        matchStage: prefRaw ? "affix" : "exact",
+      };
+    }
+  }
+
+  if (normalized === "ايضا" || normalized === "وايضا" || normalized === "فايضا") {
+    const aydanItem = unifiedDictionary.find(
+      (d) => d.id === "supp_aydan_edat"
+    );
+    if (aydanItem) {
+      const prefRaw =
+        normalized.startsWith("و") || normalized.startsWith("ف")
+          ? normalized[0]
+          : "";
+      const prefObj = NOMINAL_PREFIX_RULES.find((p) => p.raw === prefRaw);
+      return {
+        item: aydanItem,
+        originalWord: cleanedRaw,
+        matchedStem: "ايضا",
+        prefixLabel: prefObj?.label,
+        morphologyNote: buildMorphologyNote(aydanItem, prefObj?.label),
+        matchStage: prefRaw ? "affix" : "exact",
       };
     }
   }

@@ -161,9 +161,11 @@ export default function DialogueDetailPage({
     {}
   );
   const [isClassroomMode, setIsClassroomMode] = useState<boolean>(false);
+  const [classroomScale, setClassroomScale] = useState<number>(1.5);
+  const [spotlightMode, setSpotlightMode] = useState<boolean>(true);
   const [selectedClassroomLine, setSelectedClassroomLine] = useState<
     number | null
-  >(null);
+  >(1);
   const [flowMode, setFlowMode] = useState<FlowMode>("single");
   const [isPlayingAll, setIsPlayingAll] = useState(false);
   const [dialogueLoopTurn, setDialogueLoopTurn] = useState<number>(1);
@@ -505,14 +507,30 @@ export default function DialogueDetailPage({
   }, [dialogue, selectedRoleSpeaker]);
 
   useEffect(() => {
-    const targetLine = roleplayActiveLine ?? roleplaySpeakingLine ?? playingLineId;
+    const targetLine =
+      roleplayActiveLine ??
+      roleplaySpeakingLine ??
+      playingLineId ??
+      (isClassroomMode ? selectedClassroomLine : null);
     if (targetLine !== null && lineRefs.current[targetLine]) {
       lineRefs.current[targetLine]?.scrollIntoView({
         behavior: "smooth",
         block: "center",
       });
     }
-  }, [playingLineId, roleplayActiveLine, roleplaySpeakingLine]);
+  }, [
+    playingLineId,
+    roleplayActiveLine,
+    roleplaySpeakingLine,
+    isClassroomMode,
+    selectedClassroomLine,
+  ]);
+
+  useEffect(() => {
+    if (playingLineId !== null) {
+      setSelectedClassroomLine(playingLineId);
+    }
+  }, [playingLineId]);
 
   // Gölgeleme Boşluğu (Shadowing Pause) görsel geri sayım animasyonu
   useEffect(() => {
@@ -1060,9 +1078,64 @@ export default function DialogueDetailPage({
     handleTogglePlayAll();
   };
 
+  const classroomKeyHandlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  classroomKeyHandlerRef.current = (e: KeyboardEvent) => {
+    if (!dialogue) return;
+    const totalLines = dialogue.satirlar.length;
+    const currentSira =
+      playingLineId ??
+      loopingLineSira ??
+      selectedClassroomLine ??
+      dialogue.satirlar[0]?.sira ??
+      1;
+    const currentIdx = Math.max(
+      0,
+      dialogue.satirlar.findIndex((s) => s.sira === currentSira)
+    );
+
+    if (isClassroomMode && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault();
+      playClick();
+      const nextIdx =
+        e.key === "ArrowDown"
+          ? Math.min(totalLines - 1, currentIdx + 1)
+          : Math.max(0, currentIdx - 1);
+      const nextLineObj = dialogue.satirlar[nextIdx];
+      if (nextLineObj) {
+        setSelectedClassroomLine(nextLineObj.sira);
+      }
+      return;
+    }
+
+    if (e.code === "Space" && !e.repeat) {
+      e.preventDefault();
+      if (isClassroomMode && !isPlayingAll) {
+        const activeLineObj =
+          dialogue.satirlar[currentIdx] || dialogue.satirlar[0];
+        if (playingLineId === activeLineObj.sira) {
+          playClick();
+          playToken.current += 1;
+          stop();
+          setLoopingLineSira(null);
+          setSentenceLoopRemaining(null);
+        } else if (activeLineObj) {
+          setSelectedClassroomLine(activeLineObj.sira);
+          handlePlayLine(activeLineObj);
+        }
+        return;
+      }
+      togglePlayAllShortcutRef.current();
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code !== "Space" || e.repeat) return;
+      if (
+        e.code !== "Space" &&
+        !(isClassroomMode && (e.key === "ArrowDown" || e.key === "ArrowUp"))
+      ) {
+        return;
+      }
       if (e.ctrlKey || e.altKey || e.metaKey) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
@@ -1085,12 +1158,17 @@ export default function DialogueDetailPage({
       ) {
         return;
       }
-      e.preventDefault();
-      togglePlayAllShortcutRef.current();
+      classroomKeyHandlerRef.current(e);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [shadowingTarget, isPdfModalOpen, isShareModalOpen, isLightboxOpen]);
+  }, [
+    isClassroomMode,
+    shadowingTarget,
+    isPdfModalOpen,
+    isShareModalOpen,
+    isLightboxOpen,
+  ]);
 
   const cycleRoleplayHintLevel = (sira: number) => {
     playClick();
@@ -1346,8 +1424,29 @@ export default function DialogueDetailPage({
     }));
   })();
 
+  const activeClassroomSira =
+    playingLineId ??
+    loopingLineSira ??
+    roleplayActiveLine ??
+    roleplaySpeakingLine ??
+    selectedClassroomLine ??
+    dialogue.satirlar[0]?.sira ??
+    1;
+  const activeClassroomLineIndex = Math.max(
+    0,
+    dialogue.satirlar.findIndex((s) => s.sira === activeClassroomSira)
+  );
+  const activeClassroomLineObj =
+    dialogue.satirlar[activeClassroomLineIndex] || dialogue.satirlar[0];
+
   return (
-    <div className="space-y-3">
+    <div
+      className={
+        isClassroomMode
+          ? "space-y-4 max-w-7xl w-full lg:w-[min(80rem,calc(100vw-2rem))] lg:relative lg:left-1/2 lg:-translate-x-1/2 px-1 sm:px-4 md:px-8 transition-all duration-300"
+          : "space-y-3"
+      }
+    >
       {/* GÖLGELEME VE TELAFFUZ KOÇU MODALI */}
       {shadowingTarget && (
         <ShadowingModal
@@ -2065,7 +2164,13 @@ export default function DialogueDetailPage({
                 type="button"
                 onClick={() => {
                   playClick();
-                  setIsClassroomMode((v) => !v);
+                  setIsClassroomMode((v) => {
+                    const next = !v;
+                    if (next && selectedClassroomLine === null) {
+                      setSelectedClassroomLine(dialogue.satirlar[0]?.sira ?? 1);
+                    }
+                    return next;
+                  });
                 }}
                 title="🖥️ Sınıf / Tahta Modu: Arapça metinleri sınıfın en arkasından okunacak boyuta büyütür ve aktif satırı öne çıkarır"
                 aria-label="Sınıf / Tahta Modu"
@@ -2537,6 +2642,133 @@ export default function DialogueDetailPage({
           )}
         </div>
       </section>
+
+      {/* SINIF MODU ÜST KONTROL ÇUBUĞU (A+ / A- Punto, Spot Odaklama, Hızlı Gizle/Göster ve Çıkış) */}
+      {isClassroomMode && studyMode !== "vocabulary" && (
+        <section
+          aria-label="Akıllı Tahta ve Sınıf Sunum Modu Kontrol Çubuğu"
+          className="rounded-2xl bg-gradient-to-r from-emerald-900 via-[#087F5B] to-teal-900 text-white border-2 border-emerald-400/60 border-b-4 p-3 sm:p-4 shadow-xl flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-200"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="px-3 py-1 rounded-xl bg-white/15 border border-white/25 text-xs sm:text-sm font-black tracking-wide flex items-center gap-1.5">
+              <span>🖥️ Akıllı Tahta &amp; Sınıf Sunum Modu</span>
+            </span>
+            <span className="hidden xl:inline text-xs font-semibold text-emerald-100">
+              Ok tuşları (↑/↓) ile cümle değiştirin, Boşluk (Space) ile dinleyin
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* 🔍 Yazı Boyutu: A- / %150 / A+ */}
+            <div className="inline-flex items-center gap-1 bg-black/25 rounded-xl p-1 border border-white/20">
+              <span className="text-[11px] font-extrabold px-2 text-emerald-100 hidden sm:inline">
+                🔍 Punto:
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setClassroomScale((s) =>
+                    Math.max(1.2, Math.round((s - 0.15) * 100) / 100)
+                  );
+                }}
+                title="Yazı Boyutunu Küçült (A-)"
+                className="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/30 text-white font-black text-xs sm:text-sm cursor-pointer transition-colors"
+              >
+                A-
+              </button>
+              <span className="px-2 text-xs sm:text-sm font-black tabular-nums text-amber-300 min-w-[50px] text-center">
+                %{Math.round(classroomScale * 100)}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setClassroomScale((s) =>
+                    Math.min(2.2, Math.round((s + 0.15) * 100) / 100)
+                  );
+                }}
+                title="Yazı Boyutunu Büyüt (A+)"
+                className="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/30 text-white font-black text-xs sm:text-sm cursor-pointer transition-colors"
+              >
+                A+
+              </button>
+            </div>
+
+            {/* 🔦 Spot Odaklama */}
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setSpotlightMode((v) => !v);
+              }}
+              title="Aktif olmayan diğer cümleleri karartarak sınıfın tek cümleye odaklanmasını sağlar"
+              className={`px-3 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 cursor-pointer transition-all ${
+                spotlightMode
+                  ? "bg-amber-400 text-slate-950 border-amber-200 shadow-sm"
+                  : "bg-white/10 hover:bg-white/20 text-white border-white/25"
+              }`}
+            >
+              <span>🔦 Spot Odaklama: {spotlightMode ? "Açık" : "Kapalı"}</span>
+            </button>
+
+            {/* 👁️ Hızlı Gizle/Göster: Türkçeleri Gizle/Aç */}
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setClickToRevealTr(false);
+                setViewMode(
+                  currentViewMode === "arabic-only" ? "stacked" : "arabic-only"
+                );
+              }}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 cursor-pointer transition-all ${
+                currentViewMode === "arabic-only"
+                  ? "bg-[#6741D9] text-white border-indigo-300 shadow-sm"
+                  : "bg-white/10 hover:bg-white/20 text-white border-white/25"
+              }`}
+            >
+              <span>
+                👁️ {currentViewMode === "arabic-only" ? "Türkçeleri Aç" : "Türkçeleri Gizle"}
+              </span>
+            </button>
+
+            {/* 👁️ Hızlı Gizle/Göster: Arapçaları Bulanıklaştır (Kör Dinleme) */}
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setBlurArabic((v) => !v);
+                setUnblurredLines({});
+              }}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 cursor-pointer transition-all ${
+                blurArabic
+                  ? "bg-amber-500 text-slate-950 border-amber-200 shadow-sm"
+                  : "bg-white/10 hover:bg-white/20 text-white border-white/25"
+              }`}
+            >
+              <span>
+                {blurArabic
+                  ? "👁️ Arapçaları Netleştir"
+                  : "👁️ Arapçaları Bulanıklaştır"}
+              </span>
+            </button>
+
+            {/* ✕ Sınıf Modundan Çık */}
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setIsClassroomMode(false);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white border border-rose-300/50 text-xs font-extrabold flex items-center gap-1 cursor-pointer shadow-sm"
+            >
+              <X size={14} />
+              <span>Sınıf Modundan Çık</span>
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* DİYALOG SATIRLARI VEYA MORFOLOJİK DİYALOG SÖZLÜĞÜ */}
       {studyMode === "vocabulary" ? (
@@ -3078,17 +3310,18 @@ export default function DialogueDetailPage({
                     isLineSpeaking={isPlaying}
                     activeWordIndex={isPlaying ? activeWordIndex : null}
                     activeWordProgress={isPlaying ? activeWordProgress : 0}
+                    isClassroomMode={isClassroomMode}
                   />
                 </div>
               );
             };
 
             const isClassroomActiveLine =
+              activeClassroomSira === line.sira ||
               isPlaying ||
               isLooping ||
               isWaitingUser ||
-              isAppSpeakingRoleplay ||
-              selectedClassroomLine === line.sira;
+              isAppSpeakingRoleplay;
 
             return (
               <div
@@ -3101,19 +3334,23 @@ export default function DialogueDetailPage({
                     setSelectedClassroomLine(line.sira);
                   }
                 }}
-                className={`rounded-2xl border-2 border-b-4 p-3.5 transition-all scroll-mt-14 ${
-                  isWaitingUser
-                    ? "border-emerald-500 ring-4 ring-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-950/30 shadow-lg"
+                className={`rounded-2xl border-2 border-b-4 transition-all scroll-mt-14 ${
+                  isClassroomMode && isClassroomActiveLine
+                    ? "ring-4 ring-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/50 border-[#0CA678] shadow-2xl scale-[1.01] p-6 md:p-8"
+                    : isWaitingUser
+                    ? "border-emerald-500 ring-4 ring-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-950/30 shadow-lg p-3.5"
                     : isAppSpeakingRoleplay || isPlaying || isLooping
-                    ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] shadow-md"
+                    ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] shadow-md p-3.5"
                     : isUserRoleTurn
-                    ? "bg-[#FDFBF7] dark:bg-[var(--background)] border-[#0CA678]/70"
-                    : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
+                    ? "bg-[#FDFBF7] dark:bg-[var(--background)] border-[#0CA678]/70 p-3.5"
+                    : isClassroomMode
+                    ? "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] p-5 md:p-6"
+                    : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] p-3.5"
                 } ${
-                  isClassroomMode
-                    ? isClassroomActiveLine
-                      ? "ring-2 ring-emerald-500 scale-[1.01] shadow-lg"
-                      : "opacity-75 hover:opacity-100"
+                  isClassroomMode && !isClassroomActiveLine
+                    ? spotlightMode
+                      ? "opacity-35 hover:opacity-90 transition-opacity cursor-pointer"
+                      : "opacity-85 hover:opacity-100 transition-opacity cursor-pointer"
                     : ""
                 }`}
               >
@@ -3277,7 +3514,7 @@ export default function DialogueDetailPage({
                   </div>
                 </div>
 
-                {/* CÜMLE İÇERİĞİ (Sıkılaştırılmış Dikey Boşluklar py-1.5) */}
+                {/* CÜMLE İÇERİĞİ (Sıkılaştırılmış Dikey Boşluklar py-1.5; Sınıf Modunda Gerçek Inline Font Çarpanı) */}
                 {currentViewMode === "columns" && !clickToRevealTr ? (
                   <div className="md:grid md:grid-cols-2 md:gap-5 items-center space-y-1.5 md:space-y-0">
                     <div
@@ -3285,8 +3522,17 @@ export default function DialogueDetailPage({
                       className="order-2 md:order-1 bg-white/70 dark:bg-[var(--background)]/60 rounded-xl px-3 py-2 border border-[#E6D7BE] dark:border-[var(--border)]"
                     >
                       <p
-                        style={{ fontSize: `${turkishFontSize}px` }}
-                        className="text-[var(--muted)] font-semibold leading-snug"
+                        style={{
+                          fontSize: isClassroomMode
+                            ? `${Math.max(
+                                22,
+                                Math.round(turkishFontSize * (classroomScale * 0.9))
+                              )}px`
+                            : `${turkishFontSize}px`,
+                        }}
+                        className={`text-[var(--muted)] ${
+                          isClassroomMode ? "font-medium leading-relaxed" : "font-semibold leading-snug"
+                        }`}
                       >
                         {line.turkce}
                       </p>
@@ -3294,18 +3540,16 @@ export default function DialogueDetailPage({
 
                     <div
                       dir="rtl"
-                      style={
-                        isClassroomMode
-                          ? undefined
-                          : {
-                              fontSize: `calc(${arabicFontSize}px * var(--font-arabic-scale, 1))`,
-                            }
-                      }
-                      className={`order-1 md:order-2 arabic font-bold text-[var(--foreground)] text-right py-1.5 ${
-                        isClassroomMode
-                          ? "text-3xl md:text-4xl leading-loose"
-                          : ""
-                      }`}
+                      style={{
+                        fontSize: isClassroomMode
+                          ? `${Math.max(
+                              44,
+                              Math.round(arabicFontSize * classroomScale)
+                            )}px`
+                          : `calc(${arabicFontSize}px * var(--font-arabic-scale, 1))`,
+                        lineHeight: isClassroomMode ? 2.1 : undefined,
+                      }}
+                      className="order-1 md:order-2 arabic font-bold text-[var(--foreground)] text-right py-1.5"
                     >
                       {renderArabicLineWithHint()}
                     </div>
@@ -3321,7 +3565,14 @@ export default function DialogueDetailPage({
                           Türkçe Anlamdan Arapçasını Hatırlayın:
                         </span>
                         <p
-                          style={{ fontSize: `${turkishFontSize}px` }}
+                          style={{
+                            fontSize: isClassroomMode
+                              ? `${Math.max(
+                                  22,
+                                  Math.round(turkishFontSize * (classroomScale * 0.9))
+                                )}px`
+                              : `${turkishFontSize}px`,
+                          }}
                           className="text-[var(--foreground)] font-bold leading-snug"
                         >
                           “{line.turkce}”
@@ -3332,18 +3583,16 @@ export default function DialogueDetailPage({
                     {isArRevealed ? (
                       <div
                         dir="rtl"
-                        style={
-                          isClassroomMode
-                            ? undefined
-                            : {
-                                fontSize: `calc(${arabicFontSize}px * var(--font-arabic-scale, 1))`,
-                              }
-                        }
-                        className={`arabic font-bold text-[var(--foreground)] text-right py-1.5 ${
-                          isClassroomMode
-                            ? "text-3xl md:text-4xl leading-loose"
-                            : ""
-                        }`}
+                        style={{
+                          fontSize: isClassroomMode
+                            ? `${Math.max(
+                                44,
+                                Math.round(arabicFontSize * classroomScale)
+                              )}px`
+                            : `calc(${arabicFontSize}px * var(--font-arabic-scale, 1))`,
+                          lineHeight: isClassroomMode ? 2.1 : undefined,
+                        }}
+                        className="arabic font-bold text-[var(--foreground)] text-right py-1.5"
                       >
                         {renderArabicLineWithHint()}
                       </div>
@@ -3379,8 +3628,21 @@ export default function DialogueDetailPage({
                       >
                         {isTrRevealed ? (
                           <p
-                            style={{ fontSize: `${turkishFontSize}px` }}
-                            className="text-[var(--muted)] font-semibold leading-snug"
+                            style={{
+                              fontSize: isClassroomMode
+                                ? `${Math.max(
+                                    22,
+                                    Math.round(
+                                      turkishFontSize * (classroomScale * 0.9)
+                                    )
+                                  )}px`
+                                : `${turkishFontSize}px`,
+                            }}
+                            className={`text-[var(--muted)] ${
+                              isClassroomMode
+                                ? "font-medium leading-relaxed"
+                                : "font-semibold leading-snug"
+                            }`}
                           >
                             {line.turkce}
                           </p>
@@ -3523,6 +3785,104 @@ export default function DialogueDetailPage({
             );
           })}
         </section>
+      )}
+
+      {/* AKILLI TAHTA & SINIF MODU ALT SUNUM KUMANDASI (Sticky Bottom Presentation Remote) */}
+      {isClassroomMode && studyMode !== "vocabulary" && activeClassroomLineObj && (
+        <div
+          aria-label="Sınıf Modu Alt Sunum Kumandası"
+          className="sticky bottom-4 z-40 mx-auto max-w-2xl w-full rounded-2xl bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md text-white border-2 border-emerald-500/70 border-b-4 p-2.5 sm:p-3 shadow-2xl flex flex-wrap items-center justify-between gap-2"
+        >
+          <button
+            type="button"
+            disabled={activeClassroomLineIndex <= 0}
+            onClick={() => {
+              playClick();
+              const prevObj =
+                dialogue.satirlar[Math.max(0, activeClassroomLineIndex - 1)];
+              if (prevObj) {
+                setSelectedClassroomLine(prevObj.sira);
+              }
+            }}
+            className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 disabled:opacity-40 text-xs sm:text-sm font-extrabold flex items-center gap-1.5 cursor-pointer transition-all"
+          >
+            <span>⏮️ Önceki Cümle</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (playingLineId === activeClassroomLineObj.sira) {
+                playClick();
+                playToken.current += 1;
+                stop();
+                setLoopingLineSira(null);
+                setSentenceLoopRemaining(null);
+              } else {
+                setSelectedClassroomLine(activeClassroomLineObj.sira);
+                handlePlayLine(activeClassroomLineObj);
+              }
+            }}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black border-b-2 flex items-center gap-1.5 cursor-pointer transition-all ${
+              playingLineId === activeClassroomLineObj.sira
+                ? "bg-red-600 hover:bg-red-700 border-red-800 text-white"
+                : "bg-emerald-600 hover:bg-emerald-500 border-emerald-800 text-white"
+            }`}
+          >
+            <span>
+              {playingLineId === activeClassroomLineObj.sira
+                ? "⏸️ Duraklat"
+                : "🔊 Dinle"}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              const lineHasMp3 = hasMp3(
+                dialogue.id,
+                activeClassroomLineObj.sira
+              );
+              const lineAudioUrl = lineHasMp3
+                ? getMp3Path(dialogue.id, activeClassroomLineObj.sira)
+                : undefined;
+              openShadowingCoach({
+                text: activeClassroomLineObj.arapca,
+                audioUrl: lineAudioUrl,
+                voice: getSpeakerVoice(activeClassroomLineObj),
+              });
+            }}
+            className="px-3.5 py-2 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] border-b-2 border-indigo-900 text-white text-xs sm:text-sm font-extrabold flex items-center gap-1.5 cursor-pointer transition-all"
+          >
+            <span>🎙️ Telaffuz Et</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={activeClassroomLineIndex >= dialogue.satirlar.length - 1}
+            onClick={() => {
+              playClick();
+              const nextObj =
+                dialogue.satirlar[
+                  Math.min(
+                    dialogue.satirlar.length - 1,
+                    activeClassroomLineIndex + 1
+                  )
+                ];
+              if (nextObj) {
+                setSelectedClassroomLine(nextObj.sira);
+              }
+            }}
+            className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 disabled:opacity-40 text-xs sm:text-sm font-extrabold flex items-center gap-1.5 cursor-pointer transition-all"
+          >
+            <span>⏭️ Sonraki Cümle</span>
+          </button>
+
+          <span className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs sm:text-sm font-black tabular-nums">
+            Cümle {activeClassroomLineIndex + 1} / {dialogue.satirlar.length}
+          </span>
+        </div>
       )}
 
       {/* DİYALOG CÜMLELERİNİN ALTINDAKİ KALIP İFADELER KART BÖLÜMÜ (Dinle/Telaffuz/Rol Yapma Modlarında) */}

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { playClick } from "@/lib/sfxManager";
 import { diyaloglar, sozluk } from "@/lib/data";
-import { getDialogueVocabulary } from "@/lib/dict";
+import { getDialogueVocabulary, isProperNounItem } from "@/lib/dict";
 import { Dialogue, DictionaryItem } from "@/types/data";
 import { useUserStore } from "@/store/userStore";
 import { useSettings } from "@/store/settings";
@@ -236,17 +236,20 @@ function ExercisesPageContent() {
   ]);
 
   const { combinedVocabulary, poolNotice } = useMemo(() => {
+    const nonProperSozluk = sozluk.filter((w) => !isProperNounItem(w));
     if (singleDialogueId !== "all") {
       return {
-        combinedVocabulary: getDialogueVocabulary(singleDialogueId).map(
-          (e) => e.item
-        ),
+        combinedVocabulary: getDialogueVocabulary(singleDialogueId)
+          .map((e) => e.item)
+          .filter((w) => !isProperNounItem(w)),
         poolNotice: null as string | null,
       };
     }
 
     if (rangePreset === "srs-daily") {
-      const dueWords = dailyPackage.dueReviewPool.words;
+      const dueWords = dailyPackage.dueReviewPool.words.filter(
+        (w) => !isProperNounItem(w)
+      );
       if (dueWords.length >= 4) {
         return {
           combinedVocabulary: dueWords,
@@ -255,7 +258,7 @@ function ExercisesPageContent() {
       }
       const padded = [
         ...dueWords,
-        ...sozluk
+        ...nonProperSozluk
           .filter((w) => !dueWords.some((dw) => dw.id === w.id))
           .slice(0, Math.max(4, 8 - dueWords.length)),
       ];
@@ -272,68 +275,73 @@ function ExercisesPageContent() {
           poolNotice: null,
         };
       }
-      if (mistakesResolved.words.length >= 4) {
+      const cleanMistakeWords = mistakesResolved.words.filter(
+        (w) => !isProperNounItem(w)
+      );
+      if (cleanMistakeWords.length >= 4) {
         return {
-          combinedVocabulary: mistakesResolved.words,
+          combinedVocabulary: cleanMistakeWords,
           poolNotice: null,
         };
       }
       const padded = [
-        ...mistakesResolved.words,
-        ...sozluk
-          .filter((w) => !mistakesResolved.words.some((mw) => mw.id === w.id))
-          .slice(0, Math.max(4, 8 - mistakesResolved.words.length)),
+        ...cleanMistakeWords,
+        ...nonProperSozluk
+          .filter((w) => !cleanMistakeWords.some((mw) => mw.id === w.id))
+          .slice(0, Math.max(4, 8 - cleanMistakeWords.length)),
       ];
       return {
         combinedVocabulary: padded,
         poolNotice:
-          mistakesResolved.words.length > 0
-            ? `Hata defterinizde ${mistakesResolved.words.length} kelime/ifade bulunduğu için şık havuzu genel sözlükle desteklendi. 3 kez ipucusuz doğru bildikleriniz (Kademe 3/3) hata defterinden mezun edilir.`
+          cleanMistakeWords.length > 0
+            ? `Hata defterinizde ${cleanMistakeWords.length} kelime/ifade bulunduğu için şık havuzu genel sözlükle desteklendi. 3 kez ipucusuz doğru bildikleriniz (Kademe 3/3) hata defterinden mezun edilir.`
             : `Hata defterinizdeki diyalog cümleleriyle pratik yapabilirsiniz. 3 kez ipucusuz doğru bildikleriniz (Kademe 3/3) hata defterinden mezun edilir.`,
       };
     }
 
     if (rangePreset === "favorites") {
-      if (favoriteWords.length >= 4) {
+      const cleanFavs = favoriteWords.filter((w) => !isProperNounItem(w));
+      if (cleanFavs.length >= 4) {
         return {
-          combinedVocabulary: favoriteWords,
+          combinedVocabulary: cleanFavs,
           poolNotice: null,
         };
       }
       const padded = [
-        ...favoriteWords,
-        ...sozluk
-          .filter((w) => !favoriteWords.some((fw) => fw.id === w.id))
-          .slice(0, 12 - favoriteWords.length),
+        ...cleanFavs,
+        ...nonProperSozluk
+          .filter((w) => !cleanFavs.some((fw) => fw.id === w.id))
+          .slice(0, 12 - cleanFavs.length),
       ];
       return {
         combinedVocabulary: padded,
-        poolNotice: `Favori listenizde şu an ${favoriteWords.length} kelime bulunduğu için alıştırma havuzu genel sözlük kelimeleriyle tamamlandı.`,
+        poolNotice: `Favori listenizde şu an ${cleanFavs.length} kelime bulunduğu için alıştırma havuzu genel sözlük kelimeleriyle tamamlandı.`,
       };
     }
 
     if (rangePreset === "weak-words") {
-      if (weakWords.length >= 4) {
+      const cleanWeak = weakWords.filter((w) => !isProperNounItem(w));
+      if (cleanWeak.length >= 4) {
         return {
-          combinedVocabulary: weakWords,
+          combinedVocabulary: cleanWeak,
           poolNotice: null,
         };
       }
       const padded = [
-        ...weakWords,
-        ...sozluk
-          .filter((w) => !weakWords.some((ww) => ww.id === w.id))
-          .slice(0, 12 - weakWords.length),
+        ...cleanWeak,
+        ...nonProperSozluk
+          .filter((w) => !cleanWeak.some((ww) => ww.id === w.id))
+          .slice(0, 12 - cleanWeak.length),
       ];
       return {
         combinedVocabulary: padded,
-        poolNotice: `Mahreç Tekrarı (Zayıf Kelimeler) listenizde şu an ${weakWords.length} kelime bulunduğu için alıştırma havuzu genel sözlük kelimeleriyle tamamlandı.`,
+        poolNotice: `Mahreç Tekrarı (Zayıf Kelimeler) listenizde şu an ${cleanWeak.length} kelime bulunduğu için alıştırma havuzu genel sözlük kelimeleriyle tamamlandı.`,
       };
     }
 
     if (rangePreset === "all-dict") {
       return {
-        combinedVocabulary: sozluk,
+        combinedVocabulary: nonProperSozluk,
         poolNotice: null,
       };
     }
@@ -341,7 +349,11 @@ function ExercisesPageContent() {
     const allVocabMap = new Map<string, DictionaryItem>();
     selectedDialogues.forEach((dlg) => {
       const entries = getDialogueVocabulary(dlg.id);
-      entries.forEach((entry) => allVocabMap.set(entry.item.id, entry.item));
+      entries.forEach((entry) => {
+        if (!isProperNounItem(entry.item)) {
+          allVocabMap.set(entry.item.id, entry.item);
+        }
+      });
     });
     return {
       combinedVocabulary: Array.from(allVocabMap.values()),

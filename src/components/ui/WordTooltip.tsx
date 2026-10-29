@@ -25,6 +25,7 @@ interface Props {
   isLineSpeaking?: boolean;
   activeWordIndex?: number | null;
   activeWordProgress?: number;
+  isClassroomMode?: boolean;
 }
 
 function buildWordForms(item: DictionaryItem): TargetForm[] {
@@ -113,6 +114,7 @@ export default function WordTooltip({
   isLineSpeaking = false,
   activeWordIndex = null,
   activeWordProgress = 0,
+  isClassroomMode = false,
 }: Props) {
   const {
     showTooltips,
@@ -159,10 +161,11 @@ export default function WordTooltip({
     const vh = typeof window !== "undefined" ? window.innerHeight : 768;
     const safeMargin = 12;
     const actualPopoverWidth = popoverRef.current?.offsetWidth;
+    const defaultWidth = isClassroomMode ? 440 : 336;
     const tooltipWidth = actualPopoverWidth
       ? Math.min(actualPopoverWidth, vw - safeMargin * 2)
-      : Math.min(336, vw - safeMargin * 2);
-    const estimatedHeight = popoverRef.current?.offsetHeight || 255;
+      : Math.min(defaultWidth, vw - safeMargin * 2);
+    const estimatedHeight = popoverRef.current?.offsetHeight || (isClassroomMode ? 310 : 255);
 
     const spaceBelow = vh - rect.bottom - 72;
     const spaceAbove = rect.top - 56;
@@ -197,7 +200,7 @@ export default function WordTooltip({
         width: tooltipWidth,
       });
     }
-  }, []);
+  }, [isClassroomMode]);
 
   useEffect(() => {
     setShowDesktopRootFamily(false);
@@ -504,25 +507,33 @@ export default function WordTooltip({
                       left: `${tooltipPos.left}px`,
                       width: `${tooltipPos.width}px`,
                     }}
-                    className={`fixed p-3.5 bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 ${catStyle.popoverLeftBorder} rounded-2xl shadow-2xl text-left font-sans z-[9999] block space-y-2`}
+                    className={`fixed ${
+                      isClassroomMode ? "p-4.5 space-y-2.5" : "p-3.5 space-y-2"
+                    } bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 ${catStyle.popoverLeftBorder} rounded-2xl shadow-2xl text-left font-sans z-[9999] block`}
                   >
                     {/* 1. Üst Satır: Sol tarafta Kelime Türü Rozeti + KÖK Rozeti (tek satırda/whitespace-nowrap), Sağ köşede × Kapat Butonu */}
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                         <span
-                          className={`whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md border text-[10px] font-sans font-extrabold ${catStyle.badgeClass}`}
+                          className={`whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md border ${
+                            isClassroomMode ? "text-xs" : "text-[10px]"
+                          } font-sans font-extrabold ${catStyle.badgeClass}`}
                         >
                           {catStyle.badgeText}
                         </span>
                         {dictItem.kok && dictItem.kok !== "-" && (
                           <span
                             dir="ltr"
-                            className="whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md bg-stone-100 dark:bg-slate-800 border border-[#E6D7BE] dark:border-slate-700 inline-flex items-center gap-1 text-xs font-sans font-semibold text-[var(--muted)]"
+                            className={`whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md bg-stone-100 dark:bg-slate-800 border border-[#E6D7BE] dark:border-slate-700 inline-flex items-center gap-1 ${
+                              isClassroomMode ? "text-sm" : "text-xs"
+                            } font-sans font-semibold text-[var(--muted)]`}
                           >
                             <span>KÖK:</span>
                             <bdi
                               dir="rtl"
-                              className="arabic font-arabic text-xs font-bold text-[var(--foreground)] inline-block whitespace-nowrap"
+                              className={`arabic font-arabic ${
+                                isClassroomMode ? "text-base" : "text-xs"
+                              } font-bold text-[var(--foreground)] inline-block whitespace-nowrap`}
                             >
                               {dictItem.kok}
                             </bdi>
@@ -547,7 +558,11 @@ export default function WordTooltip({
                     <div className="flex items-start justify-between gap-3 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
                       <div
                         dir="ltr"
-                        className="text-sm sm:text-base font-sans font-bold text-[var(--foreground)] leading-snug text-left flex-1 min-w-0"
+                        className={`${
+                          isClassroomMode
+                            ? "text-base sm:text-lg"
+                            : "text-sm sm:text-base"
+                        } font-sans font-bold text-[var(--foreground)] leading-snug text-left flex-1 min-w-0`}
                       >
                         {splitMixedBidiText(dictItem.anlam_tr).map(
                           (seg, sIdx) =>
@@ -568,19 +583,27 @@ export default function WordTooltip({
                       <div className="flex flex-col items-end shrink-0 text-right">
                         <span
                           dir="rtl"
-                          className={`arabic font-arabic text-2xl sm:text-3xl font-bold block leading-normal text-right ${catStyle.arabicAccent}`}
+                          className={`arabic font-arabic ${
+                            isClassroomMode
+                              ? "text-3xl sm:text-4xl"
+                              : "text-2xl sm:text-3xl"
+                          } font-bold block leading-normal text-right ${catStyle.arabicAccent}`}
                         >
                           {formatAr(primaryAr)}
                         </span>
                         {coreWord !== primaryAr && (
                           <span
                             dir="ltr"
-                            className="inline-flex items-center justify-end gap-1 text-xs font-sans font-medium text-[#6741D9] mt-0.5 whitespace-nowrap"
+                            className={`inline-flex items-center justify-end gap-1 ${
+                              isClassroomMode ? "text-sm" : "text-xs"
+                            } font-sans font-medium text-[#6741D9] mt-0.5 whitespace-nowrap`}
                           >
                             <span>Metinde:</span>
                             <bdi
                               dir="rtl"
-                              className="arabic font-arabic text-base font-bold inline-block"
+                              className={`arabic font-arabic ${
+                                isClassroomMode ? "text-lg" : "text-base"
+                              } font-bold inline-block`}
                             >
                               {formatAr(coreWord)}
                             </bdi>
@@ -593,7 +616,9 @@ export default function WordTooltip({
                     {morphologyNote && (
                       <div
                         dir="ltr"
-                        className="block bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border border-[#E6D7BE] text-[11px] font-sans font-bold text-[#4C28B5] dark:text-[#d0bfff] text-left"
+                        className={`block bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border border-[#E6D7BE] ${
+                          isClassroomMode ? "text-xs sm:text-sm" : "text-[11px]"
+                        } font-sans font-bold text-[#4C28B5] dark:text-[#d0bfff] text-left`}
                       >
                         <span className="inline-flex items-center gap-1 text-[10px] font-sans font-extrabold tracking-wider text-[#6741D9] block mb-0.5">
                           <Sparkles size={10} />

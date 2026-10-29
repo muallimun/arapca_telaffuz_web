@@ -4,6 +4,8 @@ import {
   cleanArabicText,
   analyzeAndMatchWord,
   getDialogueVocabulary,
+  isProperNounItem,
+  getAllWords,
 } from "@/lib/dict";
 import {
   ArabicIdiom,
@@ -186,10 +188,11 @@ export function resolveMistakesPool(mistakeIds: string[]): ResolvedMistakesPool 
 
     // 3. Sözlük kelimesi mi?
     const strippedWordId = id.replace(/^word_/, "");
-    const foundWord = sozluk.find(
-      (w) => w.id === strippedWordId || w.id === id
-    );
-    if (foundWord) {
+    const allDict = getAllWords();
+    const foundWord =
+      allDict.find((w) => w.id === strippedWordId || w.id === id) ||
+      sozluk.find((w) => w.id === strippedWordId || w.id === id);
+    if (foundWord && !isProperNounItem(foundWord)) {
       wordsMap.set(foundWord.id, foundWord);
       if (foundWord.tur === "ifade") {
         const syntheticIdm: ArabicIdiom = {
@@ -456,17 +459,20 @@ export function buildDailyStudyPackage(params: {
     }
   }
 
-  // 3. Zamanı Gelen 6 Kelime Seçimi
+  // 3. Zamanı Gelen 6 Kelime Seçimi (Özel İsimler kesinlikle hariç tutulur)
   const dailyWords: DailyWordRecommendation[] = [];
   const pickedWordIds = new Set<string>();
+  const allDictWords = getAllWords();
 
   // 3a. Önce nextReviewAt <= now olan SRS kelimeleri
   for (const rec of dueSrsEntries) {
     if (dailyWords.length >= 6) break;
     if (rec.type !== "word") continue;
     const stripped = rec.id.replace(/^word_/, "");
-    const w = sozluk.find((item) => item.id === stripped || item.id === rec.id);
-    if (!w || pickedWordIds.has(w.id)) continue;
+    const w =
+      allDictWords.find((item) => item.id === stripped || item.id === rec.id) ||
+      sozluk.find((item) => item.id === stripped || item.id === rec.id);
+    if (!w || isProperNounItem(w) || pickedWordIds.has(w.id)) continue;
     pickedWordIds.add(w.id);
 
     const statusBadge =
@@ -481,7 +487,8 @@ export function buildDailyStudyPackage(params: {
   const resolvedMistakes = resolveMistakesPool(mistakeIds);
   for (const w of resolvedMistakes.words) {
     if (dailyWords.length >= 6) break;
-    if (w.id.startsWith("idiom_") || w.tur === "ifade") continue;
+    if (w.id.startsWith("idiom_") || w.tur === "ifade" || isProperNounItem(w))
+      continue;
     if (pickedWordIds.has(w.id)) continue;
     pickedWordIds.add(w.id);
     const rec = srsRecords[w.id];
@@ -493,12 +500,51 @@ export function buildDailyStudyPackage(params: {
     });
   }
 
-  // 3c. Günün diyaloğundaki yeni (öğrenilmemiş) kelimeler
-  const dlgVocabEntries = getDialogueVocabulary(bestDialogue.id);
-  for (const entry of dlgVocabEntries) {
+  // 3c. Günün diyaloğundaki yeni (öğrenilmemiş) kelimeler (Özel isimler hariç, anlamlı diyalog kelimeleri öncelikli)
+  const LOW_PRIORITY_PRONOUN_OR_PARTICLE = new Set([
+    "ما",
+    "انا",
+    "انت",
+    "انتم",
+    "هو",
+    "هي",
+    "هم",
+    "نحن",
+    "يا",
+    "و",
+    "ف",
+    "في",
+    "من",
+    "الي",
+    "علي",
+    "عن",
+  ]);
+  const dlgVocabEntries = getDialogueVocabulary(bestDialogue.id).filter(
+    (e) => !isProperNounItem(e.item)
+  );
+  const prioritizedDlgVocab = [
+    ...dlgVocabEntries.filter(
+      (e) =>
+        !LOW_PRIORITY_PRONOUN_OR_PARTICLE.has(
+          cleanArabicText((e.item.mufret || e.item.mazi || "").split("/")[0])
+        )
+    ),
+    ...dlgVocabEntries.filter((e) =>
+      LOW_PRIORITY_PRONOUN_OR_PARTICLE.has(
+        cleanArabicText((e.item.mufret || e.item.mazi || "").split("/")[0])
+      )
+    ),
+  ];
+
+  for (const entry of prioritizedDlgVocab) {
     if (dailyWords.length >= 6) break;
     const w = entry.item;
-    if (pickedWordIds.has(w.id) || learnedSet.has(w.id)) continue;
+    if (
+      isProperNounItem(w) ||
+      pickedWordIds.has(w.id) ||
+      learnedSet.has(w.id)
+    )
+      continue;
     pickedWordIds.add(w.id);
     dailyWords.push({
       item: w,
@@ -507,10 +553,15 @@ export function buildDailyStudyPackage(params: {
     });
   }
 
-  // 3d. Hâlâ 6 kelimeden azsa genel sözlükten tamamla
+  // 3d. Hâlâ 6 kelimeden azsa genel sözlükten (özel isim olmayanlardan) tamamla
   for (const w of sozluk) {
     if (dailyWords.length >= 6) break;
-    if (pickedWordIds.has(w.id) || learnedSet.has(w.id)) continue;
+    if (
+      isProperNounItem(w) ||
+      pickedWordIds.has(w.id) ||
+      learnedSet.has(w.id)
+    )
+      continue;
     pickedWordIds.add(w.id);
     dailyWords.push({
       item: w,
@@ -581,18 +632,20 @@ export function buildDailyStudyPackage(params: {
   const poolIdiomsMap = new Map<string, ArabicIdiom>();
   const poolDialoguesMap = new Map<string, Dialogue>();
 
-  // Due & mistake kelimeleri ekle
+  // Due & mistake kelimeleri ekle (Özel isimler hariç)
   for (const w of resolvedMistakes.words) {
-    poolWordsMap.set(w.id, w);
+    if (!isProperNounItem(w)) poolWordsMap.set(w.id, w);
   }
   for (const dw of dailyWords) {
-    poolWordsMap.set(dw.item.id, dw.item);
+    if (!isProperNounItem(dw.item)) poolWordsMap.set(dw.item.id, dw.item);
   }
   for (const rec of dueSrsEntries) {
     if (rec.type === "word") {
       const stripped = rec.id.replace(/^word_/, "");
-      const found = sozluk.find((w) => w.id === stripped || w.id === rec.id);
-      if (found) poolWordsMap.set(found.id, found);
+      const found =
+        allDictWords.find((w) => w.id === stripped || w.id === rec.id) ||
+        sozluk.find((w) => w.id === stripped || w.id === rec.id);
+      if (found && !isProperNounItem(found)) poolWordsMap.set(found.id, found);
     }
   }
 

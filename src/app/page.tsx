@@ -69,8 +69,6 @@ export default function HomePage() {
   useEffect(() => {
     setMounted(true);
     syncDailyProgress();
-    const daySeed = new Date().getDate() % Math.max(1, diyaloglar.length);
-    setTipIndex(daySeed);
     loadAudioManifest().then(() => setManifestLoaded(true));
   }, [syncDailyProgress]);
 
@@ -140,12 +138,51 @@ export default function HomePage() {
     [recommendedDialogueId]
   );
 
+  // Kullanıcının tamamladığı diyaloglara göre aktif CEFR seviyesini belirle (A1 bitmeden üst seviyelerden cümle gösterilmez)
+  const activeLevel = useMemo(() => {
+    const doneSet = new Set(mounted ? completedDialogues || [] : []);
+    const levels: Array<"A1" | "A2" | "B1" | "B2"> = ["A1", "A2", "B1", "B2"];
+    for (const lvl of levels) {
+      const dlgsInLvl = diyaloglar.filter((d) => d.seviye === lvl);
+      if (dlgsInLvl.some((d) => !doneSet.has(d.id))) {
+        return lvl;
+      }
+    }
+    return "A1";
+  }, [mounted, completedDialogues]);
+
+  // Günün Konuşma Kalıbı Havuzu: Önce Günün Diyaloğundan, ardından kullanıcının aktif seviyesindeki (ör. A1) diyaloglardan seçilir
+  const levelQuotesPool = useMemo(() => {
+    const dailyDlg = dailyPackage.dailyDialogue.dialogue;
+    const sameLevelDlgs = diyaloglar.filter((d) => d.seviye === activeLevel);
+    const orderedDlgs = [
+      ...(dailyDlg && dailyDlg.seviye === activeLevel ? [dailyDlg] : []),
+      ...sameLevelDlgs.filter((d) => d.id !== dailyDlg?.id),
+    ];
+
+    const pool: { dlg: (typeof diyaloglar)[0]; line: (typeof diyaloglar)[0]["satirlar"][0] }[] = [];
+    for (const dlg of orderedDlgs) {
+      // Çok kısa tek kelimelik ("مَرْحَباً.") satırlar yerine en az 2 kelimelik pedagojik konuşma kalıplarını öncelikle ekle
+      const meaningfulLines = dlg.satirlar.filter(
+        (s) => s.arapca.trim().split(/\s+/).length >= 2
+      );
+      const sourceLines =
+        meaningfulLines.length > 0 ? meaningfulLines : dlg.satirlar;
+      for (const line of sourceLines) {
+        pool.push({ dlg, line });
+      }
+    }
+    if (pool.length === 0) {
+      const fallbackDlg = diyaloglar[0];
+      return [{ dlg: fallbackDlg, line: fallbackDlg.satirlar[0] }];
+    }
+    return pool;
+  }, [activeLevel, dailyPackage.dailyDialogue.dialogue]);
+
   // Günün Arapça Diyaloğu / Kalıp İpucu
   const featuredDialogue = useMemo(() => {
-    const dlg = diyaloglar[tipIndex % diyaloglar.length] || diyaloglar[0];
-    const line = dlg.satirlar[1] || dlg.satirlar[0];
-    return { dlg, line };
-  }, [tipIndex]);
+    return levelQuotesPool[tipIndex % levelQuotesPool.length] || levelQuotesPool[0];
+  }, [levelQuotesPool, tipIndex]);
 
   const removeTashkeel = (text: string) => text.replace(/[\u064B-\u0652]/g, "");
   const displayArabic = (text: string) =>
@@ -296,8 +333,8 @@ export default function HomePage() {
           <div className="space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-600 dark:bg-emerald-600 text-white text-xs font-extrabold">
-                <Target size={13} />
-                <span>🎯 Bugün Ne Çalışmalıyım?</span>
+                <Target size={15} />
+                <span>Bugün Ne Çalışmalıyım?</span>
               </span>
               <span className="px-2 py-0.5 rounded-lg bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/30 text-[11px] font-extrabold text-[#6741D9] dark:text-[#d0bfff]">
                 ~12 Dakikalık Akıllı Paket
@@ -315,7 +352,7 @@ export default function HomePage() {
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all whitespace-nowrap"
             >
               <BookOpen size={14} className="text-emerald-600" />
-              <span>📖 Günün Diyaloğuna Git</span>
+              <span>Günün Diyaloğuna Git</span>
             </Link>
 
             <Link
@@ -324,7 +361,7 @@ export default function HomePage() {
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 text-white border-b-3 border-emerald-800 text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all whitespace-nowrap shadow-xs"
             >
               <Play size={14} fill="currentColor" />
-              <span>🚀 12 Dakikalık Günlük Paketi Başlat</span>
+              <span>12 Dakikalık Günlük Paketi Başlat</span>
             </Link>
           </div>
         </div>
@@ -487,10 +524,10 @@ export default function HomePage() {
                 type="button"
                 onClick={() => {
                   playClick();
-                  setTipIndex((prev) => (prev + 1) % diyaloglar.length);
+                  setTipIndex((prev) => (prev + 1) % levelQuotesPool.length);
                 }}
                 className="ml-auto md:ml-2 inline-flex items-center gap-1 text-[11px] font-bold text-[var(--muted)] hover:text-[var(--foreground)] bg-white dark:bg-[var(--background)] px-2.5 py-0.5 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] transition-colors cursor-pointer"
-                title="Farklı bir cümle göster"
+                title={`Seviye ${activeLevel} diyaloglarından farklı bir cümle göster`}
               >
                 <RefreshCw size={11} />
                 <span>Değiştir</span>
