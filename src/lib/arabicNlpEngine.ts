@@ -503,6 +503,16 @@ export function extractArabicRoot(word: string): string {
   if (/^(اعاد|يعيد|تعيد|نعيد|اعاده)$/.test(core)) {
     return "عود";
   }
+  if (/^(اخذ|ياخذ|تاخذ|ناخذ|خذ)$/.test(core)) {
+    return "أخذ";
+  }
+  if (/^(اكل|ياكل|تاكل|ناكل)$/.test(core)) {
+    return "أكل";
+  }
+  const mithalMudariMatch = core.match(/^(س)?[انتي]?(زن|ضع|جد|صل|قع|ثق|جب|صف|قف|عد|دع)$/);
+  if (mithalMudariMatch) {
+    return `و${mithalMudariMatch[2]}`;
+  }
 
   // 1. Çoğul مَوَاعِيد / مَفَاعِيل kalıbı: م + و + ا + C2 + ي + C3 (6 harf) -> و + C2 + C3
   const mawaa3iidMatch = core.match(/^موا([^\u0627\u0648\u064A])ي([^\u0627\u0648\u064A])$/);

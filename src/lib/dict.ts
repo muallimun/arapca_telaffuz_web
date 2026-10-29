@@ -202,31 +202,59 @@ function cleanMeaning(meaning: string, category?: WordCategory): string {
   return (parts.slice(0, 2).join(", ").trim() || meaning).trim();
 }
 
-// Sözlük + Tamamlayıcı Sözlük Yamasını birleştir ve mükerrerleri tekilleştir
+// Sözlük + Tamamlayıcı Sözlük Yamasını birleştir ve mükerrerleri (aynı kelime + aynı tür) kesin olarak tekilleştir
 function buildUnifiedDictionary(): DictionaryItem[] {
   const combined = [
     ...SUPPLEMENT_DICTIONARY,
     ...(sozlukRaw as DictionaryItem[]),
   ];
-  const seenKeys = new Set<string>();
+  const seenByKey = new Map<string, DictionaryItem>();
   const deduplicated: DictionaryItem[] = [];
 
   for (const item of combined) {
     const primary = (item.mufret || item.mazi || item.muzari || "")
       .split(/[\/\-]/)[0]
       .trim();
-    const category = getWordCategory(item);
-    const key = `${category}_${cleanArabicText(primary)}_${item.anlam_tr.slice(0, 18)}`;
     if (!primary) continue;
 
-    if (!seenKeys.has(key)) {
-      seenKeys.add(key);
-      deduplicated.push({
+    const category = getWordCategory(item);
+    let normPrimary = cleanArabicText(primary);
+    // İsimlerde başındaki "ال" takısı nedeniyle aynı kelimenin iki kez listelenmesini önle
+    if (
+      category === "isim" &&
+      normPrimary.startsWith("ال") &&
+      normPrimary.length >= 5
+    ) {
+      normPrimary = normPrimary.slice(2);
+    }
+
+    const key = `${category}_${normPrimary}`;
+    const existing = seenByKey.get(key);
+
+    if (!existing) {
+      const canonicalItem: DictionaryItem = {
         ...item,
         tur: category,
         mufret: item.mufret ? item.mufret.split("/")[0].trim() : item.mufret,
+        mazi: item.mazi ? item.mazi.split("/")[0].trim() : item.mazi,
         anlam_tr: item.anlam_tr.trim(),
-      });
+      };
+      seenByKey.set(key, canonicalItem);
+      deduplicated.push(canonicalItem);
+    } else {
+      // İlk kaydı koru; ikinci kayıtta eksik alan (çoğul, muzari, mastar, kök) varsa tamamla
+      if ((!existing.cemi || existing.cemi === "-") && item.cemi && item.cemi !== "-") {
+        existing.cemi = item.cemi;
+      }
+      if ((!existing.muzari || existing.muzari === "-") && item.muzari && item.muzari !== "-") {
+        existing.muzari = item.muzari.split("/")[0].trim();
+      }
+      if ((!existing.masdar || existing.masdar === "-") && item.masdar && item.masdar !== "-") {
+        existing.masdar = item.masdar;
+      }
+      if ((!existing.kok || existing.kok === "-") && item.kok && item.kok !== "-") {
+        existing.kok = item.kok;
+      }
     }
   }
 
@@ -350,9 +378,9 @@ const CANONICAL_IBN_ITEM: DictionaryItem = {
   id: "kelime_430",
   tur: "isim",
   kok: "ب ن ي",
-  mufret: "ابْن / وَلَد",
-  cemi: "أَبْنَاء / أَوْلَاد",
-  anlam_tr: "oğul, erkek çocuk",
+  mufret: "ابْن",
+  cemi: "أَبْنَاء",
+  anlam_tr: "oğul, erkek evlat",
 };
 
 const CANONICAL_BINT_ITEM: DictionaryItem = {
@@ -1441,6 +1469,9 @@ const IRREGULAR_IMPERATIVE_MAP: Record<string, string> = {
   عد: "وعد",
   جد: "وجد",
   صف: "وصف",
+  زن: "وزن",
+  دع: "ودع",
+  ثق: "وثق",
   قل: "قال",
   بع: "باع",
   نم: "نام",
@@ -2018,6 +2049,23 @@ function matchStemWithRules(
           isImperative: isImp,
         };
       }
+      // 4) Misal (ilk harfi و olup muzaride düşen) fiil gövdesi (سَأَزِنُ -> زن -> وزن، أَضَعُ -> ضع -> وضع، أَجِدُ -> جد -> وجد، نَصِلُ -> صل -> وصل، يَقَعُ -> قع -> وقع، أَثِقُ -> ثق -> وثق، يَجِبُ -> جب -> وجب، يَقِفُ -> قف -> وقف، يَصِفُ -> صف -> وصف، يَعِدُ -> عد -> وعد، يَدَعُ -> دع -> ودع)
+      const mithalRestored = "و" + bareAfterPrefix;
+      const mithalVerbCand = pickBestCandidateForKey(
+        mithalRestored,
+        cleanedRaw,
+        contextSentenceTr,
+        false,
+        true
+      );
+      if (mithalVerbCand && getWordCategory(mithalVerbCand) === "fiil") {
+        return {
+          item: mithalVerbCand,
+          stage: "verb",
+          extraNote: getPersonNote(mithalVerbCand),
+          isImperative: isImp,
+        };
+      }
     }
 
     // İstif'âl (استفعل) bâbı muzaaf fiiller (يَسْتَعِدَّ -> ستعد -> استعد / ع د د)
@@ -2537,7 +2585,128 @@ export function analyzeAndMatchWord(
     }
   }
 
-  // 0.7. KURAL 2.1 KESİN AYRIM: "فَكُلُّ / كُلُّ / كُلَّ / كُلِّ / كُلُّهَا" (her, bütün, hepsi) vs "كُلْ" (ye! - أَكَلَ)
+  // 0.65. KURAL 3-B: Mehmûzü'l-Fâ Fiiller (أَخَذَ ve أَكَلَ) için "آ" (أَ + أْ) Muzari ve "خُذْ / كُلْ" Emir Kuralı
+  const akhadhaMatch = normalized.match(
+    /^(و|ف)?(س|ل)?(اخذ|تاخذ|ناخذ|ياخذ|خذ)(ي|ك|ه|ها|نا|كم|هم|وا|ون|ين|ان|ت|تم)?$/
+  );
+  if (akhadhaMatch && !isDefinitelyNoun) {
+    const conjPref = akhadhaMatch[1] || "";
+    const modalPref = akhadhaMatch[2] || "";
+    const verbCore = akhadhaMatch[3];
+    const suffRaw = akhadhaMatch[4] || "";
+    const akhadhaItem =
+      unifiedDictionary.find((d) => d.id === "supp_akhadha_fiil") ||
+      dictIndex.get("اخذ");
+    if (akhadhaItem) {
+      const startsWithMadda = /^(وَ|فَ)?(سَ)?آ/.test(cleanedRaw);
+      const isImpKhudh = verbCore === "خذ";
+      const pLabels: string[] = [];
+      if (conjPref === "و") pLabels.push("وَ (ve)");
+      if (conjPref === "ف") pLabels.push("فَـ (böylece)");
+      if (modalPref === "س") pLabels.push("سَـ (gelecek zaman -ecek)");
+      if (modalPref === "ل") pLabels.push("لِـ (istek / emir eki: -elim, -alım)");
+      const prefLabel = pLabels.length > 0 ? pLabels.join(" + ") : undefined;
+
+      const suffObj = SUFFIX_RULES.find((s) => s.raw === suffRaw);
+      const sLabel = suffObj
+        ? getSuffixDisplayLabel(suffObj, akhadhaItem, isImpKhudh)
+        : undefined;
+
+      let extraNote: string | undefined;
+      if (isImpKhudh) {
+        extraNote = "Emir Fiil (فعل أمر — Sen al!)";
+      } else if (
+        startsWithMadda ||
+        (verbCore === "اخذ" && (modalPref === "س" || /\u064F/.test(cleanedRaw)))
+      ) {
+        extraNote = "أَ (ben - muzari: أَ + أْ → آ)";
+      } else if (verbCore === "ناخذ") {
+        extraNote = "نَـ (biz - muzari)";
+      } else if (verbCore === "تاخذ") {
+        extraNote = "تَـ (sen/o - muzari)";
+      } else if (verbCore === "ياخذ") {
+        extraNote = "يَـ (o/onlar - muzari)";
+      }
+
+      return {
+        item: akhadhaItem,
+        originalWord: cleanedRaw,
+        matchedStem: "اخذ",
+        prefixLabel: prefLabel,
+        suffixLabel: sLabel,
+        morphologyNote: buildMorphologyNote(
+          akhadhaItem,
+          prefLabel,
+          sLabel,
+          extraNote
+        ),
+        matchStage: "verb",
+      };
+    }
+  }
+
+  const akalaMatch = normalized.match(
+    /^(و|ف)?(س|ل)?(اكل|تاكل|ناكل|ياكل)(ي|ك|ه|ها|نا|كم|هم|وا|ون|ين|ان|ا|ت|تنا|تم)?$/
+  );
+  if (akalaMatch && !isDefinitelyNoun && !/كِل/.test(cleanedRaw)) {
+    const conjPref = akalaMatch[1] || "";
+    const modalPref = akalaMatch[2] || "";
+    const verbCore = akalaMatch[3];
+    const suffRaw = akalaMatch[4] || "";
+    const akalaItem =
+      unifiedDictionary.find((d) => d.id === "supp_akala_fiil") ||
+      dictIndex.get("اكل");
+    if (akalaItem) {
+      const startsWithMadda = /^(وَ|فَ)?(سَ)?آ/.test(cleanedRaw);
+      const pLabels: string[] = [];
+      if (conjPref === "و") pLabels.push("وَ (ve)");
+      if (conjPref === "ف") pLabels.push("فَـ (böylece)");
+      if (modalPref === "س") pLabels.push("سَـ (gelecek zaman -ecek)");
+      if (modalPref === "ل") pLabels.push("لِـ (istek / emir eki: -elim, -alım)");
+      const prefLabel = pLabels.length > 0 ? pLabels.join(" + ") : undefined;
+
+      let sLabel: string | undefined;
+      if (suffRaw === "تنا") {
+        sLabel = "تْ (o [مؤنث]) + نَا (bizi)";
+      } else if (suffRaw === "ا" && verbCore === "تاكل") {
+        sLabel = "ا (ikiniz - tesniye muzari)";
+      } else if (suffRaw) {
+        const suffObj = SUFFIX_RULES.find((s) => s.raw === suffRaw);
+        sLabel = suffObj ? getSuffixDisplayLabel(suffObj, akalaItem) : undefined;
+      }
+
+      let extraNote: string | undefined;
+      if (
+        startsWithMadda ||
+        (verbCore === "اكل" && (modalPref === "س" || /ك\u064F/.test(cleanedRaw)))
+      ) {
+        extraNote = "أَ (ben - muzari: أَ + أْ → آ)";
+      } else if (verbCore === "ناكل") {
+        extraNote = "نَـ (biz - muzari)";
+      } else if (verbCore === "تاكل") {
+        extraNote = "تَـ (sen/siz - muzari)";
+      } else if (verbCore === "ياكل") {
+        extraNote = "يَـ (o/onlar - muzari)";
+      }
+
+      return {
+        item: akalaItem,
+        originalWord: cleanedRaw,
+        matchedStem: "اكل",
+        prefixLabel: prefLabel,
+        suffixLabel: sLabel,
+        morphologyNote: buildMorphologyNote(
+          akalaItem,
+          prefLabel,
+          sLabel,
+          extraNote
+        ),
+        matchStage: "verb",
+      };
+    }
+  }
+
+  // 0.7. KURAL 2.1 KESİN AYRIM: "فَكُلُّ / كُلُّ / كُلَّ / كُلِّ / كُلُّهَا" (her, bütün, hepsi) vs "كُلْ / وَكُلِ" (ye! - أَكَلَ)
   const kullMatch = normalized.match(
     /^(و|ف|ب|ل|ك)?كل(ه|ها|هم|هن|هما|نا|كم|كن|كما)?$/
   );
@@ -2548,9 +2717,30 @@ export function analyzeAndMatchWord(
       !suffRaw &&
       !/\u0651/.test(cleanedRaw) &&
       (/\u0652$/.test(cleanedRaw) ||
+        /^(وَ|فَ)?كُلِ$/.test(cleanedRaw) ||
         (contextSentenceTr && /\b(ye|yiyin|yemek)\b/i.test(contextSentenceTr)));
 
-    if (!isImperativeEat) {
+    if (isImperativeEat) {
+      const akalaItem =
+        unifiedDictionary.find((d) => d.id === "supp_akala_fiil") ||
+        dictIndex.get("اكل");
+      if (akalaItem) {
+        const prefObj = NOMINAL_PREFIX_RULES.find((p) => p.raw === prefRaw);
+        return {
+          item: akalaItem,
+          originalWord: cleanedRaw,
+          matchedStem: "اكل",
+          prefixLabel: prefObj?.label,
+          morphologyNote: buildMorphologyNote(
+            akalaItem,
+            prefObj?.label,
+            undefined,
+            "Emir Fiil (فعل أمر — Sen ye!)"
+          ),
+          matchStage: "verb",
+        };
+      }
+    } else {
       const kullItem =
         unifiedDictionary.find((d) => d.id === "supp_kull_isim") ||
         dictIndex.get("كل");

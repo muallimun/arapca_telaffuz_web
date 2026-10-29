@@ -46,7 +46,7 @@
     "tur": "isim",
     "kok": "أ ن ف",
     "mufret": "أَنْف",
-    "cemi": "آُنُوف / آَنَاف",
+    "cemi": "أُنُوف / آنَاف",
     "anlam_tr": "burun"
   },
   {
@@ -942,9 +942,9 @@
     "id": "kelime_114",
     "tur": "isim",
     "kok": "ك ل ف",
-    "mufret": "مَصْرُوف / تَكْلِفَة",
-    "cemi": "مَصَارِيف / تَكَالِيف",
-    "anlam_tr": "masraf, gider, maliyet"
+    "mufret": "تَكْلِفَة",
+    "cemi": "تَكَالِيف",
+    "anlam_tr": "maliyet, masraf, gider"
   },
   {
     "id": "kelime_115",
@@ -1026,9 +1026,9 @@
     "id": "kelime_124",
     "tur": "isim",
     "kok": "ح ز م",
-    "mufret": "حُزْمَة / بَاقَة",
-    "cemi": "حُزَم / بَاقَات",
-    "anlam_tr": "paket, demet, paket (düğün paketi vb.)"
+    "mufret": "حُزْمَة",
+    "cemi": "حُزَم",
+    "anlam_tr": "paket, demet"
   },
   {
     "id": "kelime_125",
@@ -1276,9 +1276,9 @@
     "id": "kelime_154",
     "tur": "isim",
     "kok": "د ر س",
-    "mufret": "مُدَرِّس / أُسْتَاذ",
-    "cemi": "مُدَرِّسُونَ / أَسَاتِذَة",
-    "anlam_tr": "öğretmen, hoca, profesör"
+    "mufret": "مُدَرِّس",
+    "cemi": "مُدَرِّسُونَ",
+    "anlam_tr": "öğretmen, müderris"
   },
   {
     "id": "kelime_155",
@@ -1478,9 +1478,9 @@
     "id": "kelime_178",
     "tur": "isim",
     "kok": "ع م ل",
-    "mufret": "عَامِل / مُوَظَّف",
-    "cemi": "عُمَّال / مُوَظَّفُونَ",
-    "anlam_tr": "işçi, çalışan, görevli, memur"
+    "mufret": "عَامِل",
+    "cemi": "عُمَّال",
+    "anlam_tr": "işçi, çalışan"
   },
   {
     "id": "kelime_179",
@@ -1704,8 +1704,8 @@
     "id": "kelime_205",
     "tur": "isim",
     "kok": "س ع ي",
-    "mufret": "سَعْي / جُهْد",
-    "cemi": "مَسَاعٍ / جُهُود",
+    "mufret": "سَعْي",
+    "cemi": "مَسَاعٍ",
     "anlam_tr": "gayret, çaba"
   },
   {
@@ -2136,8 +2136,8 @@
     "id": "kelime_256",
     "tur": "isim",
     "kok": "ش ي خ",
-    "mufret": "شَيْخ / مُسِنّ",
-    "cemi": "شُيُوخ / مُسِنُّونَ",
+    "mufret": "شَيْخ",
+    "cemi": "شُيُوخ",
     "anlam_tr": "ihtiyar, yaşlı, şeyh"
   },
   {
@@ -2594,9 +2594,9 @@
     "id": "kelime_311",
     "tur": "isim",
     "kok": "ح ل ب",
-    "mufret": "حَلِيب / مُهَلَّبِيَّة",
-    "cemi": "مُهَلَّبِيَّات",
-    "anlam_tr": "süt / muhallebi"
+    "mufret": "حَلِيب",
+    "cemi": "-",
+    "anlam_tr": "süt"
   },
   {
     "id": "kelime_312",
@@ -2653,7 +2653,7 @@
     "id": "kelime_318",
     "tur": "isim",
     "kok": "ش ر ب",
-    "mufret": "شَرْبَات / قَطْر",
+    "mufret": "شَرْبَات",
     "cemi": "-",
     "anlam_tr": "şerbet, tatlı şurubu"
   },
@@ -2694,9 +2694,9 @@
     "id": "kelime_323",
     "tur": "isim",
     "kok": "ج ن ب",
-    "mufret": "جَانِب / جَنَاح",
-    "cemi": "جَوَانِب / أَجْنِحَة",
-    "anlam_tr": "yan, taraf, stant, kanat"
+    "mufret": "جَانِب",
+    "cemi": "جَوَانِب",
+    "anlam_tr": "yan, taraf (بِجَانِبِ: yanında)"
   },
   {
     "id": "kelime_324",
@@ -2809,7 +2809,7 @@
     "id": "kelime_337",
     "tur": "isim",
     "kok": "س ب ح",
-    "mufret": "مَسْبَح / حَوْضُ سِبَاحَةٍ",
+    "mufret": "مَسْبَح",
     "cemi": "مَسَابِح",
     "anlam_tr": "yüzme havuzu"
   },
@@ -2843,7 +2843,7 @@
     "kok": "ج ن ح",
     "mufret": "جَنَاح",
     "cemi": "أَجْنِحَة",
-    "anlam_tr": "kanat, stant, taraf"
+    "anlam_tr": "bölüm, stant, kanat, büro"
   },
   {
     "id": "kelime_342",
@@ -3013,8 +3013,8 @@
     "id": "kelime_362",
     "tur": "isim",
     "kok": "ج و و",
-    "mufret": "جَوّ / طَقْس",
-    "cemi": "أَجْوَاء / أَطْقَاس",
+    "mufret": "جَوّ",
+    "cemi": "أَجْوَاء",
     "anlam_tr": "hava, atmosfer, iklim"
   },
   {
@@ -3046,17 +3046,17 @@
     "id": "kelime_366",
     "tur": "isim",
     "kok": "س ن و",
-    "mufret": "سَنَة / عَام",
-    "cemi": "سَنَوَات / أَعْوَام",
+    "mufret": "سَنَة",
+    "cemi": "سَنَوَات",
     "anlam_tr": "yıl, sene"
   },
   {
     "id": "kelime_367",
     "tur": "isim",
     "kok": "ز م ن",
-    "mufret": "زَمَن / وَقْت",
-    "cemi": "أَزْمَان / أَوْقَات",
-    "anlam_tr": "zaman, vakit"
+    "mufret": "زَمَن",
+    "cemi": "أَزْمَان",
+    "anlam_tr": "zaman, devir, süre"
   },
   {
     "id": "kelime_368",
@@ -3161,8 +3161,8 @@
     "id": "kelime_380",
     "tur": "isim",
     "kok": "و ج هـ",
-    "mufret": "جِهَة / طَرَف",
-    "cemi": "جِهَات / أَطْرَاف",
+    "mufret": "جِهَة",
+    "cemi": "جِهَات",
     "anlam_tr": "yön, taraf, cephe"
   },
   {
@@ -3217,8 +3217,8 @@
     "id": "kelime_387",
     "tur": "isim",
     "kok": "و س ط",
-    "mufret": "وَسَط / مَرْكَز",
-    "cemi": "أَوْسَاط / مَرَاكِز",
+    "mufret": "وَسَط",
+    "cemi": "أَوْسَاط",
     "anlam_tr": "orta, merkez"
   },
   {
@@ -3571,9 +3571,9 @@
     "id": "kelime_430",
     "tur": "isim",
     "kok": "ب ن ي",
-    "mufret": "ابْن / وَلَد",
-    "cemi": "أَبْنَاء / أَوْلَاد",
-    "anlam_tr": "oğul, erkek çocuk"
+    "mufret": "ابْن",
+    "cemi": "أَبْنَاء",
+    "anlam_tr": "oğul, erkek evlat"
   },
   {
     "id": "kelime_431",
@@ -3686,8 +3686,8 @@
     "id": "kelime_444",
     "tur": "isim",
     "kok": "ذ و ق",
-    "mufret": "مَذَاق / طَعْم",
-    "cemi": "أَطْعَام",
+    "mufret": "مَذَاق",
+    "cemi": "أَذْوَاق",
     "anlam_tr": "tat, lezzet, çeşni"
   },
   {
@@ -3878,16 +3878,16 @@
     "id": "kelime_467",
     "tur": "fiil",
     "kok": "ق د ر",
-    "mazi": "قَدَرَ / اِسْتَطَاعَ",
-    "muzari": "يَقْدِرُ / يَسْتَطِيعُ",
-    "masdar": "قُدْرَة / اِسْتِطَاعَة",
+    "mazi": "قَدَرَ",
+    "muzari": "يَقْدِرُ",
+    "masdar": "قُدْرَة",
     "anlam_tr": "gücü yetmek, -ebilmek"
   },
   {
     "id": "kelime_468",
     "tur": "isim",
     "kok": "ق د ر",
-    "mufret": "قُدْرَة / اِسْتِطَاعَة",
+    "mufret": "قُدْرَة",
     "cemi": "قُدُرَات",
     "anlam_tr": "güç, yetenek, kapasite"
   },
@@ -4457,7 +4457,7 @@
     "id": "kelime_536",
     "tur": "fiil",
     "kok": "ج هـ ز",
-    "mazi": "جَهَّزَ / أَعَدَّ",
+    "mazi": "جَهَّزَ",
     "muzari": "يُجَهِّزُ",
     "masdar": "تَجْهِيز",
     "anlam_tr": "hazırlamak, donatmak"
@@ -4466,9 +4466,9 @@
     "id": "kelime_537",
     "tur": "fiil",
     "kok": "ج هـ ز",
-    "mazi": "تَجَهَّزَ / اِسْتَعَدَّ",
-    "muzari": "يَتَجَهَّزُ / يَسْتَعِدُّ",
-    "masdar": "تَجَهُّز / اِسْتِعْدَاد",
+    "mazi": "تَجَهَّزَ",
+    "muzari": "يَتَجَهَّزُ",
+    "masdar": "تَجَهُّز",
     "anlam_tr": "hazırlanmak"
   },
   {
@@ -4819,10 +4819,10 @@
   {
     "id": "kelime_579",
     "tur": "isim",
-    "kok": "م د ن",
-    "mufret": "مَيْدَان / سَاحَة",
-    "cemi": "مَيَادِين / سَاحَات",
-    "anlam_tr": "meydan, alan, saha"
+    "kok": "م ي د",
+    "mufret": "مَيْدَان",
+    "cemi": "مَيَادِين",
+    "anlam_tr": "meydan (مَيْدَانُ الْمَدِينَةِ: şehir meydanı)"
   },
   {
     "id": "kelime_580",
@@ -5466,9 +5466,9 @@
     "id": "kelime_657",
     "tur": "isim",
     "kok": "ث م ن",
-    "mufret": "ثَمِين / غَالٍ",
-    "cemi": "ثَمِينُونَ / غَالُونَ",
-    "anlam_tr": "pahalı, değerli"
+    "mufret": "ثَمِين",
+    "cemi": "ثَمِينُونَ",
+    "anlam_tr": "pahalı, değerli, kıymetli"
   },
   {
     "id": "kelime_658",
@@ -6134,7 +6134,7 @@
     "tur": "fiil",
     "kok": "ح و ل",
     "mazi": "حَوَّلَ",
-    "muzari": "يُحَوِّيلُ",
+    "muzari": "يُحَوِّلُ",
     "masdar": "تَحْوِيل",
     "anlam_tr": "havale etmek, dönüştürmek, aktarmak"
   },
@@ -6539,7 +6539,7 @@
     "tur": "isim",
     "kok": "أ ن ف",
     "mufret": "أَنْف",
-    "cemi": "آَنَاف / أُنُوف",
+    "cemi": "أُنُوف / آنَاف",
     "anlam_tr": "burun"
   },
   {
@@ -6898,9 +6898,9 @@
     "id": "kelime_830",
     "tur": "isim",
     "kok": "ع ل م",
-    "mufret": "مُعَلِّم / أُسْتَاذ",
-    "cemi": "مُعَلِّمُونَ / أَسَاتِذَة",
-    "anlam_tr": "öğretmen, hoca"
+    "mufret": "مُعَلِّم",
+    "cemi": "مُعَلِّمُونَ",
+    "anlam_tr": "öğretmen, muallim"
   },
   {
     "id": "kelime_831",
@@ -7087,9 +7087,9 @@
     "id": "kelime_853",
     "tur": "isim",
     "kok": "ع م ل",
-    "mufret": "عَامِل / مُوَظَّف",
-    "cemi": "عُمَّال / مُوَظَّفُونَ",
-    "anlam_tr": "işçi, çalışan, memur"
+    "mufret": "عَامِل",
+    "cemi": "عُمَّال",
+    "anlam_tr": "işçi, çalışan"
   },
   {
     "id": "kelime_854",
@@ -8387,5 +8387,167 @@
     "mufret": "فَتَاة",
     "cemi": "فَتَيَات",
     "anlam_tr": "genç kız"
+  },
+  {
+    "id": "kelime_1011",
+    "tur": "isim",
+    "kok": "ر ك ز",
+    "mufret": "مَرْكَز",
+    "cemi": "مَرَاكِز",
+    "anlam_tr": "merkez (مَرْكَزُ الْمَدِينَةِ: şehir merkezi, مَرْكَزُ التَّسَوُّقِ: alışveriş merkezi)"
+  },
+  {
+    "id": "kelime_1012",
+    "tur": "isim",
+    "kok": "و ق ت",
+    "mufret": "وَقْت",
+    "cemi": "أَوْقَات",
+    "anlam_tr": "vakit, zaman (أَوْقَاتُ الْفَرَاغِ: boş vakitler)"
+  },
+  {
+    "id": "kelime_1013",
+    "tur": "isim",
+    "kok": "ع و م",
+    "mufret": "عَام",
+    "cemi": "أَعْوَام",
+    "anlam_tr": "yıl, sene (كُلُّ عَامٍ وَأَنْتُمْ بِخَيْرٍ: bayramınız/yeni yılınız kutlu olsun)"
+  },
+  {
+    "id": "kelime_1014",
+    "tur": "isim",
+    "kok": "ط ق س",
+    "mufret": "طَقْس",
+    "cemi": "أَطْقَاس",
+    "anlam_tr": "hava, hava durumu (حَالَةُ الطَّقْسِ: hava durumu, نَشْرَةُ الطَّقْسِ: hava raporu)"
+  },
+  {
+    "id": "kelime_1015",
+    "tur": "isim",
+    "kok": "و ل د",
+    "mufret": "وَلَد",
+    "cemi": "أَوْلَاد",
+    "anlam_tr": "çocuk, erkek çocuk, evlat"
+  },
+  {
+    "id": "kelime_1016",
+    "tur": "isim",
+    "kok": "و ظ ف",
+    "mufret": "مُوَظَّف / مُوَظَّفَة",
+    "cemi": "مُوَظَّفُونَ",
+    "anlam_tr": "görevli, memur, çalışan"
+  },
+  {
+    "id": "kelime_1017",
+    "tur": "isim",
+    "kok": "أ س ت ذ",
+    "mufret": "أُسْتَاذ / أُسْتَاذَة",
+    "cemi": "أَسَاتِذَة",
+    "anlam_tr": "hoca, öğretmen, profesör"
+  },
+  {
+    "id": "kelime_1018",
+    "tur": "isim",
+    "kok": "س ن ن",
+    "mufret": "مُسِنّ",
+    "cemi": "مُسِنُّونَ",
+    "anlam_tr": "yaşlı, ihtiyar"
+  },
+  {
+    "id": "kelime_1019",
+    "tur": "isim",
+    "kok": "هـ ل ب",
+    "mufret": "مُهَلَّبِيَّة",
+    "cemi": "مُهَلَّبِيَّات",
+    "anlam_tr": "muhallebi"
+  },
+  {
+    "id": "kelime_1020",
+    "tur": "isim",
+    "kok": "ق ط ر",
+    "mufret": "قَطْر",
+    "cemi": "-",
+    "anlam_tr": "şerbet, tatlı şurubu"
+  },
+  {
+    "id": "kelime_1021",
+    "tur": "isim",
+    "kok": "ط ر ف",
+    "mufret": "طَرَف",
+    "cemi": "أَطْرَاف",
+    "anlam_tr": "taraf, kenar, uç (الطَّرَفُ الْمُقَابِلُ: karşı taraf, الطَّرَفُ الْأَيْسَرُ: sol taraf)"
+  },
+  {
+    "id": "kelime_1022",
+    "tur": "isim",
+    "kok": "ط ع م",
+    "mufret": "طَعْم",
+    "cemi": "أَطْعَام",
+    "anlam_tr": "tat, lezzet"
+  },
+  {
+    "id": "kelime_1023",
+    "tur": "fiil",
+    "kok": "ط و ع",
+    "mazi": "اِسْتَطَاعَ",
+    "muzari": "يَسْتَطِيعُ",
+    "masdar": "اِسْتِطَاعَة",
+    "anlam_tr": "-ebilmek, gücü yetmek, muktedir olmak"
+  },
+  {
+    "id": "kelime_1024",
+    "tur": "fiil",
+    "kok": "ع د د",
+    "mazi": "اِسْتَعَدَّ",
+    "muzari": "يَسْتَعِدُّ",
+    "masdar": "اِسْتِعْدَاد",
+    "anlam_tr": "hazırlanmak"
+  },
+  {
+    "id": "kelime_1025",
+    "tur": "isim",
+    "kok": "ب و ق",
+    "mufret": "بَاقَة",
+    "cemi": "بَاقَات",
+    "anlam_tr": "paket, demet (بَاقَاتُ الزِّفَافِ: düğün paketleri)"
+  },
+  {
+    "id": "kelime_1026",
+    "tur": "isim",
+    "kok": "ص ر ف",
+    "mufret": "مَصْرُوف",
+    "cemi": "مَصَارِيف",
+    "anlam_tr": "masraf, gider, harcama"
+  },
+  {
+    "id": "kelime_1027",
+    "tur": "isim",
+    "kok": "ج هـ د",
+    "mufret": "جُهْد",
+    "cemi": "جُهُود",
+    "anlam_tr": "gayret, çaba (بَذَلَ جُهْداً: gayret göstermek)"
+  },
+  {
+    "id": "kelime_1028",
+    "tur": "isim",
+    "kok": "غ ل و",
+    "mufret": "غَالٍ / غَالِيَة",
+    "cemi": "غَالُونَ",
+    "anlam_tr": "değerli, kıymetli, canım; pahalı (أُمِّي الْغَالِيَةَ: canım anneciğim)"
+  },
+  {
+    "id": "kelime_1029",
+    "tur": "isim",
+    "kok": "ح و ض",
+    "mufret": "حَوْض",
+    "cemi": "أَحْوَاض",
+    "anlam_tr": "havuz (حَوْضُ سِبَاحَةٍ: yüzme havuzu)"
+  },
+  {
+    "id": "kelime_1030",
+    "tur": "isim",
+    "kok": "س و ح",
+    "mufret": "سَاحَة",
+    "cemi": "سَاحَات",
+    "anlam_tr": "meydan, alan"
   }
 ]
