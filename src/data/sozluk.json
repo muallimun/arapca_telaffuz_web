@@ -8175,5 +8175,217 @@
     "muzari": "يَبْقَى",
     "masdar": "بَقَاء",
     "anlam_tr": "kalmak, geriye kalmak"
+  },
+  {
+    "id": "kelime_985",
+    "tur": "fiil",
+    "kok": "ل ي س",
+    "mazi": "لَيْسَ",
+    "muzari": "-",
+    "masdar": "-",
+    "anlam_tr": "değildir, yoktur (لَيْسَتْ: değil, لَسْتُ: değilim, أَلَيْسَ كَذَلِكَ؟: öyle değil mi?)"
+  },
+  {
+    "id": "kelime_986",
+    "tur": "edat",
+    "kok": "ل ذ ي",
+    "mufret": "اَلَّذِي / اَلَّتِي",
+    "cemi": "اَلَّذِينَ",
+    "anlam_tr": "ki o, olan, -en/-an, -dığı (الَّذِي فِي الْوَاجِهَةِ: vitrindeki, الَّذِي فِي الْيَسَارِ: soldaki)"
+  },
+  {
+    "id": "kelime_987",
+    "tur": "edat",
+    "kok": "ض ب ط",
+    "mufret": "بِالضَّبْطِ",
+    "cemi": "-",
+    "anlam_tr": "tam olarak, aynen öyle, tam üstüne bastın"
+  },
+  {
+    "id": "kelime_988",
+    "tur": "edat",
+    "kok": "ق ر ب",
+    "mufret": "تَقْرِيباً",
+    "cemi": "-",
+    "anlam_tr": "yaklaşık olarak, aşağı yukarı"
+  },
+  {
+    "id": "kelime_989",
+    "tur": "fiil",
+    "kok": "ع ج ل",
+    "mazi": "اِسْتَعْجَلَ",
+    "muzari": "يَسْتَعْجِلُ",
+    "masdar": "اِسْتِعْجَال",
+    "anlam_tr": "acele etmek (لِنَسْتَعْجِلْ: acele edelim, لَا تَسْتَعْجِلْ: acele etme)"
+  },
+  {
+    "id": "kelime_990",
+    "tur": "edat",
+    "kok": "إ ذ ن",
+    "mufret": "إِذَنْ",
+    "cemi": "-",
+    "anlam_tr": "öyleyse, o hâlde, demek ki"
+  },
+  {
+    "id": "kelime_991",
+    "tur": "edat",
+    "kok": "ر أ ي",
+    "mufret": "يَا تُرَى",
+    "cemi": "-",
+    "anlam_tr": "acaba"
+  },
+  {
+    "id": "kelime_992",
+    "tur": "edat",
+    "kok": "ج د د",
+    "mufret": "مُجَدَّداً",
+    "cemi": "-",
+    "anlam_tr": "tekrar, yeniden, bir kez daha"
+  },
+  {
+    "id": "kelime_993",
+    "tur": "isim",
+    "kok": "ب ر ك",
+    "mufret": "مَبْرُوك",
+    "cemi": "-",
+    "anlam_tr": "hayırlı olsun, kutlu olsun, tebrikler"
+  },
+  {
+    "id": "kelime_994",
+    "tur": "isim",
+    "kok": "ج ز ل",
+    "mufret": "جَزِيل / جَزِيلاً",
+    "cemi": "-",
+    "anlam_tr": "çok, bol, pek çok (شُكْراً جَزِيلاً: çok teşekkür ederim)"
+  },
+  {
+    "id": "kelime_995",
+    "tur": "isim",
+    "kok": "ر و ع",
+    "mufret": "رَائِع",
+    "cemi": "رَائِعُونَ",
+    "anlam_tr": "harika, muhteşem, enfes"
+  },
+  {
+    "id": "kelime_996",
+    "tur": "isim",
+    "kok": "غ ي ي",
+    "mufret": "غَايَة / لِلْغَايَةِ",
+    "cemi": "غَايَات",
+    "anlam_tr": "son derece, oldukça; amaç, gaye (جَمِيلَةٌ لِلْغَايَةِ: son derece güzel)"
+  },
+  {
+    "id": "kelime_997",
+    "tur": "isim",
+    "kok": "م ي ز",
+    "mufret": "مُمْتَاز",
+    "cemi": "مُمْتَازُونَ",
+    "anlam_tr": "harika, mükemmel, çok güzel, seçkin"
+  },
+  {
+    "id": "kelime_998",
+    "tur": "isim",
+    "kok": "ل ق ي",
+    "mufret": "اِلْتِقَاء",
+    "cemi": "-",
+    "anlam_tr": "karşılaşma, buluşma, görüşme (سَعِدْتُ بِالْتِقَائِكِ: seninle karşılaştığıma sevindim)"
+  },
+  {
+    "id": "kelime_999",
+    "tur": "fiil",
+    "kok": "ن ظ ر",
+    "mazi": "اِنْتَظَرَ",
+    "muzari": "يَنْتَظِرُ",
+    "masdar": "اِنْتِظَار",
+    "anlam_tr": "beklemek (نَحْنُ بِالِانْتِظَارِ: sabırsızlıkla bekliyoruz, غُرْفَةُ الِانْتِظَارِ: bekleme salonu)"
+  },
+  {
+    "id": "kelime_1000",
+    "tur": "isim",
+    "kok": "ن ظ ر",
+    "mufret": "اِنْتِظَار",
+    "cemi": "-",
+    "anlam_tr": "bekleyiş, bekleme"
+  },
+  {
+    "id": "kelime_1001",
+    "tur": "edat",
+    "kok": "خ ل ل",
+    "mufret": "خِلَالَ",
+    "cemi": "-",
+    "anlam_tr": "içinde, zarfında, boyunca, esnasında (مِنْ خِلَالِ: aracılığıyla, sayesinde)"
+  },
+  {
+    "id": "kelime_1002",
+    "tur": "edat",
+    "kok": "ذ ل ك",
+    "mufret": "كَذَلِكَ",
+    "cemi": "-",
+    "anlam_tr": "öyle, aynı şekilde (أَلَيْسَ كَذَلِكَ؟: öyle değil mi?)"
+  },
+  {
+    "id": "kelime_1003",
+    "tur": "edat",
+    "kok": "م ث ل",
+    "mufret": "مِثْل",
+    "cemi": "أَمْثَال",
+    "anlam_tr": "gibi, benzer (مِثْلِي: benim gibi, مِثْلُكِ: senin gibi)"
+  },
+  {
+    "id": "kelime_1004",
+    "tur": "fiil",
+    "kok": "خ و ف",
+    "mazi": "خَافَ",
+    "muzari": "يَخَافُ",
+    "masdar": "خَوْف",
+    "anlam_tr": "korkmak (مِنْ ile: أَخَافُ مِنَ الْإِبْرَةِ: iğneden korkuyorum)"
+  },
+  {
+    "id": "kelime_1005",
+    "tur": "isim",
+    "kok": "أ ب ر",
+    "mufret": "إِبْرَة",
+    "cemi": "إِبَر",
+    "anlam_tr": "iğne, enjeksiyon"
+  },
+  {
+    "id": "kelime_1006",
+    "tur": "isim",
+    "kok": "ش ك و",
+    "mufret": "شَكْوَى",
+    "cemi": "شَكَاوَى",
+    "anlam_tr": "şikâyet, rahatsızlık (مَا شَكْوَاكَ؟: şikâyetiniz nedir?)"
+  },
+  {
+    "id": "kelime_1007",
+    "tur": "edat",
+    "kok": "ن س ب",
+    "mufret": "بِالنِّسْبَةِ / نِسْبَة",
+    "cemi": "نِسَب",
+    "anlam_tr": "-e göre, bakımından, oran (بِالنِّسْبَةِ لَكَ: senin için / sana göre)"
+  },
+  {
+    "id": "kelime_1008",
+    "tur": "isim",
+    "kok": "ط ع ن",
+    "mufret": "طَاعِن",
+    "cemi": "-",
+    "anlam_tr": "yaşı ilerlemiş, ihtiyar (طَاعِنٌ فِي السِّنِّ: yaşlı, ihtiyar)"
+  },
+  {
+    "id": "kelime_1009",
+    "tur": "isim",
+    "kok": "ج ب ر",
+    "mufret": "مَجْبُور",
+    "cemi": "مَجْبُورُونَ",
+    "anlam_tr": "mecbur, zorunda"
+  },
+  {
+    "id": "kelime_1010",
+    "tur": "isim",
+    "kok": "ف ت ي",
+    "mufret": "فَتَاة",
+    "cemi": "فَتَيَات",
+    "anlam_tr": "genç kız"
   }
 ]

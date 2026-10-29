@@ -428,8 +428,8 @@ export function extractArabicRoot(word: string): string {
   let core = normalizeForComparison(word).replace(/[^\u0600-\u06FF]/g, "");
   if (core.length <= 2) return core;
 
-  // Yaygın önekleri (ال، وال، بال، كال، لل، و، ف، ب، ل) soy — Gelecek zaman "س" isimlerden asla soyulmaz!
-  const prefixes = ["وبال", "وال", "فال", "بال", "كال", "ولل", "لل", "ال", "و", "ف", "ب", "ل"];
+  // Yaygın önekleri (ال، وال، بال، كال، لل، ول، فل، و، ف، ب، ل) soy — Gelecek zaman "س" isimlerden asla soyulmaz!
+  const prefixes = ["وبال", "وال", "فال", "بال", "كال", "ولل", "لل", "ال", "ول", "فل", "و", "ف", "ب", "ل"];
   for (const pref of prefixes) {
     if (core.startsWith(pref) && core.length - pref.length >= 3) {
       core = core.slice(pref.length);
@@ -438,7 +438,7 @@ export function extractArabicRoot(word: string): string {
   }
 
   // Yaygın sonekleri (zamirler, çoğul ekleri, tâ-i merbûta/ه, tenvin elifi) soy
-  const suffixes = ["كما", "هما", "كم", "هم", "نا", "ها", "ات", "ون", "ين", "ان", "ه", "ك", "ي", "ا"];
+  const suffixes = ["كما", "هما", "كم", "هم", "نا", "ها", "وا", "ات", "ون", "ين", "ان", "ه", "ك", "ي", "ا"];
   for (const suff of suffixes) {
     if (core.endsWith(suff) && core.length - suff.length >= 3) {
       core = core.slice(0, -suff.length);
@@ -450,8 +450,8 @@ export function extractArabicRoot(word: string): string {
     }
   }
 
-  // 0. İstif'âl (استفعال / استفالة / استـ) Bâbı Kök Çözümlemesi:
-  // "استمارة", "استراحة", "استشارة", "استقامة" gibi kelimelerde baştaki "است" 3 harfli zâid önek olup
+  // 0. İstif'âl (استفعال / استفالة / استـ / نستـ / يستـ / تستـ) Bâbı Kök Çözümlemesi:
+  // "استمارة", "استراحة", "استشارة", "استقامة", "لنستعجل" gibi kelimelerde baştaki "است / نست / يست / تست" zâid önek olup
   // "س" ve "ت" kök harfi değildir!
   if (core === "استمار" || core === "استماره") {
     return "أمر";
@@ -478,11 +478,11 @@ export function extractArabicRoot(word: string): string {
   if (istifalHollowRoots[core]) {
     return istifalHollowRoots[core];
   }
-  const istifalHollowMatch = core.match(/^است([^\u0627\u0648\u064A])ا([^\u0627\u0648\u064A])$/);
+  const istifalHollowMatch = core.match(/^(است|[انتي]ست)([^\u0627\u0648\u064A])ا([^\u0627\u0648\u064A])$/);
   if (istifalHollowMatch) {
-    return `${istifalHollowMatch[1]}و${istifalHollowMatch[2]}`;
+    return `${istifalHollowMatch[2]}و${istifalHollowMatch[3]}`;
   }
-  if (core.startsWith("است") && core.length >= 6) {
+  if ((core.startsWith("است") || /^[انتي]ست/.test(core)) && core.length >= 6) {
     const afterIst = core.slice(3).replace(/[اوي]/g, "");
     if (afterIst.length === 3) {
       return afterIst;
