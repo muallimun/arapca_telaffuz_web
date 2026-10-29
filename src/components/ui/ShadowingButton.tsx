@@ -17,7 +17,7 @@ interface Props {
   onOpenCoach?: () => void;
 }
 
-export default function ShadowingButton({ onOpenCoach }: Props) {
+export default function ShadowingButton({ text, onOpenCoach }: Props) {
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -49,7 +49,14 @@ export default function ShadowingButton({ onOpenCoach }: Props) {
     playRecordStart();
 
     try {
+      const targetWords = (text || "").trim().split(/\s+/).filter(Boolean);
+      const maxRecordingDurationMs = Math.max(
+        15000,
+        Math.min(45000, targetWords.length * 1800 + 8000)
+      );
       const session = await start16kHzRecorder({
+        silenceDurationMs: 2500,
+        maxDurationMs: maxRecordingDurationMs,
         onAutoSilenceStop: () => {
           stopRecording();
         },

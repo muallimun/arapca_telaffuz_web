@@ -61,6 +61,7 @@ import {
 import {
   extractDialogueIdioms,
   ExtractedDialogueIdiom,
+  normalizeForIdiomMatch,
 } from "@/lib/arabicIdioms";
 import { DialogueLine, DictionaryItem } from "@/types/data";
 import {
@@ -400,7 +401,8 @@ export default function DialogueDetailPage({
     dialogue.id
   );
   const dialogueIdioms: ExtractedDialogueIdiom[] = extractDialogueIdioms(
-    dialogue.satirlar
+    dialogue.satirlar,
+    dialogue.seviye
   );
 
   const speakers = Array.from(
@@ -467,12 +469,11 @@ export default function DialogueDetailPage({
     setIsPlayingAll(false);
     playRecordStart();
 
-    // Cümleyi rahatça okuyabilmek için yeterli süre: Math.max(5500, referenceDuration * 2.2) ms
-    const wordCount = line.arapca.trim().split(/\s+/).length;
-    const referenceDurationSec = Math.max(2.5, wordCount * 0.8 + 0.8);
-    const waitDurationMs = Math.min(
-      16000,
-      Math.round(Math.max(5500, referenceDurationSec * 2.2 * 1000))
+    // Kelime sayısına göre dinamik maksimum kayıt süresi (15 sn - 45 sn arası) ve 2.5 sn sessizlik toleransı
+    const wordCount = line.arapca.trim().split(/\s+/).filter(Boolean).length;
+    const waitDurationMs = Math.max(
+      15000,
+      Math.min(45000, wordCount * 1800 + 8000)
     );
     setRoleplayWaitDurationMs(waitDurationMs);
     setRoleplayRemainingPct(100);
@@ -497,7 +498,7 @@ export default function DialogueDetailPage({
     // 2. Canlı 16kHz AudioContext RMS ve ses dalgası kaydını başlat
     try {
       const recSession = await start16kHzRecorder({
-        silenceDurationMs: 2200,
+        silenceDurationMs: 2500,
         maxDurationMs: waitDurationMs,
         onLiveRms: (rms, history) => {
           setRoleplayMicLevel(rms);
@@ -618,8 +619,12 @@ export default function DialogueDetailPage({
         // SpeechRecognition Arapça metin yakaladıysa hedef cümle ile karşılaştırarak gerçek puan hesapla
         const evalRes = evaluateSentenceWords(line.arapca, capturedText);
         computedScore = evalRes.overallScore;
+        if (computedScore > 0) {
+          recordPronunciationScore(computedScore);
+        }
       } else if (recordedData && hasMicSpeechEnergy) {
-        // Firefox vb. tarayıcıda ses dalgası var ama SpeechRecognition boş döndüyse 16kHz DSP akustik/ritim analizi yap
+        // Ses dalgası var ama metin çözümlenemediyse sahte telaffuz puanı üretme ve istatistiklere kaydetme;
+        // yalnızca ritim uyumunu hesapla
         const wordCount = line.arapca.trim().split(/\s+/).length;
         const expectedDur = Math.max(1.4, wordCount * 0.65 + 0.5);
         const estRefBars = Array.from({ length: 48 }, (_, idx) =>
@@ -630,18 +635,15 @@ export default function DialogueDetailPage({
           recordedData.envelopeBars,
           estRefBars,
           recordedData.duration,
-          expectedDur
+          expectedDur,
+          ""
         );
-        computedScore = dspEval.overallScore;
+        computedScore = dspEval.rhythmScore ?? 0;
       }
     }
 
     cleanupRoleplayMic();
     playRecordStop();
-
-    if (computedScore > 0) {
-      recordPronunciationScore(computedScore);
-    }
 
     setRoleplayActiveLine(null);
     setRoleplayTransitionNotice(false);
@@ -1862,72 +1864,95 @@ export default function DialogueDetailPage({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {dialogueIdioms.map((idm) => (
-                  <div
-                    key={idm.id}
-                    className="rounded-2xl bg-white dark:bg-slate-900/90 border-2 border-[#E6D7BE] dark:border-slate-700 border-l-4 border-l-[#6741D9] dark:border-l-indigo-500 p-3.5 flex flex-col justify-between space-y-2.5"
-                  >
-                    <div className="space-y-1.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="px-2 py-0.5 rounded-md bg-[#F3F0FF] dark:bg-indigo-950/80 border border-[#6741D9]/30 dark:border-indigo-500/40 text-[10px] font-extrabold text-[#6741D9] dark:text-indigo-200">
-                          Cümle #{idm.lineNumber} • Kalıp İfade
-                        </span>
-                        <span
-                          dir="rtl"
-                          className="arabic font-arabic text-2xl sm:text-3xl font-bold text-[#087F5B] dark:text-[#20c997] text-right leading-snug"
+                {dialogueIdioms.map((idm) => {
+                  const hasPoliteOrAltVariant =
+                    Boolean(idm.matchedPhrase) &&
+                    normalizeForIdiomMatch(idm.matchedPhrase || "") !==
+                      normalizeForIdiomMatch(idm.arabic);
+                  const primaryAr: string =
+                    hasPoliteOrAltVariant && idm.matchedPhrase
+                      ? idm.matchedPhrase
+                      : idm.arabic;
+
+                  return (
+                    <div
+                      key={idm.id}
+                      className="rounded-2xl bg-white dark:bg-slate-900/90 border-2 border-[#E6D7BE] dark:border-slate-700 border-l-4 border-l-[#6741D9] dark:border-l-indigo-500 p-3.5 flex flex-col justify-between space-y-2.5"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="px-2 py-0.5 rounded-md bg-[#F3F0FF] dark:bg-indigo-950/80 border border-[#6741D9]/30 dark:border-indigo-500/40 text-[10px] font-extrabold text-[#6741D9] dark:text-indigo-200">
+                            Cümle #{idm.lineNumber} • {idm.level || dialogue.seviye} • Kalıp İfade
+                          </span>
+                          <span
+                            dir="rtl"
+                            className="arabic font-arabic text-2xl sm:text-3xl font-bold text-[#087F5B] dark:text-[#20c997] text-right leading-snug"
+                          >
+                            {getDisplayText(primaryAr)}
+                          </span>
+                        </div>
+
+                        {hasPoliteOrAltVariant && (
+                          <div className="flex items-center justify-end gap-1.5 text-[11px] font-bold text-[#6741D9] dark:text-indigo-300 bg-[#F3F0FF]/80 dark:bg-indigo-950/50 px-2.5 py-1 rounded-lg border border-[#6741D9]/20">
+                            <span>💡 Kibar / Alternatif Kullanım:</span>
+                            <bdi
+                              dir="rtl"
+                              className="arabic font-arabic text-base font-bold text-[#087F5B] dark:text-[#20c997]"
+                            >
+                              {getDisplayText(idm.arabic)}
+                            </bdi>
+                          </div>
+                        )}
+
+                        <p className="text-sm font-extrabold text-[var(--foreground)] dark:text-slate-100">
+                          {idm.meaningTr}
+                        </p>
+
+                        <p className="text-[11px] font-semibold text-[var(--muted)] dark:text-slate-300">
+                          <strong className="text-[var(--foreground)] dark:text-slate-100">
+                            Kelime Anlamı:
+                          </strong>{" "}
+                          {idm.literalTr}
+                        </p>
+
+                        <div className="rounded-xl bg-[#F7EFE1]/80 dark:bg-slate-800/90 px-2.5 py-1.5 border border-[#E6D7BE] dark:border-slate-700 text-[11px] font-semibold text-[var(--foreground)] dark:text-slate-200 leading-snug">
+                          💡 <strong>Kullanım İpucu:</strong> {idm.usageNote}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            void speakHybrid({
+                              text: primaryAr,
+                              rate: speechRate,
+                            });
+                          }}
+                          className="flex-1 h-9 px-3 rounded-xl bg-[#F7EFE1] dark:bg-slate-800 hover:border-[#0CA678] border-2 border-[#E6D7BE] dark:border-slate-600 border-b-3 text-xs font-extrabold text-[var(--foreground)] dark:text-slate-100 flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          {getDisplayText(idm.arabic)}
-                        </span>
-                      </div>
+                          <Volume2 size={14} className="text-[#0CA678]" />
+                          <span>🔊 Dinle</span>
+                        </button>
 
-                      <p className="text-sm font-extrabold text-[var(--foreground)] dark:text-slate-100">
-                        {idm.meaningTr}
-                      </p>
-
-                      <p className="text-[11px] font-semibold text-[var(--muted)] dark:text-slate-300">
-                        <strong className="text-[var(--foreground)] dark:text-slate-100">
-                          Kelime Anlamı:
-                        </strong>{" "}
-                        {idm.literalTr}
-                      </p>
-
-                      <div className="rounded-xl bg-[#F7EFE1]/80 dark:bg-slate-800/90 px-2.5 py-1.5 border border-[#E6D7BE] dark:border-slate-700 text-[11px] font-semibold text-[var(--foreground)] dark:text-slate-200 leading-snug">
-                        💡 <strong>Kullanım İpucu:</strong> {idm.usageNote}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            openShadowingCoach({
+                              text: primaryAr,
+                            });
+                          }}
+                          className="flex-1 h-9 px-3 rounded-xl bg-[#F3F0FF] dark:bg-indigo-950/85 hover:bg-[#e8e2ff] dark:hover:bg-indigo-900/80 border-2 border-[#6741D9] dark:border-indigo-500 border-b-3 text-xs font-extrabold text-[#6741D9] dark:text-indigo-200 flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Mic size={14} />
+                          <span>🎙️ Telaffuz Et</span>
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playClick();
-                          void speakHybrid({
-                            text: idm.arabic,
-                            rate: speechRate,
-                          });
-                        }}
-                        className="flex-1 h-9 px-3 rounded-xl bg-[#F7EFE1] dark:bg-slate-800 hover:border-[#0CA678] border-2 border-[#E6D7BE] dark:border-slate-600 border-b-3 text-xs font-extrabold text-[var(--foreground)] dark:text-slate-100 flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Volume2 size={14} className="text-[#0CA678]" />
-                        <span>🔊 Dinle</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playClick();
-                          openShadowingCoach({
-                            text: idm.arabic,
-                          });
-                        }}
-                        className="flex-1 h-9 px-3 rounded-xl bg-[#F3F0FF] dark:bg-indigo-950/85 hover:bg-[#e8e2ff] dark:hover:bg-indigo-900/80 border-2 border-[#6741D9] dark:border-indigo-500 border-b-3 text-xs font-extrabold text-[#6741D9] dark:text-indigo-200 flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Mic size={14} />
-                        <span>🎙️ Telaffuz Et</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}
@@ -2754,62 +2779,84 @@ export default function DialogueDetailPage({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            {dialogueIdioms.map((idm) => (
-              <div
-                key={idm.id}
-                className="rounded-xl bg-white dark:bg-slate-900/90 border border-[#E6D7BE] dark:border-slate-700 border-l-4 border-l-[#6741D9] dark:border-l-indigo-500 p-3 flex flex-col justify-between gap-2"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-[10px] font-extrabold text-[#6741D9] dark:text-indigo-200 bg-[#F3F0FF] dark:bg-indigo-950/80 border border-[#6741D9]/25 dark:border-indigo-500/40 px-2 py-0.5 rounded-md">
-                      Cümle #{idm.lineNumber}
-                    </span>
-                    <span
-                      dir="rtl"
-                      className="arabic font-arabic text-xl sm:text-2xl font-bold text-[#087F5B] dark:text-[#20c997] text-right leading-snug"
-                    >
-                      {getDisplayText(idm.arabic)}
-                    </span>
-                  </div>
-                  <p className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] dark:text-slate-100">
-                    {idm.meaningTr}
-                  </p>
-                  <p className="text-[11px] font-medium text-[var(--muted)] dark:text-slate-300 leading-snug">
-                    💡 {idm.usageNote}
-                  </p>
-                </div>
+            {dialogueIdioms.map((idm) => {
+              const hasPoliteOrAltVariant =
+                Boolean(idm.matchedPhrase) &&
+                normalizeForIdiomMatch(idm.matchedPhrase || "") !==
+                  normalizeForIdiomMatch(idm.arabic);
+              const primaryAr: string =
+                hasPoliteOrAltVariant && idm.matchedPhrase
+                  ? idm.matchedPhrase
+                  : idm.arabic;
 
-                <div className="flex items-center gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playClick();
-                      void speakHybrid({
-                        text: idm.arabic,
-                        rate: speechRate,
-                      });
-                    }}
-                    className="flex-1 h-8 px-2.5 rounded-xl bg-[#F7EFE1] dark:bg-slate-800 hover:border-[#0CA678] border border-[#E6D7BE] dark:border-slate-600 text-[11px] font-extrabold text-[var(--foreground)] dark:text-slate-100 flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Volume2 size={13} className="text-[#0CA678]" />
-                    <span>🔊 Dinle</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playClick();
-                      openShadowingCoach({
-                        text: idm.arabic,
-                      });
-                    }}
-                    className="flex-1 h-8 px-2.5 rounded-xl bg-[#F3F0FF] dark:bg-indigo-950/85 hover:bg-[#e8e2ff] dark:hover:bg-indigo-900/80 border border-[#6741D9]/50 dark:border-indigo-500 text-[11px] font-extrabold text-[#6741D9] dark:text-indigo-200 flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Mic size={13} />
-                    <span>🎙️ Telaffuz Et</span>
-                  </button>
+              return (
+                <div
+                  key={idm.id}
+                  className="rounded-xl bg-white dark:bg-slate-900/90 border border-[#E6D7BE] dark:border-slate-700 border-l-4 border-l-[#6741D9] dark:border-l-indigo-500 p-3 flex flex-col justify-between gap-2"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[10px] font-extrabold text-[#6741D9] dark:text-indigo-200 bg-[#F3F0FF] dark:bg-indigo-950/80 border border-[#6741D9]/25 dark:border-indigo-500/40 px-2 py-0.5 rounded-md">
+                        Cümle #{idm.lineNumber} • {idm.level || dialogue.seviye}
+                      </span>
+                      <span
+                        dir="rtl"
+                        className="arabic font-arabic text-xl sm:text-2xl font-bold text-[#087F5B] dark:text-[#20c997] text-right leading-snug"
+                      >
+                        {getDisplayText(primaryAr)}
+                      </span>
+                    </div>
+                    {hasPoliteOrAltVariant && (
+                      <div className="flex items-center justify-end gap-1.5 text-[11px] font-bold text-[#6741D9] dark:text-indigo-300 bg-[#F3F0FF]/80 dark:bg-indigo-950/50 px-2 py-0.5 rounded-lg border border-[#6741D9]/20">
+                        <span>💡 Kibar / Alternatif Kullanım:</span>
+                        <bdi
+                          dir="rtl"
+                          className="arabic font-arabic text-sm sm:text-base font-bold text-[#087F5B] dark:text-[#20c997]"
+                        >
+                          {getDisplayText(idm.arabic)}
+                        </bdi>
+                      </div>
+                    )}
+                    <p className="text-xs sm:text-sm font-extrabold text-[var(--foreground)] dark:text-slate-100">
+                      {idm.meaningTr}
+                    </p>
+                    <p className="text-[11px] font-medium text-[var(--muted)] dark:text-slate-300 leading-snug">
+                      💡 {idm.usageNote}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        void speakHybrid({
+                          text: primaryAr,
+                          rate: speechRate,
+                        });
+                      }}
+                      className="flex-1 h-8 px-2.5 rounded-xl bg-[#F7EFE1] dark:bg-slate-800 hover:border-[#0CA678] border border-[#E6D7BE] dark:border-slate-600 text-[11px] font-extrabold text-[var(--foreground)] dark:text-slate-100 flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Volume2 size={13} className="text-[#0CA678]" />
+                      <span>🔊 Dinle</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        openShadowingCoach({
+                          text: primaryAr,
+                        });
+                      }}
+                      className="flex-1 h-8 px-2.5 rounded-xl bg-[#F3F0FF] dark:bg-indigo-950/85 hover:bg-[#e8e2ff] dark:hover:bg-indigo-900/80 border border-[#6741D9]/50 dark:border-indigo-500 text-[11px] font-extrabold text-[#6741D9] dark:text-indigo-200 flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Mic size={13} />
+                      <span>🎙️ Telaffuz Et</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}

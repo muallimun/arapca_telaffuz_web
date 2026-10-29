@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { sozluk } from "@/lib/data";
 import {
   X,
   BookOpen,
@@ -494,8 +495,11 @@ export default function GuideAndInfoModal() {
                     <span>Dilbilimsel Veri Tabanı</span>
                   </div>
                   <p className="text-xs text-[var(--muted)] leading-relaxed">
-                    CEFR (A1–B2) standartlarına uyumlu 60 özgün diyalog, 930+
-                    müfret/cemî/mâzî/muzâri/masdar kayıtlı sözlük ve 5 kademeli
+                    CEFR (A1–B2) standartlarına uyumlu 60 özgün diyalog,{" "}
+                    {(Math.floor(sozluk.length / 100) * 100).toLocaleString(
+                      "tr-TR"
+                    )}
+                    + müfret/cemî/mâzî/muzâri/masdar kayıtlı sözlük ve 5 kademeli
                     Arapça morfolojik çözümleyici.
                   </p>
                 </div>

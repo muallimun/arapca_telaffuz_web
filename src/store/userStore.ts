@@ -43,9 +43,50 @@ function computeNextStreak(
   };
 }
 
+function sanitizeStringArray(arr: unknown): string[] {
+  if (!Array.isArray(arr)) return [];
+  return Array.from(
+    new Set(
+      arr
+        .filter((x): x is string => typeof x === "string")
+        .map((x) => x.trim())
+        .filter((x) => x.length > 0)
+    )
+  );
+}
+
+function sanitizeDictionaryItems(arr: unknown): DictionaryItem[] {
+  if (!Array.isArray(arr)) return [];
+  const seenIds = new Set<string>();
+  const validItems: DictionaryItem[] = [];
+  for (const raw of arr) {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) continue;
+    const item = raw as Record<string, unknown>;
+    const id = typeof item.id === "string" ? item.id.trim() : "";
+    const hasWordField =
+      (typeof item.mufret === "string" && item.mufret.trim().length > 0) ||
+      (typeof item.mazi === "string" && item.mazi.trim().length > 0);
+    if (!id || !hasWordField || seenIds.has(id)) continue;
+    seenIds.add(id);
+    validItems.push({
+      id,
+      kok: typeof item.kok === "string" ? item.kok : "-",
+      tur: typeof item.tur === "string" ? item.tur : "isim",
+      mufret: typeof item.mufret === "string" ? item.mufret : undefined,
+      cemi: typeof item.cemi === "string" ? item.cemi : undefined,
+      mazi: typeof item.mazi === "string" ? item.mazi : undefined,
+      muzari: typeof item.muzari === "string" ? item.muzari : undefined,
+      masdar: typeof item.masdar === "string" ? item.masdar : undefined,
+      anlam_tr: typeof item.anlam_tr === "string" ? item.anlam_tr : "",
+    });
+  }
+  return validItems;
+}
+
 interface UserState {
   favoriteDialogues: string[];
   completedDialogues: string[];
+  rewardedDialogues: string[];
   favoriteWords: DictionaryItem[];
   learnedWords: string[];
   weakWords: DictionaryItem[];
@@ -69,6 +110,7 @@ interface UserState {
   recordPronunciationScore: (score: number) => void;
   addStudyMinutes: (minutes: number) => void;
   setDailyGoalMinutes: (minutes: number) => void;
+  syncDailyProgress: () => void;
 
   exportProgress: () => string;
   importProgress: (jsonData: string) => boolean;
@@ -85,14 +127,15 @@ export const useUserStore = create<UserState>()(
     (set, get) => ({
       favoriteDialogues: [],
       completedDialogues: [],
+      rewardedDialogues: [],
       favoriteWords: [],
       learnedWords: [],
       weakWords: [],
       mistakeIds: [],
       pronunciationScores: [],
       studyMinutes: 0,
-      streakDays: 1,
-      lastStudyDate: getTodayDateString(),
+      streakDays: 0,
+      lastStudyDate: "",
       dailyGoalMinutes: 15,
 
       toggleFavoriteDialogue: (id) =>
@@ -106,19 +149,35 @@ export const useUserStore = create<UserState>()(
         set((state) => {
           const isCompleted = state.completedDialogues.includes(id);
           const today = getTodayDateString();
+          const yesterday = getYesterdayDateString();
+          const rewardedList = state.rewardedDialogues || [];
+          const alreadyRewarded = rewardedList.includes(id);
+
+          // Aynı diyaloğu tekrar tekrar tamamlayıp geri alarak yapay süre (+5 dk) üretilmesini engelle
+          const shouldRewardTime = !isCompleted && !alreadyRewarded;
           const baseMinutes =
             state.lastStudyDate === today ? state.studyMinutes : 0;
-          const streakUpdate = isCompleted
-            ? {
-                streakDays: state.streakDays,
+          const currentEffectiveStreak =
+            state.lastStudyDate === today || state.lastStudyDate === yesterday
+              ? state.streakDays
+              : 0;
+
+          const streakUpdate = shouldRewardTime
+            ? computeNextStreak(currentEffectiveStreak, state.lastStudyDate)
+            : {
+                streakDays: currentEffectiveStreak,
                 lastStudyDate: state.lastStudyDate,
-              }
-            : computeNextStreak(state.streakDays, state.lastStudyDate);
+              };
+
           return {
             completedDialogues: isCompleted
               ? state.completedDialogues.filter((d) => d !== id)
               : [...state.completedDialogues, id],
-            studyMinutes: isCompleted ? state.studyMinutes : baseMinutes + 5,
+            rewardedDialogues:
+              !isCompleted && !alreadyRewarded
+                ? [...rewardedList, id]
+                : rewardedList,
+            studyMinutes: shouldRewardTime ? baseMinutes + 5 : baseMinutes,
             ...streakUpdate,
           };
         }),
@@ -149,19 +208,24 @@ export const useUserStore = create<UserState>()(
           if (!id || typeof id !== "string") return state;
           const isLearned = state.learnedWords.includes(id);
           const today = getTodayDateString();
+          const yesterday = getYesterdayDateString();
           const baseMinutes =
             state.lastStudyDate === today ? state.studyMinutes : 0;
+          const currentEffectiveStreak =
+            state.lastStudyDate === today || state.lastStudyDate === yesterday
+              ? state.streakDays
+              : 0;
           const streakUpdate = isLearned
             ? {
-                streakDays: state.streakDays,
+                streakDays: currentEffectiveStreak,
                 lastStudyDate: state.lastStudyDate,
               }
-            : computeNextStreak(state.streakDays, state.lastStudyDate);
+            : computeNextStreak(currentEffectiveStreak, state.lastStudyDate);
           return {
             learnedWords: isLearned
               ? state.learnedWords.filter((wId) => wId !== id)
               : [...state.learnedWords, id],
-            studyMinutes: isLearned ? state.studyMinutes : baseMinutes + 1,
+            studyMinutes: isLearned ? baseMinutes : baseMinutes + 1,
             ...streakUpdate,
           };
         }),
@@ -227,6 +291,8 @@ export const useUserStore = create<UserState>()(
 
       recordPronunciationScore: (score) =>
         set((state) => {
+          if (!Number.isFinite(score) || score <= 0) return state;
+          const clampedScore = Math.min(100, Math.max(0, Math.round(score)));
           const today = getTodayDateString();
           const baseMinutes =
             state.lastStudyDate === today ? state.studyMinutes : 0;
@@ -237,7 +303,7 @@ export const useUserStore = create<UserState>()(
           return {
             pronunciationScores: [
               ...state.pronunciationScores.slice(-49),
-              score,
+              clampedScore,
             ],
             studyMinutes: baseMinutes + 1,
             ...streakUpdate,
@@ -246,19 +312,47 @@ export const useUserStore = create<UserState>()(
 
       addStudyMinutes: (minutes) =>
         set((state) => {
+          const validMinutes = Math.max(0, Math.floor(Number(minutes) || 0));
+          if (validMinutes <= 0) return state;
           const today = getTodayDateString();
           const baseMinutes =
             state.lastStudyDate === today ? state.studyMinutes : 0;
           return {
-            studyMinutes: Math.max(0, baseMinutes + minutes),
+            studyMinutes: Math.max(0, baseMinutes + validMinutes),
             ...computeNextStreak(state.streakDays, state.lastStudyDate),
           };
         }),
 
       setDailyGoalMinutes: (minutes) =>
         set(() => ({
-          dailyGoalMinutes: Math.max(5, Math.min(180, minutes)),
+          dailyGoalMinutes: Math.max(
+            5,
+            Math.min(180, Math.floor(Number(minutes) || 15))
+          ),
         })),
+
+      syncDailyProgress: () =>
+        set((state) => {
+          const today = getTodayDateString();
+          const yesterday = getYesterdayDateString();
+          const isToday = state.lastStudyDate === today;
+          const isYesterday = state.lastStudyDate === yesterday;
+
+          const effectiveMinutes = isToday ? state.studyMinutes : 0;
+          const effectiveStreak =
+            isToday || isYesterday ? state.streakDays : 0;
+
+          if (
+            effectiveMinutes === state.studyMinutes &&
+            effectiveStreak === state.streakDays
+          ) {
+            return state;
+          }
+          return {
+            studyMinutes: effectiveMinutes,
+            streakDays: effectiveStreak,
+          };
+        }),
 
       exportProgress: () => {
         const state = get();
@@ -267,6 +361,7 @@ export const useUserStore = create<UserState>()(
           exportedAt: new Date().toISOString(),
           favoriteDialogues: state.favoriteDialogues,
           completedDialogues: state.completedDialogues,
+          rewardedDialogues: state.rewardedDialogues || [],
           favoriteWords: state.favoriteWords,
           learnedWords: state.learnedWords,
           weakWords: state.weakWords,
@@ -282,47 +377,118 @@ export const useUserStore = create<UserState>()(
 
       importProgress: (jsonData: string) => {
         try {
-          const parsed = JSON.parse(jsonData);
-          if (!parsed || typeof parsed !== "object") return false;
-          set((state) => ({
-            favoriteDialogues: Array.isArray(parsed.favoriteDialogues)
-              ? parsed.favoriteDialogues
-              : state.favoriteDialogues,
-            completedDialogues: Array.isArray(parsed.completedDialogues)
-              ? parsed.completedDialogues
-              : state.completedDialogues,
-            favoriteWords: Array.isArray(parsed.favoriteWords)
-              ? parsed.favoriteWords
-              : state.favoriteWords,
-            learnedWords: Array.isArray(parsed.learnedWords)
-              ? parsed.learnedWords
-              : state.learnedWords,
-            weakWords: Array.isArray(parsed.weakWords)
-              ? parsed.weakWords
-              : state.weakWords,
-            mistakeIds: Array.isArray(parsed.mistakeIds)
-              ? parsed.mistakeIds
-              : state.mistakeIds,
-            pronunciationScores: Array.isArray(parsed.pronunciationScores)
-              ? parsed.pronunciationScores
-              : state.pronunciationScores,
-            studyMinutes:
-              typeof parsed.studyMinutes === "number"
-                ? parsed.studyMinutes
-                : state.studyMinutes,
-            streakDays:
-              typeof parsed.streakDays === "number"
-                ? parsed.streakDays
-                : state.streakDays,
-            lastStudyDate:
-              typeof parsed.lastStudyDate === "string"
-                ? parsed.lastStudyDate
-                : state.lastStudyDate,
-            dailyGoalMinutes:
-              typeof parsed.dailyGoalMinutes === "number"
-                ? parsed.dailyGoalMinutes
-                : state.dailyGoalMinutes,
-          }));
+          // 1. Boyut sınırı: > 2 MB dosyaları reddet
+          if (
+            !jsonData ||
+            typeof jsonData !== "string" ||
+            jsonData.length > 2 * 1024 * 1024
+          ) {
+            return false;
+          }
+
+          const parsed: unknown = JSON.parse(jsonData);
+          if (
+            typeof parsed !== "object" ||
+            parsed === null ||
+            Array.isArray(parsed)
+          ) {
+            return false;
+          }
+
+          const data = parsed as Record<string, unknown>;
+
+          // En az bir beklenen ilerleme alanının bulunduğunu doğrula
+          const knownKeys = [
+            "favoriteDialogues",
+            "completedDialogues",
+            "favoriteWords",
+            "learnedWords",
+            "weakWords",
+            "mistakeIds",
+            "pronunciationScores",
+            "studyMinutes",
+            "streakDays",
+            "dailyGoalMinutes",
+          ];
+          if (!knownKeys.some((k) => k in data)) {
+            return false;
+          }
+
+          // 2. Dizi ve nesne alanlarını sıkı şema doğrulamasından geçir
+          const favoriteDialogues = sanitizeStringArray(data.favoriteDialogues);
+          const completedDialogues = sanitizeStringArray(
+            data.completedDialogues
+          );
+          const rewardedDialogues = Array.isArray(data.rewardedDialogues)
+            ? sanitizeStringArray(data.rewardedDialogues)
+            : completedDialogues;
+          const learnedWords = sanitizeStringArray(data.learnedWords);
+          const mistakeIds = sanitizeStringArray(data.mistakeIds);
+          const favoriteWords = sanitizeDictionaryItems(data.favoriteWords);
+          const weakWords = sanitizeDictionaryItems(data.weakWords);
+
+          // 3. Sayısal alanları güvenli aralıklara sınırla (clamp)
+          const rawStudyMinutes = Math.max(
+            0,
+            Math.floor(Number(data.studyMinutes) || 0)
+          );
+          const rawStreakDays = Math.max(
+            0,
+            Math.floor(Number(data.streakDays) || 0)
+          );
+          const dailyGoalMinutes = Math.max(
+            5,
+            Math.min(180, Math.floor(Number(data.dailyGoalMinutes) || 15))
+          );
+
+          const lastStudyDate =
+            typeof data.lastStudyDate === "string" &&
+            /^\d{4}-\d{2}-\d{2}$/.test(data.lastStudyDate.trim())
+              ? data.lastStudyDate.trim()
+              : "";
+
+          const today = getTodayDateString();
+          const yesterday = getYesterdayDateString();
+          const studyMinutes = lastStudyDate === today ? rawStudyMinutes : 0;
+          const streakDays =
+            lastStudyDate === today || lastStudyDate === yesterday
+              ? rawStreakDays
+              : 0;
+
+          const pronunciationScores = Array.isArray(data.pronunciationScores)
+            ? data.pronunciationScores
+                .map((n) => Number(n))
+                .filter((n) => Number.isFinite(n) && n >= 0 && n <= 100)
+                .map((n) => Math.round(n))
+                .slice(-50)
+            : [];
+
+          // 4. Mevcut durumu ezmeden önce otomatik yedek al
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem(
+                "arabic_app_backup_before_import",
+                get().exportProgress()
+              );
+            } catch {
+              // ignore storage quota errors
+            }
+          }
+
+          set({
+            favoriteDialogues,
+            completedDialogues,
+            rewardedDialogues,
+            favoriteWords,
+            learnedWords,
+            weakWords,
+            mistakeIds,
+            pronunciationScores,
+            studyMinutes,
+            streakDays,
+            lastStudyDate,
+            dailyGoalMinutes,
+          });
           return true;
         } catch {
           return false;
@@ -333,14 +499,15 @@ export const useUserStore = create<UserState>()(
         set({
           favoriteDialogues: [],
           completedDialogues: [],
+          rewardedDialogues: [],
           favoriteWords: [],
           learnedWords: [],
           weakWords: [],
           mistakeIds: [],
           pronunciationScores: [],
           studyMinutes: 0,
-          streakDays: 1,
-          lastStudyDate: getTodayDateString(),
+          streakDays: 0,
+          lastStudyDate: "",
           dailyGoalMinutes: 15,
         }),
 

@@ -3,8 +3,7 @@
 
 import {
   SentenceEvaluationResult,
-  WordEvaluationResult,
-  findCriticalLetterMakhrajTip,
+  evaluateSentenceWords,
 } from "./arabicNlpEngine";
 
 export interface RecordingSession16kHz {
@@ -324,7 +323,8 @@ export function evaluateAcousticDspSentence(
   userBars: number[],
   refBars: number[],
   userDuration: number,
-  refDuration: number
+  refDuration: number,
+  recognizedText?: string
 ): SentenceEvaluationResult {
   const cleanWords = expectedSentence
     .replace(/[.,!?؟،؛:"'«»()[\]-]/g, " ")
@@ -334,8 +334,11 @@ export function evaluateAcousticDspSentence(
 
   if (cleanWords.length === 0) {
     return {
+      isTextRecognized: false,
+      score: null,
       words: [],
       overallScore: 0,
+      rhythmScore: 0,
       isRootGuardTriggered: false,
     };
   }
@@ -345,100 +348,32 @@ export function evaluateAcousticDspSentence(
   const overallRhythm = calculateRhythmMatch(refBars, userBars);
   const overallTempo = calculateTempoScore(safeRefDur, userDuration);
 
-  // Kullanıcının ne kadar süre konuştuğu (ör. 5 kelimelik cümlede sadece 0.4 sn konuştuysa son kelimeler okunmamıştır)
-  const durationCoverageRatio = Math.min(
-    1.15,
-    userDuration / Math.max(0.6, safeRefDur * 0.85)
+  const calculatedRhythmScore = Math.max(
+    0,
+    Math.min(100, Math.round(overallRhythm * 0.6 + overallTempo * 0.4))
   );
 
-  // Her kelimenin harf/hece ağırlığına göre 48 barlık zarfı dilimlere ayır
-  const wordWeights = cleanWords.map((w) =>
-    Math.max(2, w.replace(/[\u064B-\u065F\u0670]/g, "").length)
-  );
-  const totalWeight = wordWeights.reduce((a, b) => a + b, 0);
-  const totalBars = Math.min(userBars.length, refBars.length) || 48;
-
-  let currentBarIndex = 0;
-  const wordResults: WordEvaluationResult[] = [];
-  let sumScores = 0;
-
-  for (let idx = 0; idx < cleanWords.length; idx++) {
-    const word = cleanWords[idx];
-    const weightRatio = wordWeights[idx] / Math.max(1, totalWeight);
-    const barCount =
-      idx === cleanWords.length - 1
-        ? Math.max(1, totalBars - currentBarIndex)
-        : Math.max(1, Math.round(weightRatio * totalBars));
-
-    const startBar = Math.min(currentBarIndex, totalBars - 1);
-    const endBar = Math.min(totalBars, startBar + barCount);
-    currentBarIndex = endBar;
-
-    const uSlice = userBars.slice(startBar, endBar);
-    const rSlice = refBars.slice(startBar, endBar);
-
-    const avgUserEnergy =
-      uSlice.length > 0
-        ? uSlice.reduce((a, b) => a + b, 0) / uSlice.length
-        : 0;
-    const peakUserEnergy = uSlice.length > 0 ? Math.max(...uSlice) : 0;
-    const segCorrelation =
-      uSlice.length > 0 && rSlice.length === uSlice.length
-        ? calculateRhythmMatch(rSlice, uSlice)
-        : overallRhythm;
-
-    // Kelimenin cümle içindeki konumu (0.0 -> 1.0)
-    const wordPositionRatio = (idx + 0.5) / cleanWords.length;
-    const isCoveredByDuration = wordPositionRatio <= durationCoverageRatio + 0.18;
-
-    let wordScore = 0;
-    if (!isCoveredByDuration || peakUserEnergy < 0.09) {
-      // Bu kelimeye denk gelen zaman diliminde ses enerjisi çok düşük
-      wordScore = Math.round(Math.max(25, peakUserEnergy * 240));
-    } else {
-      const energyScore = Math.min(100, Math.round(avgUserEnergy * 165 + 42));
-      const rawScore =
-        segCorrelation * 0.42 +
-        overallRhythm * 0.25 +
-        overallTempo * 0.18 +
-        energyScore * 0.15;
-      wordScore = Math.max(48, Math.min(96, Math.round(rawScore)));
-    }
-
-    let status: "correct" | "warning" | "wrong" = "wrong";
-    if (wordScore >= 80) status = "correct";
-    else if (wordScore >= 60) status = "warning";
-    else status = "wrong";
-
-    const makhrajTip = findCriticalLetterMakhrajTip(word);
-
-    wordResults.push({
-      targetWord: word,
-      spokenWord:
-        wordScore >= 75
-          ? word
-          : wordScore >= 55
-          ? "DSP Akustik Eşleşme"
-          : "Düşük Hece Enerjisi",
-      score: wordScore,
-      status,
-      makhrajTip: status === "correct" ? undefined : makhrajTip,
-      medVezinTip:
-        status === "correct"
-          ? undefined
-          : "16kHz DSP akustik zarf analizine göre bu kelimenin hece vurgusunu ve med süresini referans sesle eşleştirerek tekrar okuyabilirsiniz.",
-    });
-
-    sumScores += wordScore;
+  // Eğer konuşma tanıma motorundan metin alınamadıysa (recognizedText boşsa),
+  // kesinlikle sahte kelime bazlı "doğru telaffuz" puanı üretme ve hedef kelimeleri spokenWord'e kopyalama!
+  if (!recognizedText || recognizedText.trim().length === 0) {
+    return {
+      isTextRecognized: false,
+      score: null,
+      overallScore: 0,
+      rhythmScore: calculatedRhythmScore,
+      words: [],
+      isRootGuardTriggered: false,
+      message:
+        "Ses kaydınız alındı ve ritim karşılaştırıldı; ancak kelimeler net çözümlenemediği için telaffuz doğruluğu puanlanamadı. Lütfen mikrofona biraz daha yakın konuşarak tekrar deneyin.",
+    };
   }
 
-  const overallScore =
-    wordResults.length > 0 ? Math.round(sumScores / wordResults.length) : 0;
-
+  const evalRes = evaluateSentenceWords(expectedSentence, recognizedText);
   return {
-    words: wordResults,
-    overallScore,
-    isRootGuardTriggered: false,
+    ...evalRes,
+    isTextRecognized: true,
+    score: evalRes.overallScore,
+    rhythmScore: calculatedRhythmScore,
   };
 }
 
@@ -511,11 +446,27 @@ export async function start16kHzRecorder(options?: {
   let stopped = false;
   let autoStopTriggered = false;
   const startedAt = Date.now();
-  const silenceLimitMs = options?.silenceDurationMs ?? 1200;
-  const maxDurationLimitMs = options?.maxDurationMs ?? 12000;
+  const silenceLimitMs = options?.silenceDurationMs ?? 2500;
+  const maxDurationLimitMs = options?.maxDurationMs ?? 15000;
+
+  let maxDurationTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+    if (!autoStopTriggered && !stopped) {
+      autoStopTriggered = true;
+      killStreamImmediately();
+      options?.onAutoSilenceStop?.();
+    }
+  }, maxDurationLimitMs);
+
+  const clearMaxDurationTimer = () => {
+    if (maxDurationTimer !== null) {
+      clearTimeout(maxDurationTimer);
+      maxDurationTimer = null;
+    }
+  };
 
   const killStreamImmediately = () => {
     stopped = true;
+    clearMaxDurationTimer();
     try {
       if (mediaRecorder && mediaRecorder.state !== "inactive") {
         mediaRecorder.stop();
@@ -563,7 +514,7 @@ export async function start16kHzRecorder(options?: {
     options?.onLiveRms?.(currentRms, rmsHistory.slice(-48));
 
     const now = Date.now();
-    // VAD: Konuşma başladıktan sonra silenceLimitMs sessizlik olursa otomatik durdur
+    // 1. VAD: Konuşma başladıktan sonra silenceLimitMs (varsayılan 2500ms) sessizlik olursa otomatik durdur
     if (rms > 0.015) {
       if (!hasSpoken) {
         hasSpoken = true;
@@ -580,12 +531,13 @@ export async function start16kHzRecorder(options?: {
         killStreamImmediately();
         options?.onAutoSilenceStop?.();
       }
-    } else if (now - startedAt >= maxDurationLimitMs) {
-      if (!autoStopTriggered) {
-        autoStopTriggered = true;
-        killStreamImmediately();
-        options?.onAutoSilenceStop?.();
-      }
+    }
+
+    // 2. Gürültülü ortamdan bağımsız üst süre sınırı kontrolü (if/else zincirinin dışında!)
+    if (!autoStopTriggered && now - startedAt >= maxDurationLimitMs) {
+      autoStopTriggered = true;
+      killStreamImmediately();
+      options?.onAutoSilenceStop?.();
     }
   };
 
@@ -599,6 +551,7 @@ export async function start16kHzRecorder(options?: {
     getAudioContext: () => audioCtx,
     stop: async () => {
       stopped = true;
+      clearMaxDurationTimer();
 
       // MediaRecorder varsa son chunk'ın gelmesini bekle
       if (mediaRecorder && mediaRecorder.state !== "inactive") {

@@ -497,30 +497,42 @@ export default function ShadowingModal({
     backupBrowserTranscriptRef.current = "";
 
     try {
-      // Paralel olarak Web Speech API'yi başlat (hem hızlı motor hem de Whisper fallback için)
-      speechManagerRef.current?.startLiveWebSpeech({
-        onInterimTranscript: (combined, finalPart, interimPart) => {
-          if (typeof finalPart === "string" && finalPart.trim()) {
-            finalTranscriptRef.current = finalPart.trim();
-          }
-          if (typeof interimPart === "string") {
-            interimTranscriptRef.current = interimPart.trim();
-          } else if (combined && !finalTranscriptRef.current) {
-            interimTranscriptRef.current = combined.trim();
-          }
-          const latestBackup = (
-            finalTranscriptRef.current +
-            " " +
-            interimTranscriptRef.current
-          ).trim() || combined.trim();
-          if (latestBackup) {
-            backupBrowserTranscriptRef.current = latestBackup;
-          }
-          setLiveInterimText(combined);
-        },
-      });
+      // Yalnızca Hızlı Tarayıcı Motoru (webspeech) seçiliyse kayıt sırasında çevrimiçi Web Speech API'yi başlat
+      if (sttEngine === "webspeech") {
+        speechManagerRef.current?.startLiveWebSpeech({
+          onInterimTranscript: (combined, finalPart, interimPart) => {
+            if (typeof finalPart === "string" && finalPart.trim()) {
+              finalTranscriptRef.current = finalPart.trim();
+            }
+            if (typeof interimPart === "string") {
+              interimTranscriptRef.current = interimPart.trim();
+            } else if (combined && !finalTranscriptRef.current) {
+              interimTranscriptRef.current = combined.trim();
+            }
+            const latestBackup =
+              (
+                finalTranscriptRef.current +
+                " " +
+                interimTranscriptRef.current
+              ).trim() || combined.trim();
+            if (latestBackup) {
+              backupBrowserTranscriptRef.current = latestBackup;
+            }
+            setLiveInterimText(combined);
+          },
+        });
+      }
+
+      // Kelime sayısına göre dinamik maksimum kayıt süresi (15 sn - 45 sn arası) ve 2.5 sn sessizlik toleransı
+      const targetWords = activeText.trim().split(/\s+/).filter(Boolean);
+      const maxRecordingDurationMs = Math.max(
+        15000,
+        Math.min(45000, targetWords.length * 1800 + 8000)
+      );
 
       const session = await start16kHzRecorder({
+        silenceDurationMs: 2500,
+        maxDurationMs: maxRecordingDurationMs,
         onLiveRms: (_rms, liveHistory) => {
           if (rafIdRef.current !== null) {
             cancelAnimationFrame(rafIdRef.current);
@@ -778,24 +790,34 @@ export default function ShadowingModal({
 
     setSilentWarning(null);
 
-    let result: SentenceEvaluationResult;
-    if (hasArabicText) {
-      setDspFallbackNotice(null);
-      result = evaluateSentenceWords(activeText, transcribedText);
-    } else {
-      // Kullanıcı konuşmuş ve ses dalgası oluşmuş ama metin motoru (Firefox Web Speech eksikliği / Whisper gecikmesi) metin üretememiş:
-      // 16kHz DSP zarf, süre, hece enerjisi ve ritim uyumunu kullanarak analizi tamamla
-      setDspFallbackNotice(
-        "Tarayıcı ses-metin motoru yanıt vermediği için analiz 16kHz DSP akustik dalga ve ritim eşleştirmesiyle yapıldı."
-      );
-      result = evaluateAcousticDspSentence(
+    if (!hasArabicText) {
+      // Metin çözümlenemediğinde sahte yüksek puan üretme, istatistiklere kaydetme ve Hata Defteri'nden silme!
+      const dspRes = evaluateAcousticDspSentence(
         activeText,
         userEnvelopeBars,
         referenceEnvelopeBars,
         recordedDuration,
-        referenceDuration
+        referenceDuration,
+        ""
       );
+      setDspFallbackNotice(
+        dspRes.message ||
+          "Ses kaydınız alındı ve ritim karşılaştırıldı; ancak kelimeler net çözümlenemediği için telaffuz doğruluğu puanlanamadı. Lütfen mikrofona biraz daha yakın konuşarak tekrar deneyin."
+      );
+      setEvaluation(dspRes);
+      setRhythmScore(dspRes.rhythmScore ?? currentRhythm);
+      setFluencyScore(null);
+      setAdaptiveResult(null);
+      setActiveWordTip(null);
+      playPartial();
+      return;
     }
+
+    setDspFallbackNotice(null);
+    const result: SentenceEvaluationResult = {
+      ...evaluateSentenceWords(activeText, transcribedText),
+      rhythmScore: currentRhythm,
+    };
 
     setEvaluation(result);
     if (result.overallScore > 0) {
@@ -828,7 +850,7 @@ export default function ShadowingModal({
     );
     setAdaptiveResult(coaching);
 
-    // Akıllı Hata Defteri (Spaced Repetition): <%70 ise ekle, >=%85 ise çıkar
+    // Akıllı Hata Defteri (Spaced Repetition): <%70 ise ekle, >=%85 ise çıkar (yalnızca metin gerçekten algılandığında!)
     const canonicalTargetId = normalizeToCanonicalMistakeId(itemId, activeText);
     if (result.overallScore < 70) {
       if (canonicalTargetId) {
@@ -1170,11 +1192,14 @@ export default function ShadowingModal({
                     </span>
                   </span>
                   <div className="flex items-center gap-1.5 ml-auto">
-                    {evaluation && !isRecording && !isAnalyzing && (
-                      <span className="px-2 py-0.5 rounded-lg bg-[#0CA678] text-white text-[10px] font-extrabold tabular-nums shadow-2xs">
-                        🎯 Genel Puan: %{fluencyScore ?? evaluation.overallScore}
-                      </span>
-                    )}
+                    {evaluation &&
+                      evaluation.isTextRecognized !== false &&
+                      !isRecording &&
+                      !isAnalyzing && (
+                        <span className="px-2 py-0.5 rounded-lg bg-[#0CA678] text-white text-[10px] font-extrabold tabular-nums shadow-2xs">
+                          🎯 Genel Puan: %{fluencyScore ?? evaluation.overallScore}
+                        </span>
+                      )}
                     <span className="text-[11px] font-bold text-[var(--muted)] tabular-nums">
                       {userDuration > 0 ? `${userDuration.toFixed(1)} sn` : "0.0 sn"}
                     </span>
@@ -1255,29 +1280,43 @@ export default function ShadowingModal({
             <div ref={resultsSectionRef} className="space-y-3.5">
               {/* 16kHz DSP Akustik Dalga & Ritim Eşleştirmesi Bilgi Notu */}
               {dspFallbackNotice && (
-                <div className="bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 text-xs font-extrabold text-[#4C28B5] dark:text-[#d0bfff]">
-                  <Info size={16} className="text-[#6741D9] shrink-0" />
+                <div className="bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-400 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 text-xs font-extrabold text-amber-900 dark:text-amber-200">
+                  <Info size={16} className="text-amber-600 shrink-0" />
                   <span>{dspFallbackNotice}</span>
                 </div>
               )}
 
-              {/* 3'lü Skor Özeti */}
+              {/* 3'lü Skor Özeti: Metin Uyumu ve Ritim/Süre Uyumu Ayrı Gösterilir */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-3 text-center">
                   <span className="text-[11px] font-bold text-[var(--muted)] block">
-                    Telaffuz Doğruluğu
+                    Metin Uyumu
                   </span>
-                  <span className="text-xl sm:text-2xl font-black tabular-nums text-[#087F5B]">
-                    %{evaluation.overallScore}
-                  </span>
+                  {evaluation.isTextRecognized === false ? (
+                    <span className="text-sm sm:text-base font-extrabold text-amber-700 dark:text-amber-300 mt-1 block">
+                      Çözümlenemedi
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-xl sm:text-2xl font-black tabular-nums text-[#087F5B]">
+                        %{evaluation.overallScore}
+                      </span>
+                      {evaluation.extraWordsCount &&
+                      evaluation.extraWordsCount > 0 ? (
+                        <span className="block text-[9px] font-bold text-rose-700">
+                          (-{Math.min(35, evaluation.extraWordsCount * 12)}p ek kelime)
+                        </span>
+                      ) : null}
+                    </>
+                  )}
                 </div>
 
                 <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-3 text-center">
                   <span className="text-[11px] font-bold text-[var(--muted)] block">
-                    Ritim & Dalga Uyumu
+                    Ritim ve Süre Uyumu
                   </span>
                   <span className="text-xl sm:text-2xl font-black tabular-nums text-[#6741D9]">
-                    %{rhythmScore ?? tempoScore ?? 0}
+                    %{evaluation.rhythmScore ?? rhythmScore ?? tempoScore ?? 0}
                   </span>
                 </div>
 
@@ -1286,9 +1325,15 @@ export default function ShadowingModal({
                     <Award size={12} className="text-amber-600" />
                     Genel Akıcılık
                   </span>
-                  <span className="text-xl sm:text-2xl font-black tabular-nums text-[var(--foreground)]">
-                    %{fluencyScore ?? evaluation.overallScore}
-                  </span>
+                  {evaluation.isTextRecognized === false ? (
+                    <span className="text-sm sm:text-base font-extrabold text-[var(--muted)] mt-1 block">
+                      —
+                    </span>
+                  ) : (
+                    <span className="text-xl sm:text-2xl font-black tabular-nums text-[var(--foreground)]">
+                      %{fluencyScore ?? evaluation.overallScore}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1381,58 +1426,60 @@ export default function ShadowingModal({
                 </div>
               )}
 
-              {/* KELİME BAZLI RENKLENDİRME KARTI */}
-              <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-2">
-                  <span className="text-xs font-extrabold text-[var(--foreground)]">
-                    Kelime Bazlı Telaffuz Analizi (Mahreç detayı ve dinlemek için
-                    kelimeye tıklayın)
-                  </span>
-                  <div className="flex items-center gap-2 text-[10px] font-bold">
-                    <span className="text-[#087F5B]">● Doğru (≥%80)</span>
-                    <span className="text-amber-700">▲ Yakın (%60-79)</span>
-                    <span className="text-rose-700">✕ Hatalı (&lt;%60)</span>
-                  </div>
-                </div>
-
-                {evaluation.isRootGuardTriggered && (
-                  <div className="bg-rose-50 border-2 border-rose-300 text-rose-900 p-2.5 rounded-xl text-xs font-bold flex items-start gap-2">
-                    <AlertTriangle size={15} className="shrink-0 mt-0.5" />
-                    <span>
-                      {evaluation.rootGuardMessage ||
-                        "⚠️ Kök harf değişimi tespit edildi! Kelimenin anlamı değiştiği için puan sınırlandırıldı."}
+              {/* KELİME BAZLI RENKLENDİRME KARTI (Yalnızca metin çözümlenebildiyse gösterilir) */}
+              {evaluation.words.length > 0 && (
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-2">
+                    <span className="text-xs font-extrabold text-[var(--foreground)]">
+                      Kelime Bazlı Telaffuz Analizi (Mahreç detayı ve dinlemek için
+                      kelimeye tıklayın)
                     </span>
+                    <div className="flex items-center gap-2 text-[10px] font-bold">
+                      <span className="text-[#087F5B]">● Doğru (≥%80)</span>
+                      <span className="text-amber-700">▲ Yakın (%60-79)</span>
+                      <span className="text-rose-700">✕ Hatalı (&lt;%60)</span>
+                    </div>
                   </div>
-                )}
 
-                <div className="flex flex-wrap gap-2" dir="rtl">
-                  {evaluation.words.map((word, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setActiveWordTip(word);
-                        if (word.targetWord) speakWord(word.targetWord);
-                      }}
-                      className={`px-3.5 py-1.5 rounded-xl border-2 border-b-3 transition-all arabic text-xl font-bold cursor-pointer flex items-center gap-1.5 ${getWordColor(
-                        word.status
-                      )} ${
-                        activeWordTip === word
-                          ? "ring-2 ring-[#6741D9] -translate-y-0.5"
-                          : ""
-                      }`}
-                    >
-                      <span>{word.targetWord || word.spokenWord || "..."}</span>
-                      <span
-                        dir="ltr"
-                        className="text-[10px] font-sans font-extrabold opacity-90"
-                      >
-                        %{word.score}
+                  {evaluation.isRootGuardTriggered && (
+                    <div className="bg-rose-50 border-2 border-rose-300 text-rose-900 p-2.5 rounded-xl text-xs font-bold flex items-start gap-2">
+                      <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                      <span>
+                        {evaluation.rootGuardMessage ||
+                          "⚠️ Kök harf değişimi tespit edildi! Kelimenin anlamı değiştiği için puan sınırlandırıldı."}
                       </span>
-                    </button>
-                  ))}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2" dir="rtl">
+                    {evaluation.words.map((word, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setActiveWordTip(word);
+                          if (word.targetWord) speakWord(word.targetWord);
+                        }}
+                        className={`px-3.5 py-1.5 rounded-xl border-2 border-b-3 transition-all arabic text-xl font-bold cursor-pointer flex items-center gap-1.5 ${getWordColor(
+                          word.status
+                        )} ${
+                          activeWordTip === word
+                            ? "ring-2 ring-[#6741D9] -translate-y-0.5"
+                            : ""
+                        }`}
+                      >
+                        <span>{word.targetWord || word.spokenWord || "..."}</span>
+                        <span
+                          dir="ltr"
+                          className="text-[10px] font-sans font-extrabold opacity-90"
+                        >
+                          %{word.score}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* SEÇİLİ KELİME MAHREÇ, VEZİN/MED DETAYI VE MİKRO-DRILL BUTONU */}
               {activeWordTip && (

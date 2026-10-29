@@ -9,11 +9,13 @@ env.useBrowserCache = true;
 
 export interface WhisperWorkerRequest {
   type: "transcribe" | "preload";
+  requestId?: string;
   audioData?: Float32Array;
   language?: string;
 }
 
 export interface WhisperWorkerResponse {
+  requestId?: string;
   status: "loading" | "progress" | "ready" | "transcribing" | "completed" | "error";
   data?: {
     progress?: number;
@@ -28,6 +30,7 @@ export interface WhisperWorkerResponse {
 let transcriber: any = null;
 let activeDevice: "webgpu" | "wasm" = "wasm";
 let activeModelId: string = "onnx-community/whisper-base";
+let currentActiveRequestId: string | undefined = undefined;
 
 const MODEL_CANDIDATES = [
   "onnx-community/whisper-base",
@@ -132,6 +135,7 @@ async function createPipelineWithDevice(device: "webgpu" | "wasm"): Promise<any>
         dtype: "q8",
         progress_callback: (progress: any) => {
           self.postMessage({
+            requestId: currentActiveRequestId,
             status: "progress",
             data: progress,
             device,
@@ -172,18 +176,24 @@ async function getTranscriber(forceWasm: boolean = false) {
 }
 
 self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
-  const { type, audioData } = event.data;
+  const { type, audioData, requestId } = event.data;
+  currentActiveRequestId = requestId;
 
   if (type === "preload") {
     try {
-      self.postMessage({ status: "loading" } satisfies WhisperWorkerResponse);
+      self.postMessage({
+        requestId,
+        status: "loading",
+      } satisfies WhisperWorkerResponse);
       await getTranscriber();
       self.postMessage({
+        requestId,
         status: "ready",
         device: activeDevice,
       } satisfies WhisperWorkerResponse);
     } catch (err: any) {
       self.postMessage({
+        requestId,
         status: "error",
         error: err?.message || "Model ön yüklemesi başarısız",
       } satisfies WhisperWorkerResponse);
@@ -199,6 +209,7 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
       // Çok kısa (< 0.15 sn / 2400 örnek) veya tamamen sessiz ses verisinde Whisper halüsinasyonunu önle
       if (!processedAudio || processedAudio.length < 2400) {
         self.postMessage({
+          requestId,
           status: "completed",
           text: "",
           device: activeDevice,
@@ -206,10 +217,14 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
         return;
       }
 
-      self.postMessage({ status: "loading" } satisfies WhisperWorkerResponse);
+      self.postMessage({
+        requestId,
+        status: "loading",
+      } satisfies WhisperWorkerResponse);
       let model = await getTranscriber(false);
 
       self.postMessage({
+        requestId,
         status: "transcribing",
         device: activeDevice,
       } satisfies WhisperWorkerResponse);
@@ -236,11 +251,13 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
           activeDevice = "wasm";
           transcriber = null;
           self.postMessage({
+            requestId,
             status: "transcribing",
             device: "wasm",
           } satisfies WhisperWorkerResponse);
           model = await getTranscriber(true);
           self.postMessage({
+            requestId,
             status: "transcribing",
             device: "wasm",
           } satisfies WhisperWorkerResponse);
@@ -269,12 +286,14 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
       }
 
       self.postMessage({
+        requestId,
         status: "completed",
         text: recognizedText,
         device: activeDevice,
       } satisfies WhisperWorkerResponse);
     } catch (error: any) {
       self.postMessage({
+        requestId,
         status: "error",
         error: error?.message || `Whisper (${activeModelId}) ses çözümleme hatası`,
       } satisfies WhisperWorkerResponse);

@@ -149,8 +149,13 @@ export class HybridSpeechManager {
     ).trim();
   }
 
+  private requestCounter = 0;
+
   /**
-   * 16kHz Float32Array ses verisini Whisper Worker ile metne dönüştürür
+   * 16kHz Float32Array ses verisini Whisper Worker ile metne dönüştürür.
+   * İlk model indirme/yükleme (loading/progress) için 60 sn (60000ms),
+   * model hazırlandıktan sonra ses çözümleme (transcribing) için 20 sn (20000ms) ayrı zaman aşımı uygular.
+   * Her isteğe benzersiz bir requestId atanır; eski/zaman aşımına uğramış isteklerin geç yanıtları yeni kaydı ezmez.
    */
   public transcribeWithWhisper(
     audioData16kHz: Float32Array,
@@ -162,35 +167,68 @@ export class HybridSpeechManager {
     }
 
     const activeWorker = this.worker;
+    const requestId = `req_${Date.now()}_${++this.requestCounter}`;
+    const MODEL_LOAD_TIMEOUT_MS = 60000;
+    const TRANSCRIBE_TIMEOUT_MS = 20000;
+
     callbacks?.onStatusChange?.(
       "🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor..."
     );
 
     return new Promise<string>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        activeWorker.removeEventListener("message", handleMessage);
-        callbacks?.onStatusChange?.("");
-        reject(new Error("Whisper zaman aşımı (15000ms)"));
-      }, 15000);
+      let timeout: ReturnType<typeof setTimeout> | null = null;
+
+      const setPhaseTimeout = (ms: number, label: string) => {
+        if (timeout !== null) clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          activeWorker.removeEventListener("message", handleMessage);
+          callbacks?.onStatusChange?.("");
+          reject(new Error(`Whisper ${label} zaman aşımı (${ms}ms)`));
+        }, ms);
+      };
+
+      // Başlangıçta model indirme/yükleme için 60 saniye tanı
+      setPhaseTimeout(MODEL_LOAD_TIMEOUT_MS, "model yükleme");
 
       const handleMessage = (event: MessageEvent<WhisperWorkerResponse>) => {
-        const { status, data, text, device, error } = event.data;
+        const {
+          requestId: msgReqId,
+          status,
+          data,
+          text,
+          device,
+          error,
+        } = event.data;
+
+        // Eski bir kayıttan kalan geç yanıtları yoksay
+        if (msgReqId && msgReqId !== requestId) {
+          return;
+        }
+
         if (status === "progress") {
           const pct = Math.round(data?.progress || 0);
           callbacks?.onStatusChange?.(
-            `🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor... (${device?.toUpperCase() || "WASM"} %${pct})`
+            `🧠 Yapay Zeka modeli indiriliyor / hazırlanıyor... (${
+              device?.toUpperCase() || "WASM"
+            } %${pct})`
           );
-        } else if (status === "loading" || status === "transcribing") {
+        } else if (status === "loading") {
           callbacks?.onStatusChange?.(
-            "🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor..."
+            "🧠 Yapay Zeka modeli hazırlanıyor (60 sn yükleme süresi)..."
+          );
+        } else if (status === "transcribing") {
+          // Model hazır, ses çözümleme aşaması başladı: 20 saniyelik çözümleme sayacına geç
+          setPhaseTimeout(TRANSCRIBE_TIMEOUT_MS, "ses çözümleme");
+          callbacks?.onStatusChange?.(
+            `🧠 Sesiniz çözümleniyor (${device?.toUpperCase() || "WASM"})...`
           );
         } else if (status === "completed") {
-          clearTimeout(timeout);
+          if (timeout !== null) clearTimeout(timeout);
           activeWorker.removeEventListener("message", handleMessage);
           callbacks?.onStatusChange?.("");
           resolve((text || "").trim());
         } else if (status === "error") {
-          clearTimeout(timeout);
+          if (timeout !== null) clearTimeout(timeout);
           activeWorker.removeEventListener("message", handleMessage);
           callbacks?.onStatusChange?.("");
           reject(new Error(error || "Whisper hatası"));
@@ -200,6 +238,7 @@ export class HybridSpeechManager {
       activeWorker.addEventListener("message", handleMessage);
       activeWorker.postMessage({
         type: "transcribe",
+        requestId,
         audioData: audioData16kHz,
         language: "arabic",
       });
@@ -207,7 +246,7 @@ export class HybridSpeechManager {
   }
 
   /**
-   * Çift Motorlu Hibrit Çözümleme (Seçili motor + Paralel Web Speech Yedeklemesi)
+   * Çift Motorlu Hibrit Çözümleme (Seçili motor + Yedekleme)
    */
   public async transcribeHybrid(
     preferredEngine: SttEngineType,
@@ -229,7 +268,7 @@ export class HybridSpeechManager {
         if (whisperText && /[\u0600-\u06FF]/.test(whisperText)) {
           return { text: whisperText, usedEngine: "whisper" };
         }
-        // Whisper boş veya Arapça dışı döndüyse arka planda yakalanan Web Speech metnini kontrol et
+        // Whisper boş döndüyse varsa yedek metni kontrol et
         const latestBackup = (
           this.getCapturedWebSpeechText() ||
           callbacks?.backupTranscript ||
@@ -240,7 +279,7 @@ export class HybridSpeechManager {
         }
         return { text: whisperText || latestBackup, usedEngine: "whisper" };
       } catch {
-        // Whisper zaman aşımı (15000ms) veya hata durumunda: saf DSP'ye düşmeden önce paralel Web Speech yedeğini kullan
+        // Whisper zaman aşımı veya hata durumunda yedek metin varsa kullan
         const latestBackup = (
           this.getCapturedWebSpeechText() ||
           callbacks?.backupTranscript ||
@@ -248,7 +287,7 @@ export class HybridSpeechManager {
         ).trim();
         if (latestBackup) {
           callbacks?.onStatusChange?.(
-            "Yapay zeka modeli zaman aşımına uğradı, paralel Hızlı Tarayıcı Motoru sonucu kullanılıyor..."
+            "Yapay zeka modeli yanıt veremedi, Hızlı Tarayıcı Motoru sonucu kullanılıyor..."
           );
           return { text: latestBackup, usedEngine: "webspeech" };
         }

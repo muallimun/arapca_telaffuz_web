@@ -49,11 +49,12 @@ export default function HomePage() {
   const {
     completedDialogues,
     learnedWords,
-    weakWords,
     pronunciationScores,
     studyMinutes,
     streakDays,
+    lastStudyDate,
     dailyGoalMinutes,
+    syncDailyProgress,
   } = useUserStore();
 
   const { preferredLevel, viewMode, speechRate, showHareke } = useSettings();
@@ -61,10 +62,11 @@ export default function HomePage() {
 
   useEffect(() => {
     setMounted(true);
+    syncDailyProgress();
     const daySeed = new Date().getDate() % Math.max(1, diyaloglar.length);
     setTipIndex(daySeed);
     loadAudioManifest().then(() => setManifestLoaded(true));
-  }, []);
+  }, [syncDailyProgress]);
 
   // Seçilen seviyeye uygun önerilen ilk diyaloğu bul
   const recommendedDialogueId = useMemo(() => {
@@ -109,7 +111,7 @@ export default function HomePage() {
         title: "Kelime Alıştırmaları",
         arabicBadge: "التَّدْرِيبَات",
         subtitle: "Kartlar, çoktan seçmeli test, eşleştirme ve boşluk doldurma",
-        meta: "4 Farklı Modül · Süreli/Süresiz",
+        meta: "5 Farklı Modül · Süreli/Süresiz",
         icon: Gamepad2,
         targetHref: "/alistirmalar",
         accentColor: "emerald",
@@ -139,22 +141,39 @@ export default function HomePage() {
   const displayArabic = (text: string) =>
     !mounted || showHareke ? text : removeTashkeel(text);
 
-  // Telaffuz Başarısı Hesaplama
+  // Telaffuz Başarısı Hesaplama (Gerçek mikrofon denemeleri yoksa sahte %88 gösterme)
   const pronunciationAccuracy = useMemo(() => {
-    if (!mounted) return 85;
+    if (!mounted) return null;
     if (pronunciationScores && pronunciationScores.length > 0) {
       const sum = pronunciationScores.reduce((acc, s) => acc + s, 0);
       return Math.round(sum / pronunciationScores.length);
     }
-    const totalPracticed = learnedWords.length + weakWords.length;
-    if (totalPracticed > 0) {
-      return Math.max(
-        60,
-        Math.min(98, Math.round((learnedWords.length / totalPracticed) * 100))
-      );
+    return null;
+  }, [mounted, pronunciationScores]);
+
+  // Gün değişiminde bugünkü çalışma süresini ve seriyi doğrula
+  const { todayStudyMinutes, activeStreakDays } = useMemo(() => {
+    if (!mounted) {
+      return { todayStudyMinutes: 0, activeStreakDays: 0 };
     }
-    return 88;
-  }, [mounted, pronunciationScores, learnedWords.length, weakWords.length]);
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(
+      yesterday.getMonth() + 1
+    ).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+
+    const isToday = lastStudyDate === todayStr;
+    const isYesterday = lastStudyDate === yesterdayStr;
+
+    return {
+      todayStudyMinutes: isToday ? studyMinutes : 0,
+      activeStreakDays: isToday || isYesterday ? streakDays : 0,
+    };
+  }, [mounted, lastStudyDate, studyMinutes, streakDays]);
 
   const handleListenFeatured = async () => {
     playClick();
@@ -398,9 +417,20 @@ export default function HomePage() {
               <Award size={20} strokeWidth={2.4} />
             </div>
             <div className="min-w-0">
-              <span className="block text-xl font-black tabular-nums text-[var(--foreground)] leading-normal">
-                %{pronunciationAccuracy}
-              </span>
+              {pronunciationAccuracy !== null ? (
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <span className="text-xl font-black tabular-nums text-[var(--foreground)] leading-normal">
+                    %{pronunciationAccuracy}
+                  </span>
+                  <span className="text-[11px] font-bold text-[var(--muted)] tabular-nums">
+                    ({pronunciationScores.length} deneme)
+                  </span>
+                </div>
+              ) : (
+                <span className="block text-sm sm:text-base font-extrabold text-[var(--muted)] leading-snug">
+                  Henüz ölçülmedi
+                </span>
+              )}
               <span className="block text-xs font-bold text-[var(--muted)] mt-0.5 line-clamp-2 leading-tight">
                 Telaffuz Başarısı
               </span>
@@ -420,14 +450,14 @@ export default function HomePage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-1.5 flex-wrap">
                   <span className="text-xl font-black tabular-nums text-[var(--foreground)] leading-normal">
-                    🔥 {mounted ? streakDays : 1}
+                    🔥 {activeStreakDays}
                   </span>
                   <span className="text-xs font-extrabold text-orange-600 dark:text-orange-400">
                     Gün
                   </span>
                   <span className="text-[11px] font-bold text-[var(--muted)] ml-auto inline-flex items-center gap-0.5 tabular-nums">
                     <Clock size={11} />
-                    {mounted ? studyMinutes : 0}/{mounted ? dailyGoalMinutes : 15} dk
+                    {todayStudyMinutes}/{mounted ? dailyGoalMinutes : 15} dk
                   </span>
                 </div>
                 <span className="block text-xs font-bold text-[var(--muted)] mt-0.5 line-clamp-2 leading-tight">
@@ -442,7 +472,7 @@ export default function HomePage() {
                   width: `${Math.min(
                     100,
                     Math.round(
-                      ((mounted ? studyMinutes : 0) /
+                      (todayStudyMinutes /
                         Math.max(1, mounted ? dailyGoalMinutes : 15)) *
                         100
                     )

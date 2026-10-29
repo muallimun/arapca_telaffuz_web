@@ -201,14 +201,18 @@ export default function DictionaryPage() {
     return map;
   }, [selectedDialogueId]);
 
-  const filteredWords = useMemo(() => {
-    let baseList: DictionaryItem[];
+  const totalAllItemsCount =
+    sozluk.length + mergedCatalogIdiomsAsItems.length;
+
+  const basePool = useMemo(() => {
     if (dialogueContextMap) {
       const vocabItems = Array.from(dialogueContextMap.values()).map(
         (e) => e.item
       );
       const dlgObj = diyaloglar.find((d) => d.id === selectedDialogueId);
-      const dlgIdioms = dlgObj ? extractDialogueIdioms(dlgObj.satirlar) : [];
+      const dlgIdioms = dlgObj
+        ? extractDialogueIdioms(dlgObj.satirlar, dlgObj.seviye)
+        : [];
       const seenAr = new Set(
         vocabItems.map((v) => cleanArabicText(v.mufret || v.mazi || ""))
       );
@@ -227,13 +231,19 @@ export default function DictionaryPage() {
           extraDlgIdiomItems.push(resolved);
         }
       }
-      baseList = [...vocabItems, ...extraDlgIdiomItems];
-    } else {
-      // Tüm sözlük + mükerrer olmayan Kalıp İfadeler kataloğu
-      baseList = [...sozluk, ...mergedCatalogIdiomsAsItems];
+      return [...vocabItems, ...extraDlgIdiomItems];
     }
+    // Tüm sözlük + mükerrer olmayan Kalıp İfadeler kataloğu
+    return [...sozluk, ...mergedCatalogIdiomsAsItems];
+  }, [
+    dialogueContextMap,
+    selectedDialogueId,
+    idiomsByIdMap,
+    mergedCatalogIdiomsAsItems,
+  ]);
 
-    let result: DictionaryItem[] = baseList;
+  const filteredWords = useMemo(() => {
+    let result: DictionaryItem[] = basePool;
 
     // 1. Öğrenilme / Favori / Zorlandıklarım durumuna göre filtreleme
     if (mounted) {
@@ -384,6 +394,7 @@ export default function DictionaryPage() {
       Boolean(w && w.id && (w.mufret || w.mazi) && w.anlam_tr)
     );
   }, [
+    basePool,
     dialogueContextMap,
     selectedDialogueId,
     typeFilter,
@@ -495,7 +506,7 @@ export default function DictionaryPage() {
         </div>
 
         <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 rounded-xl px-2.5 py-1.5 text-[11px] sm:text-xs font-extrabold text-[var(--foreground)] tabular-nums shrink-0">
-          {filteredWords.length} / {sozluk.length}
+          {filteredWords.length} / {basePool.length}
         </div>
       </div>
 
@@ -554,7 +565,7 @@ export default function DictionaryPage() {
               }}
               className="bg-transparent text-xs font-bold text-[var(--foreground)] focus:outline-none cursor-pointer max-w-[190px] truncate"
             >
-              <option value="all">Tüm Sözlük ({sozluk.length})</option>
+              <option value="all">Tüm Sözlük ({totalAllItemsCount})</option>
               {diyaloglar.map((dlg) => {
                 const num = dlg.id.replace("dlg_", "");
                 return (
@@ -703,7 +714,7 @@ export default function DictionaryPage() {
                 }}
                 className="bg-transparent text-xs font-bold text-[var(--foreground)] focus:outline-none cursor-pointer w-full truncate"
               >
-                <option value="all">Tüm Sözlük ({sozluk.length})</option>
+                <option value="all">Tüm Sözlük ({totalAllItemsCount})</option>
                 {diyaloglar.map((dlg) => {
                   const num = dlg.id.replace("dlg_", "");
                   return (

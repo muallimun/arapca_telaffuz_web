@@ -1167,7 +1167,8 @@ export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
  * Aynı normalize Arapça başlığa sahip kalıp ifadeler kesin olarak tekilleştirilir (deduplicate).
  */
 export function extractDialogueIdioms(
-  dialogueLines: DialogueLine[]
+  dialogueLines: DialogueLine[],
+  dialogueLevel?: string
 ): ExtractedDialogueIdiom[] {
   if (!dialogueLines || dialogueLines.length === 0) return [];
 
@@ -1204,7 +1205,7 @@ export function extractDialogueIdioms(
       if (matchedLine) {
         foundByNormKey.set(normIdiomTitle, {
           ...idiom,
-          level: idiom.level || "A1-A2",
+          level: dialogueLevel || idiom.level || "A1-A2",
           lineNumber: matchedLine.sira,
           matchedPhrase: candidate,
           lineArabic: matchedLine.original,
@@ -1229,7 +1230,7 @@ export function extractDialoguesIdioms(
   if (!dialogues || dialogues.length === 0) return [];
   const uniqueMap = new Map<string, ExtractedDialogueIdiom>();
   for (const dlg of dialogues) {
-    const extracted = extractDialogueIdioms(dlg.satirlar);
+    const extracted = extractDialogueIdioms(dlg.satirlar, dlg.seviye);
     for (const item of extracted) {
       const normKey = normalizeForIdiomMatch(item.arabic);
       if (normKey && !uniqueMap.has(normKey)) {

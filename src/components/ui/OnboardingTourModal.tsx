@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { playClick, playSuccess } from "@/lib/sfxManager";
 import { formatArabicText } from "@/lib/arabicTextUtils";
+import { sozluk } from "@/lib/data";
 import { useSettings } from "@/store/settings";
 
 export const ONBOARDING_STORAGE_KEY = "arapca_onboarding_done_v1";
@@ -104,7 +105,7 @@ export default function OnboardingTourModal() {
           </div>
           <div className="p-3 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] space-y-1">
             <span className="text-lg font-black text-[#6741D9] block">
-              930+ Kök Sözlük
+              {(Math.floor(sozluk.length / 100) * 100).toLocaleString("tr-TR")}+ Sözlük Kaydı
             </span>
             <p className="text-[11px] font-semibold text-[var(--muted)]">
               5 kademeli morfolojik çözümleyici ile cümle içinden kök, müfret ve

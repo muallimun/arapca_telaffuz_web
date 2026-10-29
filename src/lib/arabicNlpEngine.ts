@@ -50,6 +50,11 @@ export interface WordEvaluationResult {
 export interface SentenceEvaluationResult {
   words: WordEvaluationResult[];
   overallScore: number;
+  score?: number | null;
+  isTextRecognized?: boolean;
+  rhythmScore?: number;
+  extraWordsCount?: number;
+  message?: string;
   isRootGuardTriggered: boolean;
   rootGuardMessage?: string;
 }
@@ -1147,14 +1152,23 @@ export function evaluateSentenceWords(
     totalScore += res.score;
   }
 
-  const overallScore =
+  const rawAverageScore =
     wordResults.length > 0 ? Math.round(totalScore / wordResults.length) : 0;
+
+  // Fazladan söylenen kelime cezası (hedef cümlede olmayan ekstra kelimeler puanı orantılı düşürür)
+  const extraWordsCount = Math.max(0, spkWords.length - expWords.length);
+  const extraWordPenalty =
+    extraWordsCount > 0 ? Math.min(35, extraWordsCount * 12) : 0;
+  const overallScore = Math.max(0, rawAverageScore - extraWordPenalty);
 
   const firstRootGuardWord = wordResults.find((w) => w.isRootGuardTriggered);
 
   return {
     words: wordResults,
     overallScore,
+    score: overallScore,
+    isTextRecognized: true,
+    extraWordsCount,
     isRootGuardTriggered: Boolean(firstRootGuardWord),
     rootGuardMessage: firstRootGuardWord?.rootGuardMessage,
   };
