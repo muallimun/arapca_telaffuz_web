@@ -245,11 +245,46 @@ export default function WordTooltip({
     formatArabicText(str, showHareke, arabicFont);
 
   const words = text.split(/\s+/).filter(Boolean);
+  const isPureNumericOrPhoneLine =
+    /^[0-9\u0660-\u0669\s+\-().]+$/.test(text.trim()) &&
+    /[0-9\u0660-\u0669]/.test(text);
 
   const showHighlight =
     wordTrackingStyle === "both" || wordTrackingStyle === "highlight";
   const showArrow =
     wordTrackingStyle === "both" || wordTrackingStyle === "arrow";
+
+  if (isPureNumericOrPhoneLine) {
+    return (
+      <span
+        ref={containerRef}
+        dir="ltr"
+        style={{ direction: "ltr", unicodeBidi: "embed" }}
+        onClick={(e) => e.stopPropagation()}
+        className="inline-flex flex-wrap items-baseline justify-end gap-x-1.5 gap-y-2 tabular-nums"
+      >
+        {words.map((word, index) => {
+          const isWordSpeaking =
+            isLineSpeaking &&
+            activeWordIndex === index &&
+            wordTrackingStyle !== "off";
+          const karaokeHighlightClass =
+            isWordSpeaking && showHighlight
+              ? "bg-emerald-500/20 dark:bg-emerald-400/25 text-emerald-800 dark:text-emerald-200 ring-2 ring-emerald-500/40 rounded px-1"
+              : "";
+          return (
+            <span
+              key={index}
+              dir="ltr"
+              className={`inline-block align-baseline leading-normal py-0.5 px-1 rounded relative transition-colors duration-150 ${karaokeHighlightClass}`}
+            >
+              {word}
+            </span>
+          );
+        })}
+      </span>
+    );
+  }
 
   return (
     <>
@@ -358,7 +393,12 @@ export default function WordTooltip({
           const isOpen = activeIndex === index;
           const isFav = isWordFavorite(dictItem.id);
           const isLearned = isWordLearned(dictItem.id);
-          const primaryAr = dictItem.mufret || dictItem.mazi || coreWord;
+          const primaryAr = (dictItem.mufret || dictItem.mazi || coreWord)
+            .split("/")[0]
+            .trim();
+          const cleanMufretDisplay = dictItem.mufret
+            ? dictItem.mufret.split("/")[0].trim()
+            : undefined;
 
           const handlePlayWord = async (
             e: React.MouseEvent,
@@ -442,80 +482,81 @@ export default function WordTooltip({
                     }}
                     className={`fixed p-3.5 bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 ${catStyle.popoverLeftBorder} rounded-2xl shadow-2xl text-left font-sans z-[9999] block space-y-2`}
                   >
-                    {/* Sağ Üst Kapatma (X) Butonu */}
-                    <button
-                      type="button"
-                      aria-label="Kapat"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveIndex(null);
-                      }}
-                      className="absolute top-2.5 right-2.5 w-6 h-6 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer z-10"
-                    >
-                      <X size={12} />
-                    </button>
-
-                    {/* Üst Satır: Tür Rozeti + Kök + Türkçe Anlam + Arapça Ana Kelime */}
-                    <div className="flex items-start justify-between gap-2 pr-7 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span
-                            className={`px-2 py-0.5 rounded-md border text-[10px] font-sans font-extrabold ${catStyle.badgeClass}`}
-                          >
-                            {catStyle.badgeText}
-                          </span>
-                          {dictItem.kok && dictItem.kok !== "-" && (
-                            <span
-                              dir="ltr"
-                              className="inline-flex items-center gap-1 text-[10px] font-sans font-extrabold tracking-wider text-[var(--muted)]"
-                            >
-                              <span>KÖK:</span>
-                              <bdi
-                                dir="rtl"
-                                className="arabic font-arabic text-xs font-bold text-[var(--foreground)] inline-block"
-                              >
-                                {dictItem.kok}
-                              </bdi>
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          dir="ltr"
-                          className="block text-xs font-sans font-extrabold text-[var(--foreground)] leading-snug text-left"
+                    {/* 1. Üst Satır: Sol tarafta Kelime Türü Rozeti + KÖK Rozeti (tek satırda/whitespace-nowrap), Sağ köşede × Kapat Butonu */}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                        <span
+                          className={`whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md border text-[10px] font-sans font-extrabold ${catStyle.badgeClass}`}
                         >
-                          {splitMixedBidiText(dictItem.anlam_tr).map(
-                            (seg, sIdx) =>
-                              seg.isArabic ? (
-                                <bdi
-                                  key={sIdx}
-                                  dir="rtl"
-                                  className="arabic font-arabic font-bold inline-block mx-0.5"
-                                >
-                                  {formatAr(seg.text)}
-                                </bdi>
-                              ) : (
-                                <span key={sIdx}>{seg.text}</span>
-                              )
-                          )}
-                        </div>
+                          {catStyle.badgeText}
+                        </span>
+                        {dictItem.kok && dictItem.kok !== "-" && (
+                          <span
+                            dir="ltr"
+                            className="whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md bg-stone-100 dark:bg-slate-800 border border-[#E6D7BE] dark:border-slate-700 inline-flex items-center gap-1 text-xs font-sans font-semibold text-[var(--muted)]"
+                          >
+                            <span>KÖK:</span>
+                            <bdi
+                              dir="rtl"
+                              className="arabic font-arabic text-xs font-bold text-[var(--foreground)] inline-block whitespace-nowrap"
+                            >
+                              {dictItem.kok}
+                            </bdi>
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        aria-label="Kapat"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveIndex(null);
+                        }}
+                        className="shrink-0 w-6 h-6 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] flex items-center justify-center text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+
+                    {/* 2. İkinci Satır: Solda Türkçe Anlam (flex-1), Sağda Büyük Arapça Ana Kelime */}
+                    <div className="flex items-start justify-between gap-3 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
+                      <div
+                        dir="ltr"
+                        className="text-sm sm:text-base font-sans font-bold text-[var(--foreground)] leading-snug text-left flex-1 min-w-0"
+                      >
+                        {splitMixedBidiText(dictItem.anlam_tr).map(
+                          (seg, sIdx) =>
+                            seg.isArabic ? (
+                              <bdi
+                                key={sIdx}
+                                dir="rtl"
+                                className="arabic font-arabic font-bold inline-block mx-0.5"
+                              >
+                                {formatAr(seg.text)}
+                              </bdi>
+                            ) : (
+                              <span key={sIdx}>{seg.text}</span>
+                            )
+                        )}
                       </div>
 
                       <div className="flex flex-col items-end shrink-0 text-right">
                         <span
                           dir="rtl"
-                          className={`arabic font-arabic text-2xl font-bold block leading-none ${catStyle.arabicAccent}`}
+                          className={`arabic font-arabic text-2xl sm:text-3xl font-bold block leading-normal text-right ${catStyle.arabicAccent}`}
                         >
                           {formatAr(primaryAr)}
                         </span>
                         {coreWord !== primaryAr && (
                           <span
                             dir="ltr"
-                            className="inline-flex items-center justify-end gap-1 text-xs md:text-sm font-sans font-medium text-[#6741D9] mt-1"
+                            className="inline-flex items-center justify-end gap-1 text-xs font-sans font-medium text-[#6741D9] mt-0.5 whitespace-nowrap"
                           >
                             <span>Metinde:</span>
                             <bdi
                               dir="rtl"
-                              className="arabic font-arabic text-base md:text-lg font-bold inline-block"
+                              className="arabic font-arabic text-base font-bold inline-block"
                             >
                               {formatAr(coreWord)}
                             </bdi>
@@ -563,14 +604,14 @@ export default function WordTooltip({
                       dir="ltr"
                       className="flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm font-sans font-medium py-1 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] text-[var(--muted)]"
                     >
-                      {dictItem.mufret && (
+                      {cleanMufretDisplay && (
                         <span className="inline-flex items-center gap-1">
                           <span>Müfret:</span>
                           <bdi
                             dir="rtl"
                             className="arabic font-arabic text-base md:text-lg font-bold text-[var(--foreground)] inline-block"
                           >
-                            {formatAr(dictItem.mufret)}
+                            {formatAr(cleanMufretDisplay)}
                           </bdi>
                         </span>
                       )}

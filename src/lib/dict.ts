@@ -219,6 +219,7 @@ function buildUnifiedDictionary(): DictionaryItem[] {
       deduplicated.push({
         ...item,
         tur: category,
+        mufret: item.mufret ? item.mufret.split("/")[0].trim() : item.mufret,
         anlam_tr: item.anlam_tr.trim(),
       });
     }
@@ -271,6 +272,7 @@ function indexDictionaryItem(item: DictionaryItem) {
   const cleanedItem: DictionaryItem = {
     ...item,
     tur: category,
+    mufret: item.mufret ? item.mufret.split("/")[0].trim() : item.mufret,
     anlam_tr: cleanMeaning(item.anlam_tr, category),
   };
 
@@ -900,11 +902,86 @@ function computeTurkishContextScore(
   return 0;
 }
 
+// KURAL 5: İsm-i Tafdîl (أَفْعَلُ: daha ..., en ...) Kalıbı Koruması
+// Bu kelimelerdeki baştaki أَ harfi kesinlikle 1. tekil muzari ("ben") eki değildir!
+const ELATIVE_ISM_TAFDIL_SET = new Set<string>([
+  "اخف",
+  "ارخص",
+  "اكثر",
+  "اسهل",
+  "اسرع",
+  "اطول",
+  "اجمل",
+  "افضل",
+  "اهم",
+  "الذ",
+  "اصح",
+  "ادري",
+  "اقل",
+  "اروع",
+]);
+
+/**
+ * KURAL 4: Özel İsim (ozel-isim - kişi adı) ile Cins İsim / Sıfat / Zarf Ayrımı:
+ * - Kelimenin başında ال varsa (الْكَرِيمِ، الْحَسَنِ، الصَّالِحِ),
+ * - Kelimenin sonunda tenvin fetha (اً / ً — حَسَناً), ة veya iyelik zamiri varsa,
+ * - Veya Türkçe cümle çevirisinde (contextSentenceTr) o kişinin Türkçe özel adı geçmiyorsa
+ *   kişi adı (ozel-isim) seçilemez; cins isim / sıfat / zarf seçilir!
+ */
+function isPersonalNameDisallowedByGrammarOrContext(
+  item: DictionaryItem,
+  cleanedRaw: string,
+  contextSentenceTr?: string
+): boolean {
+  if (getWordCategory(item) !== "ozel-isim") return false;
+
+  // Şehir ve ülke isimleri (عَمَّان، بَيْرُوت، دِمَشْق، الْقَاهِرَة، الْقُدْس vb.) bu kısıtlamadan muaftır
+  if (
+    /başkent|şehir|ülke|kudüs|mekke|medine|mısır|suriye|ürdün|lübnan|ırak|tunus/i.test(
+      item.anlam_tr
+    )
+  ) {
+    return false;
+  }
+
+  const bare = stripHarakat(cleanedRaw);
+
+  // 1. Başında ال (veya وال / بال / لل / كال) varsa kişi özel ismi olamaz (örn: الْكَرِيمِ -> cömert/kerim)
+  if (
+    /^(وَ|فَ)?(بِ|كَ)?[اٱ]ل/.test(cleanedRaw) ||
+    /^(و|ف)?(ب|ك)?ال/.test(bare) ||
+    /^(وَ|فَ)?لِل/.test(cleanedRaw)
+  ) {
+    return true;
+  }
+
+  // 2. Sonunda tenvin fetha (حَسَناً -> tamam, peki) veya ة varsa
+  if (/\u064B/.test(cleanedRaw) || bare.endsWith("ة") || bare.endsWith("ا")) {
+    return true;
+  }
+
+  // 3. Türkçe cümle çevirisi verilmişse, kişi adının Türkçe cümlede geçip geçmediğini kontrol et
+  if (contextSentenceTr) {
+    const trPrimaryName = item.anlam_tr
+      .replace(/\(.*?\)/g, "")
+      .split(/[,;/\-]/)[0]
+      .trim()
+      .toLocaleLowerCase("tr-TR");
+    const normTrSentence = contextSentenceTr.toLocaleLowerCase("tr-TR");
+    if (trPrimaryName.length >= 3 && !normTrSentence.includes(trPrimaryName)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * Aynı normalize anahtara sahip birden fazla sözlük adayı arasından
  * 1) Gramer Kalkanı (isDefinitelyNoun),
- * 2) Türkçe Cümle Çevirisi Bağlamı (+500 puan),
- * 3) Hareke / Sükun Uyumu
+ * 2) Özel İsim vs Cins İsim/Sıfat/Zarf Kalkanı (Kural 4),
+ * 3) Türkçe Cümle Çevirisi Bağlamı (+500 puan),
+ * 4) Hareke / Sükun Uyumu
  * kriterlerine göre en doğru adayı seçer.
  */
 function pickBestCandidateForKey(
@@ -941,6 +1018,17 @@ function pickBestCandidateForKey(
       }
     }
 
+    // 1b. KURAL 4: Özel İsim (Kişi Adı) vs Cins İsim / Sıfat / Zarf Kalkanı (الْكَرِيمِ، حَسَناً، بُشْرَى)
+    if (
+      isPersonalNameDisallowedByGrammarOrContext(
+        cand.item,
+        cleanedRaw,
+        contextSentenceTr
+      )
+    ) {
+      score -= 1500;
+    }
+
     // 2. Türkçe Cümle Çevirisi Bağlamı (+500 Puan)
     score += computeTurkishContextScore(cand.item, contextSentenceTr);
 
@@ -971,7 +1059,9 @@ function pickBestCandidateForKey(
 // ÖN EK (PREFIX) VE SON EK (SUFFIX/ZAMİR) TABLOLARI
 // ==============================================================================
 
-const PREFIX_RULES: Array<{
+// KURAL 1: İsim ve Genel Ön Ekler — KESİNLİKLE gelecek zaman "س / وس / فس" içermez!
+// Böylece "وَسَمَكٌ" kelimesi sadece "وَ + سَمَكٌ" olarak ayrılır; asla "وس + مك -> مكة" olmaz!
+const NOMINAL_PREFIX_RULES: Array<{
   raw: string;
   label: string;
   makesDefiniteNoun?: boolean;
@@ -1016,16 +1106,80 @@ const PREFIX_RULES: Array<{
   { raw: "ال", label: "ال (belirlilik takısı)", makesDefiniteNoun: true },
   { raw: "وب", label: "وَ (ve) + بِـ (ile/-de)", makesDefiniteNoun: true },
   { raw: "ول", label: "وَ (ve) + لِـ (için)" },
-  { raw: "وس", label: "وَ (ve) + سَـ (gelecek zaman)" },
   { raw: "فب", label: "فَـ + بِـ (ile)", makesDefiniteNoun: true },
   { raw: "فل", label: "فَـ + لِـ (için)" },
-  { raw: "فس", label: "فَـ + سَـ (gelecek zaman)" },
-  { raw: "س", label: "سَـ (gelecek zaman -ecek)" },
   { raw: "ل", label: "لِـ (için / -e)" },
   { raw: "ب", label: "بِـ (ile / -de)" },
   { raw: "ك", label: "كَـ (gibi)", makesDefiniteNoun: true },
   { raw: "ف", label: "فَـ (böylece)" },
   { raw: "و", label: "وَ (ve)" },
+];
+
+// Yalnızca Fiil Çekiminde (Kademe 3) ve sıkı muzari kontrolüyle kullanılan gelecek zaman önekleri
+const FUTURE_VERB_PREFIX_RULES: Array<{
+  raw: string;
+  label: string;
+}> = [
+  { raw: "وس", label: "وَ (ve) + سَـ (gelecek zaman)" },
+  { raw: "فس", label: "فَـ + سَـ (gelecek zaman)" },
+  { raw: "س", label: "سَـ (gelecek zaman -ecek)" },
+];
+
+const PREFIX_RULES: Array<{
+  raw: string;
+  label: string;
+  makesDefiniteNoun?: boolean;
+}> = [...NOMINAL_PREFIX_RULES, ...FUTURE_VERB_PREFIX_RULES];
+
+/**
+ * KURAL 1: Gelecek zaman "سَـ" (veya "وَسَـ", "فَسَـ") önekinin soyulabilmesi için:
+ * 1) Kelimede ال, ة veya tenvin (ً ٌ ٍ) gibi kesin isim alameti olmamalı (!isDefinitelyNoun),
+ * 2) "س" harfinden hemen sonra mutlaka muzari harfi (أ، ن، ي، ت veya آ) gelmeli,
+ * 3) Kalan gövde en az 4 harfli (veya سَآكُلُ gibi آ ile başlıyorsa 3 harfli) olmalı!
+ */
+function canStripFutureSinPrefix(
+  cleanedRaw: string,
+  prefRaw: string,
+  stem: string,
+  isDefinitelyNoun: boolean
+): boolean {
+  if (isDefinitelyNoun) return false;
+  if (!/^[انيت]/.test(stem)) return false;
+
+  const bare = stripHarakat(cleanedRaw);
+  const afterSinBare = bare.replace(/^(و|ف)?س/, "");
+  const startsWithMaddaAlif = afterSinBare.startsWith("آ");
+
+  if (stem.length < 4 && !(startsWithMaddaAlif && stem.length >= 3)) {
+    return false;
+  }
+
+  // Orijinal kelimede س'den sonraki ilk harf gerçekten أ، إ، آ، ا، ن، ي، ت olmalı
+  if (!/^[أإآانيت]/.test(afterSinBare)) {
+    return false;
+  }
+
+  return prefRaw === "س" || prefRaw === "وس" || prefRaw === "فس";
+}
+
+// KURAL 2: Yuvarlak Tâ (ة -> ت) + İyelik Zamiri Öncelik Listesi
+// "تَذْكِرَتَكَ", "غُرْفَتِكُمْ", "مَعْرِفَتِكَ", "طَائِرَتُكَ", "حَقِيبَتِكَ", "مَدْرَسَتِي" gibi kelimelerin
+// verbOnly olan "تك / ته / تها" kuralına girmeden ÖNCE iyelik zamiri + ت->ة olarak çözümlenmesini sağlar.
+const POSSESSIVE_PRONOUN_SUFFIXES: Array<{
+  raw: string;
+  nounLabel: string;
+}> = [
+  { raw: "كما", nounLabel: "كُمَا (ikinizin - 2. ikil iyelik zamiri)" },
+  { raw: "كم", nounLabel: "كُمْ (sizin - 2. çoğul iyelik zamiri)" },
+  { raw: "كن", nounLabel: "كُنَّ (sizin [مؤنث] - 2. çoğul iyelik zamiri)" },
+  { raw: "هما", nounLabel: "هُمَا (ikisinin - 3. ikil iyelik zamiri)" },
+  { raw: "هم", nounLabel: "هُمْ (onların - 3. çoğul iyelik zamiri)" },
+  { raw: "هن", nounLabel: "هُنَّ (onların [مؤنث] - 3. çoğul iyelik zamiri)" },
+  { raw: "نا", nounLabel: "نَا (bizim - 1. çoğul iyelik zamiri)" },
+  { raw: "ها", nounLabel: "هَا (onun [مؤنث] - 3. tekil iyelik zamiri)" },
+  { raw: "ك", nounLabel: "كَ / كِ (senin - 2. tekil iyelik zamiri)" },
+  { raw: "ه", nounLabel: "هُ (onun [مذكر] - 3. tekil iyelik zamiri)" },
+  { raw: "ي", nounLabel: "ـِي (benim - 1. tekil iyelik zamiri)" },
 ];
 
 const SUFFIX_RULES: Array<{
@@ -1273,14 +1427,22 @@ function matchNominalOrExactStem(
       stem,
       cleanedRaw,
       contextSentenceTr,
-      isDefinitelyNoun
+      isDefinitelyNoun || ELATIVE_ISM_TAFDIL_SET.has(stem)
     );
     if (best) {
-      return { item: best, stage: "exact" };
+      const isElative =
+        ELATIVE_ISM_TAFDIL_SET.has(stem) && getWordCategory(best) === "isim";
+      return {
+        item: best,
+        stage: "exact",
+        extraNote: isElative
+          ? "İsm-i Tafdîl (Üstünlük / Karşılaştırma Sıfatı: daha ..., en ...)"
+          : undefined,
+      };
     }
   }
 
-  // 2. Tâ-i Merbûta (ت -> ة) İzafet Onarımı (örn: مَعْرِفَتِكَ -> معرفت -> معرفه, غُرْفَتِكُمْ -> غرفت -> غرفه):
+  // 2. Tâ-i Merbûta (ت -> ة) İzafet Onarımı (örn: تَذْكِرَتَكَ -> تذكرت -> تذكره, غُرْفَتِكُمْ -> غرفت -> غرفه):
   if (stem.endsWith("ت") && stem.length >= 3) {
     const taMarbutaRestored = stem.slice(0, -1) + "ه";
     if (
@@ -1919,6 +2081,27 @@ export function analyzeAndMatchWord(
     };
   }
 
+  // 0.5. KURAL 4 KESİN KORUMA: "حَسَناً" (tamam, peki, pekâlâ) — Asla "Hasan (Özel İsim)" ile karışmaz!
+  if (
+    (normalized === "حسنا" || normalized === "وحسنا" || normalized === "فحسنا") &&
+    dictIndex.has("حسنا")
+  ) {
+    const hasananItem = dictIndex.get("حسنا")!;
+    const prefRaw =
+      normalized.startsWith("و") || normalized.startsWith("ف")
+        ? normalized[0]
+        : "";
+    const prefObj = NOMINAL_PREFIX_RULES.find((p) => p.raw === prefRaw);
+    return {
+      item: hasananItem,
+      originalWord: cleanedRaw,
+      matchedStem: "حسنا",
+      prefixLabel: prefObj?.label,
+      morphologyNote: buildMorphologyNote(hasananItem, prefObj?.label),
+      matchStage: prefRaw ? "affix" : "exact",
+    };
+  }
+
   // Kademe 1: Doğrudan Eşleşme (Önce İsim / Tam Eşleşme - Bağlam & Hareke Puanlamalı)
   const directNominal = matchNominalOrExactStem(
     normalized,
@@ -1946,6 +2129,46 @@ export function analyzeAndMatchWord(
 
   // Kademe 2: İyelik/Nesne Zamiri ve Ön Ek Soyarak İSİM Eşleşmesi (Fiil önek soyma işleminden ÖNCE çalışır!)
   if (!endsWithTaMarbuta) {
+    // KURAL 2 ÖNCELİĞİ: Yuvarlak Tâ (ة -> ت) + İyelik Zamiri Kuralı (تَذْكِرَتَكَ -> تَذْكِرَة, غُرْفَتِكُمْ -> غُرْفَة, مَعْرِفَتِكَ -> مَعْرِفَة)
+    // "verbOnly: true" olan "تك / ته / تها" eklerinden ÖNCE iyelik zamirini soyup sondaki açık "ت" harfini "ة" (ه) olarak isimlerde ara!
+    for (const poss of POSSESSIVE_PRONOUN_SUFFIXES) {
+      if (
+        normalized.endsWith(poss.raw) &&
+        normalized.length - poss.raw.length >= 3
+      ) {
+        const stem = normalized.slice(0, -poss.raw.length);
+        if (stem.endsWith("ت")) {
+          const taMarbutaRestored = stem.slice(0, -1) + "ه";
+          if (
+            dictMultiIndex.has(taMarbutaRestored) ||
+            dictIndex.has(taMarbutaRestored)
+          ) {
+            const bestNoun = pickBestCandidateForKey(
+              taMarbutaRestored,
+              cleanedRaw,
+              contextSentenceTr,
+              true
+            );
+            if (bestNoun && getWordCategory(bestNoun) !== "fiil") {
+              return {
+                item: bestNoun,
+                originalWord: cleanedRaw,
+                matchedStem: taMarbutaRestored,
+                suffixLabel: poss.nounLabel,
+                morphologyNote: buildMorphologyNote(
+                  bestNoun,
+                  undefined,
+                  poss.nounLabel,
+                  "ت -> ة (Tâ-i Merbûta izafet dönüşümü)"
+                ),
+                matchStage: "ta-marbuta",
+              };
+            }
+          }
+        }
+      }
+    }
+
     for (const suff of SUFFIX_RULES) {
       // Korumalı kelimelerde (عمان، رمضان vb.) "ان" / "ات" / "ين" soyma!
       if (suff.isDualOrPlural && PROTECTED_NO_DUAL_PLURAL_SPLIT.has(normalized)) {
@@ -1994,9 +2217,10 @@ export function analyzeAndMatchWord(
     }
   }
 
-  // Kademe 2b: Sadece Ön Ek Soyarak İsim/Tam Eşleşme
-  // Not: "ال" (veya وال، بال، لل، كال) soyulduğunda kalan gövde %100 İSİMDİR!
-  for (const pref of PREFIX_RULES) {
+  // Kademe 2b: Sadece İsim/Bağlaç/Harf-i Cer Ön Eki Soyarak İsim/Tam Eşleşme
+  // KURAL 1: NOMINAL_PREFIX_RULES içinde gelecek zaman "س / وس / فس" YOKTUR!
+  // Böylece "وَسَمَكٌ" -> "وَ + سَمَكٌ" (balık) olarak çözümlenir; asla "وس + مك -> مكة" olmaz!
+  for (const pref of NOMINAL_PREFIX_RULES) {
     if (
       normalized.startsWith(pref.raw) &&
       normalized.length - pref.raw.length >= 2
@@ -2029,13 +2253,54 @@ export function analyzeAndMatchWord(
     }
   }
 
-  // Kademe 2c: Hem Ön Ek Hem Son Ek Soyarak İsim/Tam Eşleşme
+  // Kademe 2c: Hem Ön Ek (NOMINAL_PREFIX_RULES) Hem Son Ek Soyarak İsim/Tam Eşleşme
   if (!endsWithTaMarbuta) {
-    for (const pref of PREFIX_RULES) {
+    for (const pref of NOMINAL_PREFIX_RULES) {
       if (normalized.startsWith(pref.raw)) {
         const afterPref = normalized.slice(pref.raw.length);
         const effectiveNounGuard =
           isDefinitelyNoun || Boolean(pref.makesDefiniteNoun);
+
+        // KURAL 2 ÖNCELİĞİ: Ön ek + Yuvarlak Tâ (ة -> ت) + İyelik Zamiri (örn: بِمَعْرِفَتِكَ، لِغُرْفَتِكُمْ، وَتَذْكِرَتَكَ)
+        for (const poss of POSSESSIVE_PRONOUN_SUFFIXES) {
+          if (
+            afterPref.endsWith(poss.raw) &&
+            afterPref.length - poss.raw.length >= 3
+          ) {
+            const stem = afterPref.slice(0, -poss.raw.length);
+            if (stem.endsWith("ت")) {
+              const taMarbutaRestored = stem.slice(0, -1) + "ه";
+              if (
+                dictMultiIndex.has(taMarbutaRestored) ||
+                dictIndex.has(taMarbutaRestored)
+              ) {
+                const bestNoun = pickBestCandidateForKey(
+                  taMarbutaRestored,
+                  cleanedRaw,
+                  contextSentenceTr,
+                  true
+                );
+                if (bestNoun && getWordCategory(bestNoun) !== "fiil") {
+                  return {
+                    item: bestNoun,
+                    originalWord: cleanedRaw,
+                    matchedStem: taMarbutaRestored,
+                    prefixLabel: pref.label,
+                    suffixLabel: poss.nounLabel,
+                    morphologyNote: buildMorphologyNote(
+                      bestNoun,
+                      pref.label,
+                      poss.nounLabel,
+                      "ت -> ة (Tâ-i Merbûta izafet dönüşümü)"
+                    ),
+                    matchStage: "ta-marbuta",
+                  };
+                }
+              }
+            }
+          }
+        }
+
         for (const suff of SUFFIX_RULES) {
           if (
             suff.isDualOrPlural &&
@@ -2084,9 +2349,13 @@ export function analyzeAndMatchWord(
     }
   }
 
-  // KURAL 1-C: Kelime "ة" (Tâ-i Merbûta) ile bitiyorsa veya kesin İSİM ALAMETİ (isDefinitelyNoun) taşıyorsa
-  // ASLA fiil çekim çözümleyicisine (Kademe 3) girmez!
-  if (!endsWithTaMarbuta && !isDefinitelyNoun) {
+  // KURAL 1-C & KURAL 5: Kelime "ة" (Tâ-i Merbûta) ile bitiyorsa, kesin İSİM ALAMETİ (isDefinitelyNoun) taşıyorsa
+  // veya İsm-i Tafdîl (أَفْعَلُ: أَخَفُّ، أَرْخَصُ، أَكْثَرُ vb.) kalıbındaysa ASLA fiil çekim çözümleyicisine (Kademe 3) girmez!
+  if (
+    !endsWithTaMarbuta &&
+    !isDefinitelyNoun &&
+    !ELATIVE_ISM_TAFDIL_SET.has(normalized)
+  ) {
     // Kademe 3: Fiil Çekim Kuralları (Doğrudan, Ön Ekli, Son Ekli, Ön+Son Ekli)
     const directVerb = matchStemWithRules(
       normalized,
@@ -2118,6 +2387,14 @@ export function analyzeAndMatchWord(
         normalized.length - pref.raw.length >= 2
       ) {
         const stem = normalized.slice(pref.raw.length);
+        const isFutureSin =
+          pref.raw === "س" || pref.raw === "وس" || pref.raw === "فس";
+        if (
+          isFutureSin &&
+          !canStripFutureSinPrefix(cleanedRaw, pref.raw, stem, isDefinitelyNoun)
+        ) {
+          continue;
+        }
         const matched = matchStemWithRules(
           stem,
           cleanedRaw,
@@ -2125,7 +2402,10 @@ export function analyzeAndMatchWord(
           contextSentenceTr,
           false
         );
-        if (matched) {
+        if (
+          matched &&
+          (!isFutureSin || getWordCategory(matched.item) === "fiil")
+        ) {
           return {
             item: matched.item,
             originalWord: cleanedRaw,
@@ -2185,12 +2465,25 @@ export function analyzeAndMatchWord(
       if (pref.makesDefiniteNoun) continue;
       if (normalized.startsWith(pref.raw)) {
         const afterPref = normalized.slice(pref.raw.length);
+        const isFutureSin =
+          pref.raw === "س" || pref.raw === "وس" || pref.raw === "فس";
         for (const suff of SUFFIX_RULES) {
           if (
             afterPref.endsWith(suff.raw) &&
             afterPref.length - suff.raw.length >= 2
           ) {
             const stem = afterPref.slice(0, -suff.raw.length);
+            if (
+              isFutureSin &&
+              !canStripFutureSinPrefix(
+                cleanedRaw,
+                pref.raw,
+                stem,
+                isDefinitelyNoun
+              )
+            ) {
+              continue;
+            }
             const matched = matchStemWithRules(
               stem,
               cleanedRaw,
@@ -2198,7 +2491,10 @@ export function analyzeAndMatchWord(
               contextSentenceTr,
               false
             );
-            if (matched) {
+            if (
+              matched &&
+              (!isFutureSin || getWordCategory(matched.item) === "fiil")
+            ) {
               const isImp =
                 Boolean(matched.isImperative) ||
                 (getWordCategory(matched.item) === "fiil" &&
@@ -2228,7 +2524,7 @@ export function analyzeAndMatchWord(
 
   // Kademe 5: Kök (kok) Ünsüz İskeleti Eşleştirmesi (Gramer Kalkanı + Türkçe Bağlam Puanlamalı)
   let candidateCore = normalized;
-  for (const pref of PREFIX_RULES) {
+  for (const pref of NOMINAL_PREFIX_RULES) {
     if (
       candidateCore.startsWith(pref.raw) &&
       candidateCore.length - pref.raw.length >= 3

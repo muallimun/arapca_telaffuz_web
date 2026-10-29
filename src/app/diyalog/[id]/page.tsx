@@ -2225,6 +2225,10 @@ export default function DialogueDetailPage({
 
             const renderArabicLineWithHint = () => {
               const formattedSentence = getDisplayText(line.arapca);
+              const isPurePhoneOrDigits =
+                /^[0-9\u0660-\u0669\s+\-().]+$/.test(
+                  formattedSentence.trim()
+                ) && /[0-9\u0660-\u0669]/.test(formattedSentence);
               const arWords = formattedSentence.trim().split(/\s+/);
               const firstWord = arWords[0] || "";
               const restWords = arWords.slice(1).join(" ");
@@ -2236,7 +2240,17 @@ export default function DialogueDetailPage({
                     title="1. İpucu (İlk Kelime) için tıklayın"
                     className="blur-md select-none opacity-35 transition-all duration-300 cursor-pointer"
                   >
-                    {formattedSentence}
+                    {isPurePhoneOrDigits ? (
+                      <span
+                        dir="ltr"
+                        style={{ direction: "ltr", unicodeBidi: "embed" }}
+                        className="inline-block tabular-nums"
+                      >
+                        {formattedSentence}
+                      </span>
+                    ) : (
+                      formattedSentence
+                    )}
                   </div>
                 );
               }
@@ -2248,13 +2262,19 @@ export default function DialogueDetailPage({
                     title="2. İpucu (Silik Metin) için tıklayın"
                     className="transition-all duration-300 cursor-pointer"
                   >
-                    <span className="blur-0 opacity-100 font-bold text-emerald-700 dark:text-emerald-300">
+                    <span
+                      dir={isPurePhoneOrDigits ? "ltr" : undefined}
+                      className="blur-0 opacity-100 font-bold text-emerald-700 dark:text-emerald-300"
+                    >
                       {firstWord}
                     </span>
                     {restWords && (
                       <>
                         {" "}
-                        <span className="blur-[1.5px] opacity-50 select-none transition-all duration-300">
+                        <span
+                          dir={isPurePhoneOrDigits ? "ltr" : undefined}
+                          className="blur-[1.5px] opacity-50 select-none transition-all duration-300"
+                        >
                           {restWords}
                         </span>
                       </>
@@ -2270,7 +2290,17 @@ export default function DialogueDetailPage({
                     title="3. İpucu (Tam Açık Metin) için tıklayın"
                     className="blur-0 opacity-55 transition-all duration-300 cursor-pointer"
                   >
-                    {formattedSentence}
+                    {isPurePhoneOrDigits ? (
+                      <span
+                        dir="ltr"
+                        style={{ direction: "ltr", unicodeBidi: "embed" }}
+                        className="inline-block tabular-nums"
+                      >
+                        {formattedSentence}
+                      </span>
+                    ) : (
+                      formattedSentence
+                    )}
                   </div>
                 );
               }

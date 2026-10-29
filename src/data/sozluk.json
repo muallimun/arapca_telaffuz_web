@@ -759,10 +759,10 @@
   {
     "id": "kelime_092",
     "tur": "isim",
-    "kok": "د و ر",
-    "mufret": "طَابِق / دَوْر",
-    "cemi": "طَوَابِق / أَدْوَار",
-    "anlam_tr": "kat"
+    "kok": "ط ب ق",
+    "mufret": "طَابِق",
+    "cemi": "طَوَابِق",
+    "anlam_tr": "kat (bina katı)"
   },
   {
     "id": "kelime_093",
@@ -5086,9 +5086,9 @@
     "id": "kelime_611",
     "tur": "isim",
     "kok": "د و ر",
-    "mufret": "دَوْر / طَابَق",
-    "cemi": "أَدْوَار / طَوَابِق",
-    "anlam_tr": "kat (bina katı)"
+    "mufret": "دَوْر",
+    "cemi": "أَدْوَار",
+    "anlam_tr": "sıra, nöbet, rol, tur (جَاءَ دَوْرُكِ: sıra sizde)"
   },
   {
     "id": "kelime_612",
@@ -7688,7 +7688,7 @@
     "id": "kelime_926",
     "tur": "edat",
     "kok": "ق ب ل",
-    "mufret": "قَبْلَ / قَبْلُ / قَبْلِي / قَبْلَكَ / قَبْلَكِ",
+    "mufret": "قَبْلَ",
     "cemi": "-",
     "anlam_tr": "önce, -den önce (قَبْلَكِ: senden önce)"
   },
@@ -7696,7 +7696,7 @@
     "id": "kelime_927",
     "tur": "edat",
     "kok": "ب ع د",
-    "mufret": "بَعْدَ / بَعْدُ / بَعْدِي / بَعْدَكَ",
+    "mufret": "بَعْدَ",
     "cemi": "-",
     "anlam_tr": "sonra, henüz (لَمْ ... بَعْدُ: henüz ...-medi)"
   },
@@ -7704,7 +7704,7 @@
     "id": "kelime_928",
     "tur": "fiil",
     "kok": "س ل م",
-    "mazi": "سَلِمَ / سَلِمَتْ / سَلِمْتَ / سَلِمْتِ",
+    "mazi": "سَلِمَ",
     "muzari": "يَسْلَمُ",
     "masdar": "سَلَامَة",
     "anlam_tr": "sağ olmak, selamette kalmak, kurtulmak (سَلِمَتْ يَدَاكَ: eline sağlık)"
@@ -7713,7 +7713,7 @@
     "id": "kelime_929",
     "tur": "isim",
     "kok": "ب أ س",
-    "mufret": "بَأْسٌ / الْبَأْسُ / لَا بَأْسَ",
+    "mufret": "بَأْسٌ",
     "cemi": "-",
     "anlam_tr": "zarar, sakınca, sıkıntı, hastalık şiddeti (لَا بَأْسَ: zararı yok / geçmiş olsun)"
   },
@@ -7721,15 +7721,15 @@
     "id": "kelime_930",
     "tur": "isim",
     "kok": "ذ هـ ب",
-    "mufret": "ذَهَبٌ / ذَهَبِيٌّ / الذَّهَبِيَّةُ",
-    "cemi": "-",
-    "anlam_tr": "altın, altın sarısı (الذَّهَبِيَّةُ: altın rengi / altın olan)"
+    "mufret": "ذَهَبٌ",
+    "cemi": "أَذْهَابٌ",
+    "anlam_tr": "altın"
   },
   {
     "id": "kelime_931",
     "tur": "isim",
     "kok": "ع م ن",
-    "mufret": "عَمَّانُ / عَمَّانَ",
+    "mufret": "عَمَّانُ",
     "cemi": "-",
     "anlam_tr": "Amman (Ürdün'ün başkenti)"
   },
@@ -7737,7 +7737,7 @@
     "id": "kelime_932",
     "tur": "isim",
     "kok": "-",
-    "mufret": "بَيْرُوتُ / بَيْرُوتَ",
+    "mufret": "بَيْرُوتُ",
     "cemi": "-",
     "anlam_tr": "Beyrut (Lübnan'ın başkenti)"
   },
@@ -7761,7 +7761,7 @@
     "id": "kelime_935",
     "tur": "isim",
     "kok": "ش غ ر",
-    "mufret": "شَاغِرٌ / شَاغِرَةٌ",
+    "mufret": "شَاغِرٌ",
     "cemi": "شَوَاغِرُ",
     "anlam_tr": "boş, müsait, tutulmamış (koltuk, oda veya kadro)"
   },
@@ -7769,7 +7769,7 @@
     "id": "kelime_936",
     "tur": "isim",
     "kok": "ج ي أ",
-    "mufret": "مَجِيءٌ / مَجِيئُكَ / مَجِيئِكَ",
+    "mufret": "مَجِيءٌ",
     "cemi": "-",
     "anlam_tr": "geliş, gelme (مَجِيئِكَ: gelişin)"
   },
@@ -7777,8 +7777,8 @@
     "id": "kelime_937",
     "tur": "fiil",
     "kok": "ج ي أ",
-    "mazi": "جَاءَ / جَاءَتْ / جِئْتُ / جِئْتَ",
-    "muzari": "يَجِيءُ / تَجِيءُ",
+    "mazi": "جَاءَ",
+    "muzari": "يَجِيءُ",
     "masdar": "مَجِيءٌ",
     "anlam_tr": "gelmek"
   },
@@ -7786,17 +7786,17 @@
     "id": "kelime_938",
     "tur": "fiil",
     "kok": "أ ت ي",
-    "mazi": "أَتَى / أَتَيْتُ",
-    "muzari": "يَأْتِي / تَأْتِي / آتِي / سَآتِي",
-    "masdar": "إِتْيَانٌ / مَأْتًى",
+    "mazi": "أَتَى",
+    "muzari": "يَأْتِي",
+    "masdar": "إِتْيَانٌ",
     "anlam_tr": "gelmek (بِـ ile: getirmek)"
   },
   {
     "id": "kelime_939",
     "tur": "fiil",
     "kok": "ز و ل",
-    "mazi": "زَالَ / مَا زَالَ / مَا زَالَتْ",
-    "muzari": "يَزُولُ / لَا يَزَالُ",
+    "mazi": "زَالَ",
+    "muzari": "يَزُولُ",
     "masdar": "زَوَالٌ",
     "anlam_tr": "sona ermek, gitmek (مَا زَالَ: hâlâ; طَهُورٌ إِنْ شَاءَ اللّٰهُ: geçmiş olsun)"
   },
@@ -7812,17 +7812,17 @@
     "id": "kelime_941",
     "tur": "isim",
     "kok": "ن ز ل",
-    "mufret": "نَزْلَةٌ / نَزْلَةُ بَرْدٍ",
+    "mufret": "نَزْلَةٌ",
     "cemi": "نَزَلَاتٌ",
-    "anlam_tr": "soğuk algınlığı, nezle, üşütme"
+    "anlam_tr": "soğuk algınlığı, nezle, üşütme (نَزْلَةُ بَرْدٍ)"
   },
   {
     "id": "kelime_942",
     "tur": "fiil",
     "kok": "ص ب غ",
     "mazi": "صَبَغَ",
-    "muzari": "يَصْبَغُ / أَصْبَغُ",
-    "masdar": "صَبْغٌ / صِبَاغَةٌ",
+    "muzari": "يَصْبَغُ",
+    "masdar": "صَبْغٌ",
     "anlam_tr": "boyamak (saç, kumaş vb.)"
   },
   {
@@ -7830,7 +7830,7 @@
     "tur": "fiil",
     "kok": "ل ي ق",
     "mazi": "لَاقَ",
-    "muzari": "يَلِيقُ / تَلِيقُ",
+    "muzari": "يَلِيقُ",
     "masdar": "لِيَاقَةٌ",
     "anlam_tr": "yakışmak, uymak, yaraşmak (بِـ ile)"
   },
@@ -7838,7 +7838,7 @@
     "id": "kelime_944",
     "tur": "isim",
     "kok": "ز ح م",
-    "mufret": "مُزْدَحِمٌ / مُزْدَحِمَةٌ / اِزْدِحَامٌ",
+    "mufret": "مُزْدَحِمٌ",
     "cemi": "-",
     "anlam_tr": "kalabalık, sıkışık, izdiham (trafik vb.)"
   },
@@ -7846,16 +7846,16 @@
     "id": "kelime_945",
     "tur": "isim",
     "kok": "د ر ج",
-    "mufret": "مَدْرَجٌ / مُدَرَّجٌ",
-    "cemi": "مَدَارِجُ / مُدَرَّجَاتٌ",
+    "mufret": "مَدْرَجٌ",
+    "cemi": "مَدَارِجُ",
     "anlam_tr": "uçak pisti; amfi, tribün"
   },
   {
     "id": "kelime_946",
     "tur": "fiil",
     "kok": "ق ل ع",
-    "mazi": "أَقْلَعَ / أَقْلَعَتْ",
-    "muzari": "يُقْلِعُ / تُقْلِعُ",
+    "mazi": "أَقْلَعَ",
+    "muzari": "يُقْلِعُ",
     "masdar": "إِقْلَاعٌ",
     "anlam_tr": "havalanmak, kalkış yapmak (uçak)"
   },
@@ -7864,7 +7864,7 @@
     "tur": "fiil",
     "kok": "غ ر ق",
     "mazi": "اِسْتَغْرَقَ",
-    "muzari": "يَسْتَغْرِقُ / تَسْتَغْرِقُ",
+    "muzari": "يَسْتَغْرِقُ",
     "masdar": "اِسْتِغْرَاقٌ",
     "anlam_tr": "(zaman/süre) almak, sürmek"
   },
@@ -7873,7 +7873,7 @@
     "tur": "fiil",
     "kok": "ز ع ج",
     "mazi": "أَزْعَجَ",
-    "muzari": "يُزْعِجُ / يُزْعِجُنِي / تُزْعِجُ",
+    "muzari": "يُزْعِجُ",
     "masdar": "إِزْعَاجٌ",
     "anlam_tr": "rahatsız etmek, huzursuz etmek, can sıkmak"
   },
@@ -7882,8 +7882,8 @@
     "tur": "fiil",
     "kok": "ع ذ ر",
     "mazi": "اِعْتَذَرَ",
-    "muzari": "يَعْتَذِرُ / أَعْتَذِرُ",
-    "masdar": "اِعْتِذَارٌ / مَعْذِرَةٌ",
+    "muzari": "يَعْتَذِرُ",
+    "masdar": "اِعْتِذَارٌ",
     "anlam_tr": "özür dilemek, mazeret beyan etmek"
   },
   {
@@ -7891,8 +7891,8 @@
     "tur": "fiil",
     "kok": "ع ط ف",
     "mazi": "اِنْعَطَفَ",
-    "muzari": "يَنْعَطِفُ / تَنْعَطِفُ / اِنْعَطِفْ",
-    "masdar": "اِنْعِطَافٌ / مُنْعَطَفٌ",
+    "muzari": "يَنْعَطِفُ",
+    "masdar": "اِنْعِطَافٌ",
     "anlam_tr": "sapmak, dönmek (yolda sağa/sola)"
   },
   {
@@ -7907,7 +7907,7 @@
     "id": "kelime_952",
     "tur": "isim",
     "kok": "-",
-    "mufret": "فُشَارٌ / بُوشَارٌ",
+    "mufret": "فُشَارٌ",
     "cemi": "-",
     "anlam_tr": "patlamış mısır"
   },
@@ -7932,24 +7932,48 @@
     "tur": "fiil",
     "kok": "ع ط س",
     "mazi": "عَطَسَ",
-    "muzari": "يَعْطِسُ / أَعْطِسُ",
-    "masdar": "عُطَاسٌ / عَطْسٌ",
+    "muzari": "يَعْطِسُ",
+    "masdar": "عُطَاسٌ",
     "anlam_tr": "hapşırmak, aksırmak"
   },
   {
     "id": "kelime_956",
     "tur": "isim",
     "kok": "ع ي د",
-    "mufret": "عِيدِيَّةٌ / مُعَايَدَةٌ",
-    "cemi": "عِيدِيَّاتٌ / مُعَايَدَاتٌ",
+    "mufret": "عِيدِيَّةٌ",
+    "cemi": "عِيدِيَّاتٌ",
     "anlam_tr": "bayram harçlığı/hediyesi; bayramlaşma"
   },
   {
     "id": "kelime_957",
     "tur": "isim",
     "kok": "ف ر غ",
-    "mufret": "مُتَفَرِّغٌ / مُتَفَرِّغَةٌ",
+    "mufret": "مُتَفَرِّغٌ",
     "cemi": "مُتَفَرِّغُونَ",
     "anlam_tr": "müsait, boş vakti olan, kendini bir işe adamış"
+  },
+  {
+    "id": "kelime_958",
+    "tur": "isim",
+    "kok": "ذ هـ ب",
+    "mufret": "ذَهَبِيٌّ",
+    "cemi": "ذَهَبِيَّةٌ",
+    "anlam_tr": "altından, altın rengi (الشَّرِكَةُ الذَّهَبِيَّةُ: Altın Kanat Şirketi)"
+  },
+  {
+    "id": "kelime_959",
+    "tur": "isim",
+    "kok": "ذ هـ ب",
+    "mufret": "ذَهَابٌ",
+    "cemi": "-",
+    "anlam_tr": "gidiş, gitme (أُرِيدُ الذَّهَابَ: gitmek istiyorum, ذَهَاباً وَإِيَاباً: gidiş-dönüş)"
+  },
+  {
+    "id": "kelime_960",
+    "tur": "isim",
+    "kok": "أ و ب",
+    "mufret": "إِيَابٌ",
+    "cemi": "-",
+    "anlam_tr": "dönüş (ذَهَاباً وَإِيَاباً: gidiş-dönüş)"
   }
 ]

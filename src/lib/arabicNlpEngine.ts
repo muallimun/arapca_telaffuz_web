@@ -428,7 +428,7 @@ export function extractArabicRoot(word: string): string {
   let core = normalizeForComparison(word).replace(/[^\u0600-\u06FF]/g, "");
   if (core.length <= 2) return core;
 
-  // Yaygın önekleri (ال، وال، بال، كال، لل، و، ف، ب، ل) soy
+  // Yaygın önekleri (ال، وال، بال، كال، لل، و، ف، ب، ل) soy — Gelecek zaman "س" isimlerden asla soyulmaz!
   const prefixes = ["وبال", "وال", "فال", "بال", "كال", "ولل", "لل", "ال", "و", "ف", "ب", "ل"];
   for (const pref of prefixes) {
     if (core.startsWith(pref) && core.length - pref.length >= 3) {
@@ -438,10 +438,14 @@ export function extractArabicRoot(word: string): string {
   }
 
   // Yaygın sonekleri (zamirler, çoğul ekleri, tâ-i merbûta/ه, tenvin elifi) soy
-  const suffixes = ["كم", "هم", "نا", "ها", "ات", "ون", "ين", "ان", "ه", "ك", "ي", "ا"];
+  const suffixes = ["كما", "هما", "كم", "هم", "نا", "ها", "ات", "ون", "ين", "ان", "ه", "ك", "ي", "ا"];
   for (const suff of suffixes) {
     if (core.endsWith(suff) && core.length - suff.length >= 3) {
       core = core.slice(0, -suff.length);
+      // Yuvarlak Tâ (ة -> ت) + iyelik zamiri durumunda sondaki açık ت harfini de soy (örn: تذكرتك -> تذكرت -> تذكر -> ذكر)
+      if (core.endsWith("ت") && core.length >= 4 && ["كما", "هما", "كم", "هم", "نا", "ها", "ه", "ك", "ي"].includes(suff)) {
+        core = core.slice(0, -1);
+      }
       break;
     }
   }
