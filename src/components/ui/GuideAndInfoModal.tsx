@@ -38,6 +38,7 @@ import { playClick } from "@/lib/sfxManager";
 import { triggerOnboardingTour } from "./OnboardingTourModal";
 import { triggerShareAppModal } from "@/lib/shareApp";
 import { triggerFeedbackModal } from "./FeedbackModal";
+import VisitorCounterBadge from "./VisitorCounterBadge";
 
 type GuideTab = "quickstart" | "icons" | "pedagogy" | "about" | "apps";
 
@@ -591,6 +592,8 @@ export default function GuideAndInfoModal() {
                   </p>
                 </div>
               </div>
+
+              <VisitorCounterBadge variant="modal" />
 
               <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-dashed border-[#cbb692] flex flex-wrap items-center justify-between gap-2 text-xs">
                 <span className="font-extrabold text-[var(--foreground)]">

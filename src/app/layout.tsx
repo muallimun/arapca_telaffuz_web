@@ -13,6 +13,7 @@ import ShareAppModal, {
 import FeedbackModal, {
   FooterFeedbackButton,
 } from "@/components/ui/FeedbackModal";
+import VisitorCounterBadge from "@/components/ui/VisitorCounterBadge";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -158,6 +159,8 @@ export default function RootLayout({
           </div>
 
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1.5 sm:gap-2.5">
+            <VisitorCounterBadge variant="footer" />
+
             <a
               href="https://t.me/muallimun"
               target="_blank"
