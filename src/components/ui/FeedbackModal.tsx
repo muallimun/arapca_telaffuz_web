@@ -13,7 +13,7 @@ import { diyaloglar } from "@/lib/data";
 import { playClick, playSuccess } from "@/lib/sfxManager";
 
 const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzz35lStFU4HY4lju25HL7mw2MlmSgmz5eYoct1LzFG7K3ZvmU4sYEznt4IvmPZgptsnw/exec";
+  "https://script.google.com/macros/s/AKfycbxnozrFJ9z1X2TMsO-S1TJm70bu-mreYtuOqU96Oyu_hArYspQaQPvv9rbNeRX8zaGt/exec";
 
 const FEEDBACK_CATEGORIES = [
   {
