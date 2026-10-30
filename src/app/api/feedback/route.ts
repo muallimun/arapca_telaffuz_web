@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const RECIPIENT_CODES = [
-  97, 98, 100, 117, 108, 108, 97, 104, 116, 97, 116, 64, 103, 109, 97, 105, 108,
-  46, 99, 111, 109,
-];
+const GOOGLE_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbzz35lStFU4HY4lju25HL7mw2MlmSgmz5eYoct1LzFG7K3ZvmU4sYEznt4IvmPZgptsnw/exec";
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,10 +19,7 @@ export async function POST(req: NextRequest) {
 
     // Honeypot spam kontrolü
     if (website && String(website).trim().length > 0) {
-      return NextResponse.json(
-        { error: "İstek doğrulanamadı." },
-        { status: 400 }
-      );
+      return NextResponse.json({ ok: true });
     }
 
     const trimmedName = String(name).trim();
@@ -62,48 +57,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const targetEmail = RECIPIENT_CODES.map((c) =>
-      String.fromCharCode(c)
-    ).join("");
-
-    const formData = new FormData();
-    formData.append("Kategori", trimmedCategory);
-    formData.append("Ad_Soyad", trimmedName);
-    formData.append("Eposta", trimmedEmail);
-    formData.append("_replyto", trimmedEmail);
-    formData.append("Ilgili_Bolum", trimmedDialogueRef);
-    formData.append("Mesaj", trimmedMessage);
-    formData.append("Sayfa_URL", trimmedPageUrl || "-");
-    formData.append(
-      "_subject",
-      `Arapça Telaffuz & Diyalog - ${trimmedCategory} (${trimmedName})`
-    );
-    formData.append("_template", "table");
-    formData.append("_captcha", "false");
-
-    const res = await fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
+    const res = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       headers: {
-        Accept: "application/json",
-        "User-Agent":
-          req.headers.get("user-agent") ||
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-        Origin: "https://app.muallimun.net",
-        Referer: "https://app.muallimun.net/",
+        "Content-Type": "text/plain;charset=utf-8",
       },
-      body: formData,
+      body: JSON.stringify({
+        category: trimmedCategory,
+        name: trimmedName,
+        email: trimmedEmail,
+        dialogueRef: trimmedDialogueRef,
+        message: trimmedMessage,
+        pageUrl: trimmedPageUrl,
+      }),
+      redirect: "follow",
     });
 
-    const data = await res.json().catch(() => ({}));
-    const msgStr = String(data?.message || "").toLowerCase();
-    const isSuccess =
-      res.ok ||
-      data?.success === "true" ||
-      data?.success === true ||
-      msgStr.includes("activate") ||
-      msgStr.includes("activation");
-
-    if (!isSuccess) {
+    if (!res.ok) {
       return NextResponse.json(
         {
           error:
@@ -113,7 +83,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ ok: true, success: true });
+    return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(
       { error: "Mesaj gönderilirken beklenmeyen bir hata oluştu." },

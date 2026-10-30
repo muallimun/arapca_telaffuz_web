@@ -12,6 +12,9 @@ import {
 import { diyaloglar } from "@/lib/data";
 import { playClick, playSuccess } from "@/lib/sfxManager";
 
+const GOOGLE_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbzz35lStFU4HY4lju25HL7mw2MlmSgmz5eYoct1LzFG7K3ZvmU4sYEznt4IvmPZgptsnw/exec";
+
 const FEEDBACK_CATEGORIES = [
   {
     id: "Hata / Eksik Kelime-Hareke",
@@ -34,10 +37,16 @@ const FEEDBACK_CATEGORIES = [
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const COOLDOWN_STORAGE_KEY = "muallimun_feedback_last_sent_at";
 const COOLDOWN_SECONDS = 60;
-const RECIPIENT_CODES = [
-  97, 98, 100, 117, 108, 108, 97, 104, 116, 97, 116, 64, 103, 109, 97, 105, 108,
-  46, 99, 111, 109,
-];
+
+function getSuccessSubMessage(cat: string): string {
+  if (cat === "Öneri & Yeni Özellik") {
+    return "Değerli öneriniz uygulama geliştirme sürecimizde titizlikle değerlendirilecektir.";
+  }
+  if (cat === "Genel Görüş & Teşekkür") {
+    return "Değerli görüşleriniz, desteğiniz ve güzel düşünceleriniz için içtenlikle teşekkür ederiz.";
+  }
+  return "Bildiriminiz incelenerek gerekli düzeltmeler en kısa sürede yapılacaktır.";
+}
 
 export function triggerFeedbackModal(initialDialogueRef?: string) {
   if (typeof window !== "undefined") {
@@ -68,6 +77,9 @@ export function FooterFeedbackButton() {
 export default function FeedbackModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [category, setCategory] = useState<string>(
+    FEEDBACK_CATEGORIES[0].id
+  );
+  const [submittedCategory, setSubmittedCategory] = useState<string>(
     FEEDBACK_CATEGORIES[0].id
   );
   const [name, setName] = useState("");
@@ -127,12 +139,13 @@ export default function FeedbackModal() {
 
   if (!isOpen) return null;
 
-  const markSuccess = () => {
+  const markSuccess = (sentCategory: string) => {
     try {
       localStorage.setItem(COOLDOWN_STORAGE_KEY, String(Date.now()));
     } catch {
       // ignore storage errors
     }
+    setSubmittedCategory(sentCategory);
     setCooldownRemaining(COOLDOWN_SECONDS);
     setIsSubmitting(false);
     setIsSubmitted(true);
@@ -145,6 +158,7 @@ export default function FeedbackModal() {
     setErrorMsg(null);
 
     if (website && website.trim().length > 0) {
+      markSuccess(category);
       return;
     }
 
@@ -179,91 +193,63 @@ export default function FeedbackModal() {
     setIsSubmitting(true);
     const currentUrl =
       typeof window !== "undefined" ? window.location.href : "";
-    const targetEmail = RECIPIENT_CODES.map((c) =>
-      String.fromCharCode(c)
-    ).join("");
-    const subjectLine = `Arapça Telaffuz & Diyalog - ${category} (${trimmedName})`;
 
-    const fields: Record<string, string> = {
-      Kategori: category,
-      Ad_Soyad: trimmedName,
-      Eposta: trimmedEmail,
-      _replyto: trimmedEmail,
-      Ilgili_Bolum: dialogueRef,
-      Mesaj: trimmedMessage,
-      Sayfa_URL: currentUrl,
-      _subject: subjectLine,
-      _template: "table",
-      _captcha: "false",
+    const payload = {
+      category,
+      name: trimmedName,
+      email: trimmedEmail,
+      dialogueRef: dialogueRef || "Genel / Tüm Uygulama",
+      message: trimmedMessage,
+      pageUrl: currentUrl,
+      website,
     };
 
-    // Adım A: Standart HTML Form + Gizli Iframe ile Garantili İletim ve Aktivasyon
     try {
-      if (typeof document !== "undefined") {
-        const iframeName = "muallimun_feedback_iframe";
-        let iframe = document.querySelector(
-          `iframe[name="${iframeName}"]`
-        ) as HTMLIFrameElement | null;
-        if (!iframe) {
-          iframe = document.createElement("iframe");
-          iframe.name = iframeName;
-          iframe.style.display = "none";
-          iframe.setAttribute("aria-hidden", "true");
-          document.body.appendChild(iframe);
-        }
-
-        const hiddenForm = document.createElement("form");
-        hiddenForm.method = "POST";
-        hiddenForm.action = `https://formsubmit.co/${targetEmail}`;
-        hiddenForm.target = iframeName;
-        hiddenForm.style.display = "none";
-        hiddenForm.setAttribute("referrerpolicy", "origin");
-
-        Object.entries(fields).forEach(([key, val]) => {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = val;
-          hiddenForm.appendChild(input);
-        });
-
-        document.body.appendChild(hiddenForm);
-        hiddenForm.submit();
-        window.setTimeout(() => {
-          try {
-            hiddenForm.remove();
-          } catch {
-            // ignore
-          }
-        }, 4000);
-      }
-    } catch {
-      // ignore DOM form errors
-    }
-
-    // Adım B: Paralel AJAX Gönderimi (FormData + referrerPolicy: "origin")
-    try {
-      const formData = new FormData();
-      Object.entries(fields).forEach(([key, val]) => {
-        formData.append(key, val);
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      void fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-        },
-        referrerPolicy: "origin",
-        body: formData,
-      }).catch(() => null);
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 400 && data?.error) {
+        setErrorMsg(data.error);
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (res.ok && data?.ok) {
+        markSuccess(category);
+        return;
+      }
     } catch {
-      // ignore fetch errors
+      // Sunucu/ağ hatası durumunda aşağıdaki doğrudan Google Apps Script yedek kanalına geç
     }
 
-    // Adım C: 1500ms sonra yükleniyor durumunu tamamla ve onay ekranını göster
-    window.setTimeout(() => {
-      markSuccess();
-    }, 1500);
+    // Yedek Kanal: Doğrudan tarayıcıdan Google Apps Script'e no-cors ile gönderim
+    try {
+      await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify({
+          category: payload.category,
+          name: payload.name,
+          email: payload.email,
+          dialogueRef: payload.dialogueRef,
+          message: payload.message,
+          pageUrl: payload.pageUrl,
+        }),
+      });
+      markSuccess(category);
+    } catch {
+      setErrorMsg(
+        "Bağlantı hatası oluştu. Lütfen internet bağlantınızı kontrol edip tekrar deneyin."
+      );
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -313,10 +299,10 @@ export default function FeedbackModal() {
               </div>
               <div className="space-y-1.5">
                 <h3 className="text-base sm:text-lg font-extrabold text-[var(--foreground)]">
-                  ✅ Mesajınız yöneticiye başarıyla iletildi. Katkınız için teşekkür ederiz!
+                  Mesajınız başarıyla iletildi. İlginiz için teşekkür ederiz!
                 </h3>
                 <p className="text-xs sm:text-sm font-medium text-[var(--muted)] max-w-md mx-auto">
-                  Bildiriminiz incelenerek gerekli güncellemeler en kısa sürede yapılacaktır.
+                  {getSuccessSubMessage(submittedCategory)}
                 </p>
               </div>
               <div className="pt-2 flex items-center justify-center gap-2.5">
