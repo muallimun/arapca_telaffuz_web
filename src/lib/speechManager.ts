@@ -226,11 +226,26 @@ export class HybridSpeechManager {
   }
 
   private requestCounter = 0;
+  private activeWhisperRequestId: string | null = null;
+
+  public abortActiveWhisperRequest() {
+    if (this.worker && this.activeWhisperRequestId) {
+      try {
+        this.worker.postMessage({
+          type: "abort",
+          requestId: this.activeWhisperRequestId,
+        });
+      } catch {
+        // ignore
+      }
+      this.activeWhisperRequestId = null;
+    }
+  }
 
   /**
    * 16kHz Float32Array ses verisini Whisper Worker ile metne dönüştürür.
-   * İlk model indirme/yükleme (loading/progress) için 60 sn (60000ms),
-   * model hazırlandıktan sonra ses çözümleme (transcribing) için 20 sn (20000ms) ayrı zaman aşımı uygular.
+   * İlk model indirme/yükleme (initiate/download/loading/progress) için 90 sn (90000ms),
+   * model hazırlandıktan sonra ses çözümleme (status === "transcribing") için 15 sn (15000ms) ayrı zaman aşımı uygular.
    * Her isteğe benzersiz bir requestId atanır; eski/zaman aşımına uğramış isteklerin geç yanıtları yeni kaydı ezmez.
    */
   public transcribeWithWhisper(
@@ -244,11 +259,12 @@ export class HybridSpeechManager {
 
     const activeWorker = this.worker;
     const requestId = `req_${Date.now()}_${++this.requestCounter}`;
-    const MODEL_LOAD_TIMEOUT_MS = 60000;
-    const TRANSCRIBE_TIMEOUT_MS = 20000;
+    this.activeWhisperRequestId = requestId;
+    const MODEL_LOAD_TIMEOUT_MS = 90000;
+    const TRANSCRIBE_TIMEOUT_MS = 15000;
 
     callbacks?.onStatusChange?.(
-      "🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor..."
+      "Yapay zeka modeli ilk kullanım için hazırlanıyor (%0)..."
     );
 
     return new Promise<string>((resolve, reject) => {
@@ -258,18 +274,27 @@ export class HybridSpeechManager {
         if (timeout !== null) clearTimeout(timeout);
         timeout = setTimeout(() => {
           activeWorker.removeEventListener("message", handleMessage);
+          try {
+            activeWorker.postMessage({ type: "abort", requestId });
+          } catch {
+            // ignore
+          }
+          if (this.activeWhisperRequestId === requestId) {
+            this.activeWhisperRequestId = null;
+          }
           callbacks?.onStatusChange?.("");
           reject(new Error(`Whisper ${label} zaman aşımı (${ms}ms)`));
         }, ms);
       };
 
-      // Başlangıçta model indirme/yükleme için 60 saniye tanı
+      // Başlangıçta model indirme/yükleme için 90 saniye (90000ms) tanı
       setPhaseTimeout(MODEL_LOAD_TIMEOUT_MS, "model yükleme");
 
       const handleMessage = (event: MessageEvent<WhisperWorkerResponse>) => {
         const {
           requestId: msgReqId,
           status,
+          ignored,
           data,
           text,
           device,
@@ -281,19 +306,26 @@ export class HybridSpeechManager {
           return;
         }
 
+        if (ignored) {
+          if (timeout !== null) clearTimeout(timeout);
+          activeWorker.removeEventListener("message", handleMessage);
+          resolve("");
+          return;
+        }
+
         if (status === "progress") {
           const pct = Math.round(data?.progress || 0);
+          setPhaseTimeout(MODEL_LOAD_TIMEOUT_MS, "model indirme");
           callbacks?.onStatusChange?.(
-            `🧠 Yapay Zeka modeli indiriliyor / hazırlanıyor... (${
-              device?.toUpperCase() || "WASM"
-            } %${pct})`
+            `Yapay zeka modeli ilk kullanım için hazırlanıyor (%${pct})`
           );
         } else if (status === "loading") {
+          setPhaseTimeout(MODEL_LOAD_TIMEOUT_MS, "model hazırlama");
           callbacks?.onStatusChange?.(
-            "🧠 Yapay Zeka modeli hazırlanıyor (60 sn yükleme süresi)..."
+            "Yapay zeka modeli ilk kullanım için hazırlanıyor (%0)..."
           );
         } else if (status === "transcribing") {
-          // Model hazır, ses çözümleme aşaması başladı: 20 saniyelik çözümleme sayacına geç
+          // Yalnızca status === "transcribing" geldiğinde 15 saniyelik çıkarım sayacını başlat
           setPhaseTimeout(TRANSCRIBE_TIMEOUT_MS, "ses çözümleme");
           callbacks?.onStatusChange?.(
             `🧠 Sesiniz çözümleniyor (${device?.toUpperCase() || "WASM"})...`
@@ -301,11 +333,17 @@ export class HybridSpeechManager {
         } else if (status === "completed") {
           if (timeout !== null) clearTimeout(timeout);
           activeWorker.removeEventListener("message", handleMessage);
+          if (this.activeWhisperRequestId === requestId) {
+            this.activeWhisperRequestId = null;
+          }
           callbacks?.onStatusChange?.("");
           resolve((text || "").trim());
         } else if (status === "error") {
           if (timeout !== null) clearTimeout(timeout);
           activeWorker.removeEventListener("message", handleMessage);
+          if (this.activeWhisperRequestId === requestId) {
+            this.activeWhisperRequestId = null;
+          }
           callbacks?.onStatusChange?.("");
           reject(new Error(error || "Whisper hatası"));
         }

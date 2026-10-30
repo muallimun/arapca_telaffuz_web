@@ -110,29 +110,141 @@ export function extractAudioEnvelope(
 }
 
 /**
- * İki zarf dizisi arasındaki Kosinüs Benzerliği (Ritim Korelasyonu: 0 - 100).
+ * İki zarf dizisi arasındaki Sakoe-Chiba bant kısıtlı 1D Dinamik Zaman Bükme (DTW)
+ * ve duraklama (sessizlik vadileri) hizalaması (0 - 100).
  */
 export function calculateRhythmMatch(
   refBars: number[],
   userBars: number[]
 ): number {
-  if (refBars.length !== userBars.length || refBars.length === 0) return 0;
-
-  let dotProduct = 0;
-  let refNorm = 0;
-  let userNorm = 0;
-
-  for (let i = 0; i < refBars.length; i++) {
-    dotProduct += refBars[i] * userBars[i];
-    refNorm += refBars[i] * refBars[i];
-    userNorm += userBars[i] * userBars[i];
+  if (!refBars || !userBars || refBars.length === 0 || userBars.length === 0) {
+    return 0;
   }
 
-  const denom = Math.sqrt(refNorm) * Math.sqrt(userNorm);
-  if (denom < 1e-6) return 0;
+  const N = refBars.length;
+  const M = userBars.length;
 
-  const correlation = dotProduct / denom;
-  return Math.round(Math.max(0, Math.min(100, correlation * 100)));
+  // 1. Dinamik aralık (varyans) ve tepe/enerji normalizasyonu kontrolü
+  let userMin = Infinity;
+  let userMax = -Infinity;
+  let userSum = 0;
+  for (let i = 0; i < M; i++) {
+    const v = userBars[i];
+    if (v < userMin) userMin = v;
+    if (v > userMax) userMax = v;
+    userSum += v;
+  }
+  const userMean = userSum / M;
+  let varianceSum = 0;
+  for (let i = 0; i < M; i++) {
+    const diff = userBars[i] - userMean;
+    varianceSum += diff * diff;
+  }
+  const userStdDev = Math.sqrt(varianceSum / M);
+  const userDynamicRange = userMax - userMin;
+
+  // Tamamen sessiz kayıt
+  if (userMax < 0.09) return 0;
+
+  const isFlatNoise = userDynamicRange < 0.08 || userStdDev < 0.032;
+
+  const normalizeEnvelope = (bars: number[]): number[] => {
+    let minVal = Infinity;
+    let maxVal = -Infinity;
+    for (let i = 0; i < bars.length; i++) {
+      if (bars[i] < minVal) minVal = bars[i];
+      if (bars[i] > maxVal) maxVal = bars[i];
+    }
+    const range = maxVal - minVal;
+    if (range < 1e-4) {
+      return bars.map(() => 0.5);
+    }
+    return bars.map((v) => (v - minVal) / range);
+  };
+
+  const normRef = normalizeEnvelope(refBars);
+  const normUser = normalizeEnvelope(userBars);
+
+  // 2. Sakoe-Chiba bant kısıtlı 1D Dynamic Time Warping (DTW)
+  const window = Math.max(4, Math.floor(Math.max(N, M) * 0.22));
+  const costMatrix: number[][] = Array.from({ length: N + 1 }, () =>
+    Array(M + 1).fill(Infinity)
+  );
+  costMatrix[0][0] = 0;
+
+  for (let i = 1; i <= N; i++) {
+    const jStart = Math.max(1, Math.round((i * M) / N) - window);
+    const jEnd = Math.min(M, Math.round((i * M) / N) + window);
+    for (let j = jStart; j <= jEnd; j++) {
+      const dist = Math.abs(normRef[i - 1] - normUser[j - 1]);
+      const prevMin = Math.min(
+        costMatrix[i - 1][j],
+        costMatrix[i][j - 1],
+        costMatrix[i - 1][j - 1]
+      );
+      costMatrix[i][j] = dist + prevMin;
+    }
+  }
+
+  let totalCost = costMatrix[N][M];
+  if (!Number.isFinite(totalCost)) {
+    // Band dışına taşma olursa tam DTW yedek hesaplaması
+    for (let i = 1; i <= N; i++) {
+      for (let j = 1; j <= M; j++) {
+        const dist = Math.abs(normRef[i - 1] - normUser[j - 1]);
+        costMatrix[i][j] =
+          dist +
+          Math.min(
+            costMatrix[i - 1][j],
+            costMatrix[i][j - 1],
+            costMatrix[i - 1][j - 1]
+          );
+      }
+    }
+    totalCost = costMatrix[N][M];
+  }
+
+  const normalizedDtwDistance = totalCost / Math.max(N, M, 1);
+  const dtwScore = Math.max(0, Math.min(1, 1 - normalizedDtwDistance * 1.15));
+
+  // 3. Cümle içi duraklama (sessizlik vadileri) hizalaması (%25 ağırlık)
+  const PAUSE_THRESHOLD = 0.24;
+  let pauseMatches = 0;
+  const compareLen = Math.min(N, M);
+  for (let i = 0; i < compareLen; i++) {
+    const refIsPause = normRef[i] < PAUSE_THRESHOLD;
+    // Sakoe-Chiba komşuluğunda (±2 bar) duraklama/vadi uyumu kontrolü
+    let matchedInBand = false;
+    for (
+      let k = Math.max(0, i - 2);
+      k <= Math.min(M - 1, i + 2);
+      k++
+    ) {
+      const userIsPause = normUser[k] < PAUSE_THRESHOLD;
+      if (refIsPause === userIsPause) {
+        matchedInBand = true;
+        break;
+      }
+    }
+    if (matchedInBand) {
+      pauseMatches++;
+    }
+  }
+  const pauseAlignmentScore = compareLen > 0 ? pauseMatches / compareLen : 0;
+
+  const combinedScore = Math.round(
+    Math.max(
+      0,
+      Math.min(100, (dtwScore * 0.75 + pauseAlignmentScore * 0.25) * 100)
+    )
+  );
+
+  // Düz gürültü (çok düşük dinamik aralık/varyans) tespiti varsa puanı <= 35 ile sınırla
+  if (isFlatNoise) {
+    return Math.min(35, combinedScore);
+  }
+
+  return combinedScore;
 }
 
 /**
@@ -219,9 +331,34 @@ export function audioBufferToWav(audioBuffer: AudioBuffer): Blob {
 }
 
 /**
+ * 44.1kHz / 48kHz -> 16kHz downsampling öncesinde 8kHz üzerindeki yüksek frekanslı
+ * sibilantların (س، ص، ش، ث) katlanmasını (aliasing) önleyen hafif FIR alçak geçiren filtre.
+ */
+function applyLowPassAntiAliasingFilter(
+  buffer: Float32Array,
+  downsampleRatio: number
+): Float32Array {
+  if (downsampleRatio <= 1.05 || buffer.length < 5) {
+    return buffer;
+  }
+  const filtered = new Float32Array(buffer.length);
+  // 5-tap simetrik Hann ağırlıklı FIR alçak geçiren çekirdek: [0.1, 0.2, 0.4, 0.2, 0.1]
+  const n = buffer.length;
+  for (let i = 0; i < n; i++) {
+    const s0 = buffer[Math.max(0, i - 2)];
+    const s1 = buffer[Math.max(0, i - 1)];
+    const s2 = buffer[i];
+    const s3 = buffer[Math.min(n - 1, i + 1)];
+    const s4 = buffer[Math.min(n - 1, i + 2)];
+    filtered[i] = 0.1 * s0 + 0.2 * s1 + 0.4 * s2 + 0.2 * s3 + 0.1 * s4;
+  }
+  return filtered;
+}
+
+/**
  * Mobil tarayıcılarda (44100 Hz veya 48000 Hz kayıt alan AudioContext)
- * birleştirilen Float32Array ses tamponunu lineer interpolasyon ile kesin olarak
- * hedef frekansa (varsayılan 16000 Hz) yeniden örnekler.
+ * birleştirilen Float32Array ses tamponunu FIR anti-aliasing alçak geçiren filtre
+ * ve lineer interpolasyon ile kesin olarak hedef frekansa (varsayılan 16000 Hz) yeniden örnekler.
  */
 export function resampleFloat32Audio(
   buffer: Float32Array,
@@ -237,14 +374,16 @@ export function resampleFloat32Audio(
     return buffer;
   }
   const ratio = fromSampleRate / toSampleRate;
-  const newLength = Math.max(1, Math.round(buffer.length / ratio));
+  const sourceBuffer =
+    ratio > 1.05 ? applyLowPassAntiAliasingFilter(buffer, ratio) : buffer;
+  const newLength = Math.max(1, Math.round(sourceBuffer.length / ratio));
   const result = new Float32Array(newLength);
   for (let i = 0; i < newLength; i++) {
     const srcIndex = i * ratio;
     const idx0 = Math.floor(srcIndex);
-    const idx1 = Math.min(buffer.length - 1, idx0 + 1);
+    const idx1 = Math.min(sourceBuffer.length - 1, idx0 + 1);
     const frac = srcIndex - idx0;
-    result[i] = buffer[idx0] * (1 - frac) + buffer[idx1] * frac;
+    result[i] = sourceBuffer[idx0] * (1 - frac) + sourceBuffer[idx1] * frac;
   }
   return result;
 }
@@ -387,22 +526,57 @@ export function countSyllablePeaks(bars: number[]): number {
 }
 
 /**
- * Arapça metindeki beklenen yaklaşık hece/vurgu sayısını tahmin eder.
+ * Arapça metindeki fonolojik hece sayısını (kısa ünlüler: fetha/damme/kesra, tenvin,
+ * med uzatma harfleri: ا/و/ي ve şedde ikiz ünsüz ağırlığı) gerçek dilbilimsel kurallarla hesaplar.
  */
 export function estimateArabicSyllables(sentence: string): number {
-  const clean = sentence
-    .replace(/[\u064B-\u065F\u0670.,!?؟،؛:"'«»()[\]-]/g, "")
-    .trim();
-  if (!clean) return 1;
-  const words = clean.split(/\s+/).filter(Boolean);
-  const charCount = words.join("").length;
-  return Math.max(words.length, Math.round(charCount * 0.45));
+  const words = sentence
+    .replace(/[.,!?؟،؛:"'«»()[\]\d-]/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((w) => /[\u0600-\u06FF]/.test(w));
+
+  if (words.length === 0) return 1;
+
+  let totalSyllables = 0;
+
+  for (const word of words) {
+    // Kısa ünlüler (\u064E, \u064F, \u0650), tenvin (\u064B, \u064C, \u064D) ve asgari elif (\u0670)
+    const shortVowelMatches = word.match(/[\u064E\u064F\u0650\u064B\u064C\u064D\u0670]/g);
+    const shortVowelCount = shortVowelMatches ? shortVowelMatches.length : 0;
+
+    // Şedde (\u0651) ikiz ünsüz oluşturarak kapalı hece ağırlığı ekler
+    const shaddaMatches = word.match(/\u0651/g);
+    const shaddaCount = shaddaMatches ? shaddaMatches.length : 0;
+
+    if (shortVowelCount > 0) {
+      // Harekeli kelimede her ünlü çekirdeği 1 hecedir; kelime sonu vakıf (duruş) nedeniyle en az 1 hece korunur
+      const wordSyl = Math.max(
+        1,
+        shortVowelCount + Math.floor(shaddaCount * 0.5)
+      );
+      totalSyllables += wordSyl;
+    } else {
+      // Harekesiz kelimede ünsüz iskeleti ve med harflerinden (ا، آ، و، ي، ى) fonolojik tahmin
+      const bare = word.replace(/[^\u0621-\u063A\u0641-\u064A\u0671]/g, "");
+      const maddMatches = bare.slice(1).match(/[اآىوي]/g);
+      const maddCount = maddMatches ? maddMatches.length : 0;
+      const remainingConsonants = Math.max(0, bare.length - maddCount);
+      const estimatedWordSyl = Math.max(
+        1,
+        maddCount + Math.round(remainingConsonants * 0.5) + Math.floor(shaddaCount * 0.5)
+      );
+      totalSyllables += estimatedWordSyl;
+    }
+  }
+
+  return Math.max(words.length, totalSyllables);
 }
 
 /**
- * Tarayıcı ses-metin (STT) motoru yanıt vermediğinde (ör. mobil tarayıcı mikrofon kısıtlaması veya çevrimdışı durum),
- * kaydedilen 16kHz DSP ses dalgasının referans ses dalgasıyla olan zarf, süre, hece tepe noktaları (syllablePeaks)
- * ve ritim korelasyonunu kullanarak Akustik Hece, Süre ve Zarf Korelasyonu Analizi üretir.
+ * Ses-metin (STT) motoru yanıt vermediğinde uydurma %58+ telaffuz puanı ÜRETMEZ.
+ * Ritim ve süre uyumunu ayrı yardımcı metrik olarak hesaplar, ancak metin çözümlenemediğinde
+ * isTextRecognized: false, isEvaluated: false, confidence: "unverified" ve score: null döndürür.
  */
 export function evaluateAcousticDspSentence(
   expectedSentence: string,
@@ -421,17 +595,29 @@ export function evaluateAcousticDspSentence(
   if (cleanWords.length === 0) {
     return {
       isTextRecognized: false,
+      isEvaluated: false,
+      isAcousticFallback: false,
+      confidence: "unverified",
       score: null,
       words: [],
       overallScore: 0,
-      rhythmScore: 0,
+      rhythmScore: undefined,
       isRootGuardTriggered: false,
     };
   }
 
+  const hasRealReference =
+    Array.isArray(refBars) &&
+    refBars.length > 0 &&
+    refBars.some((b) => b > 0.09);
+
   const safeRefDur =
-    refDuration > 0.3 ? refDuration : Math.max(1.2, cleanWords.length * 0.65 + 0.4);
-  const overallRhythm = calculateRhythmMatch(refBars, userBars);
+    refDuration > 0.3
+      ? refDuration
+      : Math.max(1.2, cleanWords.length * 0.65 + 0.4);
+  const overallRhythm = hasRealReference
+    ? calculateRhythmMatch(refBars, userBars)
+    : 0;
   const overallTempo = calculateTempoScore(safeRefDur, userDuration);
   const syllablePeaks = countSyllablePeaks(userBars);
   const expectedSyllables = estimateArabicSyllables(expectedSentence);
@@ -440,67 +626,41 @@ export function evaluateAcousticDspSentence(
     Math.min(syllablePeaks, expectedSyllables) /
     Math.max(syllablePeaks, expectedSyllables, 1);
   const syllableHarmonyScore =
-    syllablePeaks > 0
-      ? Math.round(Math.min(100, Math.max(55, syllableRatio * 100)))
-      : 0;
+    syllablePeaks > 0 ? Math.round(Math.min(100, syllableRatio * 100)) : 0;
 
-  const calculatedRhythmScore = Math.max(
-    0,
-    Math.min(
-      100,
-      Math.round(
-        overallRhythm * 0.5 +
-          overallTempo * 0.35 +
-          syllableHarmonyScore * 0.15
+  const calculatedRhythmScore = hasRealReference
+    ? Math.max(
+        0,
+        Math.min(
+          100,
+          Math.round(
+            overallRhythm * 0.55 +
+              overallTempo * 0.3 +
+              syllableHarmonyScore * 0.15
+          )
+        )
       )
-    )
-  );
+    : undefined;
 
   // Eğer konuşma tanıma motorundan metin alınamadıysa (recognizedText boşsa):
-  // Kullanıcı mikrofona gerçekten konuştuysa (userDuration >= 0.8 sn [tek kelimede >= 0.45 sn] ve syllablePeaks >= 1),
-  // Akustik Hece, Süre ve Zarf Korelasyonu Analizi çalıştır (Akustik Mod).
+  // Asla uydurma %58 taban telaffuz puanı verme!
   if (!recognizedText || recognizedText.trim().length === 0) {
-    const minValidDur = cleanWords.length <= 1 ? 0.45 : 0.8;
-    const hasValidAcousticSpeech =
-      userDuration >= minValidDur && syllablePeaks >= 1;
-
-    if (hasValidAcousticSpeech) {
-      const acousticFluency = Math.max(
-        58,
-        Math.min(
-          95,
-          Math.round(calculatedRhythmScore * 0.65 + syllableHarmonyScore * 0.35)
-        )
-      );
-      const boostedRhythm = Math.max(55, calculatedRhythmScore);
-      return {
-        isTextRecognized: false,
-        isAcousticFallback: true,
-        score: acousticFluency,
-        overallScore: acousticFluency,
-        rhythmScore: boostedRhythm,
-        fluencyScore: acousticFluency,
-        syllablePeaks,
-        expectedSyllables,
-        words: [],
-        isRootGuardTriggered: false,
-        message:
-          "📱 Mobil tarayıcınızda ses-metin motoru yanıt vermediği için değerlendirme Akustik Ritim ve Hece Uyumu üzerinden yapıldı.",
-      };
-    }
-
     return {
       isTextRecognized: false,
+      isEvaluated: false,
       isAcousticFallback: false,
+      confidence: "unverified",
       score: null,
       overallScore: 0,
       rhythmScore: calculatedRhythmScore,
+      tempoScore: overallTempo,
+      fluencyScore: undefined,
       syllablePeaks,
       expectedSyllables,
       words: [],
       isRootGuardTriggered: false,
       message:
-        "Ses kaydınız alındı ve ritim karşılaştırıldı; ancak kelimeler net çözümlenemediği için telaffuz doğruluğu puanlanamadı. Lütfen mikrofona biraz daha yakın konuşarak tekrar deneyin.",
+        "Ses kaydı alındı ve ritim karşılaştırıldı. Kelimeler güvenilir biçimde çözümlenemediği için telaffuz doğruluğu puanlanamadı.",
     };
   }
 
@@ -508,9 +668,11 @@ export function evaluateAcousticDspSentence(
   return {
     ...evalRes,
     isTextRecognized: true,
+    isEvaluated: true,
     isAcousticFallback: false,
     score: evalRes.overallScore,
     rhythmScore: calculatedRhythmScore,
+    tempoScore: overallTempo,
     syllablePeaks,
     expectedSyllables,
   };

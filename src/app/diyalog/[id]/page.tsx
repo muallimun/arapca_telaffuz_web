@@ -78,6 +78,7 @@ import {
   start16kHzRecorder,
   RecordingSession16kHz,
   evaluateAcousticDspSentence,
+  extractAudioEnvelope,
 } from "@/lib/audioAnalysis";
 import { HybridSpeechManager } from "@/lib/speechManager";
 import { evaluateSentenceWords } from "@/lib/arabicNlpEngine";
@@ -670,14 +671,24 @@ export default function DialogueDetailPage({
     setRoleplayWaitDurationMs(waitDurationMs);
     setRoleplayRemainingPct(100);
 
-    // 1. Canlı SpeechRecognition başlat (Mobilde mikrofon çakışmasını önlemek için getUserMedia'dan hemen sonra başlat)
+    // 1. Canlı SpeechRecognition başlat (Yalnızca localSttOnly kapalı ve Hızlı Tarayıcı Motoru seçiliyse)
     roleplayFinalTranscriptRef.current = "";
     roleplayInterimTranscriptRef.current = "";
+    const { localSttOnly: currentLocalOnly, sttEngine: currentEngine } =
+      useSettings.getState();
+    const shouldUseRoleplayWebSpeech =
+      !currentLocalOnly && currentEngine === "webspeech";
     const isMobileDevice =
       typeof navigator !== "undefined" &&
       /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     const startRoleplaySpeechRec = () => {
+      if (
+        useSettings.getState().localSttOnly ||
+        useSettings.getState().sttEngine !== "webspeech"
+      ) {
+        return;
+      }
       roleplaySpeechRef.current?.startLiveWebSpeech({
         onInterimTranscript: (combined, finalPart, interimPart) => {
           if (typeof finalPart === "string" && finalPart.trim()) {
@@ -693,7 +704,7 @@ export default function DialogueDetailPage({
       });
     };
 
-    if (!isMobileDevice) {
+    if (shouldUseRoleplayWebSpeech && !isMobileDevice) {
       startRoleplaySpeechRec();
     }
 
@@ -720,7 +731,7 @@ export default function DialogueDetailPage({
         mySessionToken === roleplaySessionTokenRef.current
       ) {
         roleplayRecorderRef.current = recSession;
-        if (isMobileDevice) {
+        if (shouldUseRoleplayWebSpeech && isMobileDevice) {
           setTimeout(() => {
             startRoleplaySpeechRec();
           }, 80);
@@ -736,7 +747,7 @@ export default function DialogueDetailPage({
     } catch {
       // Mikrofon izni verilmediyse veya açılamadıysa sayaç yine çalışır, ses olmadığı için %0 kaydedilir
       roleplayRecorderRef.current = null;
-      if (isMobileDevice) {
+      if (shouldUseRoleplayWebSpeech && isMobileDevice) {
         startRoleplaySpeechRec();
       }
     }
@@ -795,24 +806,26 @@ export default function DialogueDetailPage({
       }
       computedScore = 0;
     } else {
+      const { localSttOnly: isLocalOnly, sttEngine: currentEngine } =
+        useSettings.getState();
       const [recordedData, stoppedSpeech] = await Promise.all([
         activeRec
           ? activeRec.stop().catch(() => null)
           : Promise.resolve(null),
-        roleplaySpeechRef.current
+        !isLocalOnly && roleplaySpeechRef.current
           ? roleplaySpeechRef.current.stopAndWaitForFinalResult(1200)
           : Promise.resolve(""),
       ]);
 
-      const fullSpokenText = (
-        roleplayFinalTranscriptRef.current +
-        " " +
-        roleplayInterimTranscriptRef.current
-      ).trim();
-      const capturedText = stoppedSpeech || fullSpokenText;
+      const fullSpokenText = isLocalOnly
+        ? ""
+        : (
+            roleplayFinalTranscriptRef.current +
+            " " +
+            roleplayInterimTranscriptRef.current
+          ).trim();
+      let capturedText = isLocalOnly ? "" : stoppedSpeech || fullSpokenText;
 
-      const hasArabicSpeechText =
-        Boolean(capturedText) && /[\u0600-\u06FF]/.test(capturedText);
       const hasMicSpeechEnergy = Boolean(
         recordedData &&
           !recordedData.isSilent &&
@@ -822,32 +835,82 @@ export default function DialogueDetailPage({
             recordedData.envelopeBars.some((b) => b > 0.15))
       );
 
+      // Eğer Whisper seçiliyse veya localSttOnly açıksa (veya Web Speech boş döndüyse) cihaz içi Whisper ile çözümle
+      if (
+        recordedData &&
+        hasMicSpeechEnergy &&
+        (isLocalOnly ||
+          currentEngine === "whisper" ||
+          !/[\u0600-\u06FF]/.test(capturedText)) &&
+        roleplaySpeechRef.current
+      ) {
+        try {
+          const inputSamples =
+            recordedData.trimmedSamples.length > 0
+              ? recordedData.trimmedSamples
+              : recordedData.samples16kHz;
+          const hybridRes = await roleplaySpeechRef.current.transcribeHybrid(
+            isLocalOnly ? "whisper" : currentEngine,
+            inputSamples,
+            { backupTranscript: capturedText }
+          );
+          if (hybridRes.text && /[\u0600-\u06FF]/.test(hybridRes.text)) {
+            capturedText = hybridRes.text.trim();
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const hasArabicSpeechText =
+        Boolean(capturedText) && /[\u0600-\u06FF]/.test(capturedText);
+
       if (!hasArabicSpeechText && !hasMicSpeechEnergy) {
         // Kullanıcı süre boyunca susup hiçbir şey söylemediyse puan %0 (Okunmadı / Ses Yok)
         computedScore = 0;
       } else if (hasArabicSpeechText) {
-        // SpeechRecognition Arapça metin yakaladıysa hedef cümle ile karşılaştırarak gerçek puan hesapla
+        // Arapça metin yakalandıysa hedef cümle ile karşılaştırarak gerçek puan hesapla
         const evalRes = evaluateSentenceWords(line.arapca, capturedText);
         computedScore = evalRes.overallScore;
-        if (computedScore > 0) {
+        if (evalRes.isEvaluated !== false && computedScore > 0) {
           recordPronunciationScore(computedScore);
         }
       } else if (recordedData && hasMicSpeechEnergy) {
-        // Ses dalgası var ama metin çözümlenemediyse Akustik Hece, Süre ve Zarf Korelasyonu Analizi çalıştır
-        const wordCount = line.arapca.trim().split(/\s+/).length;
-        const expectedDur = Math.max(1.4, wordCount * 0.65 + 0.5);
-        const estRefBars = Array.from({ length: 48 }, (_, idx) =>
-          Math.max(0.14, Math.abs(Math.sin(idx * 0.35)) * 0.85)
-        );
+        // Ses dalgası var ama metin çözümlenemediyse sahte Math.sin referansı KULLANMA ve recordPronunciationScore ÇAĞIRMA!
+        let realRefBars: number[] = [];
+        let realRefDuration = 0;
+        if (hasMp3(dialogue.id, line.sira)) {
+          try {
+            const mp3Url = getMp3Path(dialogue.id, line.sira);
+            const res = await fetch(mp3Url);
+            if (res.ok) {
+              const ab = await res.arrayBuffer();
+              if (ab.byteLength > 128) {
+                const ctx = new AudioContext();
+                try {
+                  const decoded = await ctx.decodeAudioData(ab);
+                  const env = extractAudioEnvelope(decoded, 48);
+                  realRefBars = env.bars;
+                  realRefDuration = env.duration;
+                } finally {
+                  await ctx.close().catch(() => {});
+                }
+              }
+            }
+          } catch {
+            realRefBars = [];
+          }
+        }
         const dspEval = evaluateAcousticDspSentence(
           line.arapca,
           recordedData.envelopeBars,
-          estRefBars,
+          realRefBars,
           recordedData.duration,
-          expectedDur,
+          realRefDuration,
           ""
         );
-        computedScore = dspEval.fluencyScore ?? dspEval.rhythmScore ?? 0;
+        // Metin doğrulanamadığı için userStore/streak verisine telaffuz puanı yazılmaz; yalnızca satır içi ritim bilgisi tutulur
+        computedScore = dspEval.rhythmScore ?? 0;
       }
     }
 

@@ -42,7 +42,11 @@ export interface WordEvaluationResult {
   score: number;
   status: "correct" | "warning" | "wrong";
   makhrajTip?: MakhrajTip;
+  makhrajWarning?: string;
   medVezinTip?: string;
+  diacriticWarning?: string;
+  diacriticsVerified?: boolean;
+  diacriticNote?: string;
   isRootGuardTriggered?: boolean;
   rootGuardMessage?: string;
 }
@@ -52,12 +56,20 @@ export interface SentenceEvaluationResult {
   overallScore: number;
   score?: number | null;
   isTextRecognized?: boolean;
+  isEvaluated?: boolean;
   isAcousticFallback?: boolean;
+  confidence?: "high" | "medium" | "unverified";
   rhythmScore?: number;
+  tempoScore?: number;
   fluencyScore?: number;
   syllablePeaks?: number;
   expectedSyllables?: number;
   extraWordsCount?: number;
+  insertedWords?: string[];
+  omittedCount?: number;
+  substitutedCount?: number;
+  diacriticsVerified?: boolean;
+  diacriticNote?: string;
   message?: string;
   isRootGuardTriggered: boolean;
   rootGuardMessage?: string;
@@ -72,7 +84,7 @@ export interface AdaptiveCoachingResult {
 }
 
 // ==============================================================================
-// 2. SABİTLER VE TAM 38 ÇİFTLİK MAHREÇ KARIŞIKLIK MATRİSİ
+// 2. SABİTLER VE TAM 38 KANONİK ÇİFTLİK MAHREÇ KARIŞIKLIK MATRİSİ
 // ==============================================================================
 
 const THROAT_LETTERS = ["ء", "أ", "إ", "ه", "ع", "ح", "غ", "خ"];
@@ -80,296 +92,351 @@ const PELTEK_LETTERS = ["ث", "ذ", "ظ"];
 const KALIN_LETTERS = ["خ", "ص", "ض", "غ", "ط", "ق", "ظ"];
 
 export const MAKHRAJ_CONFUSION_PAIRS: Array<{
+  canonicalPairId: number;
   pair1: string;
   pair2: string;
   title: string;
   tip: string;
 }> = [
-  // 1-4: Ayn (ع) ile Hemze/Elif (ء/أ/إ/ا)
+  // Kanonik Çift 1: Ayn (ع) ile Hemze/Elif (ء/أ/إ/ا)
   {
+    canonicalPairId: 1,
     pair1: "ع",
     pair2: "ء",
     title: "Boğaz Ortası (Ayn) / Hemze Karışıklığı",
     tip: "ع harfini boğaz ortası kaslarını hafifçe daraltarak derin ve çatallı çıkarın; düz Elif/Hemze gibi okumayın.",
   },
   {
+    canonicalPairId: 1,
     pair1: "ع",
     pair2: "أ",
     title: "Boğaz Ortası (Ayn) / Hemze Karışıklığı",
     tip: "ع harfini boğaz ortası kaslarını hafifçe daraltarak derin ve çatallı çıkarın; düz Elif/Hemze gibi okumayın.",
   },
   {
+    canonicalPairId: 1,
     pair1: "ع",
     pair2: "إ",
     title: "Boğaz Ortası (Ayn) / Hemze Karışıklığı",
     tip: "ع harfini boğaz ortası kaslarını hafifçe daraltarak derin ve çatallı çıkarın; düz Elif/Hemze gibi okumayın.",
   },
   {
+    canonicalPairId: 1,
     pair1: "ع",
     pair2: "ا",
     title: "Boğaz Ortası (Ayn) / Hemze Karışıklığı",
     tip: "ع harfini boğaz ortası kaslarını hafifçe daraltarak derin ve çatallı çıkarın; düz Elif/Hemze gibi okumayın.",
   },
-  // 5-9: Boğaz Harfleri Kendi Arasında
+  // Kanonik Çift 2-6: Boğaz Harfleri Kendi Arasında
   {
+    canonicalPairId: 2,
     pair1: "ح",
     pair2: "ه",
     title: "Boğaz Ortası (Hâ) / Boğaz Dibi (He) Karışıklığı",
     tip: "ح harfini boğaz ortasını daraltarak sıcak ve güçlü bir buğu sesiyle çıkarın; göğüsten gelen cılız ه yapmayın.",
   },
   {
+    canonicalPairId: 3,
     pair1: "ح",
     pair2: "خ",
     title: "Temiz Hâ / Hırıltılı Hı Karışıklığı",
     tip: "ح harfinde küçük dili titretmeyin (hırıltı katmayın); خ harfinde ise boğaz üstünden hırıltılı çıkarın.",
   },
   {
+    canonicalPairId: 4,
     pair1: "خ",
     pair2: "غ",
     title: "Boğaz Üstü (Hı / Ğayn) Karışıklığı",
     tip: "خ nefessiz ve hırıltılıdır; غ ise ses tellerinin titrediği yumuşak Ğayn sesidir.",
   },
   {
+    canonicalPairId: 5,
     pair1: "غ",
     pair2: "ق",
     title: "Ğayn / Kaf Karışıklığı",
     tip: "ق harfinde dil kökünü yumuşak damağa tam vurup patlatın; غ gibi sızıcı bırakmayın.",
   },
   {
+    canonicalPairId: 6,
     pair1: "ع",
     pair2: "غ",
     title: "Boğaz Ortası (Ayn) / Boğaz Üstü (Ğayn) Karışıklığı",
     tip: "ع boğazın tam ortasından temiz çıkar, hırıltılı غ sesine kaydırmayın.",
   },
-  // 10-13: He (ه) ile Hemze/Elif (ء/أ/إ/ا)
+  // Kanonik Çift 7: He (ه) ile Hemze/Elif (ء/أ/إ/ا)
   {
+    canonicalPairId: 7,
     pair1: "ه",
     pair2: "ء",
     title: "He / Hemze Karışıklığı",
     tip: "ه harfinde nefesi kesmeyin, boğaz dibinden akıcı nefes verin.",
   },
   {
+    canonicalPairId: 7,
     pair1: "ه",
     pair2: "أ",
     title: "He / Hemze Karışıklığı",
     tip: "ه harfinde nefesi kesmeyin, boğaz dibinden akıcı nefes verin.",
   },
   {
+    canonicalPairId: 7,
     pair1: "ه",
     pair2: "إ",
     title: "He / Hemze Karışıklığı",
     tip: "ه harfinde nefesi kesmeyin, boğaz dibinden akıcı nefes verin.",
   },
   {
+    canonicalPairId: 7,
     pair1: "ه",
     pair2: "ا",
     title: "He / Hemze Karışıklığı",
     tip: "ه harfinde nefesi kesmeyin, boğaz dibinden akıcı nefes verin.",
   },
-  // 14-17: Kalın - İnce Karışıklıkları (ق/ك, ص/س, ط/ت, ض/د)
+  // Kanonik Çift 8-11: Kalın - İnce Karışıklıkları (ق/ك, ص/س, ط/ت, ض/د)
   {
+    canonicalPairId: 8,
     pair1: "ق",
     pair2: "ك",
     title: "Dil Kökü Kalın (Kaf) / İnce (Kef) Karışıklığı",
     tip: "ق harfini dilin en arka kökünü üst yumuşak damağa vurarak tok ve kalın çıkarın; ön damaktan ince ك okumayın.",
   },
   {
+    canonicalPairId: 9,
     pair1: "ص",
     pair2: "س",
     title: "Kalın (Sad) / İnce (Sin) Karışıklığı",
     tip: "ص okurken dilin arka kısmını üst damağa kaldırarak (İsti'lâ) ıslık sesini tok ve kalın çıkarın.",
   },
   {
+    canonicalPairId: 10,
     pair1: "ط",
     pair2: "ت",
     title: "Kalın (Tı) / İnce (Te) Karışıklığı",
     tip: "ط harfinde dil sırtını üst damağa kapatarak (İtbak) nefesi hapsedip tok ve patlamalı çıkarın; ince ت yapmayın.",
   },
   {
+    canonicalPairId: 11,
     pair1: "ض",
     pair2: "د",
     title: "Kalın (Dad) / İnce (Dal) Karışıklığı",
     tip: "ض harfini dilin yan kenarını üst azı dişlerine temas ettirerek kalın ve dolgunca çıkarın; dil ucuyla ince د yapmayın.",
   },
-  // 18-23: Dad (ض) ve Zı (ظ) Karışıklıkları
+  // Kanonik Çift 12-17: Dad (ض) ve Zı (ظ) Karışıklıkları
   {
+    canonicalPairId: 12,
     pair1: "ض",
     pair2: "ظ",
     title: "Azı Diş (Dad) / Peltek (Zı) Karışıklığı",
     tip: "ض harfinde dil ucu dişlerin arasına çıkmaz! Dilin yan kenarını üst azı dişlerine yaslayarak çıkarın.",
   },
   {
+    canonicalPairId: 13,
     pair1: "ض",
     pair2: "ذ",
     title: "Kalın (Dad) / İnce Peltek (Zel) Karışıklığı",
     tip: "ض peltek değildir; dil yanını üst azı dişlerine değdirerek tok ve kalın okuyun.",
   },
   {
+    canonicalPairId: 14,
     pair1: "ض",
     pair2: "ز",
     title: "Kalın (Dad) / Keskin (Ze) Karışıklığı",
     tip: "ض harfinde diş arasından ıslık/vızıltı çıkarmayın, dil yanından tok ses verin.",
   },
   {
+    canonicalPairId: 15,
     pair1: "ظ",
     pair2: "ز",
     title: "Kalın Peltek (Zı) / Keskin (Ze) Karışıklığı",
     tip: "ظ peltek ve kalındır; dil ucunu üst ön dişlerin ucuna değdirin ve dil kökünü kaldırın, keskin ز yapmayın.",
   },
   {
+    canonicalPairId: 16,
     pair1: "ظ",
     pair2: "ذ",
     title: "Kalın Peltek (Zı) / İnce Peltek (Zel) Karışıklığı",
     tip: "İkisi de peltektir ancak ظ harfinde dil arkasını üst damağa kaldırarak sesi kalınlaştırın.",
   },
   {
+    canonicalPairId: 17,
     pair1: "ظ",
     pair2: "ط",
     title: "Akıcı Peltek (Zı) / Patlamalı (Tı) Karışıklığı",
     tip: "ظ harfinde sesi hapsetmeyin, dil ucu ile üst diş arasından sesi akıtın.",
   },
-  // 24-29: Peltek Se (ث) ve Zel (ذ) Karışıklıkları
+  // Kanonik Çift 18-23: Peltek Se (ث) ve Zel (ذ) Karışıklıkları
   {
+    canonicalPairId: 18,
     pair1: "ث",
     pair2: "س",
     title: "Peltek (Se) / Islıklı (Sin) Karışıklığı",
     tip: "ث harfinde dil ucunu üst kesici dişlerin ucuna hafifçe değdirin; dişleri kapatıp س gibi ıslık çıkarmayın.",
   },
   {
+    canonicalPairId: 19,
     pair1: "ث",
     pair2: "ت",
     title: "Akıcı Peltek (Se) / Patlamalı (Te) Karışıklığı",
     tip: "ث harfinde dil ucunu diş etine kapatıp sesi patlatmayın, diş ucundan nefes akıtın.",
   },
   {
+    canonicalPairId: 20,
     pair1: "ث",
     pair2: "ف",
     title: "Dil Ucu Peltek (Se) / Dudak (Fe) Karışıklığı",
     tip: "ث harfini alt dudağı dişlere değdirerek değil, dil ucunu üst dişlere değdirerek çıkarın.",
   },
   {
+    canonicalPairId: 21,
     pair1: "ث",
     pair2: "ذ",
     title: "Nefesli Peltek (Se) / Titreşimli Peltek (Zel) Karışıklığı",
     tip: "ث harfinde ses tellerini titretmeden sadece nefes akıtın; ذ harfinde ise ses tellerini titretin.",
   },
   {
+    canonicalPairId: 22,
     pair1: "ذ",
     pair2: "ز",
     title: "Peltek (Zel) / Keskin (Ze) Karışıklığı",
     tip: "ذ peltektir; dil ucunu üst dişlerin ucuna değdirerek vızıltısız okuyun, keskin ز yapmayın.",
   },
   {
+    canonicalPairId: 23,
     pair1: "ذ",
     pair2: "د",
     title: "Akıcı Peltek (Zel) / Patlamalı (Dal) Karışıklığı",
     tip: "ذ harfinde dil ucunu diş arkasına vurup sesi kesmeyin, diş ucundan akıcı çıkarın.",
   },
-  // 30-37: Islık, Dil Ortası ve Dil Ucu Karışıklıkları
+  // Kanonik Çift 24-31: Islık, Dil Ortası ve Dil Ucu Karışıklıkları
   {
+    canonicalPairId: 24,
     pair1: "س",
     pair2: "ش",
     title: "Islıklı (Sin) / Yayvan (Şın) Karışıklığı",
     tip: "س dil ucundan dar ıslıkla, ش ise dil ortasından yayvan nefesle çıkar.",
   },
   {
+    canonicalPairId: 25,
     pair1: "س",
     pair2: "ز",
     title: "Nefesli (Sin) / Titreşimli (Ze) Karışıklığı",
     tip: "س harfinde ses tellerini titretmeyin; ز harfinde ses tellerini titretin.",
   },
   {
+    canonicalPairId: 26,
     pair1: "ص",
     pair2: "ز",
     title: "Kalın (Sad) / İnce Titreşimli (Ze) Karışıklığı",
     tip: "ص kalın ve nefessizdir, ses teli titreşimi (vızıltı) katmayın.",
   },
   {
+    canonicalPairId: 27,
     pair1: "ص",
     pair2: "ث",
     title: "Kalın Islıklı (Sad) / İnce Peltek (Se) Karışıklığı",
     tip: "ص harfinde dil ucunu dişlerin arasına çıkarmayın, alt diş arkasından kalın ıslık verin.",
   },
   {
+    canonicalPairId: 28,
     pair1: "ط",
     pair2: "د",
     title: "Kalın (Tı) / İnce (Dal) Karışıklığı",
     tip: "ط harfini dil sırtını damağa kapatarak çok daha kalın ve tok çıkarın.",
   },
   {
+    canonicalPairId: 29,
     pair1: "ج",
     pair2: "ش",
     title: "Patlamalı (Cim) / Sızıcı (Şın) Karışıklığı",
     tip: "ج harfinde dil ortasını üst damağa tam değdirip sesi hapsedin, ش gibi gevşek bırakıp sızdırmayın.",
   },
   {
+    canonicalPairId: 30,
     pair1: "ج",
     pair2: "ز",
     title: "Dil Ortası (Cim) / Diş Arası (Ze) Karışıklığı",
     tip: "ج harfini dil ortasını üst damağa vurarak çıkarın, diş arasından vızıltılı ز yapmayın.",
   },
   {
+    canonicalPairId: 31,
     pair1: "ج",
     pair2: "د",
     title: "Dil Ortası (Cim) / Dil Ucu (Dal) Karışıklığı",
     tip: "Dil ucunu değil, dilin ortasını üst damağa değdirerek ج çıkarın.",
   },
-  // 38+: Akıcı, Geniz ve Dudak Harfleri
+  // Kanonik Çift 32-38: Akıcı, Geniz, Dudak ve Vakıf Harfleri
   {
+    canonicalPairId: 32,
     pair1: "ر",
     pair2: "ل",
     title: "Titrek (Ra) / Akıcı (Lam) Karışıklığı",
     tip: "ر harfinde dil ucunu damağa sabit yapıştırmayın, hafifçe titretip çekin.",
   },
   {
+    canonicalPairId: 33,
     pair1: "ن",
     pair2: "ر",
     title: "Genizli (Nun) / Titrek (Ra) Karışıklığı",
     tip: "ن harfinde sesi genizden (ğunne ile) çıkarın; ر harfinde ise dil ucunu titretin.",
   },
   {
+    canonicalPairId: 34,
     pair1: "ن",
     pair2: "ل",
     title: "Genizli (Nun) / Dil Yanı (Lam) Karışıklığı",
     tip: "ن harfindeki geniz tınısını koruyun, sesi dil yanından ل gibi akıtmayın.",
   },
   {
+    canonicalPairId: 35,
     pair1: "ن",
     pair2: "م",
     title: "Diş Eti (Nun) / Dudak (Mim) Karışıklığı",
     tip: "ن harfinde dudakları kapatmayın, dil ucunu üst diş etine değdirin.",
   },
   {
+    canonicalPairId: 36,
     pair1: "ب",
     pair2: "ف",
     title: "Çift Dudak (Be) / Diş-Dudak (Fe) Karışıklığı",
     tip: "ب harfinde iki dudağı birbirine tam kapatıp patlatın; ف harfinde üst dişleri alt dudağa değdirip nefes verin.",
   },
   {
+    canonicalPairId: 37,
     pair1: "ب",
     pair2: "م",
     title: "Patlamalı (Be) / Genizli (Mim) Karışıklığı",
     tip: "ب harfinde sesi genze kaçırmadan dudakları net açın.",
   },
   {
+    canonicalPairId: 36,
     pair1: "و",
     pair2: "ف",
     title: "Yuvarlak Dudak (Vav) / Diş-Dudak (Fe) Karışıklığı",
     tip: "و harfinde dişleri dudağa değdirmeden dudakları öne doğru yuvarlakça büzün.",
   },
   {
+    canonicalPairId: 38,
     pair1: "ت",
     pair2: "ة",
     title: "Açık Tâ (ت) / Yuvarlak Tâ-i Merbûta (ة) Vakıf Farkı",
     tip: "Kelime sonunda dururken ة harfi hafif bir ه nefesiyle biter; geçiş halinde veya açık ت harfinde ise dil ucuyla net ت sesi çıkarılır.",
   },
   {
+    canonicalPairId: 38,
     pair1: "ت",
     pair2: "ه",
     title: "Dil Ucu (Te) / Boğaz Dibi (He) Karışıklığı",
     tip: "ت harfinde dil ucunu üst diş etine vurarak net bir patlama sesi çıkarın; boğazdan ه nefesiyle geçiştirmeyin.",
   },
 ];
+
+/**
+ * Ortografik varyantlar (أ/إ/آ/ء/ا ve ة/ه) tek kanonik fonetik çift altında gruplandığında
+ * toplam kanonik mahreç çifti sayısını (38) döndürür.
+ */
+export function getCanonicalMakhrajPairsCount(): number {
+  return new Set(MAKHRAJ_CONFUSION_PAIRS.map((p) => p.canonicalPairId)).size;
+}
 
 // ==============================================================================
 // 3. İKİ AŞAMALI METİN NORMALİZASYONU VE YARDIMCI FONKSİYONLAR
@@ -928,6 +995,129 @@ function findMakhrajPairFromAlignment(
   return undefined;
 }
 
+interface LetterDiacriticUnit {
+  baseLetter: string;
+  hasShadda: boolean;
+  vowel: string | null;
+}
+
+function parseLetterDiacritics(rawWord: string): LetterDiacriticUnit[] {
+  const cleaned = cleanDisplayText(rawWord);
+  const units: LetterDiacriticUnit[] = [];
+
+  for (const ch of cleaned) {
+    if (/[\u0621-\u063A\u0641-\u064A\u0671]/.test(ch)) {
+      const normalizedLetter = ch
+        .replace(/[أإآٱ]/g, "ا")
+        .replace(/ى/g, "ي")
+        .replace(/ة/g, "ه");
+      units.push({
+        baseLetter: normalizedLetter,
+        hasShadda: false,
+        vowel: null,
+      });
+    } else if (units.length > 0) {
+      const current = units[units.length - 1];
+      if (ch === "\u0651") {
+        current.hasShadda = true;
+      } else if (/[\u064E\u064F\u0650\u064B\u064C\u064D\u0652]/.test(ch)) {
+        current.vowel = ch;
+      }
+    }
+  }
+  return units;
+}
+
+/**
+ * Ham metinler arasındaki şedde (\u0651) ve kısa ünlü harekelerini (\u064E, \u0650, \u064F) karşılaştırır.
+ * - Hedef kelimede şedde varken algılanan metin harekeli dönmüş ve şeddeyi düşürmüşse (veya farklı harfteyse) en az 15 puan düşer.
+ * - Algılanan metinde açık hareke varsa ve hedef kelimenin harekeleriyle çelişiyorsa her uyuşmayan hareke için 12 puan düşer.
+ * - STT tamamen harekesiz metin döndürdüyse şeffaf biçimde diacriticsVerified: false işaretler.
+ */
+export function evaluateDiacriticsAndShadda(
+  expectedRaw: string,
+  recognizedRaw: string
+): {
+  penalty: number;
+  warning?: string;
+  diacriticsVerified: boolean;
+  verificationNote?: string;
+} {
+  const hasSpokenDiacritics = /[\u064B-\u0652\u0670]/.test(recognizedRaw);
+  if (!hasSpokenDiacritics) {
+    return {
+      penalty: 0,
+      diacriticsVerified: false,
+      verificationNote: "Metin Uyumu (Harekeler STT tarafından doğrulanmadı)",
+    };
+  }
+
+  const expUnits = parseLetterDiacritics(expectedRaw);
+  const spkUnits = parseLetterDiacritics(recognizedRaw);
+
+  let penalty = 0;
+  const warnings: string[] = [];
+
+  // 1. Şedde (\u0651) kontrolü
+  const expShaddaLetters = expUnits
+    .map((u, idx) => (u.hasShadda ? `${u.baseLetter}@${idx}` : null))
+    .filter(Boolean) as string[];
+  const spkShaddaLetters = spkUnits
+    .map((u, idx) => (u.hasShadda ? `${u.baseLetter}@${idx}` : null))
+    .filter(Boolean) as string[];
+
+  if (expShaddaLetters.length > 0) {
+    const expShaddaBase = expUnits
+      .filter((u) => u.hasShadda)
+      .map((u) => u.baseLetter)
+      .join("");
+    const spkShaddaBase = spkUnits
+      .filter((u) => u.hasShadda)
+      .map((u) => u.baseLetter)
+      .join("");
+    if (
+      spkShaddaLetters.length < expShaddaLetters.length ||
+      expShaddaBase !== spkShaddaBase
+    ) {
+      penalty += 15;
+      warnings.push("Şedde (تَشْدِيد) eksik veya zayıf okundu");
+    }
+  }
+
+  // 2. Kısa ünlü hareke (\u064E fetha, \u0650 kesra, \u064F damme) kontrolü
+  const shortVowels = new Set(["\u064E", "\u064F", "\u0650"]);
+  const minLen = Math.min(expUnits.length, spkUnits.length);
+  let vowelMismatchCount = 0;
+
+  for (let i = 0; i < minLen; i++) {
+    // Kelime sonu vakıf (duruş) sükûnunu hareke hatası sayma
+    const isLastLetter = i === minLen - 1;
+    const expV = expUnits[i].vowel;
+    const spkV = spkUnits[i].vowel;
+
+    if (isLastLetter && spkV === "\u0652") {
+      continue;
+    }
+
+    if (expV && spkV && shortVowels.has(expV) && shortVowels.has(spkV)) {
+      if (expV !== spkV) {
+        vowelMismatchCount += 1;
+      }
+    }
+  }
+
+  if (vowelMismatchCount > 0) {
+    penalty += vowelMismatchCount * 12;
+    warnings.push("Hareke uyuşmazlığı tespit edildi");
+  }
+
+  return {
+    penalty,
+    warning: warnings.length > 0 ? warnings.join(" · ") : undefined,
+    diacriticsVerified: true,
+  };
+}
+
 export function evaluateSingleWord(
   expected: string,
   spoken: string
@@ -949,61 +1139,55 @@ export function evaluateSingleWord(
       makhrajTip: findCriticalLetterMakhrajTip(expected),
       medVezinTip:
         "Mikrofondan bu kelime net algılanamadı. Doğal telaffuzunu dinleyip tekrar deneyebilirsiniz.",
-    };
-  }
-
-  // Fonetik ve vakıf normalizasyonu sonrasında tam eşleşme varsa (ör. المكتبة === المكتبه, هذا === هاذا) %100 doğru kabul et
-  if (cleanExp === cleanSpk) {
-    return {
-      targetWord: expected,
-      spokenWord: spoken,
-      score: 100,
-      status: "correct",
+      diacriticsVerified: false,
+      diacriticNote: "Metin Uyumu (Harekeler STT tarafından doğrulanmadı)",
     };
   }
 
   const alignment = alignCharacters(cleanExp, cleanSpk);
+  const rawAlignment = alignCharacters(rawExp, rawSpk);
   const matchCount = alignment.filter((a) => a.operation === "MATCH").length;
   const maxLen = Math.max(cleanExp.length, cleanSpk.length, 1);
-  const baseScore = Math.round((matchCount / maxLen) * 100);
+  const baseScore =
+    cleanExp === cleanSpk ? 100 : Math.round((matchCount / maxLen) * 100);
 
-  // Tam doğru (%85+ benzerlik) okunan kelimeler için "Hatalı/Dikkat Edilecek Mahreç" uyarısı çıkarma
-  if (baseScore >= 85) {
-    return {
-      targetWord: expected,
-      spokenWord: spoken,
-      score: baseScore,
-      status: "correct",
-    };
-  }
-
-  // %85 altı (eksik/farklı okunan) kelimelerde öncelikle kritik Arapça harflere (ث، ذ، ظ، ح، ع، خ، غ، ق، ص، ض، ط، ر) odaklan
-  const rawAlignment = alignCharacters(rawExp, rawSpk);
+  // Kök ünsüz ve 38 kanonik mahreç çifti kontrolü her zaman (baseScore >= 85 olsa bile!) çalıştırılır
   const criticalAlignmentTip =
     findMakhrajPairFromAlignment(rawAlignment, true) ||
     findMakhrajPairFromAlignment(alignment, true);
-  const fallbackCriticalTip = findCriticalLetterMakhrajTip(expected);
   const generalAlignmentTip =
     findMakhrajPairFromAlignment(rawAlignment, false) ||
     findMakhrajPairFromAlignment(alignment, false);
+  const fallbackCriticalTip = findCriticalLetterMakhrajTip(expected);
 
-  const makhrajTip =
-    criticalAlignmentTip || fallbackCriticalTip || generalAlignmentTip;
+  const detectedSubstitutionTip = criticalAlignmentTip || generalAlignmentTip;
+  const makhrajTip = detectedSubstitutionTip || fallbackCriticalTip;
 
   const medVezinTip = analyzeVezinAndMed(cleanExp, alignment) || undefined;
   const rootGuard = applyRootConsonantGuard(
     cleanExp,
     cleanSpk,
     baseScore,
-    Boolean(criticalAlignmentTip)
+    Boolean(detectedSubstitutionTip)
   );
-  const finalScore = rootGuard.finalScore;
+
+  // Şedde (\u0651) ve Hareke (\u064E, \u0650, \u064F) kontrolü
+  const diacriticEval = evaluateDiacriticsAndShadda(expected, spoken);
+  const finalScore = Math.max(0, rootGuard.finalScore - diacriticEval.penalty);
 
   // >=80 yeşil (correct), 60-79 sarı (warning), <60 kırmızı (wrong)
   let status: "correct" | "warning" | "wrong" = "wrong";
-  if (finalScore >= 80) status = "correct";
-  else if (finalScore >= 60) status = "warning";
-  else status = "wrong";
+  if (finalScore >= 80 && !rootGuard.isTriggered && !detectedSubstitutionTip) {
+    status = "correct";
+  } else if (finalScore >= 60 && !rootGuard.isTriggered && !detectedSubstitutionTip) {
+    status = "warning";
+  } else {
+    status = "wrong";
+  }
+
+  const combinedMedVezinTip = [diacriticEval.warning, medVezinTip]
+    .filter(Boolean)
+    .join(" · ") || undefined;
 
   return {
     targetWord: expected,
@@ -1011,7 +1195,16 @@ export function evaluateSingleWord(
     score: finalScore,
     status,
     makhrajTip: status === "correct" ? undefined : makhrajTip,
-    medVezinTip: status === "correct" ? undefined : medVezinTip,
+    makhrajWarning:
+      status === "correct"
+        ? undefined
+        : detectedSubstitutionTip
+        ? `${detectedSubstitutionTip.title} (${detectedSubstitutionTip.pair})`
+        : undefined,
+    medVezinTip: status === "correct" ? undefined : combinedMedVezinTip,
+    diacriticWarning: diacriticEval.warning,
+    diacriticsVerified: diacriticEval.diacriticsVerified,
+    diacriticNote: diacriticEval.verificationNote,
     isRootGuardTriggered:
       status === "correct" ? false : rootGuard.isTriggered,
     rootGuardMessage:
@@ -1043,13 +1236,19 @@ function computeWordSimilarity(expWord: string, spkWord: string): number {
 function alignWordSequences(
   expWords: string[],
   spkWords: string[]
-): Array<{ expWord: string; spkWord: string }> {
+): {
+  aligned: Array<{ expWord: string; spkWord: string }>;
+  insertedWords: string[];
+} {
   const m = expWords.length;
   const n = spkWords.length;
 
-  if (m === 0) return [];
+  if (m === 0) return { aligned: [], insertedWords: spkWords.slice() };
   if (n === 0) {
-    return expWords.map((w) => ({ expWord: w, spkWord: "" }));
+    return {
+      aligned: expWords.map((w) => ({ expWord: w, spkWord: "" })),
+      insertedWords: [],
+    };
   }
 
   const GAP_PENALTY = -0.32;
@@ -1094,6 +1293,7 @@ function alignWordSequences(
   }
 
   const aligned: Array<{ expWord: string; spkWord: string }> = [];
+  const insertedWords: string[] = [];
   let i = m;
   let j = n;
 
@@ -1106,12 +1306,18 @@ function alignWordSequences(
       aligned.push({ expWord: expWords[i - 1], spkWord: "" });
       i--;
     } else {
-      // Fazladan söylenen kelime (hedef kelime listesini kaydırmaması için atlanır)
+      // Fazladan söylenen kelime (Insertions)
+      if (j > 0) {
+        insertedWords.push(spkWords[j - 1]);
+      }
       j--;
     }
   }
 
-  return aligned.reverse();
+  return {
+    aligned: aligned.reverse(),
+    insertedWords: insertedWords.reverse(),
+  };
 }
 
 export function evaluateSentenceWords(
@@ -1133,12 +1339,18 @@ export function evaluateSentenceWords(
     spkWords = spkWords.slice(0, expWords.length * 2);
   }
 
-  const alignedPairs = alignWordSequences(expWords, spkWords);
+  const { aligned: alignedPairs, insertedWords } = alignWordSequences(
+    expWords,
+    spkWords
+  );
   const wordResults: WordEvaluationResult[] = [];
   let totalScore = 0;
+  let omittedCount = 0;
+  let substitutedCount = 0;
 
   for (const { expWord, spkWord } of alignedPairs) {
     if (expWord && !spkWord) {
+      omittedCount += 1;
       wordResults.push({
         targetWord: expWord,
         spokenWord: "",
@@ -1147,11 +1359,15 @@ export function evaluateSentenceWords(
         makhrajTip: findCriticalLetterMakhrajTip(expWord),
         medVezinTip:
           "Bu kelime cümle okunurken atlandı veya mikrofondan net duyulamadı. Kelimeye tıklayarak doğal okunuşunu dinleyip tekrar deneyebilirsiniz.",
+        diacriticsVerified: false,
       });
       continue;
     }
 
     const res = evaluateSingleWord(expWord, spkWord);
+    if (res.status !== "correct") {
+      substitutedCount += 1;
+    }
     wordResults.push(res);
     totalScore += res.score;
   }
@@ -1159,20 +1375,43 @@ export function evaluateSentenceWords(
   const rawAverageScore =
     wordResults.length > 0 ? Math.round(totalScore / wordResults.length) : 0;
 
-  // Fazladan söylenen kelime cezası (hedef cümlede olmayan ekstra kelimeler puanı orantılı düşürür)
-  const extraWordsCount = Math.max(0, spkWords.length - expWords.length);
+  // Fazladan söylenen kelime cezası (Insertions): 1 kelimelik hedefte 2 ekstra kelime söylendiğinde puan <= 60 olacak şekilde orantılı ceza
+  const extraWordsCount = Math.max(
+    insertedWords.length,
+    spkWords.length - expWords.length,
+    0
+  );
   const extraWordPenalty =
-    extraWordsCount > 0 ? Math.min(35, extraWordsCount * 12) : 0;
+    extraWordsCount > 0
+      ? Math.min(
+          60,
+          Math.max(
+            extraWordsCount * 15,
+            Math.round((extraWordsCount / Math.max(1, expWords.length)) * 22)
+          )
+        )
+      : 0;
   const overallScore = Math.max(0, rawAverageScore - extraWordPenalty);
 
   const firstRootGuardWord = wordResults.find((w) => w.isRootGuardTriggered);
+  const anyDiacriticsVerified = wordResults.some(
+    (w) => w.diacriticsVerified === true
+  );
 
   return {
     words: wordResults,
     overallScore,
     score: overallScore,
     isTextRecognized: true,
+    isEvaluated: true,
     extraWordsCount,
+    insertedWords,
+    omittedCount,
+    substitutedCount,
+    diacriticsVerified: anyDiacriticsVerified,
+    diacriticNote: anyDiacriticsVerified
+      ? "Harekeler ve Şedde Doğrulandı"
+      : "Metin Uyumu (Harekeler STT tarafından doğrulanmadı)",
     isRootGuardTriggered: Boolean(firstRootGuardWord),
     rootGuardMessage: firstRootGuardWord?.rootGuardMessage,
   };

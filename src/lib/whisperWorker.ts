@@ -8,7 +8,7 @@ env.allowLocalModels = false;
 env.useBrowserCache = true;
 
 export interface WhisperWorkerRequest {
-  type: "transcribe" | "preload";
+  type: "transcribe" | "preload" | "abort";
   requestId?: string;
   audioData?: Float32Array;
   sampleRate?: number;
@@ -17,7 +17,14 @@ export interface WhisperWorkerRequest {
 
 export interface WhisperWorkerResponse {
   requestId?: string;
-  status: "loading" | "progress" | "ready" | "transcribing" | "completed" | "error";
+  status:
+    | "loading"
+    | "progress"
+    | "ready"
+    | "transcribing"
+    | "completed"
+    | "error";
+  ignored?: boolean;
   data?: {
     progress?: number;
     file?: string;
@@ -32,6 +39,10 @@ let transcriber: any = null;
 let activeDevice: "webgpu" | "wasm" = "wasm";
 let activeModelId: string = "onnx-community/whisper-base";
 let currentActiveRequestId: string | undefined = undefined;
+let latestTranscribeRequestId: string | undefined = undefined;
+const abortedRequestIds = new Set<string>();
+const requestQueue: WhisperWorkerRequest[] = [];
+let isProcessingQueue = false;
 
 const MODEL_CANDIDATES = [
   "onnx-community/whisper-base",
@@ -45,11 +56,18 @@ const MODEL_CANDIDATES = [
  */
 async function hasUsableWebGPU(): Promise<boolean> {
   try {
-    if (typeof navigator === "undefined" || !("gpu" in navigator) || !(navigator as any).gpu) {
+    if (
+      typeof navigator === "undefined" ||
+      !("gpu" in navigator) ||
+      !(navigator as any).gpu
+    ) {
       return false;
     }
     // Firefox'ta WebGPU ONNX shader derlemesi çökebildiği için doğrudan kararlı WASM q8 tercih edilir
-    if (typeof navigator.userAgent === "string" && /firefox/i.test(navigator.userAgent)) {
+    if (
+      typeof navigator.userAgent === "string" &&
+      /firefox/i.test(navigator.userAgent)
+    ) {
       return false;
     }
     const adapter = await (navigator as any).gpu.requestAdapter();
@@ -65,8 +83,30 @@ async function hasUsableWebGPU(): Promise<boolean> {
 }
 
 /**
+ * 44.1kHz / 48kHz -> 16kHz downsampling öncesinde 8kHz üzerindeki yüksek frekanslı
+ * sibilantların (س، ص، ش، ث) katlanmasını (aliasing) önleyen hafif FIR alçak geçiren filtre.
+ */
+function applyWorkerAntiAliasFilter(
+  buffer: Float32Array,
+  ratio: number
+): Float32Array {
+  if (ratio <= 1.05 || buffer.length < 5) return buffer;
+  const filtered = new Float32Array(buffer.length);
+  const n = buffer.length;
+  for (let i = 0; i < n; i++) {
+    const s0 = buffer[Math.max(0, i - 2)];
+    const s1 = buffer[Math.max(0, i - 1)];
+    const s2 = buffer[i];
+    const s3 = buffer[Math.min(n - 1, i + 1)];
+    const s4 = buffer[Math.min(n - 1, i + 2)];
+    filtered[i] = 0.1 * s0 + 0.2 * s1 + 0.4 * s2 + 0.2 * s3 + 0.1 * s4;
+  }
+  return filtered;
+}
+
+/**
  * Mobil tarayıcılardan 44100 Hz veya 48000 Hz gelebilecek ses tamponunu
- * lineer interpolasyon ile kesin olarak 16000 Hz frekansına yeniden örnekler.
+ * FIR anti-aliasing filtresi ve lineer interpolasyon ile kesin olarak 16000 Hz frekansına yeniden örnekler.
  */
 function resampleWorkerAudioTo16kHz(
   buffer: Float32Array,
@@ -77,14 +117,16 @@ function resampleWorkerAudioTo16kHz(
     return buffer;
   }
   const ratio = fromSampleRate / 16000;
-  const newLength = Math.max(1, Math.round(buffer.length / ratio));
+  const sourceBuffer =
+    ratio > 1.05 ? applyWorkerAntiAliasFilter(buffer, ratio) : buffer;
+  const newLength = Math.max(1, Math.round(sourceBuffer.length / ratio));
   const result = new Float32Array(newLength);
   for (let i = 0; i < newLength; i++) {
     const srcIndex = i * ratio;
     const idx0 = Math.floor(srcIndex);
-    const idx1 = Math.min(buffer.length - 1, idx0 + 1);
+    const idx1 = Math.min(sourceBuffer.length - 1, idx0 + 1);
     const frac = srcIndex - idx0;
-    result[i] = buffer[idx0] * (1 - frac) + buffer[idx1] * frac;
+    result[i] = sourceBuffer[idx0] * (1 - frac) + sourceBuffer[idx1] * frac;
   }
   return result;
 }
@@ -160,7 +202,9 @@ function preprocessAudioForWhisper(
   return trimmed;
 }
 
-async function createPipelineWithDevice(device: "webgpu" | "wasm"): Promise<any> {
+async function createPipelineWithDevice(
+  device: "webgpu" | "wasm"
+): Promise<any> {
   let lastErr: unknown = null;
   for (const modelId of MODEL_CANDIDATES) {
     try {
@@ -209,9 +253,33 @@ async function getTranscriber(forceWasm: boolean = false) {
   return transcriber;
 }
 
-self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
-  const { type, audioData, sampleRate, requestId } = event.data;
+function isRequestStaleOrAborted(reqId?: string): boolean {
+  if (!reqId) return false;
+  if (abortedRequestIds.has(reqId)) return true;
+  if (
+    latestTranscribeRequestId &&
+    reqId !== latestTranscribeRequestId &&
+    reqId.startsWith("req_")
+  ) {
+    return true;
+  }
+  return false;
+}
+
+async function handleSingleRequest(req: WhisperWorkerRequest) {
+  const { type, audioData, sampleRate, requestId } = req;
   currentActiveRequestId = requestId;
+
+  if (isRequestStaleOrAborted(requestId)) {
+    self.postMessage({
+      requestId,
+      status: "completed",
+      text: "",
+      ignored: true,
+      device: activeDevice,
+    } satisfies WhisperWorkerResponse);
+    return;
+  }
 
   if (type === "preload") {
     try {
@@ -260,6 +328,17 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
       } satisfies WhisperWorkerResponse);
       let model = await getTranscriber(false);
 
+      if (isRequestStaleOrAborted(requestId)) {
+        self.postMessage({
+          requestId,
+          status: "completed",
+          text: "",
+          ignored: true,
+          device: activeDevice,
+        } satisfies WhisperWorkerResponse);
+        return;
+      }
+
       self.postMessage({
         requestId,
         status: "transcribing",
@@ -289,7 +368,7 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
           transcriber = null;
           self.postMessage({
             requestId,
-            status: "transcribing",
+            status: "loading",
             device: "wasm",
           } satisfies WhisperWorkerResponse);
           model = await getTranscriber(true);
@@ -322,18 +401,69 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
         recognizedText = recognizedText.replace(pat, "").trim();
       }
 
+      const ignored = isRequestStaleOrAborted(requestId);
       self.postMessage({
         requestId,
         status: "completed",
-        text: recognizedText,
+        text: ignored ? "" : recognizedText,
+        ignored,
         device: activeDevice,
       } satisfies WhisperWorkerResponse);
     } catch (error: any) {
       self.postMessage({
         requestId,
         status: "error",
-        error: error?.message || `Whisper (${activeModelId}) ses çözümleme hatası`,
+        ignored: isRequestStaleOrAborted(requestId),
+        error:
+          error?.message || `Whisper (${activeModelId}) ses çözümleme hatası`,
       } satisfies WhisperWorkerResponse);
     }
   }
+}
+
+async function processQueue() {
+  if (isProcessingQueue) return;
+  isProcessingQueue = true;
+  try {
+    while (requestQueue.length > 0) {
+      const nextReq = requestQueue.shift()!;
+      await handleSingleRequest(nextReq);
+    }
+  } finally {
+    isProcessingQueue = false;
+  }
+}
+
+self.onmessage = (event: MessageEvent<WhisperWorkerRequest>) => {
+  const data = event.data;
+  if (!data) return;
+
+  if (data.type === "abort") {
+    if (data.requestId) {
+      abortedRequestIds.add(data.requestId);
+    }
+    return;
+  }
+
+  if (data.type === "transcribe" && data.requestId) {
+    // Yeni bir transcribe isteği geldiğinde kuyruktaki önceki bekleyen transcribe isteklerini ignored olarak işaretle
+    latestTranscribeRequestId = data.requestId;
+    for (let i = requestQueue.length - 1; i >= 0; i--) {
+      const queued = requestQueue[i];
+      if (queued.type === "transcribe" && queued.requestId) {
+        abortedRequestIds.add(queued.requestId);
+        self.postMessage({
+          requestId: queued.requestId,
+          status: "completed",
+          text: "",
+          ignored: true,
+          device: activeDevice,
+        } satisfies WhisperWorkerResponse);
+        requestQueue.splice(i, 1);
+      }
+    }
+  }
+
+  requestQueue.push(data);
+  void processQueue();
 };
