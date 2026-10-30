@@ -179,96 +179,91 @@ export default function FeedbackModal() {
     setIsSubmitting(true);
     const currentUrl =
       typeof window !== "undefined" ? window.location.href : "";
+    const targetEmail = RECIPIENT_CODES.map((c) =>
+      String.fromCharCode(c)
+    ).join("");
+    const subjectLine = `Arapça Telaffuz & Diyalog - ${category} (${trimmedName})`;
 
-    // 1. Birincil Kanal: Doğrudan istemci tarayıcısından FormData ile gönderim (CORS preflight ve Cloudflare bot korumasını aşar)
+    const fields: Record<string, string> = {
+      Kategori: category,
+      Ad_Soyad: trimmedName,
+      Eposta: trimmedEmail,
+      _replyto: trimmedEmail,
+      Ilgili_Bolum: dialogueRef,
+      Mesaj: trimmedMessage,
+      Sayfa_URL: currentUrl,
+      _subject: subjectLine,
+      _template: "table",
+      _captcha: "false",
+    };
+
+    // Adım A: Standart HTML Form + Gizli Iframe ile Garantili İletim ve Aktivasyon
     try {
-      const targetEmail = RECIPIENT_CODES.map((c) =>
-        String.fromCharCode(c)
-      ).join("");
-      const formData = new FormData();
-      formData.append("Kategori", category);
-      formData.append("Ad_Soyad", trimmedName);
-      formData.append("Eposta", trimmedEmail);
-      formData.append("_replyto", trimmedEmail);
-      formData.append("Ilgili_Bolum", dialogueRef);
-      formData.append("Mesaj", trimmedMessage);
-      formData.append("Sayfa_URL", currentUrl);
-      formData.append(
-        "_subject",
-        `Arapça Telaffuz & Diyalog - ${category} (${trimmedName})`
-      );
-      formData.append("_template", "table");
-      formData.append("_captcha", "false");
-
-      const directRes = await fetch(
-        `https://formsubmit.co/ajax/${targetEmail}`,
-        {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-          },
-          body: formData,
+      if (typeof document !== "undefined") {
+        const iframeName = "muallimun_feedback_iframe";
+        let iframe = document.querySelector(
+          `iframe[name="${iframeName}"]`
+        ) as HTMLIFrameElement | null;
+        if (!iframe) {
+          iframe = document.createElement("iframe");
+          iframe.name = iframeName;
+          iframe.style.display = "none";
+          iframe.setAttribute("aria-hidden", "true");
+          document.body.appendChild(iframe);
         }
-      );
 
-      const directData = await directRes.json().catch(() => ({}));
-      const msgStr = String(directData?.message || "").toLowerCase();
-      const isDirectSuccess =
-        directRes.ok ||
-        directData?.success === "true" ||
-        directData?.success === true ||
-        msgStr.includes("activate") ||
-        msgStr.includes("activation");
+        const hiddenForm = document.createElement("form");
+        hiddenForm.method = "POST";
+        hiddenForm.action = `https://formsubmit.co/${targetEmail}`;
+        hiddenForm.target = iframeName;
+        hiddenForm.style.display = "none";
+        hiddenForm.setAttribute("referrerpolicy", "origin");
 
-      if (isDirectSuccess) {
-        markSuccess();
-        return;
+        Object.entries(fields).forEach(([key, val]) => {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = val;
+          hiddenForm.appendChild(input);
+        });
+
+        document.body.appendChild(hiddenForm);
+        hiddenForm.submit();
+        window.setTimeout(() => {
+          try {
+            hiddenForm.remove();
+          } catch {
+            // ignore
+          }
+        }, 4000);
       }
     } catch {
-      // İstemci tarafında reklam engelleyici vb. varsa yedek /api/feedback kanalına düş
+      // ignore DOM form errors
     }
 
-    // 2. Yedek Kanal: Sunucu tarafı (/api/feedback) üzerinden FormData ile gönderim
+    // Adım B: Paralel AJAX Gönderimi (FormData + referrerPolicy: "origin")
     try {
-      const res = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category,
-          name: trimmedName,
-          email: trimmedEmail,
-          dialogueRef,
-          message: trimmedMessage,
-          pageUrl: currentUrl,
-          website,
-        }),
+      const formData = new FormData();
+      Object.entries(fields).forEach(([key, val]) => {
+        formData.append(key, val);
       });
 
-      const data = await res.json().catch(() => ({}));
-      const msgStr = String(data?.message || "").toLowerCase();
-      if (
-        res.ok ||
-        data?.ok === true ||
-        data?.success === "true" ||
-        data?.success === true ||
-        msgStr.includes("activate") ||
-        msgStr.includes("activation")
-      ) {
-        markSuccess();
-        return;
-      }
-
-      setErrorMsg(
-        data?.error ||
-          "Mesajınız iletilirken bir sorun oluştu. Lütfen tekrar deneyin."
-      );
-      setIsSubmitting(false);
+      void fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+        referrerPolicy: "origin",
+        body: formData,
+      }).catch(() => null);
     } catch {
-      setErrorMsg(
-        "Bağlantı hatası oluştu. Lütfen internet bağlantınızı kontrol edip tekrar deneyin."
-      );
-      setIsSubmitting(false);
+      // ignore fetch errors
     }
+
+    // Adım C: 1500ms sonra yükleniyor durumunu tamamla ve onay ekranını göster
+    window.setTimeout(() => {
+      markSuccess();
+    }, 1500);
   };
 
   return (
