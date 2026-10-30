@@ -911,12 +911,12 @@ export default function DictionaryPage() {
         {rootFilter && (
           <div className="pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-wrap items-center justify-between gap-2 bg-emerald-50/90 dark:bg-emerald-950/40 px-3 py-2 rounded-xl border border-emerald-300 dark:border-emerald-700/60">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-extrabold text-[#087F5B] dark:text-emerald-300">
+              <span className="text-xs font-extrabold text-[#065F46] dark:text-emerald-300">
                 🌿 Kök Ailesi:
               </span>
               <bdi
                 dir="rtl"
-                className="arabic font-arabic text-base sm:text-lg font-bold text-[#087F5B] dark:text-emerald-200 px-2 py-0.5 rounded-lg bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700"
+                className="arabic font-arabic text-base sm:text-lg font-bold text-[#065F46] dark:text-emerald-200 px-2 py-0.5 rounded-lg bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700"
               >
                 {getDisplayArabic(rootFilter)}
               </bdi>
@@ -993,7 +993,7 @@ export default function DictionaryPage() {
                   badgeClass:
                     "bg-[#F3F0FF] text-[#6741D9] border-[#6741D9]/30 dark:bg-indigo-950/70 dark:text-indigo-200 dark:border-indigo-500/40",
                   arabicColor:
-                    "text-[#087F5B] dark:text-[#20c997] group-hover:text-[#0CA678]",
+                    "text-[#065F46] dark:text-emerald-400 group-hover:text-[#065F46]",
                 }
               : getCategoryCardTheme(category);
 
@@ -1019,7 +1019,7 @@ export default function DictionaryPage() {
                           {theme.badgeText}
                         </span>
                         {idiomDetail?.level && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-[#087F5B] dark:text-emerald-300 text-[10px] font-extrabold">
+                          <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-[#065F46] dark:text-emerald-300 text-[10px] font-extrabold">
                             {idiomDetail.level}
                           </span>
                         )}
@@ -1038,7 +1038,7 @@ export default function DictionaryPage() {
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-xs font-bold transition-all cursor-pointer ${
                               rootFilter === word.kok
                                 ? "bg-emerald-600 border-emerald-700 text-white shadow-2xs"
-                                : "bg-white/80 dark:bg-slate-800/80 border-[#E6D7BE] dark:border-slate-700 text-[var(--muted)] hover:border-[#087F5B] hover:text-[#087F5B]"
+                                : "bg-white/80 dark:bg-slate-800/80 border-[#E6D7BE] dark:border-slate-700 text-[var(--muted)] hover:border-[#087F5B] hover:text-[#065F46] dark:text-emerald-400"
                             }`}
                           >
                             <span>🌿 Kök:</span>
@@ -1128,7 +1128,7 @@ export default function DictionaryPage() {
                         )}
                         {idiomDetail.usageNote && (
                           <p className="text-[11px] font-semibold text-[var(--muted)] dark:text-slate-300 leading-snug">
-                            <span className="font-extrabold text-[#087F5B] dark:text-emerald-300">
+                            <span className="font-extrabold text-[#065F46] dark:text-emerald-300">
                               💡 Kullanım İpucu:
                             </span>{" "}
                             {idiomDetail.usageNote}
@@ -1329,7 +1329,7 @@ export default function DictionaryPage() {
                             {word.kok && word.kok !== "-" && (
                               <div className="space-y-1.5">
                                 <div className="flex items-center justify-between gap-1">
-                                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#087F5B] dark:text-emerald-300">
+                                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#065F46] dark:text-emerald-300">
                                     🌿 Aynı Kökten Türeyenler ({word.kok})
                                   </span>
                                   {rootSiblings.length > 0 && (
@@ -1363,11 +1363,11 @@ export default function DictionaryPage() {
                                           type="button"
                                           onClick={() => handleListenWord(sib)}
                                           title={`${sib.anlam_tr} — Dinlemek için tıkla`}
-                                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#F7EFE1] dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] text-[11px] transition-all cursor-pointer"
+                                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#F7EFE1] dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#087F5B] text-[11px] transition-all cursor-pointer"
                                         >
                                           <bdi
                                             dir="rtl"
-                                            className="arabic font-arabic text-sm font-bold text-[#087F5B] dark:text-emerald-300"
+                                            className="arabic font-arabic text-sm font-bold text-[#065F46] dark:text-emerald-300"
                                           >
                                             {getDisplayArabic(sibAr)}
                                           </bdi>
@@ -1406,7 +1406,7 @@ export default function DictionaryPage() {
                                           <Link
                                             href={`/diyalog/${ex.dialogueId}`}
                                             onClick={() => playClick()}
-                                            className="text-[10px] font-extrabold text-[#087F5B] dark:text-emerald-300 hover:underline truncate"
+                                            className="text-[10px] font-extrabold text-[#065F46] dark:text-emerald-300 hover:underline truncate"
                                           >
                                             #{ex.rawNum} {ex.dialogueTitle}
                                           </Link>
@@ -1418,8 +1418,8 @@ export default function DictionaryPage() {
                                             title="Örnek cümleyi sesli dinle"
                                             className={`px-2 py-0.5 rounded-md border text-[10px] font-extrabold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
                                               isExPlaying
-                                                ? "bg-[#0CA678] border-[#087F5B] text-white"
-                                                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--foreground)] hover:border-[#0CA678]"
+                                                ? "bg-[#087F5B] border-[#087F5B] text-white"
+                                                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--foreground)] hover:border-[#087F5B]"
                                             }`}
                                           >
                                             <Volume2 size={11} />
@@ -1466,7 +1466,7 @@ export default function DictionaryPage() {
                   >
                     <Volume2
                       size={15}
-                      className={isSpeaking ? "text-white" : "text-[#087F5B]"}
+                      className={isSpeaking ? "text-white" : "text-[#065F46] dark:text-emerald-400"}
                     />
                     <span>Dinle</span>
                   </button>
@@ -1524,7 +1524,7 @@ export default function DictionaryPage() {
                     className={`h-9 w-9 rounded-xl border-2 border-b-3 flex items-center justify-center transition-all cursor-pointer shrink-0 ${
                       isLearned
                         ? "bg-[#6741D9] border-[#5230B5] text-white"
-                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[#087F5B]"
+                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[#065F46] dark:text-emerald-400"
                     }`}
                   >
                     <CheckCircle2 size={15} />

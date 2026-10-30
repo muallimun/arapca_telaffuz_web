@@ -218,6 +218,7 @@ export default function ShadowingModal({
   const refAudioBufferRef = useRef<AudioBuffer | null>(null);
   const isMountedRef = useRef<boolean>(true);
   const recordingSessionIdRef = useRef<number>(0);
+  const modalRef = useRef<HTMLDivElement | null>(null);
 
   const cleanupMediaResources = useCallback(() => {
     recordingSessionIdRef.current += 1;
@@ -279,6 +280,37 @@ export default function ShadowingModal({
     isMountedRef.current = true;
     speechManagerRef.current = new HybridSpeechManager();
 
+    const rafFocus = requestAnimationFrame(() => {
+      const firstFocusable = modalRef.current?.querySelector<HTMLElement>(
+        'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      firstFocusable?.focus();
+    });
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleClose();
+        return;
+      }
+      if (e.key === "Tab" && modalRef.current) {
+        const focusables = Array.from(
+          modalRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => el.offsetParent !== null);
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
     const handleBackgroundStop = () => {
       cleanupMediaResources();
       setIsRecording(false);
@@ -291,15 +323,18 @@ export default function ShadowingModal({
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("pagehide", handleBackgroundStop);
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       isMountedRef.current = false;
+      cancelAnimationFrame(rafFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handleBackgroundStop);
+      window.removeEventListener("keydown", handleKeyDown);
       cleanupMediaResources();
       speechManagerRef.current?.terminate();
     };
-  }, [cleanupMediaResources]);
+  }, [cleanupMediaResources, handleClose]);
 
   // Aktif kayıt sırasında kullanıcı "Yalnızca Cihazda İşle" (localSttOnly) açarsa veya motoru "whisper" yaparsa
   // çalışan çevrimiçi SpeechRecognition oturumunu anında iptal et ve çevrimiçi metin tamponunu temizle
@@ -1067,7 +1102,7 @@ export default function ShadowingModal({
 
   const getWordColor = (status: string) => {
     if (status === "correct")
-      return "bg-[#0CA678] text-white border-[#087F5B]";
+      return "bg-[#087F5B] text-white border-[#065F46]";
     if (status === "warning")
       return "bg-amber-100 text-amber-900 border-amber-400";
     return "bg-rose-100 text-rose-900 border-rose-400";
@@ -1080,7 +1115,10 @@ export default function ShadowingModal({
       aria-labelledby="shadowing-modal-title"
       className="fixed inset-0 z-[60] print:hidden flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-hidden"
     >
-      <div className="bg-[#FDFBF7] dark:bg-[var(--background)] w-full max-w-3xl max-h-[92vh] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl flex flex-col overflow-hidden">
+      <div
+        ref={modalRef}
+        className="bg-[#FDFBF7] dark:bg-[var(--background)] w-full max-w-3xl max-h-[92vh] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl flex flex-col overflow-hidden"
+      >
         {/* ÜST BAŞLIK + ÇİFT MOTORLU STT SEÇİCİ */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3.5 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] dark:bg-[var(--surface)] shrink-0">
           <div className="flex items-center gap-2.5">
@@ -1174,7 +1212,7 @@ export default function ShadowingModal({
             data-tooltip-pos="bottom"
             className={`px-2.5 py-1 rounded-lg border font-extrabold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
               localSttOnly
-                ? "bg-[#E6FCF5] dark:bg-emerald-950/50 border-[#087F5B] text-[#087F5B] dark:text-emerald-300"
+                ? "bg-[#E6FCF5] dark:bg-emerald-950/50 border-[#087F5B] text-[#065F46] dark:text-emerald-300"
                 : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
             }`}
           >
@@ -1228,7 +1266,7 @@ export default function ShadowingModal({
                     onClick={() => handleFormChange(f.arabic)}
                     className={`px-3 py-1 rounded-lg text-xs transition-all cursor-pointer ${
                       activeText === f.arabic
-                        ? "bg-[#0CA678] text-white font-semibold"
+                        ? "bg-[#087F5B] text-white font-semibold"
                         : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -1242,11 +1280,12 @@ export default function ShadowingModal({
           {/* HEDEF ARAPÇA METİN KARTI + PROAKTİF MAHREÇ VE HAREKE REHBERİ */}
           <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3 sm:p-5 text-center space-y-2">
             {activeFormLabel && (
-              <span className="text-[11px] uppercase font-extrabold text-[#087F5B] block">
+              <span className="text-[11px] uppercase font-extrabold text-[#065F46] dark:text-emerald-400 block">
                 {activeFormLabel}
               </span>
             )}
             <p
+              lang="ar"
               dir="rtl"
               className="arabic font-arabic text-2xl sm:text-3xl font-bold text-[var(--foreground)] leading-relaxed"
             >
@@ -1261,7 +1300,7 @@ export default function ShadowingModal({
 
             {/* KAYIT AKTİFKEN DİKKAT ÇEKİCİ "ŞİMDİ YÜKSEK SESLE OKUYUN" UYARI BANDI */}
             {isRecording && (
-              <div className="rounded-xl bg-gradient-to-r from-[#0CA678] via-emerald-600 to-rose-600 text-white px-3.5 py-2 shadow-lg border-2 border-white/40 animate-pulse flex items-center justify-center gap-2 text-xs sm:text-sm font-black tracking-wide">
+              <div className="rounded-xl bg-gradient-to-r from-[#087F5B] via-emerald-600 to-rose-600 text-white px-3.5 py-2 shadow-lg border-2 border-white/40 animate-pulse flex items-center justify-center gap-2 text-xs sm:text-sm font-black tracking-wide">
                 <Mic size={16} className="shrink-0 animate-bounce" />
                 <span>MİKROFON AÇIK — ŞİMDİ YÜKSEK SESLE OKUYUN!</span>
               </div>
@@ -1290,8 +1329,8 @@ export default function ShadowingModal({
                           title="Mahreç ipucunu görmek için dokunun"
                           className={`px-2 py-0.5 rounded-lg border text-[11px] font-extrabold transition-all cursor-pointer ${
                             isExpanded
-                              ? "bg-[#0CA678] border-[#087F5B] text-white"
-                              : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#087F5B] dark:text-[#20c997] hover:border-[#0CA678]"
+                              ? "bg-[#087F5B] border-[#065F46] text-white"
+                              : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#065F46] dark:text-emerald-400 hover:border-[#087F5B]"
                           }`}
                         >
                           {det.badge} ({det.lettersFound.join("، ")})
@@ -1356,7 +1395,7 @@ export default function ShadowingModal({
               <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-xs font-extrabold text-[#087F5B] flex items-center gap-1 whitespace-nowrap">
+                    <span className="text-xs font-extrabold text-[#065F46] dark:text-emerald-400 flex items-center gap-1 whitespace-nowrap">
                       <Volume2 size={14} className="shrink-0" />
                       <span>Referans Ses</span>
                     </span>
@@ -1375,7 +1414,7 @@ export default function ShadowingModal({
                         }}
                         className={`px-2 py-0.5 rounded-md text-xs tabular-nums transition-all cursor-pointer ${
                           speechRate === r
-                            ? "bg-[#0CA678] text-white font-bold"
+                            ? "bg-[#087F5B] text-white font-bold"
                             : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                         }`}
                       >
@@ -1394,7 +1433,7 @@ export default function ShadowingModal({
                         height: `${Math.max(12, Math.round(val * 100))}%`,
                       }}
                       className={`flex-1 rounded-full transition-all ${
-                        isPlayingRef ? "bg-[#0CA678]" : "bg-[#0CA678]/65"
+                        isPlayingRef ? "bg-[#087F5B]" : "bg-[#087F5B]/65"
                       }`}
                     />
                   ))}
@@ -1418,7 +1457,7 @@ export default function ShadowingModal({
                         evaluation.isAcousticFallback) &&
                       !isRecording &&
                       !isAnalyzing && (
-                        <span className="px-2 py-0.5 rounded-lg bg-[#0CA678] text-white text-[10px] font-extrabold tabular-nums whitespace-nowrap shadow-2xs">
+                        <span className="px-2 py-0.5 rounded-lg bg-[#087F5B] text-white text-[10px] font-extrabold tabular-nums whitespace-nowrap shadow-2xs">
                           🎯 Genel Puan: %
                           {fluencyScore ??
                             evaluation.fluencyScore ??
@@ -1435,7 +1474,7 @@ export default function ShadowingModal({
                 <div
                   className={`w-full h-10 sm:h-11 bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border flex items-end justify-between gap-0.5 transition-all ${
                     isRecording
-                      ? "border-[#0CA678] ring-2 ring-[#0CA678]/30"
+                      ? "border-[#087F5B] ring-2 ring-[#087F5B]/30"
                       : "border-[#E6D7BE]"
                   }`}
                 >
@@ -1448,7 +1487,7 @@ export default function ShadowingModal({
                       className={`flex-1 rounded-full transition-all duration-75 ${
                         isRecording
                           ? val > 0.12
-                            ? "bg-[#0CA678]"
+                            ? "bg-[#087F5B]"
                             : "bg-[#6741D9]"
                           : userAudioUrl
                           ? "bg-[#6741D9]/80"
@@ -1460,8 +1499,8 @@ export default function ShadowingModal({
 
                 {isRecording && liveInterimText && (
                   <div className="text-[11px] font-bold text-[#4C28B5] dark:text-[#d0bfff] flex items-center justify-center gap-1.5 truncate">
-                    <span className="w-2 h-2 rounded-full bg-[#0CA678] animate-ping shrink-0" />
-                    <span dir="rtl" className="arabic truncate">
+                    <span className="w-2 h-2 rounded-full bg-[#087F5B] animate-ping shrink-0" />
+                    <span lang="ar" dir="rtl" className="arabic truncate">
                       Algılanan: {liveInterimText}
                     </span>
                   </div>
@@ -1554,7 +1593,7 @@ export default function ShadowingModal({
                     </span>
                   ) : (
                     <>
-                      <span className="text-xl sm:text-2xl font-black tabular-nums text-[#087F5B] mt-0.5">
+                      <span className="text-xl sm:text-2xl font-black tabular-nums text-[#065F46] dark:text-emerald-400 mt-0.5">
                         %{evaluation.overallScore}
                       </span>
                       <div className="flex flex-wrap items-center justify-center gap-1 mt-0.5 text-[10px] font-bold">
@@ -1571,7 +1610,7 @@ export default function ShadowingModal({
                         ) : null}
                         {!evaluation.omittedCount &&
                         !evaluation.extraWordsCount ? (
-                          <span className="text-[#087F5B]">
+                          <span className="text-[#065F46] dark:text-emerald-400">
                             {evaluation.words.length} kelime eşleşti
                           </span>
                         ) : null}
@@ -1643,7 +1682,7 @@ export default function ShadowingModal({
                       ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff]"
                       : (fluencyScore ?? evaluation.overallScore) >= 75 ||
                         evaluation.overallScore >= 85
-                      ? "bg-emerald-50 dark:bg-emerald-950/40 border-[#0CA678] text-[#087F5B] dark:text-emerald-200"
+                      ? "bg-emerald-50 dark:bg-emerald-950/40 border-[#087F5B] text-[#065F46] dark:text-emerald-200"
                       : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--foreground)]"
                   }`}
                 >
@@ -1657,12 +1696,12 @@ export default function ShadowingModal({
                       evaluation.overallScore >= 85 ? (
                       <CheckCircle2
                         size={16}
-                        className="text-[#0CA678] shrink-0 mt-0.5"
+                        className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5"
                       />
                     ) : (
                       <Info
                         size={16}
-                        className="text-[#0CA678] shrink-0 mt-0.5"
+                        className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5"
                       />
                     )}
                     <div>
@@ -1670,7 +1709,7 @@ export default function ShadowingModal({
                         className={`font-extrabold block mb-0.5 ${
                           adaptiveResult.action === "level_up"
                             ? "text-[#6741D9] dark:text-[#d0bfff]"
-                            : "text-[#087F5B]"
+                            : "text-[#065F46] dark:text-emerald-400"
                         }`}
                       >
                         {adaptiveResult.action === "level_up"
@@ -1699,7 +1738,7 @@ export default function ShadowingModal({
                           playClick();
                           setSpeechRate(adaptiveResult.suggestedSpeed!);
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-[#0CA678] text-white font-extrabold border-b-3 border-[#087F5B] shrink-0 cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white font-extrabold border-b-3 border-[#065F46] shrink-0 cursor-pointer"
                       >
                         Hızı {adaptiveResult.suggestedSpeed}x Yap
                       </button>
@@ -1733,7 +1772,7 @@ export default function ShadowingModal({
                       kelimeye tıklayın)
                     </span>
                     <div className="flex items-center gap-2 text-[10px] font-bold">
-                      <span className="text-[#087F5B]">● Doğru (≥%80)</span>
+                      <span className="text-[#065F46] dark:text-emerald-400">● Doğru (≥%80)</span>
                       <span className="text-amber-700">▲ Yakın (%60-79)</span>
                       <span className="text-rose-700">✕ Hatalı (&lt;%60)</span>
                     </div>
@@ -1749,7 +1788,7 @@ export default function ShadowingModal({
                     </div>
                   )}
 
-                  <div className="flex flex-wrap gap-2" dir="rtl">
+                  <div className="flex flex-wrap gap-2" lang="ar" dir="rtl">
                     {evaluation.words.map((word, idx) => (
                       <button
                         key={idx}
@@ -1766,7 +1805,7 @@ export default function ShadowingModal({
                             : ""
                         }`}
                       >
-                        <span>{word.targetWord || word.spokenWord || "..."}</span>
+                        <span lang="ar" dir="rtl">{word.targetWord || word.spokenWord || "..."}</span>
                         <span
                           dir="ltr"
                           className="text-[10px] font-sans font-extrabold opacity-90"
@@ -1785,7 +1824,7 @@ export default function ShadowingModal({
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-2">
                     <h4 className="font-extrabold text-[var(--foreground)] flex items-center gap-1.5">
                       {activeWordTip.status === "correct" ? (
-                        <CheckCircle2 size={15} className="text-[#0CA678]" />
+                        <CheckCircle2 size={15} className="text-[#065F46] dark:text-emerald-400" />
                       ) : (
                         <Target size={15} className="text-[#6741D9]" />
                       )}
@@ -1799,7 +1838,7 @@ export default function ShadowingModal({
                       <button
                         type="button"
                         onClick={() => speakWord(activeWordTip.targetWord)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0CA678] text-white font-bold border-b-2 border-[#087F5B] cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#087F5B] hover:bg-[#065F46] text-white font-bold border-b-2 border-[#065F46] cursor-pointer"
                       >
                         <Volume2 size={12} />
                         <span>Doğrusunu Dinle</span>
@@ -1828,8 +1867,9 @@ export default function ShadowingModal({
                         Hedef Kelime
                       </span>
                       <span
+                        lang="ar"
                         dir="rtl"
-                        className="arabic text-2xl font-bold text-[#087F5B]"
+                        className="arabic text-2xl font-bold text-[#065F46] dark:text-emerald-400"
                       >
                         {activeWordTip.targetWord}
                       </span>
@@ -1844,7 +1884,7 @@ export default function ShadowingModal({
                       <span className="text-[10px] font-bold block">
                         Algılanan Okunuş (%{activeWordTip.score})
                       </span>
-                      <span dir="rtl" className="arabic text-2xl font-bold">
+                      <span lang="ar" dir="rtl" className="arabic text-2xl font-bold">
                         {activeWordTip.spokenWord || "Duyulamadı"}
                       </span>
                     </div>
@@ -1859,7 +1899,7 @@ export default function ShadowingModal({
                     <>
                       {activeWordTip.makhrajTip && (
                         <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] p-3 rounded-xl border border-[#E6D7BE]">
-                          <p className="font-extrabold text-[#087F5B] mb-0.5">
+                          <p className="font-extrabold text-[#065F46] dark:text-emerald-400 mb-0.5">
                             🎯 {activeWordTip.makhrajTip.title} (
                             {activeWordTip.makhrajTip.pair})
                           </p>
@@ -1944,7 +1984,7 @@ export default function ShadowingModal({
               <button
                 type="button"
                 onClick={playReference}
-                className="col-span-4 h-9 px-2 py-2 rounded-xl bg-white dark:bg-[var(--background)] hover:bg-emerald-50 dark:hover:bg-slate-800 border-2 border-[#0CA678] border-b-3 text-[#087F5B] dark:text-[#20c997] text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1 cursor-pointer"
+                className="col-span-4 h-9 px-2 py-2 rounded-xl bg-white dark:bg-[var(--background)] hover:bg-emerald-50 dark:hover:bg-slate-800 border-2 border-[#087F5B] border-b-3 text-[#065F46] dark:text-emerald-400 text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1 cursor-pointer"
               >
                 {isPlayingRef ? (
                   <>
@@ -1984,7 +2024,7 @@ export default function ShadowingModal({
                 type="button"
                 onClick={downloadWav}
                 disabled={!userAudioUrl || isRecording}
-                className="col-span-1 h-9 w-full rounded-xl bg-white dark:bg-[var(--background)] disabled:opacity-40 border-2 border-[#E6D7BE] border-b-3 text-[var(--foreground)] hover:border-[#0CA678] flex items-center justify-center cursor-pointer"
+                className="col-span-1 h-9 w-full rounded-xl bg-white dark:bg-[var(--background)] disabled:opacity-40 border-2 border-[#E6D7BE] border-b-3 text-[var(--foreground)] hover:border-[#087F5B] flex items-center justify-center cursor-pointer"
                 title="16-bit PCM .wav Ses Kaydını İndir"
               >
                 <Download className="w-4 h-4 shrink-0" />

@@ -1059,7 +1059,7 @@ export default function MatchingGame({
                     e.stopPropagation();
                     playTTS(arCard.text, speechRate);
                   }}
-                  className="w-6 h-6 rounded-lg bg-white/80 dark:bg-slate-800 border border-stone-200 dark:border-slate-600 flex items-center justify-center text-[#0CA678] hover:bg-emerald-50 dark:hover:bg-slate-700 shrink-0 cursor-pointer"
+                  className="w-6 h-6 rounded-lg bg-white/80 dark:bg-slate-800 border border-stone-200 dark:border-slate-600 flex items-center justify-center text-[#065F46] hover:bg-emerald-50 dark:hover:bg-slate-700 shrink-0 cursor-pointer"
                 >
                   <Volume2 size={13} />
                 </button>
@@ -1079,7 +1079,7 @@ export default function MatchingGame({
                 Bağlanan: {connections.length} / {totalPairs}
               </span>
 
-              <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-slate-700 text-xs font-extrabold text-[#087F5B] dark:text-emerald-400 tabular-nums">
+              <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-slate-700 text-xs font-extrabold text-[#065F46] dark:text-emerald-400 tabular-nums">
                 Bu Alıştırma Puanı: {exerciseScore}
               </span>
 
@@ -1163,7 +1163,7 @@ export default function MatchingGame({
                     </span>
                     <span
                       dir="rtl"
-                      className="arabic font-arabic text-base font-bold text-[#087F5B] dark:text-emerald-400"
+                      className="arabic font-arabic text-base font-bold text-[#065F46] dark:text-emerald-400"
                     >
                       ({formatAr("النَّتِيجَة")})
                     </span>
@@ -1256,7 +1256,7 @@ export default function MatchingGame({
                   playClick();
                   initNewSet();
                 }}
-                className="px-3.5 py-1.5 bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs rounded-xl border-b-2 border-[#087F5B] active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-1.5 bg-[#087F5B] hover:bg-[#065F46] text-white font-extrabold text-xs rounded-xl border-b-2 border-[#087F5B] active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Play size={14} fill="currentColor" />
                 <span>➡️ Sonraki Gruba Geç</span>

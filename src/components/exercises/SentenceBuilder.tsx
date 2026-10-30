@@ -707,7 +707,7 @@ export default function SentenceBuilder({
                       playClick();
                       playCurrentSentenceAudio(q);
                     }}
-                    className="px-2 py-0.5 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[11px] font-extrabold text-[#087F5B] flex items-center gap-1 cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-[11px] font-extrabold text-[#065F46] dark:text-emerald-400 flex items-center gap-1 cursor-pointer"
                   >
                     <Volume2 size={12} />
                     <span>Dinle</span>
@@ -754,7 +754,7 @@ export default function SentenceBuilder({
           <button
             type="button"
             onClick={handleStartNewSet}
-            className="py-3 px-4 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-4 border-[#087F5B] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            className="py-3 px-4 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white border-b-4 border-[#087F5B] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Play size={15} fill="currentColor" />
             <span>Devam Et (Yeni Set)</span>
@@ -836,7 +836,7 @@ export default function SentenceBuilder({
               <span>{timeLeft}s</span>
             </span>
           )}
-          <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-xs font-extrabold text-[#087F5B] tabular-nums">
+          <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] text-xs font-extrabold text-[#065F46] dark:text-emerald-400 tabular-nums">
             {currentIndex + 1} / {questions.length}
           </span>
         </div>
@@ -860,7 +860,7 @@ export default function SentenceBuilder({
               playClick();
               playCurrentSentenceAudio(currentQ);
             }}
-            className="px-4 py-2.5 rounded-2xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+            className="px-4 py-2.5 rounded-2xl bg-[#087F5B] hover:bg-[#065F46] text-white font-extrabold text-xs sm:text-sm border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
           >
             <Volume2 size={18} />
             <span>🔊 Cümleyi Dinle</span>
@@ -906,7 +906,7 @@ export default function SentenceBuilder({
               {evalState === "correct" &&
                 (isMistakesMode || inMistakes) &&
                 srsRec && (
-                  <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 px-3 py-1.5 text-[11px] font-extrabold text-[#087F5B] dark:text-emerald-300 text-left">
+                  <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 px-3 py-1.5 text-[11px] font-extrabold text-[#065F46] dark:text-emerald-300 text-left">
                     {formatMistakeStageProgressText(srsRec)}
                   </div>
                 )}
@@ -1060,7 +1060,7 @@ export default function SentenceBuilder({
           <button
             type="button"
             onClick={handleNext}
-            className="px-3.5 py-1.5 rounded-xl bg-[#0CA678] text-white font-extrabold text-xs flex items-center gap-1 cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl bg-[#087F5B] text-white font-extrabold text-xs flex items-center gap-1 cursor-pointer"
           >
             <span>
               {currentIndex < questions.length - 1
@@ -1084,7 +1084,7 @@ export default function SentenceBuilder({
           {poolTokens.length === 0 ? (
             <span
               dir="ltr"
-              className="text-xs font-bold text-[#087F5B] dark:text-[#20c997] self-center"
+              className="text-xs font-bold text-[#065F46] dark:text-emerald-400 self-center"
             >
               Tüm kelimeler yerleştirildi ✓
             </span>
@@ -1128,7 +1128,7 @@ export default function SentenceBuilder({
         <button
           type="button"
           onClick={handleNext}
-          className="px-4 py-2 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] text-xs font-extrabold flex items-center gap-1.5 cursor-pointer"
+          className="px-4 py-2 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white border-b-3 border-[#087F5B] text-xs font-extrabold flex items-center gap-1.5 cursor-pointer"
         >
           <span>
             {currentIndex < questions.length - 1 ? "Sonraki" : "Bitir"}

@@ -97,7 +97,7 @@ export default function OnboardingTourModal() {
       visual: (
         <div className="grid grid-cols-2 gap-2.5">
           <div className="p-3 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] space-y-1">
-            <span className="text-lg font-black text-[#0CA678] block">
+            <span className="text-lg font-black text-[#065F46] block">
               60 Sesli Diyalog
             </span>
             <p className="text-[11px] font-semibold text-[var(--muted)]">
@@ -144,7 +144,7 @@ export default function OnboardingTourModal() {
           {[
             {
               icon: Sparkles,
-              color: "bg-[#0CA678]/15 text-[#087F5B] border-[#0CA678]",
+              color: "bg-[#087F5B]/15 text-[#065F46] dark:text-emerald-400 border-[#087F5B]",
               name: "Hareke Aç / Kapa (Tashkeel)",
               desc: "Metinleri tek tıkla harekeli veya harekesiz okumaya geçirin.",
             },
@@ -200,8 +200,8 @@ export default function OnboardingTourModal() {
       visual: (
         <div className="space-y-3">
           {/* Canlı Kelime & Ok Takibi Önizlemesi */}
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#0CA678] space-y-2">
-            <div className="flex items-center justify-between text-[11px] font-extrabold text-[#087F5B]">
+          <div className="p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#087F5B] space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-extrabold text-[#065F46] dark:text-emerald-400">
               <span>🎯 Canlı Karaoke Kelime & Ok Takibi (RTL)</span>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#6741D9] text-white">
                 <Repeat size={11} /> Döngü: 1x / 2x / 3x / ∞
@@ -213,7 +213,7 @@ export default function OnboardingTourModal() {
             >
               <span>السَّلَامُ </span>
               <span className="inline-block relative bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 ring-2 ring-emerald-500/40 rounded-lg px-1.5 mx-0.5">
-                <span className="pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 text-[11px] font-black text-emerald-600">
+                <span className="pointer-events-none absolute -top-3.5 left-1/2 -translate-x-1/2 text-[11px] font-black text-[#065F46] dark:text-emerald-400">
                   ▼
                 </span>
                 {formatAr("عَلَيْكُمْ")}
@@ -225,7 +225,7 @@ export default function OnboardingTourModal() {
 
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="p-2.5 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE]">
-              <strong className="text-[#087F5B] block">
+              <strong className="text-[#065F46] dark:text-emerald-400 block">
                 📖 1. Dinle & İncele
               </strong>
               <span className="text-[11px] text-[var(--muted)]">
@@ -327,7 +327,7 @@ export default function OnboardingTourModal() {
           </div>
 
           <div className="p-2.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-400 text-[11px] space-y-0.5">
-            <span className="font-extrabold text-[#087F5B] dark:text-emerald-300 block">
+            <span className="font-extrabold text-[#065F46] dark:text-emerald-300 block">
               🌿 Sözlükte Kök Ailesi (İştikak) &amp; Canlı Örnek Cümleler:
             </span>
             <p className="text-[var(--muted)] leading-snug">
@@ -346,7 +346,7 @@ export default function OnboardingTourModal() {
       visual: (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div className="p-3 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] flex items-start gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#0CA678]/15 text-[#087F5B] flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-[#087F5B]/15 text-[#065F46] dark:text-emerald-400 flex items-center justify-center shrink-0">
               <BookOpen size={16} />
             </div>
             <div>
@@ -426,8 +426,8 @@ export default function OnboardingTourModal() {
         "Sınıf içi ve bireysel çalışmalarda öğretmen ve öğrenciler için tam donanımlı araçlar:",
       visual: (
         <div className="space-y-2.5">
-          <div className="p-3 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#0CA678] flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#0CA678] text-white flex items-center justify-center shrink-0">
+          <div className="p-3 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#087F5B] flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#087F5B] text-white flex items-center justify-center shrink-0">
               <FileText size={18} />
             </div>
             <div className="space-y-0.5">
@@ -541,7 +541,7 @@ export default function OnboardingTourModal() {
                 aria-label={`Adım ${idx + 1}`}
                 className={`h-2.5 rounded-full transition-all cursor-pointer ${
                   idx === step
-                    ? "w-6 bg-[#0CA678]"
+                    ? "w-6 bg-[#087F5B]"
                     : "w-2.5 bg-[#cbb692] dark:bg-slate-600"
                 }`}
               />
@@ -571,7 +571,7 @@ export default function OnboardingTourModal() {
                   playClick();
                   setStep((s) => s + 1);
                 }}
-                className="h-9 px-4 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white text-xs font-extrabold border-b-3 border-[#087F5B] flex items-center gap-1 cursor-pointer"
+                className="h-9 px-4 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white text-xs font-extrabold border-b-3 border-[#087F5B] flex items-center gap-1 cursor-pointer"
               >
                 <span>İleri</span>
                 <ChevronRight size={14} />

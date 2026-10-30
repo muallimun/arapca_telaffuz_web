@@ -401,7 +401,7 @@ export default function SettingsPage() {
           <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-5 space-y-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2.5">
               <div className="flex items-center gap-2">
-                <Type size={18} className="text-[#087F5B]" />
+                <Type size={18} className="text-[#065F46] dark:text-emerald-400" />
                 <div>
                   <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
                     Arapça Yazı Tipi (Font) ve Boyutu
@@ -413,7 +413,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <span className="px-3 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] text-xs font-extrabold text-[#087F5B] dark:text-[#20c997]">
+              <span className="px-3 py-1 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] text-xs font-extrabold text-[#065F46] dark:text-emerald-400">
                 Aktif Font: {activeFontCfg.name.split(" (")[0]} (
                 {activeFontCfg.scale > 1
                   ? `${activeFontCfg.scale}x Ölçek`
@@ -468,7 +468,7 @@ export default function SettingsPage() {
                         fontSize: `${Math.round(24 * font.scale)}px`,
                         lineHeight: font.lineHeight,
                       }}
-                      className="w-full rounded-xl bg-[#F7EFE1]/70 dark:bg-[var(--surface)] px-2.5 py-1 border border-[#E6D7BE] dark:border-[var(--border)] text-right font-bold text-[#087F5B] dark:text-[#20c997]"
+                      className="w-full rounded-xl bg-[#F7EFE1]/70 dark:bg-[var(--surface)] px-2.5 py-1 border border-[#E6D7BE] dark:border-[var(--border)] text-right font-bold text-[#065F46] dark:text-emerald-400"
                     >
                       {formatArabicText("أَسْتَوْدِعُكَ اللّٰهَ", showHareke)}
                     </div>
@@ -564,7 +564,7 @@ export default function SettingsPage() {
             {/* Canlı Tipografi Önizleme Kutusu (Diyalog Görünüm Düzeni ile Canlı Senkronize) */}
             <div className="pt-1.5 space-y-1.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-[#087F5B] dark:text-[#20c997]">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-[#065F46] dark:text-emerald-400">
                   Canlı Tipografi Önizleme Kutusu ({viewModes.find((m) => m.id === viewMode)?.label || "Alt Alta Görünüm"})
                 </span>
                 <button
@@ -670,7 +670,7 @@ export default function SettingsPage() {
           {/* 1B. DİYALOG GÖRÜNÜM MODU (4'lü Seçim Izgarası) */}
           <section className="space-y-2">
             <div className="flex items-center gap-2 px-1">
-              <Eye size={17} className="text-[#087F5B]" />
+              <Eye size={17} className="text-[#065F46] dark:text-emerald-400" />
               <h2 className="text-sm font-extrabold text-[var(--foreground)]">
                 Diyalog Görünüm Düzeni
               </h2>
@@ -719,7 +719,7 @@ export default function SettingsPage() {
           {/* GRUP 1 — OKUMA, HAREKE & GÖRÜNÜM TERCİHLERİ (2 Sütunlu Grid) */}
           <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-5 space-y-3">
             <div className="flex items-center gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
-              <Sparkles size={17} className="text-[#087F5B]" />
+              <Sparkles size={17} className="text-[#065F46] dark:text-emerald-400" />
               <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
                 Okuma, Hareke &amp; Görünüm Tercihleri
               </h2>
@@ -729,7 +729,7 @@ export default function SettingsPage() {
               {/* 1. Arapça Harekeleri Göster (Tashkeel) */}
               <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
                 <div className="flex items-start gap-2.5">
-                  <Sparkles size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                  <Sparkles size={17} className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                       Arapça Harekeleri Göster (Tashkeel)
@@ -775,7 +775,7 @@ export default function SettingsPage() {
               {/* 2. Kelime Tıklama Sözlük İpuçları */}
               <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
                 <div className="flex items-start gap-2.5">
-                  <BookOpen size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                  <BookOpen size={17} className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                       Kelime Tıklama Sözlük İpuçları
@@ -821,7 +821,7 @@ export default function SettingsPage() {
               {/* 3. Gölgeleme & Mahreç Kayıt Butonları */}
               <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
                 <div className="flex items-start gap-2.5">
-                  <Mic size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                  <Mic size={17} className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                       Gölgeleme &amp; Mahreç Kayıt Butonları
@@ -868,7 +868,7 @@ export default function SettingsPage() {
               {/* 4. Etkileşim Ses Efektleri (SFX) */}
               <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
                 <div className="flex items-start gap-2.5">
-                  <Volume2 size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                  <Volume2 size={17} className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                       Etkileşim Ses Efektleri (SFX)
@@ -912,7 +912,7 @@ export default function SettingsPage() {
               {/* 5. Renk Teması */}
               <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
                 <div className="flex items-start gap-2.5">
-                  <Monitor size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                  <Monitor size={17} className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                       Renk Teması
@@ -958,7 +958,7 @@ export default function SettingsPage() {
               {/* 6. Sesli Okuma Kelime Takibi (Çift İkon Temizlenmiş) */}
               <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
                 <div className="flex items-start gap-2.5">
-                  <Target size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                  <Target size={17} className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                       Sesli Okuma Kelime Takibi
@@ -1006,7 +1006,7 @@ export default function SettingsPage() {
       {showAudio && (
         <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-5 space-y-3">
           <div className="flex items-center gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
-            <Volume2 size={17} className="text-[#087F5B]" />
+            <Volume2 size={17} className="text-[#065F46] dark:text-emerald-400" />
             <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
               Seslendirme Hızı, Döngü &amp; Gölgeleme Ayarları
             </h2>
@@ -1016,7 +1016,7 @@ export default function SettingsPage() {
             {/* 1. Arapça Seslendirme Hızı (TTS / MP3) */}
             <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
               <div className="flex items-start gap-2.5">
-                <Gauge size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                <Gauge size={17} className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                     Arapça Seslendirme Hızı (TTS / MP3)
@@ -1051,7 +1051,7 @@ export default function SettingsPage() {
             {/* 2. Cümleler Arası Gölgeleme Boşluğu */}
             <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
               <div className="flex items-start gap-2.5">
-                <Timer size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                <Timer size={17} className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                     Cümleler Arası Gölgeleme Boşluğu
@@ -1136,7 +1136,7 @@ export default function SettingsPage() {
             {/* 4. Tekli Cümle Tekrar Sayısı */}
             <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5">
               <div className="flex items-start gap-2.5">
-                <Repeat size={17} className="text-[#087F5B] shrink-0 mt-0.5" />
+                <Repeat size={17} className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                     Tekli Cümle Tekrar Sayısı
@@ -1182,7 +1182,7 @@ export default function SettingsPage() {
       {showData && (
         <section className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-4 sm:p-5 space-y-3">
           <div className="flex items-center gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2">
-            <Database size={17} className="text-[#087F5B]" />
+            <Database size={17} className="text-[#065F46] dark:text-emerald-400" />
             <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
               Günlük Hedef, Uygulama Kurulumu &amp; Veri Yedekleme
             </h2>
@@ -1296,7 +1296,7 @@ export default function SettingsPage() {
           {/* 2B. Uygulamayı Arkadaşına Öner & Paylaş */}
           <div className="bg-white dark:bg-[var(--background)] p-3.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-2.5">
-              <Share2 size={18} className="text-[#087F5B] shrink-0 mt-0.5" />
+              <Share2 size={18} className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5" />
               <div>
                 <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                   📲 Uygulamayı Arkadaşına Öner &amp; Paylaş
@@ -1326,7 +1326,7 @@ export default function SettingsPage() {
               <div className="flex items-start gap-2.5">
                 <Download
                   size={18}
-                  className="text-emerald-600 shrink-0 mt-0.5"
+                  className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5"
                 />
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -1433,7 +1433,7 @@ export default function SettingsPage() {
           <div className="bg-white dark:bg-[var(--background)] p-3.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col gap-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start gap-2.5">
-                <Database size={18} className="text-[#087F5B] shrink-0 mt-0.5" />
+                <Database size={18} className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                     Veri Yönetimi ve Yedekleme

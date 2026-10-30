@@ -569,7 +569,7 @@ export default function MultipleChoice({
                 }}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
                   resultViewMode === "summary"
-                    ? "bg-[#0CA678] text-white shadow-2xs"
+                    ? "bg-[#087F5B] text-white shadow-2xs"
                     : "text-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
@@ -659,7 +659,7 @@ export default function MultipleChoice({
                     {isOk ? (
                       <CheckCircle2
                         size={16}
-                        className="text-emerald-600 shrink-0"
+                        className="text-[#065F46] dark:text-emerald-400 shrink-0"
                       />
                     ) : (
                       <XCircle size={16} className="text-rose-600 shrink-0" />
@@ -699,7 +699,7 @@ export default function MultipleChoice({
               <button
                 type="button"
                 onClick={() => handleListenQuestion(reviewQ)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0CA678] text-white text-xs font-bold cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#087F5B] text-white text-xs font-bold cursor-pointer"
               >
                 <Volume2 size={13} />
                 <span>Sesli Dinle</span>
@@ -709,7 +709,7 @@ export default function MultipleChoice({
             <div className="text-center py-1">
               <h4
                 dir="rtl"
-                className="arabic text-3xl sm:text-4xl font-bold text-[#087F5B] dark:text-[#20c997]"
+                className="arabic text-3xl sm:text-4xl font-bold text-[#065F46] dark:text-emerald-400"
               >
                 {formatArabicText(reviewQ.arabic, showHareke, arabicFont)}
               </h4>
@@ -762,7 +762,7 @@ export default function MultipleChoice({
                   )}
                   {reviewQ.usageNote && (
                     <p className="text-[var(--foreground)] font-semibold">
-                      <span className="font-extrabold text-[#087F5B]">
+                      <span className="font-extrabold text-[#065F46] dark:text-emerald-400">
                         💡 Kullanım İpucu:
                       </span>{" "}
                       {reviewQ.usageNote}
@@ -853,7 +853,7 @@ export default function MultipleChoice({
           <button
             type="button"
             onClick={handleStartNewSet}
-            className="py-3 px-4 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-4 border-[#087F5B] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            className="py-3 px-4 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white border-b-4 border-[#087F5B] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Play size={15} fill="currentColor" />
             <span>Devam Et (Yeni Set)</span>
@@ -902,7 +902,7 @@ export default function MultipleChoice({
                 currentQuestion.kind === "sentence" ||
                 currentQuestion.kind === "idiom"
                   ? "bg-[#F3F0FF] text-[#6741D9] border border-[#6741D9]/30"
-                  : "bg-[#E6FCF5] text-[#087F5B] border border-[#0CA678]/30"
+                  : "bg-[#E6FCF5] text-[#065F46] dark:text-emerald-400 border border-[#087F5B]/30"
               }`}
             >
               {currentQuestion.kind === "sentence" ? (
@@ -937,7 +937,7 @@ export default function MultipleChoice({
             </div>
           )}
 
-          <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-3 py-1 rounded-xl tabular-nums">
+          <span className="text-xs sm:text-sm font-extrabold text-[#065F46] dark:text-emerald-400 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-3 py-1 rounded-xl tabular-nums">
             {feedbackMode === "instant"
               ? `Doğru: ${correctCount}`
               : `Yanıtlanan: ${Object.keys(userAnswers).length}/${questions.length}`}
@@ -986,7 +986,7 @@ export default function MultipleChoice({
           <button
             type="button"
             onClick={() => handleListenQuestion(currentQuestion)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0CA678] text-white font-bold border-b-2 border-[#087F5B] shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#087F5B] text-white font-bold border-b-2 border-[#087F5B] shrink-0 cursor-pointer"
           >
             <Volume2 size={14} />
             <span>Sesli Dinle</span>
@@ -995,7 +995,7 @@ export default function MultipleChoice({
 
         <h3
           dir="rtl"
-          className={`arabic font-bold text-[#087F5B] dark:text-[#20c997] py-2 ${
+          className={`arabic font-bold text-[#065F46] dark:text-emerald-400 py-2 ${
             currentQuestion.kind === "sentence"
               ? "text-2xl sm:text-4xl leading-relaxed"
               : currentQuestion.kind === "idiom"
@@ -1029,7 +1029,7 @@ export default function MultipleChoice({
                 Boolean(selected) &&
                 (isMistakesMode || inMistakes) &&
                 srsRec && (
-                  <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 px-3 py-1.5 text-[11px] font-extrabold text-[#087F5B] dark:text-emerald-300 text-left">
+                  <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 px-3 py-1.5 text-[11px] font-extrabold text-[#065F46] dark:text-emerald-300 text-left">
                     {formatMistakeStageProgressText(srsRec)}
                   </div>
                 )}
@@ -1062,7 +1062,7 @@ export default function MultipleChoice({
                   : showNeutralSelected
                   ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff] -translate-y-0.5 shadow-xs"
                   : showCorrect
-                  ? "bg-emerald-50 border-[#0CA678] text-[#087F5B]"
+                  ? "bg-emerald-50 border-[#087F5B] text-[#065F46] dark:text-emerald-400"
                   : showWrong
                   ? "bg-rose-50 border-rose-400 text-rose-800"
                   : "bg-[#F7EFE1]/50 border-[#E6D7BE] text-[var(--muted)] opacity-65"
@@ -1070,7 +1070,7 @@ export default function MultipleChoice({
             >
               <span>{opt.text}</span>
               {showCorrect && (
-                <CheckCircle2 size={20} className="text-[#0CA678] shrink-0" />
+                <CheckCircle2 size={20} className="text-[#065F46] shrink-0" />
               )}
               {showWrong && (
                 <XCircle size={20} className="text-rose-600 shrink-0" />
@@ -1099,7 +1099,7 @@ export default function MultipleChoice({
             )}
             {currentQuestion.usageNote && (
               <p className="text-[var(--foreground)] font-semibold">
-                <span className="font-extrabold text-[#087F5B]">
+                <span className="font-extrabold text-[#065F46] dark:text-emerald-400">
                   💡 Kullanım İpucu:
                 </span>{" "}
                 {currentQuestion.usageNote}
@@ -1123,7 +1123,7 @@ export default function MultipleChoice({
         <button
           type="button"
           onClick={nextQuestion}
-          className="flex-1 py-3 px-5 bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          className="flex-1 py-3 px-5 bg-[#087F5B] hover:bg-[#065F46] text-white font-extrabold text-xs sm:text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <span>
             {currentIndex === questions.length - 1

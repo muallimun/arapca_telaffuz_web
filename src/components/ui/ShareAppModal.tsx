@@ -104,7 +104,7 @@ export default function ShareAppModal() {
         {/* ÜST BAŞLIK */}
         <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-5 py-4 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0CA678] to-[#6741D9] border-b-3 border-[#087F5B] text-white flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#087F5B] to-[#6741D9] border-b-3 border-[#087F5B] text-white flex items-center justify-center shrink-0">
               <Share2 size={20} />
             </div>
             <div>
@@ -135,7 +135,7 @@ export default function ShareAppModal() {
           {/* PAYLAŞIM METNİ ÖNİZLEME KARTI */}
           <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-extrabold text-[#087F5B] dark:text-emerald-300">
+              <span className="text-xs font-extrabold text-[#065F46] dark:text-emerald-300">
                 {SHARE_APP_TITLE}
               </span>
               <span className="px-2 py-0.5 rounded-md bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] text-[10px] font-extrabold text-[#6741D9] dark:text-[#d0bfff]">
@@ -145,7 +145,7 @@ export default function ShareAppModal() {
             <p className="text-xs text-[var(--foreground)] font-medium leading-relaxed">
               {SHARE_APP_TEXT}
             </p>
-            <div className="pt-1 flex items-center gap-1.5 text-xs font-extrabold text-[#0CA678]">
+            <div className="pt-1 flex items-center gap-1.5 text-xs font-extrabold text-[#065F46]">
               <ExternalLink size={13} />
               <span>👉 {SHARE_APP_URL}</span>
             </div>
@@ -159,7 +159,7 @@ export default function ShareAppModal() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => playClick()}
-              className="py-3 px-4 rounded-2xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-xs"
+              className="py-3 px-4 rounded-2xl bg-[#087F5B] hover:bg-[#065F46] text-white font-extrabold text-xs sm:text-sm border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-xs"
             >
               <MessageCircle size={17} className="shrink-0" />
               <span>💬 WhatsApp&apos;ta Paylaş</span>
@@ -184,7 +184,7 @@ export default function ShareAppModal() {
               className={`py-3 px-4 rounded-2xl font-extrabold text-xs sm:text-sm border-2 border-b-4 active:border-b-2 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 copied
                   ? "bg-emerald-600 text-white border-emerald-800"
-                  : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678]"
+                  : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#087F5B]"
               } ${supportsWebShare ? "" : "sm:col-span-2"}`}
             >
               {copied ? (
@@ -225,7 +225,7 @@ export default function ShareAppModal() {
               playClick();
               setIsOpen(false);
             }}
-            className="h-8 px-4 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] cursor-pointer"
+            className="h-8 px-4 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] text-xs font-extrabold text-[var(--foreground)] hover:border-[#087F5B] cursor-pointer"
           >
             Kapat
           </button>

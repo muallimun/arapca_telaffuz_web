@@ -319,7 +319,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 print:hidden w-full h-12 py-1.5 bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b-2 border-[#E6D7BE] dark:border-[var(--border)] shadow-xs flex items-center">
+      <header className="fixed top-0 left-0 right-0 z-40 print:hidden w-full h-12 py-1.5 pt-[env(safe-area-inset-top)] bg-[#FDFBF7]/95 dark:bg-[var(--background)]/95 backdrop-blur-md border-b-2 border-[#E6D7BE] dark:border-[var(--border)] shadow-xs flex items-center">
         <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 xl:px-6 h-full flex items-center justify-between gap-1 sm:gap-2">
           {/* SOL: Sabit Uygulama Logosu (shrink-0) + Yanında Ayrı PWA Kurulum Butonu + Masaüstü Menü */}
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
@@ -339,7 +339,7 @@ export default function Header() {
                   className="w-6 h-6 object-contain rounded-lg"
                 />
               </div>
-              <div className="hidden sm:block lg:hidden xl:block min-w-0">
+              <div className="hidden xl:block min-w-0">
                 <span className="block text-xs sm:text-sm font-extrabold tracking-tight text-[var(--foreground)] truncate leading-tight">
                   Arapça Telaffuz & Diyalog
                 </span>
@@ -362,7 +362,7 @@ export default function Header() {
                 data-tooltip-pos="bottom"
                 data-tooltip-align="left"
                 aria-label="Uygulamayı Cihaza Kur"
-                className="group relative h-8 sm:h-9 w-8 xl:w-auto xl:px-2.5 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white border-b-3 border-[#065F46] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-1 text-xs font-extrabold cursor-pointer shrink-0"
+                className="group relative min-w-[38px] min-h-[38px] sm:min-w-[40px] sm:min-h-[40px] xl:w-auto xl:px-2.5 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white border-b-3 border-[#065F46] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-1 text-xs font-extrabold cursor-pointer shrink-0"
               >
                 <Download size={14} className="shrink-0" />
                 <span className="hidden xl:inline">Kur</span>
@@ -386,8 +386,8 @@ export default function Header() {
                     data-tooltip-pos="bottom"
                     className={
                       isActive
-                        ? "px-2 xl:px-3 py-1 rounded-lg text-[11px] xl:text-xs font-bold bg-[#087F5B] text-white shadow-sm flex items-center gap-1 xl:gap-1.5 whitespace-nowrap transition-all"
-                        : "px-2 xl:px-2.5 py-1 rounded-lg text-[11px] xl:text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-700/60 hover:text-[#065F46] transition-all flex items-center gap-1 xl:gap-1.5 whitespace-nowrap"
+                        ? "px-2.5 py-1.5 text-xs xl:text-sm xl:px-3 rounded-lg font-bold bg-[#087F5B] text-white shadow-sm flex items-center gap-1 xl:gap-1.5 whitespace-nowrap transition-all"
+                        : "px-2.5 py-1.5 text-xs xl:text-sm xl:px-3 rounded-lg font-semibold text-slate-700 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-700/60 hover:text-[#065F46] transition-all flex items-center gap-1 xl:gap-1.5 whitespace-nowrap"
                     }
                   >
                     <NavIcon className="w-3.5 h-3.5 shrink-0" />
@@ -410,7 +410,7 @@ export default function Header() {
               data-tooltip="Harekeleri Göster / Gizle (Okuma Zorluk Ayarı)"
               data-tooltip-pos="bottom"
               aria-label="Harekeleri Göster / Gizle"
-              className={`group relative w-8 h-8 xl:w-9 xl:h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
+              className={`group relative min-w-[38px] min-h-[38px] sm:min-w-[40px] sm:min-h-[40px] rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
                 isHarekeOn
                   ? "bg-[#087F5B]/15 border-[#087F5B] text-[#065F46] dark:text-emerald-400"
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] opacity-75"
@@ -430,7 +430,7 @@ export default function Header() {
                 data-tooltip="Türkçe Çevirileri Göster / Gizle"
                 data-tooltip-pos="bottom"
                 aria-label="Türkçe Çevirileri Göster / Gizle"
-                className={`group relative w-8 h-8 xl:w-9 xl:h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer ${
+                className={`group relative min-w-[38px] min-h-[38px] sm:min-w-[40px] sm:min-h-[40px] rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer ${
                   currentViewMode !== "arabic-only"
                     ? "bg-[#087F5B]/15 border-[#087F5B] text-[#065F46] dark:text-emerald-400"
                     : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)]"
@@ -488,7 +488,7 @@ export default function Header() {
               data-tooltip="Seslendirme Hızını Değiştir (0.5x – 1.5x)"
               data-tooltip-pos="bottom"
               aria-label="Seslendirme Hızını Değiştir"
-              className="group relative w-8 h-8 xl:w-auto xl:h-9 px-1 xl:px-2 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center gap-1 text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="group relative min-w-[38px] min-h-[38px] sm:min-w-[40px] sm:min-h-[40px] xl:w-auto px-1 xl:px-2 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center gap-1 text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
               <Gauge
                 size={13}
@@ -509,7 +509,7 @@ export default function Header() {
               data-tooltip="Gece / Gündüz Görünüm Modunu Değiştir"
               data-tooltip-pos="bottom"
               aria-label="Gece / Gündüz Görünüm Modunu Değiştir"
-              className="group relative w-8 h-8 xl:w-9 xl:h-9 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="group relative min-w-[38px] min-h-[38px] sm:min-w-[40px] sm:min-h-[40px] rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
               {isDark ? (
                 <Sun size={14} strokeWidth={2.4} className="text-amber-400" />
@@ -528,7 +528,7 @@ export default function Header() {
               data-tooltip="Arayüz Ses Efektlerini Aç / Kapat"
               data-tooltip-pos="bottom"
               aria-label="Arayüz Ses Efektlerini Aç / Kapat"
-              className={`group relative hidden sm:flex w-8 h-8 xl:w-9 xl:h-9 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 items-center justify-center hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
+              className={`group relative hidden sm:inline-flex min-w-[38px] min-h-[38px] sm:min-w-[40px] sm:min-h-[40px] rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 items-center justify-center hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
                 mounted && sfxEnabled
                   ? "text-[#065F46] dark:text-emerald-400"
                   : "text-[var(--muted)] opacity-75"
@@ -549,7 +549,7 @@ export default function Header() {
               data-tooltip-pos="bottom"
               data-tooltip-align="right"
               aria-label="Serbest Telaffuz ve Mahreç Koçu"
-              className={`group relative w-8 h-8 xl:w-9 xl:h-9 rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
+              className={`group relative min-w-[38px] min-h-[38px] sm:min-w-[40px] sm:min-h-[40px] rounded-xl border-2 border-b-3 flex items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0 ${
                 micModalOpen
                   ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:bg-[#EFE3CE]"
@@ -569,7 +569,7 @@ export default function Header() {
               data-tooltip-pos="bottom"
               data-tooltip-align="right"
               aria-label="Uygulama Kullanım Rehberi ve İletişim / Hata Bildirimi"
-              className="group relative w-8 h-8 xl:w-9 xl:h-9 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 flex items-center justify-center text-[#6741D9] dark:text-[#d0bfff] hover:bg-[#e8e2ff] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="group relative min-w-[38px] min-h-[38px] sm:min-w-[40px] sm:min-h-[40px] rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 flex items-center justify-center text-[#6741D9] dark:text-[#d0bfff] hover:bg-[#e8e2ff] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
               <HelpCircle size={14} strokeWidth={2.4} />
             </button>
@@ -582,7 +582,7 @@ export default function Header() {
               data-tooltip-pos="bottom"
               data-tooltip-align="right"
               aria-label="Tam Ekran Moduna Geç / Çık"
-              className="group relative flex w-8 h-8 xl:w-9 xl:h-9 rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
+              className="group relative hidden sm:inline-flex min-w-[38px] min-h-[38px] sm:min-w-[40px] sm:min-h-[40px] rounded-xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 items-center justify-center text-[var(--foreground)] hover:bg-[#EFE3CE] active:border-b-1 active:translate-y-0.5 transition-all cursor-pointer shrink-0"
             >
               {isFullscreen ? (
                 <Minimize2 size={14} strokeWidth={2.4} />
@@ -599,7 +599,7 @@ export default function Header() {
               data-tooltip-pos="bottom"
               data-tooltip-align="right"
               aria-label="Ayarlar"
-              className={`hidden md:flex lg:hidden w-8 h-8 rounded-xl border-2 border-b-3 items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all shrink-0 ${
+              className={`hidden md:flex lg:hidden min-w-[38px] min-h-[38px] sm:min-w-[40px] sm:min-h-[40px] rounded-xl border-2 border-b-3 items-center justify-center active:border-b-1 active:translate-y-0.5 transition-all shrink-0 ${
                 pathname === "/ayarlar"
                   ? "bg-[#F3F0FF] border-[#6741D9] text-[#6741D9]"
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"

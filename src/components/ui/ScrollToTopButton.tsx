@@ -38,7 +38,7 @@ export default function ScrollToTopButton() {
       onClick={scrollToTop}
       title="Yukarı Çık"
       aria-label="Sayfanın En Üstüne Kaydır"
-      className={`fixed right-3 bottom-20 sm:bottom-6 sm:right-6 z-30 print:hidden w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-[#0CA678] hover:bg-[#099268] text-white border-2 border-[#087F5B] border-b-4 shadow-lg flex items-center justify-center cursor-pointer active:border-b-2 active:translate-y-0.5 transition-all duration-300 ${
+      className={`fixed right-3 bottom-20 sm:bottom-6 sm:right-6 z-30 print:hidden w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-[#087F5B] hover:bg-[#065F46] text-white border-2 border-[#087F5B] border-b-4 shadow-lg flex items-center justify-center cursor-pointer active:border-b-2 active:translate-y-0.5 transition-all duration-300 ${
         visible
           ? "opacity-100 translate-y-0 pointer-events-auto"
           : "opacity-0 pointer-events-none translate-y-2"

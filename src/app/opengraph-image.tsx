@@ -20,7 +20,7 @@ export default function OpenGraphImage() {
           padding: "56px 64px",
           background:
             "linear-gradient(135deg, #FDFBF7 0%, #F7EFE1 55%, #E6FCF5 100%)",
-          border: "14px solid #0CA678",
+          border: "14px solid #087F5B",
           fontFamily: "sans-serif",
           color: "#1E1B18",
         }}
@@ -114,7 +114,7 @@ export default function OpenGraphImage() {
             justifyContent: "center",
             padding: "20px 28px",
             borderRadius: "24px",
-            backgroundColor: "#0CA678",
+            backgroundColor: "#087F5B",
             borderBottom: "6px solid #087F5B",
             color: "#FFFFFF",
             fontSize: 23,

@@ -152,7 +152,7 @@ export default function ArabicVirtualKeyboard({
             key={ch}
             type="button"
             onClick={() => handleChar(ch)}
-            className="flex-1 min-w-0 h-9 sm:h-11 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 hover:border-[#0CA678] active:border-b-0 active:translate-y-0.5 arabic font-arabic text-base sm:text-xl font-bold text-[var(--foreground)] flex items-center justify-center transition-all cursor-pointer"
+            className="flex-1 min-w-0 h-9 sm:h-11 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 hover:border-[#087F5B] active:border-b-0 active:translate-y-0.5 arabic font-arabic text-base sm:text-xl font-bold text-[var(--foreground)] flex items-center justify-center transition-all cursor-pointer"
           >
             {ch}
           </button>
@@ -166,7 +166,7 @@ export default function ArabicVirtualKeyboard({
             key={ch}
             type="button"
             onClick={() => handleChar(ch)}
-            className="flex-1 min-w-0 h-9 sm:h-11 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 hover:border-[#0CA678] active:border-b-0 active:translate-y-0.5 arabic font-arabic text-base sm:text-xl font-bold text-[var(--foreground)] flex items-center justify-center transition-all cursor-pointer"
+            className="flex-1 min-w-0 h-9 sm:h-11 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 hover:border-[#087F5B] active:border-b-0 active:translate-y-0.5 arabic font-arabic text-base sm:text-xl font-bold text-[var(--foreground)] flex items-center justify-center transition-all cursor-pointer"
           >
             {ch}
           </button>
@@ -180,7 +180,7 @@ export default function ArabicVirtualKeyboard({
             key={ch}
             type="button"
             onClick={() => handleChar(ch)}
-            className="flex-1 min-w-0 h-9 sm:h-11 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 hover:border-[#0CA678] active:border-b-0 active:translate-y-0.5 arabic font-arabic text-base sm:text-xl font-bold text-[var(--foreground)] flex items-center justify-center transition-all cursor-pointer"
+            className="flex-1 min-w-0 h-9 sm:h-11 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 hover:border-[#087F5B] active:border-b-0 active:translate-y-0.5 arabic font-arabic text-base sm:text-xl font-bold text-[var(--foreground)] flex items-center justify-center transition-all cursor-pointer"
           >
             {ch}
           </button>
@@ -204,7 +204,7 @@ export default function ArabicVirtualKeyboard({
         <button
           type="button"
           onClick={() => handleChar(" ")}
-          className="col-span-3 h-9 sm:h-10 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--muted)] hover:border-[#0CA678] active:translate-y-0.5 transition-all cursor-pointer"
+          className="col-span-3 h-9 sm:h-10 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--muted)] hover:border-[#087F5B] active:translate-y-0.5 transition-all cursor-pointer"
         >
           Boşluk
         </button>
@@ -227,7 +227,7 @@ export default function ArabicVirtualKeyboard({
             playClick();
             onEnter();
           }}
-          className="col-span-3 h-9 sm:h-10 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] text-xs font-extrabold flex items-center justify-center gap-1 active:translate-y-0.5 transition-all cursor-pointer"
+          className="col-span-3 h-9 sm:h-10 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white border-b-3 border-[#087F5B] text-xs font-extrabold flex items-center justify-center gap-1 active:translate-y-0.5 transition-all cursor-pointer"
         >
           <CornerDownLeft size={14} />
           <span>Kontrol Et</span>

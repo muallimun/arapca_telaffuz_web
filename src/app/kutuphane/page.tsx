@@ -230,7 +230,7 @@ export default function LibraryPage() {
             }}
             className={`px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               activeSection === "dialogues"
-                ? "bg-[#0CA678] text-white font-semibold"
+                ? "bg-[#087F5B] text-white font-semibold"
                 : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
             }`}
           >
@@ -244,7 +244,7 @@ export default function LibraryPage() {
             }}
             className={`px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               activeSection === "saved-words"
-                ? "bg-[#0CA678] text-white font-semibold"
+                ? "bg-[#087F5B] text-white font-semibold"
                 : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
             }`}
           >
@@ -258,7 +258,7 @@ export default function LibraryPage() {
             }}
             className={`px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap shrink-0 cursor-pointer ${
               activeSection === "weak-words"
-                ? "bg-[#0CA678] text-white font-semibold"
+                ? "bg-[#087F5B] text-white font-semibold"
                 : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
             }`}
           >
@@ -283,7 +283,7 @@ export default function LibraryPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Diyalog başlığı, Arapça ifade veya numara ara..."
-                  className="w-full h-9 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] rounded-xl pl-8 pr-8 text-xs font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678]"
+                  className="w-full h-9 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] rounded-xl pl-8 pr-8 text-xs font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#087F5B]"
                 />
                 {search && (
                   <button
@@ -329,7 +329,7 @@ export default function LibraryPage() {
                         }}
                         className={`px-2.5 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                           active
-                            ? "bg-[#0CA678] text-white font-semibold shadow-2xs"
+                            ? "bg-[#087F5B] text-white font-semibold shadow-2xs"
                             : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
                         }`}
                       >
@@ -341,80 +341,86 @@ export default function LibraryPage() {
               </div>
             </div>
 
-            {/* 2. Tek Satırda Yatay Kaydırılabilir Hızlı Durum & Seviye Şeridi */}
-            <div className="flex overflow-x-auto no-scrollbar items-center gap-1.5 py-0.5">
-              {(
-                [
-                  { id: "all", label: `Tümü (${diyaloglar.length})` },
-                  {
-                    id: "completed",
-                    label: `Tamamlanan (${
-                      mounted ? completedDialogues.length : 0
-                    })`,
-                  },
-                  {
-                    id: "ongoing",
-                    label: `Devam Eden (${
-                      mounted
-                        ? diyaloglar.length - completedDialogues.length
-                        : diyaloglar.length
-                    })`,
-                  },
-                  {
-                    id: "favorites",
-                    label: `Favori (${mounted ? favoriteDialogues.length : 0})`,
-                  },
-                ] as { id: StatusFilter; label: string }[]
-              ).map((tab) => {
-                const active = statusFilter === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => {
-                      playClick();
-                      setStatusFilter(tab.id);
-                    }}
-                    className={`px-2.5 py-1 text-xs rounded-lg border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-                      active
-                        ? "bg-[#0CA678] border-[#087F5B] text-white font-bold shadow-2xs"
-                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
+            {/* 2. Tek Satırda Yatay Kaydırılabilir Hızlı Durum & Seviye Şeridi (Sağ kenarda yatay kaydırma ipucu gradyanı ile) */}
+            <div className="relative">
+              <div className="flex overflow-x-auto no-scrollbar items-center gap-1.5 py-0.5 pr-6">
+                {(
+                  [
+                    { id: "all", label: `Tümü (${diyaloglar.length})` },
+                    {
+                      id: "completed",
+                      label: `Tamamlanan (${
+                        mounted ? completedDialogues.length : 0
+                      })`,
+                    },
+                    {
+                      id: "ongoing",
+                      label: `Devam Eden (${
+                        mounted
+                          ? diyaloglar.length - completedDialogues.length
+                          : diyaloglar.length
+                      })`,
+                    },
+                    {
+                      id: "favorites",
+                      label: `Favori (${mounted ? favoriteDialogues.length : 0})`,
+                    },
+                  ] as { id: StatusFilter; label: string }[]
+                ).map((tab) => {
+                  const active = statusFilter === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        playClick();
+                        setStatusFilter(tab.id);
+                      }}
+                      className={`px-2.5 py-1 text-xs rounded-lg border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                        active
+                          ? "bg-[#087F5B] border-[#065F46] text-white font-bold shadow-2xs"
+                          : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
 
-              {/* Mobilde Filtreler açıksa veya tek satır devamında Seviye Hapları */}
-              <div
-                className={`${
-                  mobileFiltersOpen ? "flex" : "flex sm:hidden"
-                } items-center gap-1 pl-1 border-l border-dashed border-[#cbb692] shrink-0`}
-              >
-                {(["all", "A1", "A2", "B1", "B2"] as (Level | "all")[]).map(
-                  (lvl) => {
-                    const active = levelFilter === lvl;
-                    return (
-                      <button
-                        key={lvl}
-                        type="button"
-                        onClick={() => {
-                          playClick();
-                          setLevelFilter(lvl);
-                        }}
-                        className={`px-2 py-1 text-xs rounded-lg border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-                          active
-                            ? "bg-[#6741D9] border-[#5230B5] text-white font-bold"
-                            : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] font-medium"
-                        }`}
-                      >
-                        {lvl === "all" ? "Tüm Kurlar" : lvl}
-                      </button>
-                    );
-                  }
-                )}
+                {/* Mobilde Filtreler açıksa veya tek satır devamında Seviye Hapları */}
+                <div
+                  className={`${
+                    mobileFiltersOpen ? "flex" : "flex sm:hidden"
+                  } items-center gap-1 pl-1 border-l border-dashed border-[#cbb692] shrink-0`}
+                >
+                  {(["all", "A1", "A2", "B1", "B2"] as (Level | "all")[]).map(
+                    (lvl) => {
+                      const active = levelFilter === lvl;
+                      return (
+                        <button
+                          key={lvl}
+                          type="button"
+                          onClick={() => {
+                            playClick();
+                            setLevelFilter(lvl);
+                          }}
+                          className={`px-2 py-1 text-xs rounded-lg border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                            active
+                              ? "bg-[#6741D9] border-[#5230B5] text-white font-bold"
+                              : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] font-medium"
+                          }`}
+                        >
+                          {lvl === "all" ? "Tüm Kurlar" : lvl}
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
               </div>
+              <div
+                aria-hidden="true"
+                className="sm:hidden absolute right-0 top-0 bottom-0 w-7 bg-gradient-to-l from-[#FDFBF7] dark:from-slate-900 to-transparent pointer-events-none"
+              />
             </div>
 
             {/* Mobilde [SlidersHorizontal] Filtreler Butonu Açıkken Genişletilmiş Kur/Durum Seçici */}
@@ -478,7 +484,7 @@ export default function LibraryPage() {
                   setStatusFilter("all");
                   setLevelFilter("all");
                 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0CA678] text-white text-xs font-bold border-b-4 border-[#087F5B]"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white text-xs font-bold border-b-4 border-[#065F46]"
               >
                 Filtreleri Sıfırla
               </button>
@@ -527,7 +533,7 @@ export default function LibraryPage() {
                         <span className="bg-white/95 text-[#2b241d] font-extrabold text-[11px] px-2.5 py-0.5 rounded-lg border border-[#E6D7BE] tabular-nums">
                           #{dlgNo}
                         </span>
-                        <span className="bg-[#0CA678] text-white font-extrabold text-[11px] px-2 py-0.5 rounded-lg">
+                        <span className="bg-[#087F5B] text-white font-extrabold text-[11px] px-2 py-0.5 rounded-lg">
                           {dlg.seviye}
                         </span>
                       </div>
@@ -541,6 +547,7 @@ export default function LibraryPage() {
 
                       <div className="absolute bottom-2 right-3 left-3 flex flex-col gap-0.5">
                         <span
+                          lang="ar"
                           dir="rtl"
                           className="arabic text-white text-lg sm:text-xl font-bold leading-tight text-right drop-shadow-xs truncate"
                         >
@@ -559,7 +566,7 @@ export default function LibraryPage() {
                     <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                       <div className="flex items-center justify-between text-xs text-[var(--muted)] font-semibold border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2.5">
                         <span className="inline-flex items-center gap-1 tabular-nums">
-                          <BookOpen size={13} className="text-[#087F5B]" />
+                          <BookOpen size={13} className="text-[#065F46] dark:text-emerald-400" />
                           {dlg.satirlar.length} Cümle · {wordCount} Kelime
                         </span>
                         <span className="inline-flex items-center gap-1 tabular-nums">
@@ -605,7 +612,7 @@ export default function LibraryPage() {
                           className={`h-9 px-2.5 rounded-xl border-2 border-b-3 text-xs font-bold flex items-center gap-1 transition-all shrink-0 ${
                             isComp
                               ? "bg-[#6741D9] border-[#5230B5] text-white"
-                              : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[#087F5B]"
+                              : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[#065F46] dark:hover:text-emerald-400"
                           }`}
                         >
                           <CheckCircle2 size={14} />
@@ -617,7 +624,7 @@ export default function LibraryPage() {
                         <Link
                           href={`/diyalog/${dlg.id}`}
                           onClick={() => playClick()}
-                          className="flex-1 h-9 px-3 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-xs border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-1.5"
+                          className="flex-1 h-9 px-3 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white font-bold text-xs border-b-3 border-[#065F46] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-1.5"
                         >
                           <span>Diyaloğu Aç</span>
                           <ArrowRight size={14} />
@@ -645,10 +652,10 @@ export default function LibraryPage() {
                               }}
                               className={`w-full py-1.5 px-2.5 rounded-xl border text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                                 isOffline
-                                  ? "bg-emerald-600 border-emerald-800 text-white"
+                                  ? "bg-[#087F5B] border-[#065F46] text-white"
                                   : isDownloadingThis
                                   ? "bg-amber-100 dark:bg-amber-950/60 border-amber-400 text-amber-900 dark:text-amber-200"
-                                  : "bg-white/90 dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-emerald-600 text-slate-700 dark:text-slate-200"
+                                  : "bg-white/90 dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#087F5B] text-slate-700 dark:text-slate-200"
                               }`}
                             >
                               {isOffline ? (
@@ -662,7 +669,7 @@ export default function LibraryPage() {
                                 </>
                               ) : (
                                 <>
-                                  <Download size={12} className="text-emerald-600" />
+                                  <Download size={12} className="text-[#065F46] dark:text-emerald-400" />
                                   <span>📥 Çevrimdışı İndir (~{estMb} MB)</span>
                                 </>
                               )}
@@ -698,7 +705,7 @@ export default function LibraryPage() {
               </p>
               <Link
                 href="/sozluk"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0CA678] text-white text-xs font-bold border-b-4 border-[#087F5B]"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white text-xs font-bold border-b-4 border-[#065F46]"
               >
                 Sözlüğe Git
               </Link>
@@ -712,7 +719,7 @@ export default function LibraryPage() {
                 >
                   <div className="flex items-start justify-between gap-2 border-b border-dashed border-[#E2D3B8] pb-3">
                     <div>
-                      <span className="text-[11px] font-bold uppercase text-[#087F5B]">
+                      <span className="text-[11px] font-bold uppercase text-[#065F46] dark:text-emerald-400">
                         {word.tur} · Kök: {word.kok}
                       </span>
                       <p className="text-sm font-extrabold text-[var(--foreground)] mt-1">
@@ -720,8 +727,9 @@ export default function LibraryPage() {
                       </p>
                     </div>
                     <span
+                      lang="ar"
                       dir="rtl"
-                      className="arabic text-3xl font-bold text-[#087F5B] dark:text-[#20c997]"
+                      className="arabic text-3xl font-bold text-[#065F46] dark:text-emerald-400"
                     >
                       {getDisplayArabic(word.mufret || word.mazi || "")}
                     </span>
@@ -733,7 +741,7 @@ export default function LibraryPage() {
                       onClick={() => handlePracticeWord(word)}
                       className="px-3 py-1.5 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-xs font-bold text-[var(--foreground)] flex items-center gap-1.5"
                     >
-                      <Mic size={14} className="text-[#0CA678]" />
+                      <Mic size={14} className="text-[#065F46] dark:text-emerald-400" />
                       <span>Telaffuz Et</span>
                     </button>
                     <button
@@ -762,7 +770,7 @@ export default function LibraryPage() {
             <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-10 text-center space-y-2">
               <AlertTriangle
                 size={36}
-                className="mx-auto text-[#0CA678] mb-2"
+                className="mx-auto text-[#065F46] dark:text-emerald-400 mb-2"
               />
               <p className="text-base font-extrabold text-[var(--foreground)]">
                 Harika! Mahreç tekrarı gerektiren zayıf kelimeniz yok.
@@ -789,6 +797,7 @@ export default function LibraryPage() {
                       </p>
                     </div>
                     <span
+                      lang="ar"
                       dir="rtl"
                       className="arabic text-3xl font-bold text-[#6741D9]"
                     >
@@ -800,7 +809,7 @@ export default function LibraryPage() {
                     <button
                       type="button"
                       onClick={() => handlePracticeWord(word)}
-                      className="flex-1 py-2 px-3 rounded-xl bg-[#0CA678] text-white text-xs font-bold border-b-3 border-[#087F5B] flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2 px-3 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white text-xs font-bold border-b-3 border-[#065F46] flex items-center justify-center gap-1.5"
                     >
                       <Mic size={14} />
                       <span>Şimdi Çalış</span>
@@ -811,7 +820,7 @@ export default function LibraryPage() {
                         playClick();
                         removeWeakWord(word.id);
                       }}
-                      className="py-2 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-xs font-bold text-[var(--muted)] hover:text-[#087F5B]"
+                      className="py-2 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-xs font-bold text-[var(--muted)] hover:text-[#065F46] dark:text-emerald-400"
                       title="Listeden Tamamlandı Olarak Kaldır"
                     >
                       <CheckCircle2 size={15} />

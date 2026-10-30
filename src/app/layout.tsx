@@ -189,7 +189,7 @@ export default function RootLayout({
                 data-tooltip="Muallimun WhatsApp Duyuru Kanalı"
                 data-tooltip-pos="top"
                 aria-label="Muallimun WhatsApp Duyuru Kanalı"
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 transition-all shadow-xs"
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 font-semibold text-[#065F46] dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 transition-all shadow-xs"
               >
                 <svg
                   className="w-3.5 h-3.5 fill-current shrink-0"
@@ -227,7 +227,7 @@ export default function RootLayout({
                 data-tooltip="Muallimun Ana Eğitim Portalı"
                 data-tooltip-pos="top"
                 aria-label="Muallimun Ana Eğitim Portalı"
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-[#087F5B] dark:text-[#20c997] hover:text-[#0CA678] transition-colors bg-white dark:bg-[var(--background)] rounded-full border border-[#E6D7BE] dark:border-[var(--border)] shadow-xs"
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-[#065F46] dark:text-emerald-400 hover:text-[#065F46] transition-colors bg-white dark:bg-[var(--background)] rounded-full border border-[#E6D7BE] dark:border-[var(--border)] shadow-xs"
               >
                 <span>muallimun.net</span>
               </a>

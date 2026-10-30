@@ -11,9 +11,9 @@
 @theme {
   --color-brand-50: #fdfbf7;
   --color-brand-100: #f7efe1;
-  --color-brand-500: #0ca678;
-  --color-brand-600: #099268;
-  --color-brand-700: #087f5b;
+  --color-brand-500: #087f5b;
+  --color-brand-600: #065f46;
+  --color-brand-700: #064e3b;
 
   --color-tactile-bg: #fdfbf7;
   --color-tactile-card: #f7efe1;
@@ -21,11 +21,11 @@
   --color-tactile-dashed: #e2d3b8;
   --color-tactile-active-bg: #f3f0ff;
   --color-tactile-active-border: #6741d9;
-  --color-tactile-emerald: #0ca678;
-  --color-tactile-emerald-hover: #099268;
-  --color-tactile-emerald-dark: #087f5b;
+  --color-tactile-emerald: #087f5b;
+  --color-tactile-emerald-hover: #065f46;
+  --color-tactile-emerald-dark: #064e3b;
 
-  --color-level-a1: #0ca678;
+  --color-level-a1: #087f5b;
   --color-level-a2: #2b8a3e;
   --color-level-b1: #d97706;
   --color-level-b2: #6741d9;
@@ -41,9 +41,9 @@
   --border: #e6d7be;
   --border-dashed: #e2d3b8;
   --muted: #756857;
-  --emerald: #0ca678;
-  --emerald-hover: #099268;
-  --emerald-border: #087f5b;
+  --emerald: #087f5b;
+  --emerald-hover: #065f46;
+  --emerald-border: #064e3b;
   --lavender-bg: #f3f0ff;
   --purple-accent: #6741d9;
 
@@ -67,16 +67,16 @@
   --border: #3d362d;
   --border-dashed: #453d33;
   --muted: #b0a392;
-  --emerald: #0ca678;
+  --emerald: #087f5b;
   --emerald-hover: #12b886;
-  --emerald-border: #087f5b;
+  --emerald-border: #065f46;
   --lavender-bg: #261f3d;
   --purple-accent: #845ef7;
 
   --color-brand-50: #25211c;
   --color-brand-100: #332d26;
   --color-brand-500: #12b886;
-  --color-brand-600: #0ca678;
+  --color-brand-600: #087f5b;
   --color-brand-700: #20c997;
 
   --speaker-1: #20c997;
@@ -269,5 +269,16 @@ body {
     content: none !important;
     opacity: 0 !important;
     pointer-events: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

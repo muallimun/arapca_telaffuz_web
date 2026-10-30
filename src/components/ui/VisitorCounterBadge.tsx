@@ -224,7 +224,7 @@ export default function VisitorCounterBadge({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span className="text-xs font-bold text-[#087F5B] dark:text-emerald-300 uppercase tracking-wide">
+            <span className="text-xs font-bold text-[#065F46] dark:text-emerald-300 uppercase tracking-wide">
               CANLI ZİYARETÇİ İSTATİSTİKLERİ
             </span>
           </div>
@@ -238,7 +238,7 @@ export default function VisitorCounterBadge({
             <span className="text-[10px] sm:text-xs font-bold text-[var(--muted)] leading-tight whitespace-nowrap">
               Toplam Kişi
             </span>
-            <div className="flex items-center justify-center gap-1 text-[#087F5B] dark:text-emerald-300">
+            <div className="flex items-center justify-center gap-1 text-[#065F46] dark:text-emerald-300">
               <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 opacity-85" />
               <span className="text-sm sm:text-lg font-black tabular-nums">
                 {formattedUnique}

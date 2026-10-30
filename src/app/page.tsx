@@ -304,7 +304,7 @@ export default function HomePage() {
               Başlamak istediğiniz Arapça eğitim modülüne tıklayın
             </p>
           </div>
-          <span className="arabic text-xl sm:text-2xl font-bold text-[#087F5B] dark:text-[#20c997]">
+          <span className="arabic text-xl sm:text-2xl font-bold text-[#065F46] dark:text-emerald-400">
             أَهْلًا وَسَهْلًا
           </span>
         </div>
@@ -320,7 +320,7 @@ export default function HomePage() {
                 href={mod.targetHref}
                 onClick={() => playClick()}
                 data-tooltip={mod.tooltip}
-                className="group relative text-left p-3.5 rounded-2xl border-2 border-b-4 bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] dark:hover:border-[#0CA678] hover:-translate-y-0.5 active:translate-y-0 transition-all flex flex-col justify-between min-h-[138px]"
+                className="group relative text-left p-3.5 rounded-2xl border-2 border-b-4 bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#087F5B] dark:hover:border-[#087F5B] hover:-translate-y-0.5 active:translate-y-0 transition-all flex flex-col justify-between min-h-[138px]"
               >
                 <span className="arabic absolute top-2.5 right-3.5 text-lg font-bold text-[var(--muted)] opacity-80 group-hover:text-[#087F5B] dark:group-hover:text-[#20c997] transition-colors">
                   {mod.arabicBadge}
@@ -331,7 +331,7 @@ export default function HomePage() {
                     className={`w-9 h-9 rounded-xl border-2 border-b-3 flex items-center justify-center mb-2.5 transition-colors ${
                       isPurple
                         ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#6741D9] dark:text-[#d0bfff] group-hover:bg-[#6741D9] group-hover:text-white"
-                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[#087F5B] dark:text-[#20c997] group-hover:bg-[#087F5B] group-hover:border-[#065F46] group-hover:text-white"
+                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[#065F46] dark:text-emerald-400 group-hover:bg-[#087F5B] group-hover:border-[#065F46] group-hover:text-white"
                     }`}
                   >
                     <Icon size={18} strokeWidth={2.3} />
@@ -347,7 +347,7 @@ export default function HomePage() {
 
                 <div className="mt-2.5 pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex items-center justify-between text-[11px] font-bold">
                   <span className="text-slate-600 dark:text-slate-300 truncate">{mod.meta}</span>
-                  <span className="inline-flex items-center gap-1 shrink-0 text-[#087F5B] dark:text-[#20c997] group-hover:translate-x-0.5 transition-transform">
+                  <span className="inline-flex items-center gap-1 shrink-0 text-[#065F46] dark:text-emerald-400 group-hover:translate-x-0.5 transition-transform">
                     <span>Başla</span>
                     <ArrowRight size={12} />
                   </span>
@@ -361,7 +361,7 @@ export default function HomePage() {
       {/* BÖLÜM 1.5: BUGÜN NE ÇALIŞMALIYIM? (~12 DAKİKALIK AKILLI PAKET) */}
       <section
         aria-label="Bugün Ne Çalışmalıyım? Akıllı Günlük Çalışma Paketi"
-        className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#0CA678] dark:border-[#0CA678]/80 border-b-4 pt-4 sm:pt-5 px-3.5 sm:px-4 pb-3.5 sm:pb-4 space-y-3"
+        className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#087F5B] dark:border-[#087F5B]/80 border-b-4 pt-4 sm:pt-5 px-3.5 sm:px-4 pb-3.5 sm:pb-4 space-y-3"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-3">
           <div className="space-y-0.5">
@@ -384,9 +384,9 @@ export default function HomePage() {
               href={`/diyalog/${dailyPackage.dailyDialogue.dialogue.id}`}
               onClick={() => playClick()}
               data-tooltip="Bugün için önerilen sesli diyaloğu açın ve dinleyin"
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all whitespace-nowrap"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#087F5B] transition-all whitespace-nowrap"
             >
-              <BookOpen size={14} className="text-emerald-600" />
+              <BookOpen size={14} className="text-[#065F46] dark:text-emerald-400" />
               <span>Günün Diyaloğuna Git</span>
             </Link>
 
@@ -408,10 +408,10 @@ export default function HomePage() {
           <div className="lg:col-span-4 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] p-3 flex flex-col justify-between gap-2">
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-1.5">
-                <span className="text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997] uppercase tracking-wide">
+                <span className="text-[11px] font-extrabold text-[#065F46] dark:text-emerald-400 uppercase tracking-wide">
                   📖 1. Günün Diyaloğu
                 </span>
-                <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-[#087F5B] dark:text-emerald-300 text-[10px] font-extrabold">
+                <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-[#065F46] dark:text-emerald-300 text-[10px] font-extrabold">
                   Seviye {recommendedDialogue.seviye}
                 </span>
               </div>
@@ -465,7 +465,7 @@ export default function HomePage() {
                 href={`/diyalog/${recommendedDialogue.id}`}
                 onClick={() => playClick()}
                 data-tooltip="Diyaloğu açmak, cümleleri dinlemek ve telaffuz çalışmak için tıklayın"
-                className="text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997] inline-flex items-center gap-0.5 hover:underline shrink-0"
+                className="text-[11px] font-extrabold text-[#065F46] dark:text-emerald-400 inline-flex items-center gap-0.5 hover:underline shrink-0"
               >
                 <span>Aç</span>
                 <ArrowRight size={11} />
@@ -513,7 +513,7 @@ export default function HomePage() {
                       playTTS(ar, mounted ? speechRate : 1);
                     }}
                     data-tooltip="Kelimeyi sesli dinlemek için tıklayın"
-                    className="p-2 rounded-lg bg-[#F7EFE1]/60 dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] text-left flex flex-col justify-between gap-1 transition-colors cursor-pointer"
+                    className="p-2 rounded-lg bg-[#F7EFE1]/60 dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#087F5B] text-left flex flex-col justify-between gap-1 transition-colors cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-1 w-full">
                       <span className="text-[10px] font-bold text-[var(--foreground)] line-clamp-1">
@@ -521,7 +521,7 @@ export default function HomePage() {
                       </span>
                       <span
                         dir="rtl"
-                        className="arabic text-base font-bold text-[#087F5B] dark:text-[#20c997] leading-none shrink-0"
+                        className="arabic text-base font-bold text-[#065F46] dark:text-emerald-400 leading-none shrink-0"
                       >
                         {displayArabic(ar)}
                       </span>
@@ -539,7 +539,7 @@ export default function HomePage() {
 
           {/* 3. Zorlandığınız / Günlük 2 Kalıp İfade (3 sütun) */}
           <div className="lg:col-span-3 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] p-3 flex flex-col justify-between gap-2">
-            <span className="text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997] uppercase tracking-wide block">
+            <span className="text-[11px] font-extrabold text-[#065F46] dark:text-emerald-400 uppercase tracking-wide block">
               💬 3. Günün 2 Kalıp İfadesi
             </span>
 
@@ -584,7 +584,7 @@ export default function HomePage() {
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="space-y-1 flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[#087F5B] dark:text-[#20c997]">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[#065F46] dark:text-emerald-400">
               <span>Günün Konuşma Kalıbı</span>
               <span aria-hidden="true">·</span>
               <span className="text-[var(--muted)]">
@@ -625,7 +625,7 @@ export default function HomePage() {
               data-tooltip="Cümleyi doğal Arapça seslendirmeyle dinle"
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:bg-[#FDFBF7] active:border-b-1 active:translate-y-0.5 transition-all whitespace-nowrap cursor-pointer"
             >
-              <Volume2 size={15} className="text-[#087F5B]" />
+              <Volume2 size={15} className="text-[#065F46] dark:text-emerald-400" />
               <span>Sesli Dinle</span>
             </button>
 
@@ -663,7 +663,7 @@ export default function HomePage() {
             data-tooltip="Tamamladığınız diyalogların toplam ilerleme durumu"
             className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 hover:border-[#087F5B] transition-colors"
           >
-            <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[#087F5B] shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[#065F46] dark:text-emerald-400 shrink-0">
               <CheckCircle2 size={20} strokeWidth={2.4} />
             </div>
             <div className="min-w-0">
@@ -684,7 +684,7 @@ export default function HomePage() {
             href="/sozluk?durum=learned"
             onClick={() => playClick()}
             data-tooltip="Sözlükte 'Öğrendim' olarak işaretlediğiniz kelime sayısı"
-            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 hover:border-[#0CA678] transition-colors"
+            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 hover:border-[#087F5B] transition-colors"
           >
             <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[#6741D9] shrink-0">
               <Brain size={20} strokeWidth={2.4} />
@@ -718,7 +718,7 @@ export default function HomePage() {
             type="button"
             onClick={handlePracticeFeatured}
             data-tooltip="Gölgeleme ve Mahreç Koçu denemelerinizin ortalama başarı skoru"
-            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 text-left hover:border-[#0CA678] transition-colors cursor-pointer"
+            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 text-left hover:border-[#087F5B] transition-colors cursor-pointer"
           >
             <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-amber-600 shrink-0">
               <Award size={20} strokeWidth={2.4} />
@@ -750,7 +750,7 @@ export default function HomePage() {
             onClick={() => playClick()}
             data-tooltip="Kesintisiz çalışma seriniz (Streak) ve bugünkü çalışma süreniz"
             data-tooltip-align="right"
-            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex flex-col justify-between gap-2 hover:border-[#0CA678] transition-colors"
+            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex flex-col justify-between gap-2 hover:border-[#087F5B] transition-colors"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-orange-500 shrink-0">

@@ -1413,7 +1413,7 @@ export default function DialoguePdfModal({
             align-items: center;
             justify-content: space-between;
             gap: 14px;
-            border: 2px solid #0ca678;
+            border: 2px solid #087F5B;
             border-bottom-width: 4px;
             border-radius: 14px;
             padding: 12px 16px;
@@ -1481,7 +1481,7 @@ export default function DialoguePdfModal({
             flex-wrap: wrap;
           }
           .badge {
-            background: #0ca678;
+            background: #087F5B;
             color: #ffffff;
             font-weight: 800;
             font-size: 10px;
@@ -1704,7 +1704,7 @@ export default function DialoguePdfModal({
           }
           .answer-key-block {
             background: #f8fafc;
-            border: 1.5px dashed #0ca678;
+            border: 1.5px dashed #087F5B;
             border-radius: 10px;
             padding: 8px 12px;
             page-break-inside: avoid;
@@ -1783,7 +1783,7 @@ export default function DialoguePdfModal({
             color: #087f5b;
             background: #f8fafc;
             border: 1.5px solid #cbd5e1;
-            border-left: 4px solid #0ca678;
+            border-left: 4px solid #087F5B;
             padding: 6px 12px;
             border-radius: 8px;
             margin-bottom: 10px;
@@ -1912,7 +1912,7 @@ export default function DialoguePdfModal({
           .corporate-footer {
             margin-top: 18px;
             padding-top: 8px;
-            border-top: 2px solid #0ca678;
+            border-top: 2px solid #087F5B;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -2372,7 +2372,7 @@ export default function DialoguePdfModal({
         {/* MODAL ÜST BAŞLIK (print:hidden) */}
         <div className="print:hidden bg-[#F7EFE1] dark:bg-[var(--background)] px-4 sm:px-5 py-2.5 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#0CA678] border-b-3 border-[#087F5B] text-white flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#087F5B] border-b-3 border-[#087F5B] text-white flex items-center justify-center shrink-0">
               <FileText size={17} />
             </div>
             <div className="min-w-0">
@@ -2381,7 +2381,7 @@ export default function DialoguePdfModal({
               </h2>
               <p className="text-[11px] font-semibold text-[var(--muted)] truncate">
                 #{String(rawNum).padStart(2, "0")} {dialogue.baslik_tr} •{" "}
-                <span className="text-[#087F5B] font-bold">
+                <span className="text-[#065F46] dark:text-emerald-400 font-bold">
                   www.muallimun.net
                 </span>
               </p>
@@ -2392,7 +2392,7 @@ export default function DialoguePdfModal({
             <button
               type="button"
               onClick={handleGenerateAndPrintPdf}
-              className="hidden sm:flex px-3.5 py-1.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs border-b-3 border-[#087F5B] active:translate-y-0.5 transition-all items-center gap-1.5 cursor-pointer shadow-sm"
+              className="hidden sm:flex px-3.5 py-1.5 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white font-extrabold text-xs border-b-3 border-[#087F5B] active:translate-y-0.5 transition-all items-center gap-1.5 cursor-pointer shadow-sm"
             >
               <Printer size={15} />
               <span>Yazdır / PDF İndir</span>
@@ -2435,7 +2435,7 @@ export default function DialoguePdfModal({
             }}
             className={`py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
               mobileTab === "preview"
-                ? "bg-[#0CA678] text-white shadow-xs"
+                ? "bg-[#087F5B] text-white shadow-xs"
                 : "bg-white dark:bg-[var(--surface)] text-[var(--muted)] border border-[#E6D7BE]"
             }`}
           >
@@ -2462,7 +2462,7 @@ export default function DialoguePdfModal({
                 }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                   pdfDocMode === "handout"
-                    ? "bg-[#0CA678] text-white shadow-xs"
+                    ? "bg-[#087F5B] text-white shadow-xs"
                     : "text-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
@@ -2508,7 +2508,7 @@ export default function DialoguePdfModal({
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {/* PDF-1: Görsel Seçici */}
             <div className="flex flex-wrap items-center gap-1 bg-[#F7EFE1] dark:bg-[var(--background)] px-2 py-1 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
-              <ImageIcon size={13} className="text-[#087F5B] shrink-0" />
+              <ImageIcon size={13} className="text-[#065F46] dark:text-emerald-400 shrink-0" />
               <span className="text-[11px] font-extrabold text-[var(--foreground)]">
                 Görsel:
               </span>
@@ -2529,7 +2529,7 @@ export default function DialoguePdfModal({
                     }}
                     className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
                       imageMode === opt.id
-                        ? "bg-[#0CA678] text-white shadow-xs"
+                        ? "bg-[#087F5B] text-white shadow-xs"
                         : "text-[var(--muted)] hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -2596,7 +2596,7 @@ export default function DialoguePdfModal({
                     }}
                     className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
                       fitMode === opt.id
-                        ? "bg-[#0CA678] text-white shadow-xs"
+                        ? "bg-[#087F5B] text-white shadow-xs"
                         : "text-[var(--muted)] hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -2636,7 +2636,7 @@ export default function DialoguePdfModal({
                 }}
                 className={`px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
                   includeHarakat
-                    ? "bg-[#0CA678] text-white border-[#087F5B] shadow-xs"
+                    ? "bg-[#087F5B] text-white border-[#087F5B] shadow-xs"
                     : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
                 }`}
               >
@@ -2653,7 +2653,7 @@ export default function DialoguePdfModal({
                 }}
                 className={`px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
                   includeQrCode
-                    ? "bg-[#0CA678] text-white border-[#087F5B] shadow-xs"
+                    ? "bg-[#087F5B] text-white border-[#087F5B] shadow-xs"
                     : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
                 }`}
               >
@@ -2670,7 +2670,7 @@ export default function DialoguePdfModal({
                 }}
                 className={`px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
                   includeVocabulary
-                    ? "bg-[#0CA678] text-white border-[#087F5B] shadow-xs"
+                    ? "bg-[#087F5B] text-white border-[#087F5B] shadow-xs"
                     : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
                 }`}
               >
@@ -2737,7 +2737,7 @@ export default function DialoguePdfModal({
                 }}
                 className={`px-2.5 py-1 rounded-xl border text-[11px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
                   includeStudentHeader
-                    ? "bg-[#0CA678] text-white border-[#087F5B] shadow-xs"
+                    ? "bg-[#087F5B] text-white border-[#087F5B] shadow-xs"
                     : "bg-white dark:bg-[var(--background)] text-[var(--foreground)] border-[#E6D7BE] dark:border-[var(--border)]"
                 }`}
               >
@@ -2941,7 +2941,7 @@ export default function DialoguePdfModal({
                 }`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-1">
-                  <span className="text-[11px] font-extrabold text-[#087F5B]">
+                  <span className="text-[11px] font-extrabold text-[#065F46] dark:text-emerald-400">
                     Kelime Tablosu Modu & Konumu{" "}
                     {!includeVocabulary ? "(Kapalı)" : ""}:
                   </span>
@@ -2967,7 +2967,7 @@ export default function DialoguePdfModal({
                       }}
                       className={`px-2 py-0.5 rounded-lg text-[10px] font-bold cursor-pointer ${
                         vocabLanguageMode === m.id
-                          ? "bg-[#0CA678] text-white"
+                          ? "bg-[#087F5B] text-white"
                           : "bg-white dark:bg-[var(--surface)] text-[var(--muted)]"
                       }`}
                     >
@@ -3039,7 +3039,7 @@ export default function DialoguePdfModal({
             {/* Önizleme Rozeti (print:hidden) */}
             <div className="print:hidden flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-slate-500 border-b border-slate-200 pb-2">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="flex items-center gap-1.5 text-[#087F5B]">
+                <span className="flex items-center gap-1.5 text-[#065F46] dark:text-emerald-400">
                   <Eye size={14} />
                   <span>Canlı A4 Çalışma Kağıdı Önizlemesi</span>
                 </span>
@@ -3054,7 +3054,7 @@ export default function DialoguePdfModal({
 
             {/* A4 ÜST BAŞLIK KARTI */}
             <div
-              className={`border-2 border-[#0CA678] border-b-4 rounded-2xl bg-[#FDFBF7] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+              className={`border-2 border-[#087F5B] border-b-4 rounded-2xl bg-[#FDFBF7] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
                 activeDensity === "ultra"
                   ? "p-2 mb-2"
                   : activeDensity === "tight"
@@ -3070,7 +3070,7 @@ export default function DialoguePdfModal({
                     activeDensity === "ultra" ? "text-[10px]" : ""
                   }`}
                 >
-                  <span className="px-2 py-0.5 rounded-md bg-[#0CA678] text-white text-[10px] font-extrabold">
+                  <span className="px-2 py-0.5 rounded-md bg-[#087F5B] text-white text-[10px] font-extrabold">
                     DİYALOG #{String(rawNum).padStart(2, "0")}
                   </span>
                   <span className="px-2 py-0.5 rounded-md bg-[#6741D9] text-white text-[10px] font-extrabold">
@@ -3099,7 +3099,7 @@ export default function DialoguePdfModal({
                   </h1>
                   <span
                     dir="rtl"
-                    className={`arabic font-bold text-[#087F5B] ${
+                    className={`arabic font-bold text-[#065F46] dark:text-emerald-400 ${
                       activeDensity === "ultra"
                         ? "text-xl"
                         : activeDensity === "tight"
@@ -3158,7 +3158,7 @@ export default function DialoguePdfModal({
                       <span
                         className={`${
                           activeDensity === "ultra" ? "text-[8px]" : "text-[9px]"
-                        } font-extrabold text-[#087F5B] whitespace-nowrap group-hover:underline`}
+                        } font-extrabold text-[#065F46] dark:text-emerald-400 whitespace-nowrap group-hover:underline`}
                       >
                         Dinlemek için okutun
                       </span>
@@ -3211,13 +3211,13 @@ export default function DialoguePdfModal({
               <div className="space-y-4">
                 {/* BÖLÜM A — KELİME EŞLEŞTİRME (30 PUAN) */}
                 <div className="space-y-1.5 break-inside-avoid">
-                  <div className="flex items-center justify-between bg-[#F7EFE1] border border-[#E6D7BE] border-l-4 border-l-[#0CA678] px-3 py-1.5 rounded-lg">
+                  <div className="flex items-center justify-between bg-[#F7EFE1] border border-[#E6D7BE] border-l-4 border-l-[#087F5B] px-3 py-1.5 rounded-lg">
                     <span className="text-xs font-extrabold text-slate-900">
                       BÖLÜM A — Kelime Eşleştirme (30 Puan)
                     </span>
                     <span
                       dir="rtl"
-                      className="arabic text-base font-bold text-[#087F5B]"
+                      className="arabic text-base font-bold text-[#065F46] dark:text-emerald-400"
                     >
                       أ. تَوْصِيلُ الْمُفْرَدَاتِ
                     </span>
@@ -3248,7 +3248,7 @@ export default function DialoguePdfModal({
                           >
                             <td
                               dir="rtl"
-                              className="py-1 px-3 text-right arabic text-xl font-bold text-[#087F5B]"
+                              className="py-1 px-3 text-right arabic text-xl font-bold text-[#065F46] dark:text-emerald-400"
                             >
                               {row.num}. {formatAr(row.arabic)}
                             </td>
@@ -3329,13 +3329,13 @@ export default function DialoguePdfModal({
 
                 {/* BÖLÜM C — KALIP İFADELER VE ANLAMA (30 PUAN) */}
                 <div className="space-y-1.5 break-inside-avoid">
-                  <div className="flex items-center justify-between bg-[#F7EFE1] border border-[#E6D7BE] border-l-4 border-l-[#0CA678] px-3 py-1.5 rounded-lg">
+                  <div className="flex items-center justify-between bg-[#F7EFE1] border border-[#E6D7BE] border-l-4 border-l-[#087F5B] px-3 py-1.5 rounded-lg">
                     <span className="text-xs font-extrabold text-slate-900">
                       BÖLÜM C — Kalıp İfadeler ve Anlama (30 Puan)
                     </span>
                     <span
                       dir="rtl"
-                      className="arabic text-base font-bold text-[#087F5B]"
+                      className="arabic text-base font-bold text-[#065F46] dark:text-emerald-400"
                     >
                       ج. التَّعْبِيرَاتُ وَفَهْمُ الْحِوَارِ
                     </span>
@@ -3353,7 +3353,7 @@ export default function DialoguePdfModal({
                           </span>
                           <span
                             dir="rtl"
-                            className="arabic text-lg font-bold text-[#087F5B] text-right"
+                            className="arabic text-lg font-bold text-[#065F46] dark:text-emerald-400 text-right"
                           >
                             {formatAr(mc.arabicPrompt)}
                           </span>
@@ -3364,7 +3364,7 @@ export default function DialoguePdfModal({
                         <div className="space-y-1 text-[11px] text-slate-800">
                           {mc.options.map((o) => (
                             <div key={o.letter} className="leading-snug">
-                              <strong className="text-[#087F5B]">
+                              <strong className="text-[#065F46] dark:text-emerald-400">
                                 {o.letter})
                               </strong>{" "}
                               {o.text}
@@ -3379,10 +3379,10 @@ export default function DialoguePdfModal({
                 {/* 🔑 ÖĞRETMEN CEVAP ANAHTARI SEÇENEĞİ */}
                 {includeAnswerKey && (
                   <div className="space-y-1.5 pt-2 break-inside-avoid">
-                    <div className="text-xs font-extrabold text-[#087F5B] bg-emerald-50 border border-emerald-300 border-l-4 border-l-[#0CA678] px-3 py-1.5 rounded-lg">
+                    <div className="text-xs font-extrabold text-[#065F46] dark:text-emerald-400 bg-emerald-50 border border-emerald-300 border-l-4 border-l-[#087F5B] px-3 py-1.5 rounded-lg">
                       🔑 Öğretmen Cevap Anahtarı (مفتاح الإجابات)
                     </div>
-                    <div className="rounded-xl border border-dashed border-[#0CA678] bg-slate-50 p-3 text-[11px] text-slate-800 space-y-1.5">
+                    <div className="rounded-xl border border-dashed border-[#087F5B] bg-slate-50 p-3 text-[11px] text-slate-800 space-y-1.5">
                       <div>
                         <strong>Bölüm A (Kelime Eşleştirme - 30p):</strong>{" "}
                         {a4QuizSheetData.sectionAMatching
@@ -3396,7 +3396,7 @@ export default function DialoguePdfModal({
                         <strong>Bölüm B (Boşluk Doldurma - 40p):</strong>{" "}
                         <span
                           dir="rtl"
-                          className="arabic text-base font-bold text-[#087F5B]"
+                          className="arabic text-base font-bold text-[#065F46] dark:text-emerald-400"
                         >
                           {a4QuizSheetData.sectionBFillBlanks
                             .map((b, idx) => `(${idx + 1}) ${formatAr(b.answer)}`)
@@ -3681,7 +3681,7 @@ export default function DialoguePdfModal({
                       : "mt-5 space-y-2"
                   }
                 >
-                  <div className="flex items-center justify-between gap-2 text-xs font-extrabold text-[#087F5B] bg-slate-50 border border-slate-300 border-l-4 border-l-[#0CA678] px-3 py-1.5 rounded-lg">
+                  <div className="flex items-center justify-between gap-2 text-xs font-extrabold text-[#065F46] dark:text-emerald-400 bg-slate-50 border border-slate-300 border-l-4 border-l-[#087F5B] px-3 py-1.5 rounded-lg">
                     <span>Diyalog Tercümeleri (الترجمة التركية)</span>
                     {translationPageBreak === "new" && (
                       <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
@@ -3852,7 +3852,7 @@ export default function DialoguePdfModal({
                 }`}
               >
                 <div
-                  className={`text-xs font-extrabold text-[#087F5B] bg-slate-50 border border-slate-300 border-l-4 border-l-[#0CA678] px-3 rounded-lg ${
+                  className={`text-xs font-extrabold text-[#065F46] dark:text-emerald-400 bg-slate-50 border border-slate-300 border-l-4 border-l-[#087F5B] px-3 rounded-lg ${
                     activeDensity === "ultra"
                       ? "py-0.5"
                       : activeDensity === "tight"
@@ -3896,7 +3896,7 @@ export default function DialoguePdfModal({
                             <div className="border-b border-dotted border-slate-400 h-5 w-24" />
                           ) : (
                             <span
-                              className={`arabic font-bold text-[#087F5B] ${
+                              className={`arabic font-bold text-[#065F46] dark:text-emerald-400 ${
                                 activeDensity === "ultra"
                                   ? "text-[16px] leading-tight"
                                   : activeDensity === "tight"
@@ -4005,7 +4005,7 @@ export default function DialoguePdfModal({
                                 : activeDensity === "compact"
                                 ? "py-1 px-2 text-[17.5px] leading-snug"
                                 : "py-1.5 px-2.5 text-[19px] leading-relaxed"
-                            } text-right font-arabic arabic font-bold text-[#087F5B] border-l border-dashed border-slate-200`}
+                            } text-right font-arabic arabic font-bold text-[#065F46] dark:text-emerald-400 border-l border-dashed border-slate-200`}
                           >
                             {formatAr(idm.arabic)}
                           </td>
@@ -4059,14 +4059,14 @@ export default function DialoguePdfModal({
             {/* 🗝️ CEVAP ANAHTARI ÖNİZLEMESİ (Yalnızca boşluklu çalışma kağıdı aktifse) */}
             {includeAnswerKey && hasAnyBlankActivity && (
               <div className="space-y-1.5 pt-2 break-inside-avoid">
-                <div className="text-xs font-extrabold text-[#087F5B] bg-emerald-50 border border-emerald-300 border-l-4 border-l-[#0CA678] px-3 py-1.5 rounded-lg">
+                <div className="text-xs font-extrabold text-[#065F46] dark:text-emerald-400 bg-emerald-50 border border-emerald-300 border-l-4 border-l-[#087F5B] px-3 py-1.5 rounded-lg">
                   🗝️ Cevap Anahtarı (مفتاح الإجابات)
                 </div>
-                <div className="rounded-xl border border-dashed border-[#0CA678] bg-slate-50 p-3 text-[11px] text-slate-700 space-y-1">
+                <div className="rounded-xl border border-dashed border-[#087F5B] bg-slate-50 p-3 text-[11px] text-slate-700 space-y-1">
                   {clozeMode && clozeData.helperWords.length > 0 && (
                     <div>
                       <strong>Diyalog Boşlukları:</strong>{" "}
-                      <span dir="rtl" className="arabic text-base font-bold text-[#087F5B]">
+                      <span dir="rtl" className="arabic text-base font-bold text-[#065F46] dark:text-emerald-400">
                         {dialogue.satirlar
                           .map((l, i) =>
                             clozeData.processedLines[i] !== l.arapca
@@ -4123,7 +4123,7 @@ export default function DialoguePdfModal({
             )}
 
             {/* ZORUNLU KURUMSAL ALT BİLGİ (FOOTER): www.muallimun.net */}
-            <footer className="pt-3 mt-4 border-t-2 border-[#0CA678] flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
+            <footer className="pt-3 mt-4 border-t-2 border-[#087F5B] flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
               <span className="font-semibold">
                 Diyalog #{String(rawNum).padStart(2, "0")}: {dialogue.baslik_tr} (
                 {dialogue.seviye}) — Arapça Çalışma Kağıdı
@@ -4132,7 +4132,7 @@ export default function DialoguePdfModal({
                 href="https://www.muallimun.net"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-extrabold text-xs text-[#087F5B] tracking-wide hover:underline"
+                className="font-extrabold text-xs text-[#065F46] dark:text-emerald-400 tracking-wide hover:underline"
               >
                 www.muallimun.net
               </a>
@@ -4142,7 +4142,7 @@ export default function DialoguePdfModal({
 
         {/* MODAL ALT AKSİYON ÇUBUĞU (print:hidden - Her iki sekmede de sabit görünür) */}
         <div className="print:hidden bg-[#F7EFE1] dark:bg-[var(--background)] px-4 sm:px-5 py-2.5 border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-3 shrink-0">
-          <span className="text-xs font-extrabold text-[#087F5B] hidden sm:inline">
+          <span className="text-xs font-extrabold text-[#065F46] dark:text-emerald-400 hidden sm:inline">
             www.muallimun.net • Kurumsal A4 Vektörel Çalışma Kağıdı
           </span>
           <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
@@ -4160,7 +4160,7 @@ export default function DialoguePdfModal({
             <button
               type="button"
               onClick={handleGenerateAndPrintPdf}
-              className="flex-1 sm:flex-initial px-5 py-2 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              className="flex-1 sm:flex-initial px-5 py-2 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white font-extrabold text-xs sm:text-sm border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
             >
               <Printer size={17} />
               <span>Yazdır / PDF Kaydet</span>

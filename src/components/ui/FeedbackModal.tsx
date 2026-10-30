@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   X,
   MessageSquarePlus,
@@ -91,6 +91,7 @@ export default function FeedbackModal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const modalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleOpen = (e: Event) => {
@@ -108,11 +109,40 @@ export default function FeedbackModal() {
 
   useEffect(() => {
     if (!isOpen) return;
+    const raf = requestAnimationFrame(() => {
+      const firstFocusable = modalRef.current?.querySelector<HTMLElement>(
+        'button:not([disabled]), [href], input:not([tabindex="-1"]), select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      firstFocusable?.focus();
+    });
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsOpen(false);
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        return;
+      }
+      if (e.key === "Tab" && modalRef.current) {
+        const focusables = Array.from(
+          modalRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([tabindex="-1"]), select, textarea, [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => el.offsetParent !== null);
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", handleKey);
+    };
   }, [isOpen]);
 
   // 60 saniye tekrar gönderim koruması sayacı
@@ -233,10 +263,14 @@ export default function FeedbackModal() {
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="feedback-modal-title"
       className="fixed inset-0 z-[70] print:hidden bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
       onClick={() => setIsOpen(false)}
     >
       <div
+        ref={modalRef}
         className="w-[95vw] max-w-xl max-h-[90vh] flex flex-col bg-[#FDFBF7] dark:bg-[var(--surface)] rounded-3xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
@@ -247,7 +281,10 @@ export default function FeedbackModal() {
               <MessageSquarePlus size={20} />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-extrabold text-[var(--foreground)] leading-tight truncate">
+              <h2
+                id="feedback-modal-title"
+                className="text-base sm:text-lg font-extrabold text-[var(--foreground)] leading-tight truncate"
+              >
                 💬 İletişim &amp; Hata Bildirim Formu
               </h2>
               <p className="text-xs font-semibold text-[var(--muted)] truncate">
@@ -273,7 +310,7 @@ export default function FeedbackModal() {
         <div className="p-4 sm:p-5 overflow-y-auto flex-1">
           {isSubmitted ? (
             <div className="py-8 px-4 text-center space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-950/70 border-2 border-emerald-500 text-emerald-600 dark:text-emerald-300 flex items-center justify-center mx-auto shadow-sm">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-950/70 border-2 border-emerald-500 text-[#065F46] dark:text-emerald-300 flex items-center justify-center mx-auto shadow-sm">
                 <CheckCircle2 size={34} />
               </div>
               <div className="space-y-1.5">
@@ -355,7 +392,7 @@ export default function FeedbackModal() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Örn: Ahmet Yılmaz"
-                    className="w-full h-10 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] text-xs sm:text-sm font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678]"
+                    className="w-full h-10 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] text-xs sm:text-sm font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#087F5B]"
                   />
                 </div>
 
@@ -372,7 +409,7 @@ export default function FeedbackModal() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="ornek@eposta.com"
-                    className="w-full h-10 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] text-xs sm:text-sm font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678]"
+                    className="w-full h-10 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] text-xs sm:text-sm font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#087F5B]"
                   />
                 </div>
               </div>
@@ -388,7 +425,7 @@ export default function FeedbackModal() {
                 <select
                   value={dialogueRef}
                   onChange={(e) => setDialogueRef(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] text-xs sm:text-sm font-semibold text-[var(--foreground)] focus:outline-none focus:border-[#0CA678] cursor-pointer"
+                  className="w-full h-10 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] text-xs sm:text-sm font-semibold text-[var(--foreground)] focus:outline-none focus:border-[#087F5B] cursor-pointer"
                 >
                   <option value="Genel / Tüm Uygulama">
                     Genel / Tüm Uygulama

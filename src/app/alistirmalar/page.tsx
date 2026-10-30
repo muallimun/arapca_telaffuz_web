@@ -443,8 +443,18 @@ function ExercisesPageContent() {
     },
   ];
 
+  const nonProperCount = useMemo(
+    () => sozluk.filter((w) => !isProperNounItem(w)).length,
+    []
+  );
+
   const rangeOptions = [
-    { id: "all-dict", label: `Tüm Sözlük (${sozluk.length})`, s: 1, e: 60 },
+    {
+      id: "all-dict",
+      label: `Tüm Sözlük (${nonProperCount.toLocaleString("tr-TR")} alıştırma kelimesi — özel isimler hariç)`,
+      s: 1,
+      e: 60,
+    },
     {
       id: "srs-daily",
       label: `⏰ Bugün Tekrar Edilecekler (${dailyPackage.dueReviewPool.totalDueCount})`,
@@ -569,12 +579,17 @@ function ExercisesPageContent() {
               İnteraktif Alıştırma Merkezi
             </h1>
             <p className="text-[11px] sm:text-xs font-medium text-[var(--muted)] truncate">
-              Kelime, kalıp ifade ve diyalog cümleleriyle interaktif pratik yapın
+              {nonProperCount.toLocaleString("tr-TR")} alıştırma kelimesi (özel isimler hariç), {getCombinedIdiomsCatalog().length} kalıp ifade ve diyalog cümleleri
             </p>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 rounded-xl px-3 py-1.5 text-xs font-extrabold text-[#087F5B] tabular-nums shrink-0">
+        <div
+          data-tooltip="1.494 toplam sözlük kaydından özel isimler çıkarılarak 1.441 alıştırma kelimesi + 111 kalıp ifade havuzu kullanılır"
+          data-tooltip-pos="bottom"
+          data-tooltip-align="right"
+          className="hidden sm:flex items-center gap-2 bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 rounded-xl px-3 py-1.5 text-xs font-extrabold text-[#065F46] dark:text-emerald-400 tabular-nums shrink-0"
+        >
           <span>
             {singleDialogueId !== "all"
               ? `Diyalog #${singleDialogueId.replace("dlg_", "")}`
@@ -582,6 +597,7 @@ function ExercisesPageContent() {
           </span>
           <span>·</span>
           <span>{activePoolCountLabel}</span>
+          <Info size={13} className="opacity-75 shrink-0" />
         </div>
       </div>
 
@@ -624,7 +640,7 @@ function ExercisesPageContent() {
                         className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl border-2 border-b-3 flex items-center justify-center shrink-0 ${
                           isSelected
                             ? "bg-[#6741D9] border-[#5230B5] text-white"
-                            : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#087F5B]"
+                            : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#065F46] dark:text-emerald-400"
                         }`}
                       >
                         <Icon size={16} strokeWidth={2.3} />
@@ -632,6 +648,7 @@ function ExercisesPageContent() {
 
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span
+                          lang="ar"
                           dir="rtl"
                           className="arabic text-sm font-bold text-[var(--muted)] opacity-75 leading-none"
                         >
@@ -700,13 +717,17 @@ function ExercisesPageContent() {
               <button
                 type="button"
                 onClick={() => handlePoolSelectChange("all-dict")}
+                data-tooltip="1.494 toplam sözlük kaydından özel isimler çıkarılarak 1.441 alıştırma kelimesi kullanılır"
+                data-tooltip-pos="top"
                 className={`px-3 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer ${
                   singleDialogueId === "all" && rangePreset === "all-dict"
-                    ? "bg-[#0CA678] border-[#087F5B] text-white shadow-2xs"
+                    ? "bg-[#087F5B] border-[#065F46] text-white shadow-2xs"
                     : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
-                <span>📚 Tüm Sözlük ({sozluk.length})</span>
+                <span>
+                  📚 Tüm Sözlük ({nonProperCount.toLocaleString("tr-TR")} alıştırma kelimesi — özel isimler hariç)
+                </span>
               </button>
             </div>
 
@@ -714,7 +735,7 @@ function ExercisesPageContent() {
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
               {/* 1. Kelime Havuzu Select */}
               <div className="bg-white dark:bg-[var(--background)] rounded-xl px-2.5 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1.5 min-w-0">
-                <Layers size={13} className="text-[#0CA678] shrink-0" />
+                <Layers size={13} className="text-[#065F46] dark:text-emerald-400 shrink-0" />
                 <span className="hidden sm:inline text-[11px] font-bold text-[var(--muted)] whitespace-nowrap">
                   Havuz:
                 </span>
@@ -895,7 +916,7 @@ function ExercisesPageContent() {
                           }}
                           className={`px-2 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap text-center cursor-pointer ${
                             active
-                              ? "bg-[#0CA678] text-white font-bold shadow-2xs"
+                              ? "bg-[#087F5B] text-white font-bold shadow-2xs"
                               : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                           }`}
                         >
@@ -923,7 +944,7 @@ function ExercisesPageContent() {
                       }}
                       className={`flex-1 px-2.5 py-1 text-xs tabular-nums rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                         questionCount === cnt
-                          ? "bg-[#0CA678] text-white font-bold"
+                          ? "bg-[#087F5B] text-white font-bold"
                           : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                       }`}
                     >
@@ -948,7 +969,7 @@ function ExercisesPageContent() {
                       }}
                       className={`flex-1 px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                         timeLimit === t.val
-                          ? "bg-[#0CA678] text-white font-bold"
+                          ? "bg-[#087F5B] text-white font-bold"
                           : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                       }`}
                     >
@@ -968,7 +989,7 @@ function ExercisesPageContent() {
                     sentenceCountInPool < 4 &&
                     idiomsPool.length < 1)
                 }
-                className="col-span-2 sm:col-span-1 sm:ml-auto w-full sm:w-auto h-11 sm:h-10 px-5 mb-2 sm:mb-0 bg-[#0CA678] hover:bg-[#099268] disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm rounded-xl border-b-3 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-sm shrink-0 cursor-pointer whitespace-nowrap"
+                className="col-span-2 sm:col-span-1 sm:ml-auto w-full sm:w-auto h-11 sm:h-10 px-5 mb-2 sm:mb-0 bg-[#087F5B] hover:bg-[#065F46] disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm rounded-xl border-b-3 border-[#065F46] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-sm shrink-0 cursor-pointer whitespace-nowrap"
               >
                 <Play size={15} fill="currentColor" />
                 <span className="truncate">
@@ -978,9 +999,9 @@ function ExercisesPageContent() {
             </div>
 
             {isMistakesEmpty && (
-              <div className="bg-emerald-50 dark:bg-emerald-950/50 rounded-xl px-4 py-3 border-2 border-[#0CA678]/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-extrabold text-[#087F5B] dark:text-[#20c997]">
+              <div className="bg-emerald-50 dark:bg-emerald-950/50 rounded-xl px-4 py-3 border-2 border-[#087F5B]/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-extrabold text-[#065F46] dark:text-emerald-400">
                 <div className="flex items-center gap-2 text-center sm:text-left">
-                  <Check size={16} className="shrink-0 text-[#0CA678]" />
+                  <Check size={16} className="shrink-0 text-[#065F46] dark:text-emerald-400" />
                   <span>
                     Harika! Şu an hata defterinizde zorlandığınız bir kelime veya cümle bulunmuyor.
                   </span>
@@ -988,7 +1009,7 @@ function ExercisesPageContent() {
                 <button
                   type="button"
                   onClick={() => handlePoolSelectChange("all-dict")}
-                  className="px-3 py-1.5 rounded-lg bg-[#0CA678] text-white text-xs font-extrabold shrink-0 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-[#087F5B] hover:bg-[#065F46] text-white text-xs font-extrabold shrink-0 cursor-pointer"
                 >
                   Tüm Sözlüğe Geç
                 </button>

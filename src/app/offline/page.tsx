@@ -50,7 +50,7 @@ export default function OfflinePage() {
             href="/kutuphane"
             className="p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 hover:border-[#087F5B] transition-all flex flex-col justify-between gap-2"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#087F5B]/15 text-[#087F5B] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-[#087F5B]/15 text-[#065F46] dark:text-emerald-400 flex items-center justify-center">
               <BookOpen size={18} />
             </div>
             <div>
@@ -103,7 +103,7 @@ export default function OfflinePage() {
             href="/"
             className="py-3 px-5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 hover:border-[#087F5B] text-[var(--foreground)] font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all"
           >
-            <Home size={16} className="text-[#087F5B]" />
+            <Home size={16} className="text-[#065F46] dark:text-emerald-400" />
             <span>Ana Sayfaya Dön</span>
           </Link>
 

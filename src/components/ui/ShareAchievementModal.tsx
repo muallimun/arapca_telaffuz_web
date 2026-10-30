@@ -404,7 +404,7 @@ export function TeacherHomeworkModal({
 
           <div className="space-y-1.5">
             {/* Görev 1 */}
-            <label className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] cursor-pointer hover:border-[#0CA678]">
+            <label className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] cursor-pointer hover:border-[#087F5B]">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -413,7 +413,7 @@ export function TeacherHomeworkModal({
                     playClick();
                     setTaskListen(e.target.checked);
                   }}
-                  className="w-4 h-4 accent-[#0CA678] rounded cursor-pointer"
+                  className="w-4 h-4 accent-[#087F5B] rounded cursor-pointer"
                 />
                 <span className="text-xs font-bold text-[var(--foreground)]">
                   1. Diyaloğu Dinle ve İncele ({totalLines} Cümle)
@@ -492,7 +492,7 @@ export function TeacherHomeworkModal({
             dangerouslySetInnerHTML={{ __html: qrSvg }}
           />
           <div className="flex-1 min-w-0 space-y-1.5 text-center sm:text-left w-full">
-            <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-extrabold text-[#087F5B] dark:text-[#20c997]">
+            <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-extrabold text-[#065F46] dark:text-emerald-400">
               <QrCode size={14} />
               <span>Paylaşılabilir Ödev Bağlantısı &amp; QR Kod</span>
             </div>
@@ -669,7 +669,7 @@ export default function ShareAchievementModal({
 
     drawRoundRect(ctx, 50, 50, W - 100, H - 100, 34);
     ctx.lineWidth = 3;
-    ctx.strokeStyle = isHomework ? "#6741D9" : "#0CA678";
+    ctx.strokeStyle = isHomework ? "#6741D9" : "#087F5B";
     ctx.stroke();
 
     // 2. Üst Başlık Bandı (Logo + Uygulama Adı)
@@ -726,7 +726,7 @@ export default function ShareAchievementModal({
       pillGrad.addColorStop(0, "#6741D9");
       pillGrad.addColorStop(1, "#4C28B5");
     } else {
-      pillGrad.addColorStop(0, "#0CA678");
+      pillGrad.addColorStop(0, "#087F5B");
       pillGrad.addColorStop(1, "#087F5B");
     }
     ctx.fillStyle = pillGrad;
@@ -957,7 +957,7 @@ export default function ShareAchievementModal({
     drawRoundRect(ctx, 84, 864, W - 168, 126, 28);
     const footerGrad = ctx.createLinearGradient(84, 864, W - 84, 990);
     footerGrad.addColorStop(0, "#087F5B");
-    footerGrad.addColorStop(1, "#0CA678");
+    footerGrad.addColorStop(1, "#087F5B");
     ctx.fillStyle = footerGrad;
     ctx.fill();
 
@@ -1176,7 +1176,7 @@ export default function ShareAchievementModal({
             />
           ) : (
             <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 py-12 px-6">
-              <Sparkles size={16} className="animate-spin text-[#0CA678]" />
+              <Sparkles size={16} className="animate-spin text-[#065F46]" />
               <span>Rapor kartı hazırlanıyor...</span>
             </div>
           )}
@@ -1199,12 +1199,12 @@ export default function ShareAchievementModal({
           <button
             type="button"
             onClick={handleCopyShareLink}
-            className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] flex items-center gap-1 shrink-0 cursor-pointer"
+            className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] text-xs font-extrabold text-[var(--foreground)] hover:border-[#087F5B] flex items-center gap-1 shrink-0 cursor-pointer"
           >
             {copiedLink ? (
               <>
-                <Check size={13} className="text-[#0CA678]" />
-                <span className="text-[#087F5B]">Kopyalandı</span>
+                <Check size={13} className="text-[#065F46]" />
+                <span className="text-[#065F46] dark:text-emerald-400">Kopyalandı</span>
               </>
             ) : (
               <>
@@ -1222,7 +1222,7 @@ export default function ShareAchievementModal({
               type="button"
               onClick={handleNativeShare}
               disabled={sharingBusy}
-              className="py-2.5 px-4 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs border-b-3 border-[#087F5B] active:translate-y-0.5 flex items-center justify-center gap-1.5 cursor-pointer"
+              className="py-2.5 px-4 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white font-extrabold text-xs border-b-3 border-[#087F5B] active:translate-y-0.5 flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Share2 size={15} />
               <span>

@@ -40,7 +40,7 @@ export default function MobileNav() {
               key={item.href}
               href={item.href}
               onClick={() => playClick()}
-              className={`min-h-[44px] flex flex-col items-center justify-center py-1.5 px-1 rounded-xl border-2 transition-all ${
+              className={`min-h-[48px] flex flex-col items-center justify-center py-1.5 px-1 rounded-xl border-2 transition-all ${
                 isActive
                   ? "bg-[#F3F0FF] border-[#6741D9] border-b-4 text-[#6741D9] font-extrabold -translate-y-0.5"
                   : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] border-b-4 text-[var(--muted)] hover:text-[var(--foreground)]"

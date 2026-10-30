@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { sozluk } from "@/lib/data";
 import {
   X,
@@ -53,6 +53,7 @@ export function triggerGuideModal(initialTab?: GuideTab) {
 export default function GuideAndInfoModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<GuideTab>("quickstart");
+  const modalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleOpen = (e: Event) => {
@@ -68,11 +69,40 @@ export default function GuideAndInfoModal() {
 
   useEffect(() => {
     if (!isOpen) return;
+    const raf = requestAnimationFrame(() => {
+      const firstFocusable = modalRef.current?.querySelector<HTMLElement>(
+        'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      firstFocusable?.focus();
+    });
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsOpen(false);
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        return;
+      }
+      if (e.key === "Tab" && modalRef.current) {
+        const focusables = Array.from(
+          modalRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => el.offsetParent !== null);
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", handleKey);
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -87,21 +117,28 @@ export default function GuideAndInfoModal() {
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="guide-modal-title"
       className="fixed inset-0 z-[60] print:hidden bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
       onClick={() => setIsOpen(false)}
     >
       <div
+        ref={modalRef}
         className="w-[95vw] max-w-3xl lg:max-w-4xl max-h-[88vh] flex flex-col bg-[#FDFBF7] dark:bg-[var(--surface)] rounded-3xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* MODAL ÜST BAŞLIK */}
         <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-5 py-4 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0CA678] border-b-3 border-[#087F5B] text-white flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#087F5B] border-b-3 border-[#065F46] text-white flex items-center justify-center shrink-0">
               <BookOpen size={20} />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-extrabold text-[var(--foreground)] leading-tight">
+              <h2
+                id="guide-modal-title"
+                className="text-base sm:text-lg font-extrabold text-[var(--foreground)] leading-tight"
+              >
                 Kullanım Kılavuzu & Uygulama Bilgisi
               </h2>
               <p className="text-xs font-semibold text-[var(--muted)]">
@@ -182,7 +219,7 @@ export default function GuideAndInfoModal() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div className="h-full flex flex-col justify-between p-4 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE]">
                   <div className="space-y-1.5">
-                    <h3 className="text-xs sm:text-sm font-extrabold text-[#087F5B]">
+                    <h3 className="text-xs sm:text-sm font-extrabold text-[#065F46] dark:text-emerald-400">
                       1. Diyalog Kütüphanesi (60 Diyalog)
                     </h3>
                     <p className="text-xs text-[var(--muted)] leading-relaxed">
@@ -259,7 +296,7 @@ export default function GuideAndInfoModal() {
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
-                  <h3 className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-emerald-300">
+                  <h3 className="text-xs sm:text-sm font-extrabold text-[#065F46] dark:text-emerald-300">
                     6. 🎯 Bugün Ne Çalışmalıyım? &amp; Aralıklı Tekrar (SRS)
                   </h3>
                   <p className="text-xs text-[var(--muted)] leading-relaxed">
@@ -315,7 +352,7 @@ export default function GuideAndInfoModal() {
             <div className="space-y-4">
               {/* Kelime Türü Renk Sistemi */}
               <div className="space-y-2">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#087F5B]">
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#065F46] dark:text-emerald-400">
                   Morfolojik Kelime Türü Renk Kodları
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -425,7 +462,7 @@ export default function GuideAndInfoModal() {
                         key={i}
                         className="flex items-start gap-2.5 p-2.5 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE]"
                       >
-                        <div className="w-8 h-8 rounded-lg bg-[#F7EFE1] dark:bg-[var(--surface)] border border-[#E6D7BE] flex items-center justify-center text-[#087F5B] shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-[#F7EFE1] dark:bg-[var(--surface)] border border-[#E6D7BE] flex items-center justify-center text-[#065F46] dark:text-emerald-400 shrink-0">
                           <Icon size={15} />
                         </div>
                         <div>
@@ -482,7 +519,7 @@ export default function GuideAndInfoModal() {
                   key={item.step}
                   className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border-2 border-[#E6D7BE] flex items-start gap-3"
                 >
-                  <span className="w-8 h-8 rounded-xl bg-[#0CA678] text-white font-black text-sm flex items-center justify-center shrink-0">
+                  <span className="w-8 h-8 rounded-xl bg-[#087F5B] text-white font-black text-sm flex items-center justify-center shrink-0">
                     {item.step}
                   </span>
                   <div className="space-y-0.5">
@@ -502,17 +539,15 @@ export default function GuideAndInfoModal() {
             <div className="space-y-3.5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] space-y-1">
-                  <div className="flex items-center gap-2 text-xs font-extrabold text-[#087F5B]">
+                  <div className="flex items-center gap-2 text-xs font-extrabold text-[#065F46] dark:text-emerald-400">
                     <BookOpen size={15} />
                     <span>Dilbilimsel Veri Tabanı</span>
                   </div>
                   <p className="text-xs text-[var(--muted)] leading-relaxed">
                     CEFR (A1–B2) standartlarına uyumlu 60 özgün diyalog,{" "}
-                    {(Math.floor(sozluk.length / 100) * 100).toLocaleString(
-                      "tr-TR"
-                    )}
-                    + müfret/cemî/mâzî/muzâri/masdar kayıtlı sözlük ve 5 kademeli
-                    Arapça morfolojik çözümleyici.
+                    {sozluk.length.toLocaleString("tr-TR")} kök/temel kelime +
+                    111 kalıp ifade kayıtlı sözlük ve 5 kademeli Arapça
+                    morfolojik çözümleyici.
                   </p>
                 </div>
 
@@ -563,7 +598,7 @@ export default function GuideAndInfoModal() {
                   href="https://muallimun.net"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-extrabold text-[#087F5B] underline"
+                  className="font-extrabold text-[#065F46] dark:text-emerald-400 underline"
                 >
                   muallimun.net
                 </a>
@@ -587,7 +622,7 @@ export default function GuideAndInfoModal() {
               {[
                 {
                   categoryTitle: "📖 Kur'an-ı Kerim & Mushaf Uygulamaları",
-                  categoryColor: "text-[#087F5B] dark:text-emerald-300",
+                  categoryColor: "text-[#065F46] dark:text-emerald-300",
                   items: [
                     {
                       title: "Muallimun Dijital Mushaf",
@@ -709,12 +744,12 @@ export default function GuideAndInfoModal() {
                           </div>
                           <div className="min-w-0 flex-1 space-y-0.5">
                             <div className="flex items-center justify-between gap-1.5">
-                              <span className="text-xs font-extrabold text-[var(--foreground)] group-hover:text-[#087F5B] dark:group-hover:text-emerald-300 truncate">
+                              <span className="text-xs font-extrabold text-[var(--foreground)] group-hover:text-[#065F46] dark:group-hover:text-emerald-300 truncate">
                                 {app.title}
                               </span>
                               <ExternalLink
                                 size={12}
-                                className="text-[var(--muted)] group-hover:text-[#087F5B] shrink-0"
+                                className="text-[var(--muted)] group-hover:text-[#065F46] shrink-0"
                               />
                             </div>
                             <p className="text-[11px] text-[var(--muted)] leading-snug line-clamp-2">
@@ -764,7 +799,7 @@ export default function GuideAndInfoModal() {
                 data-tooltip-pos="top"
                 aria-label="Muallimun WhatsApp Duyuru Kanalı"
                 onClick={() => playClick()}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 transition-all shadow-xs"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 text-[#065F46] dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 transition-all shadow-xs"
               >
                 <svg
                   className="w-3.5 h-3.5 fill-current shrink-0"
@@ -824,7 +859,7 @@ export default function GuideAndInfoModal() {
               }}
               data-tooltip="Uygulamayı Arkadaşlarınızla ve Öğrencilerinizle Paylaşın"
               data-tooltip-pos="top"
-              className="h-9 px-3.5 sm:px-4 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white text-xs font-extrabold border-b-3 border-[#4C28B5] flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              className="h-9 px-3.5 sm:px-4 rounded-xl bg-gradient-to-r from-[#087F5B] to-[#6741D9] hover:opacity-95 text-white text-xs font-extrabold border-b-3 border-[#4C28B5] flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Share2 size={14} />
               <span>Paylaş</span>
@@ -836,7 +871,7 @@ export default function GuideAndInfoModal() {
                 playClick();
                 setIsOpen(false);
               }}
-              className="h-9 px-4 sm:px-5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white text-xs font-extrabold border-b-3 border-[#087F5B] cursor-pointer"
+              className="h-9 px-4 sm:px-5 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white text-xs font-extrabold border-b-3 border-[#065F46] cursor-pointer"
             >
               Kapat
             </button>

@@ -349,7 +349,7 @@ export default function Flashcard({
               setIsFlipped(false);
               setIsFinished(false);
             }}
-            className="py-3 px-4 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-4 border-[#087F5B] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            className="py-3 px-4 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white border-b-4 border-[#087F5B] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Play size={15} fill="currentColor" />
             <span>▶️ Devam Et (Yeni Set)</span>
@@ -514,7 +514,7 @@ export default function Flashcard({
             className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold inline-flex items-center gap-1 ${
               currentCard.kind === "sentence" || currentCard.kind === "idiom"
                 ? "bg-[#F3F0FF] text-[#6741D9] border border-[#6741D9]/30"
-                : "bg-[#E6FCF5] text-[#087F5B] border border-[#0CA678]/30"
+                : "bg-[#E6FCF5] text-[#065F46] dark:text-emerald-400 border border-[#087F5B]/30"
             }`}
           >
             {currentCard.kind === "sentence" ? (
@@ -535,7 +535,7 @@ export default function Flashcard({
             )}
           </span>
         </div>
-        <span dir="ltr" className="text-[#087F5B] font-extrabold">
+        <span dir="ltr" className="text-[#065F46] dark:text-emerald-400 font-extrabold">
           {currentCard.badgeText}
         </span>
       </div>
@@ -596,7 +596,7 @@ export default function Flashcard({
                 <button
                   type="button"
                   onClick={handleSpeak}
-                  className="px-2.5 py-1 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] text-xs font-bold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white border-b-3 border-[#087F5B] text-xs font-bold flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
                 >
                   <Volume2 size={13} />
                   <span>Dinle</span>
@@ -705,7 +705,7 @@ export default function Flashcard({
             <div className="my-auto text-center space-y-2 px-2">
               <span
                 dir="rtl"
-                className={`arabic font-bold text-[#087F5B] dark:text-[#20c997] block leading-relaxed ${
+                className={`arabic font-bold text-[#065F46] dark:text-emerald-400 block leading-relaxed ${
                   currentCard.kind === "sentence"
                     ? "text-3xl sm:text-4xl"
                     : currentCard.kind === "idiom"
@@ -765,7 +765,7 @@ export default function Flashcard({
                     )}
                     {currentCard.usageNote && (
                       <p className="text-[var(--foreground)] font-semibold leading-snug">
-                        <span className="font-extrabold text-[#087F5B]">
+                        <span className="font-extrabold text-[#065F46] dark:text-emerald-400">
                           💡 Kullanım İpucu:
                         </span>{" "}
                         {currentCard.usageNote}
@@ -797,7 +797,7 @@ export default function Flashcard({
         <button
           type="button"
           onClick={prevCard}
-          className="flex-1 py-3 px-4 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] active:border-b-2 active:translate-y-0.5 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          className="flex-1 py-3 px-4 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 text-xs font-extrabold text-[var(--foreground)] hover:border-[#087F5B] active:border-b-2 active:translate-y-0.5 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <ChevronLeft size={18} />
           <span>Önceki</span>
@@ -818,7 +818,7 @@ export default function Flashcard({
         <button
           type="button"
           onClick={nextCard}
-          className="flex-1 py-3 px-4 rounded-2xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer"
+          className="flex-1 py-3 px-4 rounded-2xl bg-[#087F5B] hover:bg-[#065F46] text-white border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <span>
             {currentIndex === deck.length - 1 ? "Turu Tamamla" : "Sonraki"}

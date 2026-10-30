@@ -1873,7 +1873,7 @@ export default function DialogueDetailPage({
                     <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] space-y-1.5 text-center">
                       <p
                         dir="rtl"
-                        className="arabic text-2xl sm:text-3xl font-bold text-[#087F5B] dark:text-[#20c997]"
+                        className="arabic text-2xl sm:text-3xl font-bold text-[#065F46] dark:text-emerald-400"
                       >
                         {getDisplayText(currentQ.arabicDisplay)}
                       </p>
@@ -2123,7 +2123,7 @@ export default function DialogueDetailPage({
 
             <div className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 bg-[#F7EFE1] dark:bg-[var(--background)] border-t border-[#E6D7BE] dark:border-[var(--border)]">
               <div className="flex items-center gap-2.5">
-                <span className="px-2.5 py-1 rounded-lg bg-[#0CA678] text-white font-extrabold text-xs tabular-nums">
+                <span className="px-2.5 py-1 rounded-lg bg-[#087F5B] text-white font-extrabold text-xs tabular-nums">
                   #{String(rawNum).padStart(2, "0")} • {dialogue.seviye}
                 </span>
                 <h3 className="text-base sm:text-lg font-extrabold text-[var(--foreground)]">
@@ -2135,7 +2135,7 @@ export default function DialogueDetailPage({
               </div>
               <span
                 dir="rtl"
-                className="arabic text-2xl sm:text-3xl font-bold text-[#087F5B] dark:text-[#20c997]"
+                className="arabic text-2xl sm:text-3xl font-bold text-[#065F46] dark:text-emerald-400"
               >
                 {getDisplayText(dialogue.baslik_ar)}
               </span>
@@ -2155,7 +2155,7 @@ export default function DialogueDetailPage({
               data-tooltip="Kütüphaneye Dön"
               data-tooltip-align="left"
               aria-label="Kütüphaneye Dön"
-              className="w-8 h-8 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center text-[var(--foreground)] hover:border-[#0CA678] shrink-0 transition-all"
+              className="w-8 h-8 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center text-[var(--foreground)] hover:border-[#087F5B] shrink-0 transition-all"
             >
               <ChevronLeft size={16} strokeWidth={2.5} />
             </Link>
@@ -2174,7 +2174,7 @@ export default function DialogueDetailPage({
                 </span>
                 <span
                   dir="rtl"
-                  className="arabic text-lg sm:text-xl font-bold text-[#087F5B] dark:text-[#20c997] leading-none"
+                  className="arabic text-lg sm:text-xl font-bold text-[#065F46] dark:text-emerald-400 leading-none"
                 >
                   {getDisplayText(dialogue.baslik_ar)}
                 </span>
@@ -2313,8 +2313,8 @@ export default function DialogueDetailPage({
                 aria-label="Okuma Hızı"
                 className={`px-2 py-1.5 rounded-xl border text-xs font-semibold tabular-nums transition-all cursor-pointer shrink-0 ${
                   mounted && speechRate === 0.75
-                    ? "bg-[#0CA678] border-[#087F5B] text-white"
-                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#0CA678]"
+                    ? "bg-[#087F5B] border-[#087F5B] text-white"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
                 }`}
               >
                 {mounted ? (speechRate === 1 ? "1.0x" : `${speechRate}x`) : "1.0x"}
@@ -2331,7 +2331,7 @@ export default function DialogueDetailPage({
                 aria-label="Harekeli / Harekesiz"
                 className={`px-2.5 py-1.5 rounded-xl border flex items-center gap-1 text-xs font-extrabold transition-all cursor-pointer shrink-0 ${
                   !mounted || showHareke
-                    ? "bg-[#0CA678]/15 border-[#0CA678] text-[#087F5B] dark:text-[#20c997]"
+                    ? "bg-[#087F5B]/15 border-[#087F5B] text-[#065F46] dark:text-emerald-400"
                     : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
@@ -2374,9 +2374,9 @@ export default function DialogueDetailPage({
                 }}
                 data-tooltip="PDF Ders Notu veya A4 Çalışma/Quiz Yaprağı Üret"
                 aria-label="PDF / Ders Notu"
-                className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] text-[var(--foreground)] flex items-center gap-1 text-xs font-extrabold transition-all cursor-pointer shrink-0"
+                className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#087F5B] text-[var(--foreground)] flex items-center gap-1 text-xs font-extrabold transition-all cursor-pointer shrink-0"
               >
-                <FileText size={13} className="text-[#0CA678] shrink-0" />
+                <FileText size={13} className="text-[#065F46] shrink-0" />
                 <span>PDF</span>
               </button>
 
@@ -2435,7 +2435,7 @@ export default function DialogueDetailPage({
                   </>
                 ) : (
                   <>
-                    <Download size={12} className="text-emerald-600 shrink-0" />
+                    <Download size={12} className="text-[#065F46] dark:text-emerald-400 shrink-0" />
                     <span>İndir (~{offlineEstimatedMb} MB)</span>
                   </>
                 )}
@@ -2487,8 +2487,8 @@ export default function DialogueDetailPage({
                 aria-label="Sınıf / Tahta Modu"
                 className={`hidden sm:inline-flex px-2.5 py-1.5 rounded-xl border text-xs font-extrabold items-center gap-1 transition-all cursor-pointer shrink-0 ${
                   isClassroomMode
-                    ? "bg-[#0CA678] border-[#087F5B] text-white shadow-2xs"
-                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] text-[var(--foreground)]"
+                    ? "bg-[#087F5B] border-[#087F5B] text-white shadow-2xs"
+                    : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#087F5B] text-[var(--foreground)]"
                 }`}
               >
                 <span>🖥️ Sınıf / Tahta Modu</span>
@@ -2516,7 +2516,7 @@ export default function DialogueDetailPage({
                         }}
                         className={`px-2 py-1 text-[11px] rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                           selectedRoleSpeaker === sp
-                            ? "bg-[#0CA678] text-white font-bold"
+                            ? "bg-[#087F5B] text-white font-bold"
                             : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
                         }`}
                       >
@@ -2554,7 +2554,7 @@ export default function DialogueDetailPage({
                   title="Cümle dinlendikten sonra otomatik olarak telaffuz koçunu aç"
                   className={`px-2 py-1.5 rounded-xl border text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
                     autoShadowingFlow
-                      ? "bg-[#0CA678] border-[#087F5B] text-white"
+                      ? "bg-[#087F5B] border-[#087F5B] text-white"
                       : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"
                   }`}
                 >
@@ -2648,7 +2648,7 @@ export default function DialogueDetailPage({
                           </>
                         ) : (
                           <>
-                            <Download size={12} className="text-emerald-600 shrink-0" />
+                            <Download size={12} className="text-[#065F46] dark:text-emerald-400 shrink-0" />
                             <span>İndir (~{offlineEstimatedMb} MB)</span>
                           </>
                         )}
@@ -2696,7 +2696,7 @@ export default function DialogueDetailPage({
                         }}
                         className={`py-2 px-2.5 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer ${
                           isClassroomMode
-                            ? "bg-[#0CA678] border-[#087F5B] text-white"
+                            ? "bg-[#087F5B] border-[#087F5B] text-white"
                             : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"
                         }`}
                       >
@@ -2739,7 +2739,7 @@ export default function DialogueDetailPage({
                             title={opt.label}
                             className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
                               active
-                                ? "bg-[#0CA678] text-white"
+                                ? "bg-[#087F5B] text-white"
                                 : "text-[var(--muted)] hover:text-[var(--foreground)]"
                             }`}
                           >
@@ -2759,7 +2759,7 @@ export default function DialogueDetailPage({
                         title="Tıkla-Gör (Çeviriyi tıklayınca aç)"
                         className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
                           clickToRevealTr
-                            ? "bg-[#0CA678] text-white"
+                            ? "bg-[#087F5B] text-white"
                             : "text-[var(--muted)] hover:text-[var(--foreground)]"
                         }`}
                       >
@@ -2830,7 +2830,7 @@ export default function DialogueDetailPage({
                             }}
                             className={`py-1.5 px-1.5 rounded-lg text-[10px] font-extrabold whitespace-nowrap transition-all cursor-pointer ${
                               active
-                                ? "bg-[#0CA678] text-white"
+                                ? "bg-[#087F5B] text-white"
                                 : "text-[var(--muted)] hover:text-[var(--foreground)]"
                             }`}
                           >
@@ -2900,7 +2900,7 @@ export default function DialogueDetailPage({
                   </div>
 
                   {/* 💡 Rehber Bilgisi */}
-                  <div className="text-[11px] py-2 px-2.5 rounded-xl bg-[#0CA678]/10 border border-[#0CA678]/30 font-semibold text-[#087F5B] dark:text-[#20c997] leading-snug">
+                  <div className="text-[11px] py-2 px-2.5 rounded-xl bg-[#087F5B]/10 border border-[#087F5B]/30 font-semibold text-[#065F46] dark:text-emerald-400 leading-snug">
                     💡 <strong>Rehber:</strong> Diyaloğu doğal sesle dinleyin. Morfolojik kök analizi için Arapça kelimelere tıklayın; mikrofon ikonuyla telaffuz ve 38 mahreç analizini açın.
                   </div>
                 </div>
@@ -2929,7 +2929,7 @@ export default function DialogueDetailPage({
           {studyMode === "roleplay" && roleplayCompletedBanner && (
             <div
               ref={roleplaySummaryRef}
-              className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border-2 border-[#0CA678] border-b-4 ring-2 ring-emerald-500 transition-all p-3.5 space-y-2.5 shadow-sm"
+              className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border-2 border-[#087F5B] border-b-4 ring-2 ring-emerald-500 transition-all p-3.5 space-y-2.5 shadow-sm"
             >
               {(() => {
                 const userLines = dialogue.satirlar.filter(
@@ -3048,7 +3048,7 @@ export default function DialogueDetailPage({
                       <button
                         type="button"
                         onClick={handleToggleRoleplay}
-                        className="px-3 py-1.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white text-xs font-extrabold border-b-2 border-[#087F5B] cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white text-xs font-extrabold border-b-2 border-[#087F5B] cursor-pointer"
                       >
                         ▶️ Aynı Rolle Tekrar Canlandır
                       </button>
@@ -3203,7 +3203,7 @@ export default function DialogueDetailPage({
                     Bu Diyalogdaki Kalıp İfadeler{" "}
                     <bdi
                       dir="rtl"
-                      className="arabic font-arabic text-base sm:text-lg text-[#087F5B] dark:text-[#20c997]"
+                      className="arabic font-arabic text-base sm:text-lg text-[#065F46] dark:text-emerald-400"
                     >
                       (التعبيرات الاصطلاحية)
                     </bdi>
@@ -3246,7 +3246,7 @@ export default function DialogueDetailPage({
                           </span>
                           <span
                             dir="rtl"
-                            className="arabic font-arabic text-2xl sm:text-3xl font-bold text-[#087F5B] dark:text-[#20c997] text-right leading-snug"
+                            className="arabic font-arabic text-2xl sm:text-3xl font-bold text-[#065F46] dark:text-emerald-400 text-right leading-snug"
                           >
                             {getDisplayText(primaryAr)}
                           </span>
@@ -3257,7 +3257,7 @@ export default function DialogueDetailPage({
                             <span>💡 Kibar / Alternatif Kullanım:</span>
                             <bdi
                               dir="rtl"
-                              className="arabic font-arabic text-base font-bold text-[#087F5B] dark:text-[#20c997]"
+                              className="arabic font-arabic text-base font-bold text-[#065F46] dark:text-emerald-400"
                             >
                               {getDisplayText(idm.arabic)}
                             </bdi>
@@ -3290,9 +3290,9 @@ export default function DialogueDetailPage({
                               rate: speechRate,
                             });
                           }}
-                          className="flex-1 h-9 px-3 rounded-xl bg-[#F7EFE1] dark:bg-slate-800 hover:border-[#0CA678] border-2 border-[#E6D7BE] dark:border-slate-600 border-b-3 text-xs font-extrabold text-[var(--foreground)] dark:text-slate-100 flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="flex-1 h-9 px-3 rounded-xl bg-[#F7EFE1] dark:bg-slate-800 hover:border-[#087F5B] border-2 border-[#E6D7BE] dark:border-slate-600 border-b-3 text-xs font-extrabold text-[var(--foreground)] dark:text-slate-100 flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <Volume2 size={14} className="text-[#0CA678]" />
+                          <Volume2 size={14} className="text-[#065F46]" />
                           <span>🔊 Dinle</span>
                         </button>
 
@@ -3509,9 +3509,9 @@ export default function DialogueDetailPage({
                         rate: speechRate,
                       });
                     }}
-                    className="flex-1 h-9 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="flex-1 h-9 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#087F5B] flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <Volume2 size={14} className="text-[#0CA678]" />
+                    <Volume2 size={14} className="text-[#065F46]" />
                     <span>Dinle</span>
                   </button>
 
@@ -3755,13 +3755,13 @@ export default function DialogueDetailPage({
                 }}
                 className={`rounded-2xl border-2 border-b-4 transition-all scroll-mt-14 ${
                   isClassroomMode && isClassroomActiveLine
-                    ? "ring-4 ring-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/50 border-[#0CA678] shadow-2xl scale-[1.01] p-6 md:p-8"
+                    ? "ring-4 ring-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/50 border-[#087F5B] shadow-2xl scale-[1.01] p-6 md:p-8"
                     : isWaitingUser
                     ? "border-emerald-500 ring-4 ring-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-950/30 shadow-lg p-3.5"
                     : isAppSpeakingRoleplay || isPlaying || isLooping
                     ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] shadow-md p-3.5"
                     : isUserRoleTurn
-                    ? "bg-[#FDFBF7] dark:bg-[var(--background)] border-[#0CA678]/70 p-3.5"
+                    ? "bg-[#FDFBF7] dark:bg-[var(--background)] border-[#087F5B]/70 p-3.5"
                     : isClassroomMode
                     ? "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] p-5 md:p-6"
                     : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] p-3.5"
@@ -3788,7 +3788,7 @@ export default function DialogueDetailPage({
                     <span
                       className={`px-2.5 py-0.5 rounded-xl text-xs font-extrabold border-b-2 ${
                         speakerIdx % 2 === 0
-                          ? "bg-[#0CA678] text-white border-[#087F5B]"
+                          ? "bg-[#087F5B] text-white border-[#087F5B]"
                           : "bg-[#6741D9] text-white border-[#5230B5]"
                       }`}
                     >
@@ -3801,7 +3801,7 @@ export default function DialogueDetailPage({
                       ({line.konusmaci_ar})
                     </span>
                     {isUserRoleTurn && (
-                      <span className="text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997]">
+                      <span className="text-[11px] font-extrabold text-[#065F46] dark:text-emerald-400">
                         · Sizin Rolünüz
                       </span>
                     )}
@@ -3809,7 +3809,7 @@ export default function DialogueDetailPage({
                       <span
                         className={`px-2 py-0.5 rounded-lg border text-[11px] font-extrabold tabular-nums ${
                           lineRoleplayScore >= 70
-                            ? "bg-[#0CA678]/15 border-[#0CA678] text-[#087F5B] dark:text-[#20c997]"
+                            ? "bg-[#087F5B]/15 border-[#087F5B] text-[#065F46] dark:text-emerald-400"
                             : lineRoleplayScore > 0
                             ? "bg-amber-100 dark:bg-amber-950/60 border-amber-400 text-amber-800 dark:text-amber-200"
                             : "bg-rose-100 dark:bg-rose-950/60 border-rose-400 text-rose-800 dark:text-rose-200"
@@ -3853,8 +3853,8 @@ export default function DialogueDetailPage({
                       }
                       className={`group relative w-9 h-9 rounded-xl border-2 border-b-3 inline-flex items-center justify-center transition-all cursor-pointer ${
                         isPlaying && !isLooping
-                          ? "bg-[#0CA678] border-[#087F5B] text-white animate-pulse"
-                          : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#0CA678]"
+                          ? "bg-[#087F5B] border-[#087F5B] text-white animate-pulse"
+                          : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
                       }`}
                       data-tooltip="Doğal Sesle Dinle"
                       aria-label="Doğal Sesle Dinle"
@@ -3864,7 +3864,7 @@ export default function DialogueDetailPage({
                         className={
                           isPlaying && !isLooping
                             ? "text-white"
-                            : "text-[#0CA678]"
+                            : "text-[#065F46]"
                         }
                       />
                     </button>
@@ -4054,7 +4054,7 @@ export default function DialogueDetailPage({
                               [line.sira]: true,
                             }));
                           }}
-                          className="inline-flex items-center gap-1.5 text-xs font-extrabold text-white bg-[#0CA678] hover:bg-[#099268] px-3 py-1.5 rounded-xl border-b-2 border-[#087F5B] shrink-0 cursor-pointer"
+                          className="inline-flex items-center gap-1.5 text-xs font-extrabold text-white bg-[#087F5B] hover:bg-[#065F46] px-3 py-1.5 rounded-xl border-b-2 border-[#087F5B] shrink-0 cursor-pointer"
                         >
                           <Eye size={13} />
                           <span>Arapçasını Göster</span>
@@ -4098,7 +4098,7 @@ export default function DialogueDetailPage({
                                 [line.sira]: true,
                               }));
                             }}
-                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#087F5B] bg-white dark:bg-[var(--background)] px-3 py-1 rounded-xl border border-[#E6D7BE] hover:border-[#0CA678] cursor-pointer"
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#065F46] dark:text-emerald-400 bg-white dark:bg-[var(--background)] px-3 py-1 rounded-xl border border-[#E6D7BE] hover:border-[#087F5B] cursor-pointer"
                           >
                             <span>👁️ Türkçe Çeviriyi Göster</span>
                           </button>
@@ -4131,18 +4131,18 @@ export default function DialogueDetailPage({
 
                 {/* CÜMLELER ARASI GÖLGELEME BOŞLUĞU: "ŞİMDİ TEKRAR EDİN" GERİ SAYIM ÇUBUĞU */}
                 {isShadowingPause && shadowingPauseLineSira === line.sira && (
-                  <div className="mt-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border-2 border-[#0CA678] px-3 py-2 space-y-1.5 animate-in fade-in duration-150">
+                  <div className="mt-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border-2 border-[#087F5B] px-3 py-2 space-y-1.5 animate-in fade-in duration-150">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-extrabold text-[#087F5B] dark:text-[#20c997] flex items-center gap-1.5">
+                      <span className="text-xs font-extrabold text-[#065F46] dark:text-emerald-400 flex items-center gap-1.5">
                         <span>🎙️ Şimdi yüksek sesle tekrar edin...</span>
                       </span>
-                      <span className="text-[11px] font-extrabold text-[#087F5B] dark:text-emerald-300 tabular-nums">
+                      <span className="text-[11px] font-extrabold text-[#065F46] dark:text-emerald-300 tabular-nums">
                         {((shadowingPauseMs * shadowingPauseRemainingPct) / 100000).toFixed(1)} sn
                       </span>
                     </div>
                     <div className="w-full h-1.5 rounded-full bg-emerald-200/70 dark:bg-emerald-900 overflow-hidden">
                       <div
-                        className="h-full bg-[#0CA678] rounded-full transition-none"
+                        className="h-full bg-[#087F5B] rounded-full transition-none"
                         style={{ width: `${shadowingPauseRemainingPct}%` }}
                       />
                     </div>
@@ -4151,11 +4151,11 @@ export default function DialogueDetailPage({
 
                 {/* TEKİL VE İNTERAKTİF ROL YAPMA KONTROL PANELİ (Canlı Ses Dalgası + Gerçek Mikrofon Puanlaması) */}
                 {isWaitingUser && (
-                  <div className="mt-2.5 p-3 rounded-xl bg-emerald-50/95 dark:bg-emerald-950/75 border-2 border-[#0CA678] shadow-md space-y-2.5 animate-in fade-in duration-150">
+                  <div className="mt-2.5 p-3 rounded-xl bg-emerald-50/95 dark:bg-emerald-950/75 border-2 border-[#087F5B] shadow-md space-y-2.5 animate-in fade-in duration-150">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping shrink-0" />
-                        <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-emerald-200">
+                        <span className="text-xs sm:text-sm font-extrabold text-[#065F46] dark:text-emerald-200">
                           🎙️ SIRA SİZDE! Şimdi repliğinizi sesli okuyun...
                         </span>
                       </div>
@@ -4164,7 +4164,7 @@ export default function DialogueDetailPage({
                         <button
                           type="button"
                           onClick={() => void finishUserRoleplayTurn(line, false)}
-                          className="text-xs px-3 py-1.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold border-b-2 border-[#087F5B] flex items-center gap-1 cursor-pointer shadow-xs"
+                          className="text-xs px-3 py-1.5 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white font-extrabold border-b-2 border-[#087F5B] flex items-center gap-1 cursor-pointer shadow-xs"
                         >
                           <span>✅ Okudum (Bitir)</span>
                         </button>
@@ -4195,7 +4195,7 @@ export default function DialogueDetailPage({
                     </div>
 
                     {/* Canlı Mikrofon Ses Dalgası + Algılanan Konuşma Metni */}
-                    <div className="flex items-center gap-2.5 bg-white/90 dark:bg-slate-900/90 rounded-xl px-3 py-2 border border-[#0CA678]/40">
+                    <div className="flex items-center gap-2.5 bg-white/90 dark:bg-slate-900/90 rounded-xl px-3 py-2 border border-[#087F5B]/40">
                       <div className="flex items-end gap-0.5 h-6 w-32 sm:w-44 shrink-0">
                         {roleplayLiveBars.map((barVal, bIdx) => (
                           <span
@@ -4205,7 +4205,7 @@ export default function DialogueDetailPage({
                             }}
                             className={`flex-1 rounded-full transition-all duration-75 ${
                               barVal > 0.14
-                                ? "bg-[#0CA678]"
+                                ? "bg-[#087F5B]"
                                 : "bg-[#6741D9]/60"
                             }`}
                           />
@@ -4216,7 +4216,7 @@ export default function DialogueDetailPage({
                         {roleplayInterimText ? (
                           <span
                             dir="rtl"
-                            className="arabic text-sm sm:text-base font-bold text-[#087F5B] dark:text-emerald-300 truncate"
+                            className="arabic text-sm sm:text-base font-bold text-[#065F46] dark:text-emerald-300 truncate"
                           >
                             {roleplayInterimText}
                           </span>
@@ -4227,7 +4227,7 @@ export default function DialogueDetailPage({
                               : "Mikrofon açık, konuşmanızı bekliyor..."}
                           </span>
                         )}
-                        <span className="text-[11px] font-extrabold text-[#087F5B] dark:text-emerald-300 tabular-nums shrink-0">
+                        <span className="text-[11px] font-extrabold text-[#065F46] dark:text-emerald-300 tabular-nums shrink-0">
                           {((roleplayWaitDurationMs * roleplayRemainingPct) / 100000).toFixed(1)} sn
                         </span>
                       </div>
@@ -4236,7 +4236,7 @@ export default function DialogueDetailPage({
                     {/* Bekleme Süresince İlerleyen İnce Geri Sayım Çubuğu */}
                     <div className="w-full h-1.5 bg-emerald-200/80 dark:bg-emerald-900 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#0CA678] transition-none rounded-full"
+                        className="h-full bg-[#087F5B] transition-none rounded-full"
                         style={{ width: `${roleplayRemainingPct}%` }}
                       />
                     </div>
@@ -4424,7 +4424,7 @@ export default function DialogueDetailPage({
               <span>✨ Bu Diyalogdaki Kalıp İfadeler</span>
               <bdi
                 dir="rtl"
-                className="arabic font-arabic text-base text-[#087F5B] dark:text-[#20c997]"
+                className="arabic font-arabic text-base text-[#065F46] dark:text-emerald-400"
               >
                 (التعبيرات الاصطلاحية)
               </bdi>
@@ -4466,7 +4466,7 @@ export default function DialogueDetailPage({
                       </span>
                       <span
                         dir="rtl"
-                        className="arabic font-arabic text-xl sm:text-2xl font-bold text-[#087F5B] dark:text-[#20c997] text-right leading-snug"
+                        className="arabic font-arabic text-xl sm:text-2xl font-bold text-[#065F46] dark:text-emerald-400 text-right leading-snug"
                       >
                         {getDisplayText(primaryAr)}
                       </span>
@@ -4476,7 +4476,7 @@ export default function DialogueDetailPage({
                         <span>💡 Kibar / Alternatif Kullanım:</span>
                         <bdi
                           dir="rtl"
-                          className="arabic font-arabic text-sm sm:text-base font-bold text-[#087F5B] dark:text-[#20c997]"
+                          className="arabic font-arabic text-sm sm:text-base font-bold text-[#065F46] dark:text-emerald-400"
                         >
                           {getDisplayText(idm.arabic)}
                         </bdi>
@@ -4500,9 +4500,9 @@ export default function DialogueDetailPage({
                           rate: speechRate,
                         });
                       }}
-                      className="flex-1 h-8 px-2.5 rounded-xl bg-[#F7EFE1] dark:bg-slate-800 hover:border-[#0CA678] border border-[#E6D7BE] dark:border-slate-600 text-[11px] font-extrabold text-[var(--foreground)] dark:text-slate-100 flex items-center justify-center gap-1 cursor-pointer"
+                      className="flex-1 h-8 px-2.5 rounded-xl bg-[#F7EFE1] dark:bg-slate-800 hover:border-[#087F5B] border border-[#E6D7BE] dark:border-slate-600 text-[11px] font-extrabold text-[var(--foreground)] dark:text-slate-100 flex items-center justify-center gap-1 cursor-pointer"
                     >
-                      <Volume2 size={13} className="text-[#0CA678]" />
+                      <Volume2 size={13} className="text-[#065F46]" />
                       <span>🔊 Dinle</span>
                     </button>
                     <button
@@ -4567,9 +4567,9 @@ export default function DialogueDetailPage({
             <Link
               href={`/diyalog/${prevDialogue.id}`}
               onClick={() => playClick()}
-              className="w-full p-3 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center gap-2.5 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all"
+              className="w-full p-3 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center gap-2.5 text-xs font-extrabold text-[var(--foreground)] hover:border-[#087F5B] transition-all"
             >
-              <ChevronLeft size={18} className="text-[#087F5B] shrink-0" />
+              <ChevronLeft size={18} className="text-[#065F46] dark:text-emerald-400 shrink-0" />
               <div className="min-w-0 flex-1">
                 <span className="block text-[10px] text-slate-600 dark:text-slate-300 uppercase">
                   Önceki Diyalog
@@ -4585,7 +4585,7 @@ export default function DialogueDetailPage({
             <Link
               href={`/diyalog/${nextDialogue.id}`}
               onClick={() => playClick()}
-              className="w-full p-3 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-end gap-2.5 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all text-right"
+              className="w-full p-3 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--surface)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 flex items-center justify-end gap-2.5 text-xs font-extrabold text-[var(--foreground)] hover:border-[#087F5B] transition-all text-right"
             >
               <div className="min-w-0 flex-1">
                 <span className="block text-[10px] text-slate-600 dark:text-slate-300 uppercase">
@@ -4593,7 +4593,7 @@ export default function DialogueDetailPage({
                 </span>
                 <span className="truncate block">{nextDialogue.baslik_tr}</span>
               </div>
-              <ChevronRight size={18} className="text-[#087F5B] shrink-0" />
+              <ChevronRight size={18} className="text-[#065F46] dark:text-emerald-400 shrink-0" />
             </Link>
           ) : (
             <div className="hidden sm:block" />

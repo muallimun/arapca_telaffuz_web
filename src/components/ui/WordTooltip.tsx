@@ -751,7 +751,7 @@ export default function WordTooltip({
                                 playClick();
                                 setShowDesktopRootFamily((v) => !v);
                               }}
-                              className="w-full flex items-center justify-between px-2 py-1 rounded-lg bg-white/80 dark:bg-[var(--background)] border border-[#E6D7BE] hover:border-[#0CA678] text-[11px] font-extrabold text-[#087F5B] dark:text-emerald-300 transition-all cursor-pointer"
+                              className="w-full flex items-center justify-between px-2 py-1 rounded-lg bg-white/80 dark:bg-[var(--background)] border border-[#E6D7BE] hover:border-[#087F5B] text-[11px] font-extrabold text-[#065F46] dark:text-emerald-300 transition-all cursor-pointer"
                             >
                               <span>
                                 🌿 Kök Ailesi ({rootSiblings.length} kelime){" "}
@@ -780,7 +780,7 @@ export default function WordTooltip({
                                     >
                                       <bdi
                                         dir="rtl"
-                                        className="arabic font-arabic text-xs font-bold text-[#087F5B] dark:text-emerald-300"
+                                        className="arabic font-arabic text-xs font-bold text-[#065F46] dark:text-emerald-300"
                                       >
                                         {formatAr(sibAr)}
                                       </bdi>
@@ -804,7 +804,7 @@ export default function WordTooltip({
                         className={`whitespace-nowrap px-2.5 py-2 text-xs font-semibold shrink-0 rounded-xl font-sans flex items-center justify-center gap-1 border-b-3 transition-all cursor-pointer ${
                           isSpeaking
                             ? "bg-[#087F5B] text-white border-[#065F46]"
-                            : "bg-[#0CA678] hover:bg-[#099268] text-white border-[#087F5B]"
+                            : "bg-[#087F5B] hover:bg-[#065F46] text-white border-[#087F5B]"
                         }`}
                       >
                         <Volume2 size={13} className="shrink-0" />

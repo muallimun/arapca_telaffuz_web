@@ -932,7 +932,7 @@ export default function FillInBlanks({
                 }}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer ${
                   resultViewMode === "summary"
-                    ? "bg-[#0CA678] text-white shadow-2xs"
+                    ? "bg-[#087F5B] text-white shadow-2xs"
                     : "text-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
@@ -1022,7 +1022,7 @@ export default function FillInBlanks({
                     {isOk ? (
                       <CheckCircle2
                         size={16}
-                        className="text-emerald-600 shrink-0"
+                        className="text-[#065F46] dark:text-emerald-400 shrink-0"
                       />
                     ) : (
                       <XCircle size={16} className="text-rose-600 shrink-0" />
@@ -1071,7 +1071,7 @@ export default function FillInBlanks({
                   playClick();
                   playQuestionSentence(reviewQ);
                 }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0CA678] text-white text-xs font-bold cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#087F5B] text-white text-xs font-bold cursor-pointer"
               >
                 <Volume2 size={13} />
                 <span>Cümleyi Dinle</span>
@@ -1123,7 +1123,7 @@ export default function FillInBlanks({
                     {isRight && (
                       <CheckCircle2
                         size={15}
-                        className="text-emerald-600 shrink-0"
+                        className="text-[#065F46] dark:text-emerald-400 shrink-0"
                       />
                     )}
                     {!isRight && isUserChoice && (
@@ -1204,7 +1204,7 @@ export default function FillInBlanks({
           <button
             type="button"
             onClick={handleStartNewSet}
-            className="py-3 px-4 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-4 border-[#087F5B] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            className="py-3 px-4 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white border-b-4 border-[#087F5B] font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Play size={15} fill="currentColor" />
             <span>Devam Et (Yeni Set)</span>
@@ -1263,7 +1263,7 @@ export default function FillInBlanks({
                 </div>
               )}
 
-              <span className="text-xs font-extrabold text-[#087F5B] bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-2.5 py-1 rounded-xl tabular-nums">
+              <span className="text-xs font-extrabold text-[#065F46] dark:text-emerald-400 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-2.5 py-1 rounded-xl tabular-nums">
                 {feedbackMode === "instant"
                   ? `Doğru: ${correctCount}`
                   : `Yanıtlanan: ${Object.keys(userAnswers).length}/${questions.length}`}
@@ -1319,7 +1319,7 @@ export default function FillInBlanks({
               </div>
             )}
 
-            <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-3 py-1 rounded-xl tabular-nums">
+            <span className="text-xs sm:text-sm font-extrabold text-[#065F46] dark:text-emerald-400 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] px-3 py-1 rounded-xl tabular-nums">
               {feedbackMode === "instant"
                 ? `Doğru: ${correctCount}`
                 : `Yanıtlanan: ${Object.keys(userAnswers).length}/${questions.length}`}
@@ -1407,7 +1407,7 @@ export default function FillInBlanks({
       <div
         className={`rounded-2xl border-2 border-b-4 p-3 sm:p-5 text-center space-y-2.5 sm:space-y-3.5 transition-all ${
           feedback === "correct"
-            ? "bg-emerald-50 border-[#0CA678]"
+            ? "bg-emerald-50 border-[#087F5B]"
             : feedback === "wrong"
             ? "bg-rose-50 border-rose-400"
             : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
@@ -1427,7 +1427,7 @@ export default function FillInBlanks({
                 playClick();
                 playQuestionSentence(currentQ);
               }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0CA678] text-white font-bold border-b-2 border-[#087F5B] cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#087F5B] text-white font-bold border-b-2 border-[#087F5B] cursor-pointer"
             >
               <Volume2 size={13} />
               <span>Cümleyi Dinle</span>
@@ -1454,7 +1454,7 @@ export default function FillInBlanks({
                   }}
                   className={`inline-flex items-center gap-1 px-2 py-1 rounded-xl border font-extrabold cursor-pointer ${
                     autoAudio
-                      ? "bg-[#E6FCF5] border-[#0CA678] text-[#087F5B]"
+                      ? "bg-[#E6FCF5] border-[#087F5B] text-[#065F46] dark:text-emerald-400"
                       : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)]"
                   }`}
                 >
@@ -1484,13 +1484,13 @@ export default function FillInBlanks({
                       onDrop={handleDrop}
                       className={`inline-flex items-center justify-center min-w-[130px] px-4 py-1 rounded-xl border-2 border-dashed mx-1.5 transition-all select-none ${
                         feedback === "correct"
-                          ? "border-[#0CA678] bg-[#0CA678] text-white scale-105"
+                          ? "border-[#087F5B] bg-[#087F5B] text-white scale-105"
                           : feedback === "wrong" && selectedWord
                           ? "border-rose-500 bg-rose-100 text-rose-800"
                           : feedbackMode === "end" && selectedWord
                           ? "border-[#6741D9] bg-[#6741D9] text-white"
                           : isDragOver
-                          ? "ring-4 ring-emerald-500/30 border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/60 text-[#087F5B] dark:text-[#20c997] scale-105"
+                          ? "ring-4 ring-emerald-500/30 border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/60 text-[#065F46] dark:text-emerald-400 scale-105"
                           : "border-[#6741D9] bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] text-[#6741D9] dark:text-[#d0bfff]"
                       }`}
                     >
@@ -1509,7 +1509,7 @@ export default function FillInBlanks({
                       className="inline-flex items-center gap-1.5 mx-1.5"
                     >
                       {feedback === "correct" ? (
-                        <span className="inline-flex items-center gap-1.5 px-4 py-1 rounded-xl bg-[#0CA678] text-white border-2 border-[#087F5B] scale-105">
+                        <span className="inline-flex items-center gap-1.5 px-4 py-1 rounded-xl bg-[#087F5B] text-white border-2 border-[#087F5B] scale-105">
                           <CheckCircle2 size={18} />
                           <span>{formatAr(currentQ.correctWord)}</span>
                         </span>
@@ -1537,7 +1537,7 @@ export default function FillInBlanks({
                             className={`w-28 sm:w-40 inline-flex h-10 sm:h-11 px-2.5 rounded-xl border-2 text-center arabic text-xl sm:text-3xl font-bold focus:outline-none transition-all ${
                               feedback === "wrong"
                                 ? "bg-rose-50 border-rose-500 text-rose-800"
-                                : "bg-white dark:bg-[var(--background)] border-[#6741D9] text-[#087F5B] dark:text-[#20c997] focus:ring-4 focus:ring-[#6741D9]/20"
+                                : "bg-white dark:bg-[var(--background)] border-[#6741D9] text-[#065F46] dark:text-emerald-400 focus:ring-4 focus:ring-[#6741D9]/20"
                             }`}
                           />
                           <button
@@ -1577,7 +1577,7 @@ export default function FillInBlanks({
             </span>
             <bdi
               dir="rtl"
-              className="arabic text-xl sm:text-2xl font-extrabold text-[#087F5B] dark:text-emerald-300 px-1.5"
+              className="arabic text-xl sm:text-2xl font-extrabold text-[#065F46] dark:text-emerald-300 px-1.5"
             >
               {formatAr(spellingNote)}
             </bdi>
@@ -1606,7 +1606,7 @@ export default function FillInBlanks({
                   type="button"
                   onClick={handleCheckDictation}
                   disabled={!typedText.trim()}
-                  className="h-8 px-3.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] disabled:opacity-50 text-white border-b-3 border-[#087F5B] text-xs font-extrabold flex items-center gap-1 cursor-pointer"
+                  className="h-8 px-3.5 rounded-xl bg-[#087F5B] hover:bg-[#065F46] disabled:opacity-50 text-white border-b-3 border-[#087F5B] text-xs font-extrabold flex items-center gap-1 cursor-pointer"
                 >
                   <CheckCircle2 size={13} />
                   <span>
@@ -1639,7 +1639,7 @@ export default function FillInBlanks({
               {feedback === "correct" &&
                 (isMistakesMode || inMistakes) &&
                 srsRec && (
-                  <div className="rounded-xl bg-emerald-100/90 dark:bg-emerald-950/50 border border-emerald-400 px-3 py-1.5 text-[11px] font-extrabold text-[#087F5B] dark:text-emerald-300 text-left">
+                  <div className="rounded-xl bg-emerald-100/90 dark:bg-emerald-950/50 border border-emerald-400 px-3 py-1.5 text-[11px] font-extrabold text-[#065F46] dark:text-emerald-300 text-left">
                     {formatMistakeStageProgressText(srsRec)}
                   </div>
                 )}
@@ -1677,7 +1677,7 @@ export default function FillInBlanks({
                     isDragging ? "opacity-60 scale-95 border-[#6741D9]" : ""
                   } ${
                     isRight
-                      ? "bg-[#0CA678] border-[#087F5B] text-white"
+                      ? "bg-[#087F5B] border-[#087F5B] text-white"
                       : isWrong
                       ? "bg-rose-100 border-rose-400 text-rose-800"
                       : isNeutralChosen
@@ -1752,7 +1752,7 @@ export default function FillInBlanks({
         <button
           type="button"
           onClick={nextQuestion}
-          className="flex-1 py-3 px-5 bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          className="flex-1 py-3 px-5 bg-[#087F5B] hover:bg-[#065F46] text-white font-extrabold text-xs sm:text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <span>
             {currentIndex === questions.length - 1
