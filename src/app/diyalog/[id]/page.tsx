@@ -157,9 +157,9 @@ export default function DialogueDetailPage({
     Record<number, boolean>
   >({});
   const [blurArabic, setBlurArabic] = useState<boolean>(false);
-  const [unblurredLines, setUnblurredLines] = useState<Record<number, boolean>>(
-    {}
-  );
+  const [revealedArabicLines, setRevealedArabicLines] = useState<
+    Record<number, boolean>
+  >({});
   const [isClassroomMode, setIsClassroomMode] = useState<boolean>(false);
   const [classroomScale, setClassroomScale] = useState<number>(1.5);
   const [spotlightMode, setSpotlightMode] = useState<boolean>(true);
@@ -2245,9 +2245,9 @@ export default function DialogueDetailPage({
                 onClick={() => {
                   playClick();
                   setBlurArabic((v) => !v);
-                  setUnblurredLines({});
+                  setRevealedArabicLines({});
                 }}
-                title="Kör Dinleme (Metni Gizle): Arapça metni bulanıklaştırır; cümle çalarken veya üzerine gelince/dokununca netleşir"
+                title="Kör Dinleme (Metni Gizle): Arapça metni bulanıklaştırır; dinledikten sonra tıklayarak cümle cümle açıp kontrol edebilirsiniz"
                 aria-label="Kör Dinleme (Metni Gizle)"
                 className={`px-2.5 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
                   blurArabic
@@ -2846,7 +2846,7 @@ export default function DialogueDetailPage({
               onClick={() => {
                 playClick();
                 setBlurArabic((v) => !v);
-                setUnblurredLines({});
+                setRevealedArabicLines({});
               }}
               className={`px-3 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 cursor-pointer transition-all ${
                 blurArabic
@@ -3379,22 +3379,18 @@ export default function DialogueDetailPage({
                 );
               }
 
-              const isThisLinePlaying =
-                isPlaying ||
-                isLooping ||
-                isAppSpeakingRoleplay ||
-                isWaitingUser;
-              const shouldBlurLine =
-                blurArabic &&
-                !isThisLinePlaying &&
-                !unblurredLines[line.sira];
+              const isArabicLineRevealed = Boolean(
+                revealedArabicLines[line.sira]
+              );
+              const shouldBlurLine = blurArabic && !isArabicLineRevealed;
 
               return (
                 <div
-                  onClick={() => {
+                  onClick={(e) => {
                     if (shouldBlurLine) {
+                      e.stopPropagation();
                       playClick();
-                      setUnblurredLines((prev) => ({
+                      setRevealedArabicLines((prev) => ({
                         ...prev,
                         [line.sira]: true,
                       }));
@@ -3402,23 +3398,25 @@ export default function DialogueDetailPage({
                   }}
                   title={
                     shouldBlurLine
-                      ? "Kör Dinleme aktif: Metni netleştirmek için üzerine gelin veya dokunun"
+                      ? "Kör Dinleme aktif: Arapça metni açmak için tıklayın"
                       : undefined
                   }
                   className={`transition-all duration-300 ${
                     shouldBlurLine
-                      ? "blur-md select-none hover:blur-none cursor-pointer"
+                      ? "blur-md select-none cursor-pointer"
                       : "blur-0 opacity-100"
                   }`}
                 >
-                  <WordTooltip
-                    text={line.arapca}
-                    contextSentenceTr={line.turkce}
-                    isLineSpeaking={isPlaying}
-                    activeWordIndex={isPlaying ? activeWordIndex : null}
-                    activeWordProgress={isPlaying ? activeWordProgress : 0}
-                    isClassroomMode={isClassroomMode}
-                  />
+                  <div className={shouldBlurLine ? "pointer-events-none" : ""}>
+                    <WordTooltip
+                      text={line.arapca}
+                      contextSentenceTr={line.turkce}
+                      isLineSpeaking={isPlaying}
+                      activeWordIndex={isPlaying ? activeWordIndex : null}
+                      activeWordProgress={isPlaying ? activeWordProgress : 0}
+                      isClassroomMode={isClassroomMode}
+                    />
+                  </div>
                 </div>
               );
             };
@@ -3623,43 +3621,71 @@ export default function DialogueDetailPage({
 
                 {/* CÜMLE İÇERİĞİ (Sıkılaştırılmış Dikey Boşluklar py-1.5; Sınıf Modunda Gerçek Inline Font Çarpanı) */}
                 {currentViewMode === "columns" && !clickToRevealTr ? (
-                  <div className="md:grid md:grid-cols-2 md:gap-5 items-center space-y-1.5 md:space-y-0">
-                    <div
-                      dir="ltr"
-                      className="order-2 md:order-1 bg-white/70 dark:bg-[var(--background)]/60 rounded-xl px-3 py-2 border border-[#E6D7BE] dark:border-[var(--border)]"
-                    >
-                      <p
+                  <div className="space-y-1.5">
+                    <div className="md:grid md:grid-cols-2 md:gap-5 items-center space-y-1.5 md:space-y-0">
+                      <div
+                        dir="ltr"
+                        className="order-2 md:order-1 bg-white/70 dark:bg-[var(--background)]/60 rounded-xl px-3 py-2 border border-[#E6D7BE] dark:border-[var(--border)]"
+                      >
+                        <p
+                          style={{
+                            fontSize: isClassroomMode
+                              ? `${Math.max(
+                                  22,
+                                  Math.round(turkishFontSize * (classroomScale * 0.9))
+                                )}px`
+                              : `${turkishFontSize}px`,
+                          }}
+                          className={`text-[var(--muted)] ${
+                            isClassroomMode ? "font-medium leading-relaxed" : "font-semibold leading-snug"
+                          }`}
+                        >
+                          {line.turkce}
+                        </p>
+                      </div>
+
+                      <div
+                        dir="rtl"
                         style={{
                           fontSize: isClassroomMode
                             ? `${Math.max(
-                                22,
-                                Math.round(turkishFontSize * (classroomScale * 0.9))
+                                44,
+                                Math.round(arabicFontSize * classroomScale)
                               )}px`
-                            : `${turkishFontSize}px`,
+                            : `calc(${arabicFontSize}px * var(--font-arabic-scale, 1))`,
+                          lineHeight: isClassroomMode ? 2.1 : undefined,
                         }}
-                        className={`text-[var(--muted)] ${
-                          isClassroomMode ? "font-medium leading-relaxed" : "font-semibold leading-snug"
-                        }`}
+                        className="order-1 md:order-2 arabic font-bold text-[var(--foreground)] text-right py-1.5"
                       >
-                        {line.turkce}
-                      </p>
+                        {renderArabicLineWithHint()}
+                      </div>
                     </div>
 
-                    <div
-                      dir="rtl"
-                      style={{
-                        fontSize: isClassroomMode
-                          ? `${Math.max(
-                              44,
-                              Math.round(arabicFontSize * classroomScale)
-                            )}px`
-                          : `calc(${arabicFontSize}px * var(--font-arabic-scale, 1))`,
-                        lineHeight: isClassroomMode ? 2.1 : undefined,
-                      }}
-                      className="order-1 md:order-2 arabic font-bold text-[var(--foreground)] text-right py-1.5"
-                    >
-                      {renderArabicLineWithHint()}
-                    </div>
+                    {blurArabic && (
+                      <div
+                        dir="ltr"
+                        className="pt-1.5 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex items-center justify-end"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            playClick();
+                            setRevealedArabicLines((prev) => ({
+                              ...prev,
+                              [line.sira]: !prev[line.sira],
+                            }));
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-3 py-1 rounded-xl border border-amber-300 dark:border-amber-700 hover:border-amber-500 cursor-pointer transition-colors"
+                        >
+                          <span>
+                            {revealedArabicLines[line.sira]
+                              ? "🙈 Arapça Metni Gizle"
+                              : "👁️ Arapça Metni Göster"}
+                          </span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -3731,7 +3757,7 @@ export default function DialogueDetailPage({
                     {currentViewMode !== "turkish-only" && (
                       <div
                         dir="ltr"
-                        className="mt-1.5 pt-1.5 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] min-h-[30px] flex items-center"
+                        className="mt-1.5 pt-1.5 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] min-h-[30px] flex flex-wrap items-center justify-between gap-2"
                       >
                         {isTrRevealed ? (
                           <p
@@ -3766,8 +3792,28 @@ export default function DialogueDetailPage({
                             }}
                             className="inline-flex items-center gap-1.5 text-xs font-bold text-[#087F5B] bg-white dark:bg-[var(--background)] px-3 py-1 rounded-xl border border-[#E6D7BE] hover:border-[#0CA678] cursor-pointer"
                           >
-                            <Eye size={13} className="shrink-0" />
-                            <span>Türkçe Çeviriyi Göster</span>
+                            <span>👁️ Türkçe Çeviriyi Göster</span>
+                          </button>
+                        )}
+
+                        {blurArabic && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              playClick();
+                              setRevealedArabicLines((prev) => ({
+                                ...prev,
+                                [line.sira]: !prev[line.sira],
+                              }));
+                            }}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-3 py-1 rounded-xl border border-amber-300 dark:border-amber-700 hover:border-amber-500 cursor-pointer transition-colors ml-auto"
+                          >
+                            <span>
+                              {revealedArabicLines[line.sira]
+                                ? "🙈 Arapça Metni Gizle"
+                                : "👁️ Arapça Metni Göster"}
+                            </span>
                           </button>
                         )}
                       </div>
