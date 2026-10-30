@@ -34,10 +34,7 @@ import ShadowingModal from "@/components/ui/ShadowingModal";
 import { formatArabicText } from "@/lib/arabicTextUtils";
 import { QuizContentType } from "./MultipleChoice";
 import { ArabicIdiom } from "@/lib/arabicIdioms";
-import {
-  normalizeToCanonicalMistakeId,
-  formatSrsReviewBanner,
-} from "@/lib/mistakeUtils";
+import { normalizeToCanonicalMistakeId } from "@/lib/mistakeUtils";
 
 export interface FlashcardItem {
   id: string;
@@ -408,7 +405,6 @@ export default function Flashcard({
     : false;
   const isMarkedHard =
     hardItems.some((h) => h.id === currentCard.id) || isInMistakes;
-  const srsBannerText = formatSrsReviewBanner(currentSrsRecord, isInMistakes);
 
   const primaryArabic = currentCard.arabic;
   const cleanArabic = primaryArabic.split("/")[0].trim();
@@ -539,12 +535,6 @@ export default function Flashcard({
           {currentCard.badgeText}
         </span>
       </div>
-
-      {srsBannerText && (
-        <div className="w-full bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/40 rounded-xl px-3 py-1.5 text-[11px] font-bold text-[#4C28B5] dark:text-[#d0bfff]">
-          {srsBannerText}
-        </div>
-      )}
 
       {/* 3B DÖNEN KART ALANI */}
       <div

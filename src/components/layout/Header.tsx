@@ -170,16 +170,17 @@ export default function Header() {
       window.removeEventListener("pagehide", handlePageHide);
       stopMicTest();
     };
-  }, [stopMicTest]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startMicTest = async () => {
+    setMicStatus("testing");
+    setMicMessage("Mikrofona doğru Arapça bir kelime söyleyin...");
     // 1. Önce eski medya akışını kapat (sessionId artırmadan!)
     closeMicTestResourcesOnly();
 
     // 2. Sonra yeni oturum numarasını artır
     const sessionId = ++micTestSessionIdRef.current;
-    setMicStatus("testing");
-    setMicMessage("Mikrofona doğru Arapça bir kelime söyleyin...");
     let acquiredStream: MediaStream | null = null;
     try {
       const { micNoiseSuppression } = useSettings.getState();

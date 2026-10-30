@@ -36,11 +36,7 @@ import { useUserStore } from "@/store/userStore";
 import { formatArabicText } from "@/lib/arabicTextUtils";
 import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
 import { ArabicIdiom } from "@/lib/arabicIdioms";
-import {
-  normalizeToCanonicalMistakeId,
-  formatSrsReviewBanner,
-  formatMistakeStageProgressText,
-} from "@/lib/mistakeUtils";
+import { normalizeToCanonicalMistakeId } from "@/lib/mistakeUtils";
 
 export type QuizContentType = "words" | "idioms" | "sentences" | "mixed";
 export type FeedbackMode = "instant" | "end";
@@ -96,7 +92,7 @@ export default function MultipleChoice({
   feedbackMode = "instant",
   timeLimit,
   questionCount = 10,
-  isMistakesMode = false,
+  isMistakesMode: _isMistakesMode = false,
   onClose,
 }: Props) {
   const fanfarePlayedRef = useRef(false);
@@ -106,13 +102,7 @@ export default function MultipleChoice({
     QuizQuestionItem[] | null
   >(null);
   const { speechRate, showHareke, arabicFont } = useSettings();
-  const {
-    addStudyMinutes,
-    addMistake,
-    isMistake,
-    recordItemAttempt,
-    getSrsRecord,
-  } = useUserStore();
+  const { addStudyMinutes, addMistake, recordItemAttempt } = useUserStore();
 
   const itemsSignature = useMemo(
     () =>
@@ -1020,33 +1010,6 @@ export default function MultipleChoice({
         <p className="text-xs font-bold text-[var(--muted)]">
           {currentQuestion.metaLabel}
         </p>
-
-        {(() => {
-          const cid = normalizeToCanonicalMistakeId(
-            currentQuestion.wordId || currentQuestion.id,
-            currentQuestion.arabic
-          );
-          const srsRec = cid ? getSrsRecord(cid) : undefined;
-          const inMistakes = cid ? isMistake(cid) : false;
-          const banner = formatSrsReviewBanner(srsRec, inMistakes);
-          return (
-            <>
-              {banner && (
-                <div className="rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/35 px-3 py-1.5 text-[11px] font-bold text-[#4C28B5] dark:text-[#d0bfff] text-left">
-                  {banner}
-                </div>
-              )}
-              {feedbackMode === "instant" &&
-                Boolean(selected) &&
-                (isMistakesMode || inMistakes) &&
-                srsRec && (
-                  <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 px-3 py-1.5 text-[11px] font-extrabold text-[#065F46] dark:text-emerald-300 text-left">
-                    {formatMistakeStageProgressText(srsRec)}
-                  </div>
-                )}
-            </>
-          );
-        })()}
       </div>
 
       {/* ŞIKLAR */}

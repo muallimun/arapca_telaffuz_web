@@ -359,7 +359,8 @@ export default function DialogueDetailPage({
     roleplaySessionTokenRef.current += 1;
     roleplayFinishingRef.current = true;
     closeRoleplayMicResourcesOnly();
-  }, [closeRoleplayMicResourcesOnly]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sekme (studyMode) değiştiğinde veya başka bir diyaloğa geçildiğinde aktif rol yapma mikrofonunu derhal kapat
   useEffect(() => {
@@ -373,13 +374,13 @@ export default function DialogueDetailPage({
       });
       return () => {
         cancelAnimationFrame(raf);
-        cleanupRoleplayMic();
       };
     }
     return () => {
       cleanupRoleplayMic();
     };
-  }, [studyMode, resolvedParams.id, cleanupRoleplayMic]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studyMode, resolvedParams.id]);
 
   // Sekme arka plana atıldığında (visibilitychange -> hidden) veya sayfa kapatıldığında (pagehide) mikrofon/WebSpeech temizliği
   useEffect(() => {
@@ -402,7 +403,8 @@ export default function DialogueDetailPage({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handleBackgroundStop);
     };
-  }, [cleanupRoleplayMic]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     roleplaySpeechRef.current = new HybridSpeechManager();
@@ -464,7 +466,8 @@ export default function DialogueDetailPage({
       roleplaySpeechRef.current?.terminate();
       void releaseAllWakeLocks();
     };
-  }, [stop, resolvedParams.id, cleanupRoleplayMic]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedParams.id]);
 
   // Ödev ilerlemesini sessionStorage'da sakla
   useEffect(() => {

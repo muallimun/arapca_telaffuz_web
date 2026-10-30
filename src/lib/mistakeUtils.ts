@@ -309,31 +309,10 @@ export function formatSrsBadgeInfo(
 }
 
 export function formatSrsReviewBanner(
-  record?: SrsItemRecord | null,
-  isInMistakes?: boolean
+  _record?: SrsItemRecord | null,
+  _isInMistakes?: boolean
 ): string | null {
-  if (!record && !isInMistakes) return null;
-  if (!record) {
-    return "📌 Neden tekrar ediyorsunuz? Hata Defteri kaydı • Kademe: 0/5 • Hedef: Farklı günlerde 3 ipucusuz doğru (Kademe 3/5) ile uzun süreli hafıza";
-  }
-
-  const lastDate = new Date(record.lastReviewedAt);
-  const now = new Date();
-  const diffHours = Math.max(
-    0,
-    Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60))
-  );
-  const lastStudyLabel =
-    diffHours < 1
-      ? "Az önce"
-      : diffHours < 24
-      ? "Bugün"
-      : diffHours < 48
-      ? "Dün"
-      : `${Math.floor(diffHours / 24)} gün önce`;
-
-  const reasonPart = record.reasonTag ? `${record.reasonTag} • ` : "";
-  return `📌 Neden tekrar ediyorsunuz? ${reasonPart}Son çalışma: ${lastStudyLabel} • Kademe: ${record.stage}/5 • Hedef: Uzun süreli hafıza`;
+  return null;
 }
 
 export function formatMistakeStageProgressText(

@@ -223,6 +223,10 @@ export default function ShadowingModal({
   const isMountedRef = useRef<boolean>(true);
   const recordingSessionIdRef = useRef<number>(0);
   const modalRef = useRef<HTMLDivElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   const stopPreviousMediaOnly = useCallback(() => {
     if (recordingTimerRef.current !== null) {
@@ -283,14 +287,16 @@ export default function ShadowingModal({
     recordingSessionIdRef.current += 1;
     isStartingRef.current = false;
     stopPreviousMediaOnly();
-  }, [stopPreviousMediaOnly]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleClose = useCallback(() => {
     isMountedRef.current = false;
     cleanupMediaResources();
     stopAllAudio();
-    onClose();
-  }, [cleanupMediaResources, onClose]);
+    onCloseRef.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Unmount sırasında veya sekme gizlendiğinde açık kalan MediaStream, AudioContext, RAF ve Web Speech kaydını KESİNLİKLE kapat
   useEffect(() => {
@@ -351,7 +357,8 @@ export default function ShadowingModal({
       cleanupMediaResources();
       speechManagerRef.current?.terminate();
     };
-  }, [cleanupMediaResources, handleClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -535,10 +542,11 @@ export default function ShadowingModal({
   };
 
   const startRecording = async () => {
-    // 1. Varsa takılı kalmış isStartingRef veya isAnalyzing kilitlerini sıfırla
+    // 1. İLK SATIRDA kayıt durumunu derhal true yap ki buton anında kırmızı "⏹ Kaydı Durdur ve Analiz Et" butonuna dönüşsün
     isStartingRef.current = false;
-    setIsAnalyzing(false);
     setMicError(null);
+    setIsAnalyzing(false);
+    setIsRecording(true);
 
     // Arka planda çalan diyalog veya TTS sesinin mikrofona karışmaması için anında sustur
     audioStore.stop();
@@ -580,6 +588,19 @@ export default function ShadowingModal({
     interimTranscriptRef.current = "";
     backupBrowserTranscriptRef.current = "";
 
+    // Süre sayacını anında başlat
+    let elapsedTenths = 0;
+    recordingTimerRef.current = setInterval(() => {
+      if (
+        !isMountedRef.current ||
+        sessionId !== recordingSessionIdRef.current
+      ) {
+        return;
+      }
+      elapsedTenths += 1;
+      setUserDuration(elapsedTenths / 10);
+    }, 100);
+
     let stream: MediaStream | null = null;
     try {
       const {
@@ -610,20 +631,6 @@ export default function ShadowingModal({
       }
 
       mediaStreamRef.current = stream;
-
-      // 5. stream alındığı anda DERHAL setIsRecording(true) çağır ve süre sayacını başlat
-      setIsRecording(true);
-      let elapsedTenths = 0;
-      recordingTimerRef.current = setInterval(() => {
-        if (
-          !isMountedRef.current ||
-          sessionId !== recordingSessionIdRef.current
-        ) {
-          return;
-        }
-        elapsedTenths += 1;
-        setUserDuration(elapsedTenths / 10);
-      }, 100);
 
       // Kelime sayısına göre dinamik maksimum kayıt süresi (15 sn - 45 sn arası) ve 2.5 sn sessizlik toleransı
       const targetWords = activeText.trim().split(/\s+/).filter(Boolean);

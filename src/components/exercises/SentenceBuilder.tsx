@@ -34,11 +34,7 @@ import {
 import ShareAchievementModal from "@/components/ui/ShareAchievementModal";
 import { ArabicIdiom, extractDialoguesIdioms } from "@/lib/arabicIdioms";
 import { QuizContentType } from "./MultipleChoice";
-import {
-  normalizeToCanonicalMistakeId,
-  formatSrsReviewBanner,
-  formatMistakeStageProgressText,
-} from "@/lib/mistakeUtils";
+import { normalizeToCanonicalMistakeId } from "@/lib/mistakeUtils";
 
 export interface SentenceBuilderQuestion {
   id: string;
@@ -103,18 +99,12 @@ export default function SentenceBuilder({
   questionCount = 10,
   timeLimit = null,
   feedbackMode = "instant",
-  isMistakesMode = false,
+  isMistakesMode: _isMistakesMode = false,
   onClose,
 }: SentenceBuilderProps) {
   const { playAudio, playTTS, stop } = useAudioStore();
   const { showHareke, arabicFont, speechRate } = useSettings();
-  const {
-    addStudyMinutes,
-    addMistake,
-    isMistake,
-    recordItemAttempt,
-    getSrsRecord,
-  } = useUserStore();
+  const { addStudyMinutes, addMistake, recordItemAttempt } = useUserStore();
   const wrongAttemptedQuestionsRef = useRef<Set<string>>(new Set());
   const usedHintQuestionsRef = useRef<Set<string>>(new Set());
   const lastLoadedQuestionKeyRef = useRef<string>("");
@@ -887,32 +877,6 @@ export default function SentenceBuilder({
             “{currentQ.turkish}”
           </p>
         </div>
-
-        {(() => {
-          const cid = normalizeToCanonicalMistakeId(
-            currentQ.id,
-            currentQ.fullArabic
-          );
-          const srsRec = cid ? getSrsRecord(cid) : undefined;
-          const inMistakes = cid ? isMistake(cid) : false;
-          const banner = formatSrsReviewBanner(srsRec, inMistakes);
-          return (
-            <>
-              {banner && (
-                <div className="rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/35 px-3 py-1.5 text-[11px] font-bold text-[#4C28B5] dark:text-[#d0bfff] text-left">
-                  {banner}
-                </div>
-              )}
-              {evalState === "correct" &&
-                (isMistakesMode || inMistakes) &&
-                srsRec && (
-                  <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 px-3 py-1.5 text-[11px] font-extrabold text-[#065F46] dark:text-emerald-300 text-left">
-                    {formatMistakeStageProgressText(srsRec)}
-                  </div>
-                )}
-            </>
-          );
-        })()}
       </div>
 
       {/* 2. CÜMLE KURMA ALANI (ÜST KUTU — RTL Sağdan Sola Dizilim) */}

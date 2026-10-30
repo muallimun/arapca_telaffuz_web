@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, Square, Play, RotateCcw, Sparkles } from "lucide-react";
 import {
   playRecordStart,
@@ -30,7 +30,7 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
   const isMountedRef = useRef<boolean>(true);
   const sessionTokenRef = useRef<number>(0);
 
-  const closePreviousSessionOnly = () => {
+  const closePreviousSessionOnly = useCallback(() => {
     if (sessionRef.current) {
       const activeSession = sessionRef.current;
       sessionRef.current = null;
@@ -49,7 +49,7 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
       }
       streamRef.current = null;
     }
-  };
+  }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -78,6 +78,7 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
       closePreviousSessionOnly();
       if (initialPlayer) initialPlayer.pause();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -87,14 +88,16 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
   }, [audioUrl]);
 
   const startRecording = async () => {
+    // 1. İLK SATIRDA kayıt durumunu derhal true yap ki buton anında kırmızı "Kaydı Durdur" butonuna dönüşsün
     setErrorMsg(null);
+    setIsRecording(true);
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
 
-    // 1. Önce eski medya akışını kapat (sessionToken artırmadan!)
+    // 2. Önce eski medya akışını kapat (sessionToken artırmadan!)
     closePreviousSessionOnly();
 
-    // 2. Sonra yeni oturum numarasını artır
+    // 3. Sonra yeni oturum numarasını artır
     const sessionId = ++sessionTokenRef.current;
     playRecordStart();
 
@@ -119,9 +122,6 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
       }
 
       streamRef.current = stream;
-
-      // stream alındığı anda DERHAL setIsRecording(true) çağır
-      setIsRecording(true);
 
       const targetWords = (text || "").trim().split(/\s+/).filter(Boolean);
       const maxRecordingDurationMs = Math.max(
