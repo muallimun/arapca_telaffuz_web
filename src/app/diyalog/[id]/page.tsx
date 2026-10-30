@@ -1632,8 +1632,8 @@ export default function DialogueDetailPage({
     <div
       className={
         isClassroomMode
-          ? "space-y-4 max-w-7xl w-full lg:w-[min(80rem,calc(100vw-2rem))] lg:relative lg:left-1/2 lg:-translate-x-1/2 px-1 sm:px-4 md:px-8 transition-all duration-300"
-          : "space-y-3"
+          ? "space-y-4 max-w-7xl w-full lg:w-[min(80rem,calc(100vw-2rem))] lg:relative lg:left-1/2 lg:-translate-x-1/2 px-1 sm:px-4 md:px-8 pb-28 md:pb-10 transition-all duration-300"
+          : "space-y-3 pb-28 md:pb-10"
       }
     >
       {/* GÖLGELEME VE TELAFFUZ KOÇU MODALI */}
@@ -2223,7 +2223,7 @@ export default function DialogueDetailPage({
                 {mounted ? (speechRate === 1 ? "1.0x" : `${speechRate}x`) : "1.0x"}
               </button>
 
-              {/* 3. Hareke İkon Butonu (✨ w-8 h-8) */}
+              {/* 3. Hareke Butonu (✨ Hareke) */}
               <button
                 type="button"
                 onClick={() => {
@@ -2232,16 +2232,17 @@ export default function DialogueDetailPage({
                 }}
                 data-tooltip="Harekeli / Harekesiz Görünüm"
                 aria-label="Harekeli / Harekesiz"
-                className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                className={`px-2.5 py-1.5 rounded-xl border flex items-center gap-1 text-xs font-extrabold transition-all cursor-pointer shrink-0 ${
                   !mounted || showHareke
                     ? "bg-[#0CA678]/15 border-[#0CA678] text-[#087F5B] dark:text-[#20c997]"
                     : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
-                <Sparkles size={14} />
+                <Sparkles size={13} className="shrink-0" />
+                <span>Hareke</span>
               </button>
 
-              {/* 4. Canlandırma / Rol Yapma Hızlı İkon Butonu (🎭 w-8 h-8) */}
+              {/* 4. Canlandırma / Rol Yapma Hızlı İkon Butonu (Masaüstünde görünür, mobilde sekmede/menüde) */}
               <button
                 type="button"
                 onClick={() => {
@@ -2258,7 +2259,7 @@ export default function DialogueDetailPage({
                 }}
                 data-tooltip="Karşılıklı Rol Yapma (Role-Play) Modu"
                 aria-label="Rol Yapma Modu"
-                className={`w-8 h-8 rounded-xl border flex items-center justify-center text-sm transition-all cursor-pointer shrink-0 ${
+                className={`hidden sm:flex w-8 h-8 rounded-xl border items-center justify-center text-sm transition-all cursor-pointer shrink-0 ${
                   studyMode === "roleplay"
                     ? "bg-[#6741D9] border-[#5230B5] text-white shadow-2xs"
                     : "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9]/50 hover:border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff]"
@@ -2282,7 +2283,7 @@ export default function DialogueDetailPage({
                 <span>PDF</span>
               </button>
 
-              {/* 6. Öğretmen İçin "Ödev" Butonu */}
+              {/* 6. Öğretmen İçin "Ödev" Butonu (Masaüstünde doğrudan, mobilde ••• menüsünde) */}
               <button
                 type="button"
                 onClick={() => {
@@ -2291,13 +2292,13 @@ export default function DialogueDetailPage({
                 }}
                 data-tooltip="Öğretmen-Öğrenci Ödev Bağlantısı ve Karekodu Oluştur"
                 aria-label="Ödev Oluştur"
-                className="px-2.5 py-1.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/50 hover:border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff] flex items-center gap-1 text-xs font-extrabold transition-all cursor-pointer shrink-0"
+                className="hidden sm:flex px-2.5 py-1.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/50 hover:border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff] items-center gap-1 text-xs font-extrabold transition-all cursor-pointer shrink-0"
               >
                 <GraduationCap size={13} className="shrink-0" />
                 <span>Ödev</span>
               </button>
 
-              {/* 7. İndirilebilir Çevrimdışı Ders Paketi Butonu (İndir / Çevrimdışı Hazır) */}
+              {/* 7. İndirilebilir Çevrimdışı Ders Paketi Butonu (Masaüstünde doğrudan, mobilde ••• menüsünde) */}
               <button
                 type="button"
                 onClick={() => {
@@ -2315,7 +2316,7 @@ export default function DialogueDetailPage({
                     : `Bu diyaloğun seslerini çevrimdışı kullanım için indir (~${offlineEstimatedMb} MB)`
                 }
                 aria-label="Çevrimdışı İndir"
-                className={`px-2.5 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
+                className={`hidden sm:flex px-2.5 py-1.5 rounded-xl border text-xs font-extrabold items-center gap-1 transition-all cursor-pointer shrink-0 ${
                   isOfflineReady
                     ? "bg-emerald-600 hover:bg-emerald-700 border-emerald-800 text-white shadow-2xs"
                     : isDownloadingOffline
@@ -2343,7 +2344,7 @@ export default function DialogueDetailPage({
                 )}
               </button>
 
-              {/* 8. Kör Dinleme (Bulanık Metin) Modu Butonu */}
+              {/* 8. Kör Dinleme (Bulanık Metin) Modu Butonu (Masaüstünde doğrudan, mobilde ••• menüsünde) */}
               <button
                 type="button"
                 onClick={() => {
@@ -2353,7 +2354,7 @@ export default function DialogueDetailPage({
                 }}
                 data-tooltip="Kör Dinleme: Arapça metni bulanıklaştırır, tıklayarak cümle cümle açabilirsiniz"
                 aria-label="Kör Dinleme (Metni Gizle)"
-                className={`px-2.5 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
+                className={`hidden sm:flex px-2.5 py-1.5 rounded-xl border text-xs font-extrabold items-center gap-1 transition-all cursor-pointer shrink-0 ${
                   blurArabic
                     ? "bg-amber-600 border-amber-800 text-white shadow-2xs"
                     : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-amber-500 text-[var(--foreground)]"
@@ -2500,6 +2501,111 @@ export default function DialogueDetailPage({
                     >
                       <X size={14} />
                     </button>
+                  </div>
+
+                  {/* Mobilde (•••) Menüsüne Taşınan Hızlı Araçlar: Ödev, İndir, Kör Dinleme, Akıllı Tahta Modu */}
+                  <div className="sm:hidden space-y-1">
+                    <span className="text-[10px] font-extrabold uppercase text-[var(--muted)] block">
+                      Ek Araçlar &amp; Modlar
+                    </span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setIsMoreMenuOpen(false);
+                          setIsTeacherHwModalOpen(true);
+                        }}
+                        className="py-2 px-2.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/50 text-[#4C28B5] dark:text-[#d0bfff] flex items-center justify-center gap-1.5 text-xs font-extrabold cursor-pointer"
+                      >
+                        <GraduationCap size={13} className="shrink-0" />
+                        <span>Ödev Oluştur</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isDownloadingOffline}
+                        onClick={() => {
+                          if (isOfflineReady) {
+                            playClick();
+                            setShowOfflineNotice((v) => !v);
+                          } else {
+                            void handleDownloadOfflineDialogue();
+                          }
+                        }}
+                        className={`py-2 px-2.5 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer ${
+                          isOfflineReady
+                            ? "bg-emerald-600 border-emerald-800 text-white"
+                            : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"
+                        }`}
+                      >
+                        {isOfflineReady ? (
+                          <>
+                            <CheckCircle2 size={12} className="shrink-0" />
+                            <span>Çevrimdışı Hazır</span>
+                          </>
+                        ) : isDownloadingOffline ? (
+                          <>
+                            <Download size={12} className="animate-bounce shrink-0" />
+                            <span>%{offlineProgressPct}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download size={12} className="text-emerald-600 shrink-0" />
+                            <span>İndir (~{offlineEstimatedMb} MB)</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setBlurArabic((v) => !v);
+                          setRevealedArabicLines({});
+                        }}
+                        className={`py-2 px-2.5 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer ${
+                          blurArabic
+                            ? "bg-amber-600 border-amber-800 text-white"
+                            : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"
+                        }`}
+                      >
+                        <Eye
+                          size={13}
+                          className={
+                            blurArabic
+                              ? "text-white shrink-0"
+                              : "text-amber-600 shrink-0"
+                          }
+                        />
+                        <span>Kör Dinleme</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClick();
+                          setIsMoreMenuOpen(false);
+                          setIsClassroomMode((v) => {
+                            const next = !v;
+                            if (next && selectedClassroomLine === null) {
+                              setSelectedClassroomLine(
+                                dialogue.satirlar[0]?.sira ?? 1
+                              );
+                              setFocusedLineIndex(0);
+                            }
+                            return next;
+                          });
+                        }}
+                        className={`py-2 px-2.5 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer ${
+                          isClassroomMode
+                            ? "bg-[#0CA678] border-[#087F5B] text-white"
+                            : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"
+                        }`}
+                      >
+                        <span>🖥️ Akıllı Tahta</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Görünüm Modu İkonları */}

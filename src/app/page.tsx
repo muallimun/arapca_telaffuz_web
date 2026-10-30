@@ -347,7 +347,7 @@ export default function HomePage() {
       {/* BÖLÜM 1.5: BUGÜN NE ÇALIŞMALIYIM? (~12 DAKİKALIK AKILLI PAKET) */}
       <section
         aria-label="Bugün Ne Çalışmalıyım? Akıllı Günlük Çalışma Paketi"
-        className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#0CA678] dark:border-[#0CA678]/80 border-b-4 p-3.5 sm:p-4 space-y-3"
+        className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#0CA678] dark:border-[#0CA678]/80 border-b-4 pt-4 sm:pt-5 px-3.5 sm:px-4 pb-3.5 sm:pb-4 space-y-3"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-3">
           <div className="space-y-0.5">

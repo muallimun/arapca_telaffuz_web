@@ -8,7 +8,7 @@ const GOOGLE_SCRIPT_URL =
 const COUNTER_API_BASE = "https://api.counterapi.dev/v1/muallimun_arapca_app";
 
 interface InMemoryStats {
-  date: string;
+  dateKey: string;
   totalUnique: number;
   todayVisits: number;
   totalViews: number;
@@ -19,12 +19,25 @@ declare global {
   var __muallimunStats: InMemoryStats | undefined;
 }
 
-function getTodayDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function getIstanbulDateKey(): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Istanbul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const year = parts.find((p) => p.type === "year")?.value ?? "2026";
+    const month = parts.find((p) => p.type === "month")?.value ?? "01";
+    const day = parts.find((p) => p.type === "day")?.value ?? "01";
+    return `${year}_${month}_${day}`;
+  } catch {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}_${month}_${day}`;
+  }
 }
 
 function getOrUpdateInMemoryStats(
@@ -32,10 +45,10 @@ function getOrUpdateInMemoryStats(
   isToday: boolean,
   isSession: boolean
 ): InMemoryStats {
-  const todayStr = getTodayDateString();
+  const todayKey = getIstanbulDateKey();
   if (!globalThis.__muallimunStats) {
     globalThis.__muallimunStats = {
-      date: todayStr,
+      dateKey: todayKey,
       totalUnique: 1,
       todayVisits: 1,
       totalViews: 1,
@@ -43,10 +56,10 @@ function getOrUpdateInMemoryStats(
   }
 
   const mem = globalThis.__muallimunStats;
-  if (mem.date !== todayStr) {
-    mem.date = todayStr;
-    mem.todayVisits = Math.max(1, isToday ? 1 : mem.todayVisits);
-  } else if (isToday) {
+  if (mem.dateKey !== todayKey) {
+    mem.dateKey = todayKey;
+    mem.todayVisits = 1;
+  } else if (isToday || isUnique) {
     mem.todayVisits += 1;
   }
 
@@ -57,9 +70,9 @@ function getOrUpdateInMemoryStats(
     mem.totalViews += 1;
   }
 
-  mem.totalUnique = Math.max(1, mem.totalUnique);
-  mem.todayVisits = Math.max(1, Math.min(mem.todayVisits, mem.totalUnique));
-  mem.totalViews = Math.max(mem.totalUnique, mem.totalViews);
+  mem.todayVisits = Math.max(1, mem.todayVisits);
+  mem.totalUnique = Math.max(mem.totalUnique, mem.todayVisits);
+  mem.totalViews = Math.max(mem.totalViews, mem.totalUnique);
 
   return mem;
 }
@@ -85,46 +98,22 @@ async function fetchWithTimeout(
   }
 }
 
-async function tryGoogleAppsScript(
-  unique: string,
-  today: string,
-  session: string
-): Promise<{ totalUnique: number; todayVisits: number; totalViews: number } | null> {
-  try {
-    const targetUrl = `${GOOGLE_SCRIPT_URL}?action=hit&unique=${unique}&today=${today}&session=${session}`;
-    const res = await fetchWithTimeout(targetUrl, 3500);
-    if (!res.ok) return null;
-    const text = await res.text();
-    if (!text || text.trim().startsWith("<")) return null;
-    const data = JSON.parse(text);
-    if (
-      data &&
-      typeof data.totalUnique === "number" &&
-      data.totalUnique > 0
-    ) {
-      return {
-        totalUnique: Math.max(1, Math.floor(data.totalUnique)),
-        todayVisits: Math.max(1, Math.floor(Number(data.todayVisits) || 1)),
-        totalViews: Math.max(1, Math.floor(Number(data.totalViews) || 1)),
-      };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 async function hitOrReadCounterKey(
   key: string,
   increment: boolean
 ): Promise<number | null> {
   try {
     const suffix = increment ? "/up" : "/";
-    const res = await fetchWithTimeout(`${COUNTER_API_BASE}/${key}${suffix}`, 3500);
+    const res = await fetchWithTimeout(
+      `${COUNTER_API_BASE}/${key}${suffix}`,
+      3500
+    );
     if (!res.ok) {
-      // Eğer henüz oluşturulmamış bir anahtar okunuyorsa /up ile başlat
       if (!increment) {
-        const initRes = await fetchWithTimeout(`${COUNTER_API_BASE}/${key}/up`, 3500);
+        const initRes = await fetchWithTimeout(
+          `${COUNTER_API_BASE}/${key}/up`,
+          3500
+        );
         if (initRes.ok) {
           const initJson = await initRes.json();
           if (typeof initJson?.count === "number" && initJson.count > 0) {
@@ -144,32 +133,79 @@ async function hitOrReadCounterKey(
   }
 }
 
-async function tryCounterApi(
+async function tryCounterApiThreeKeys(
   isUnique: boolean,
   isToday: boolean,
   isSession: boolean
-): Promise<{ totalUnique: number; todayVisits: number; totalViews: number } | null> {
+): Promise<{
+  totalUnique: number;
+  todayVisits: number;
+  totalViews: number;
+} | null> {
   try {
-    const todayKey = `visits_${getTodayDateString().replace(/-/g, "")}`;
-    const [uniqueCount, todayCount, viewsCount] = await Promise.all([
+    const todayKey = getIstanbulDateKey();
+    const [uniqueCount, dailyCount, sessionCount] = await Promise.all([
       hitOrReadCounterKey("unique_visitors", isUnique),
-      hitOrReadCounterKey(todayKey, isToday),
-      hitOrReadCounterKey("total_visits", isSession),
+      hitOrReadCounterKey(`daily_${todayKey}`, isToday || isUnique),
+      hitOrReadCounterKey("study_sessions", isSession),
     ]);
 
-    if (uniqueCount === null && todayCount === null && viewsCount === null) {
+    if (
+      uniqueCount === null &&
+      dailyCount === null &&
+      sessionCount === null
+    ) {
       return null;
     }
 
-    const validUnique = Math.max(1, uniqueCount ?? todayCount ?? 1);
-    const validToday = Math.max(1, todayCount ?? 1);
-    const validViews = Math.max(validUnique, viewsCount ?? validUnique);
+    const todayVisits = Math.max(1, dailyCount ?? 1);
+    const totalUnique = Math.max(uniqueCount ?? 1, todayVisits);
+    const totalViews = Math.max(sessionCount ?? 1, totalUnique);
 
     return {
-      totalUnique: validUnique,
-      todayVisits: validToday,
-      totalViews: validViews,
+      totalUnique,
+      todayVisits,
+      totalViews,
     };
+  } catch {
+    return null;
+  }
+}
+
+async function tryGoogleAppsScript(
+  unique: string,
+  today: string,
+  session: string
+): Promise<{
+  totalUnique: number;
+  todayVisits: number;
+  totalViews: number;
+} | null> {
+  try {
+    const targetUrl = `${GOOGLE_SCRIPT_URL}?action=hit&unique=${unique}&today=${today}&session=${session}`;
+    const res = await fetchWithTimeout(targetUrl, 3500);
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (!text || text.trim().startsWith("<")) return null;
+    const data = JSON.parse(text);
+    if (
+      data &&
+      typeof data.totalUnique === "number" &&
+      data.totalUnique > 0
+    ) {
+      const todayVisits = Math.max(1, Math.floor(Number(data.todayVisits) || 1));
+      const totalUnique = Math.max(Math.floor(data.totalUnique), todayVisits);
+      const totalViews = Math.max(
+        Math.floor(Number(data.totalViews) || 1),
+        totalUnique
+      );
+      return {
+        totalUnique,
+        todayVisits,
+        totalViews,
+      };
+    }
+    return null;
   } catch {
     return null;
   }
@@ -185,43 +221,43 @@ export async function GET(req: NextRequest) {
   const isToday = today === "1";
   const isSession = session === "1";
 
-  // 1. Sunucu belleğindeki kalıcı sayacı güncelle (her koşulda 200 OK garantisi)
   const memStats = getOrUpdateInMemoryStats(isUnique, isToday, isSession);
 
-  // 2. Paralel olarak CounterAPI ve Google Apps Script'i dene (3500ms timeout)
   const [counterData, gasData] = await Promise.all([
-    tryCounterApi(isUnique, isToday, isSession),
+    tryCounterApiThreeKeys(isUnique, isToday, isSession),
     tryGoogleAppsScript(unique, today, session),
   ]);
 
-  const finalTotalUnique = Math.max(
-    memStats.totalUnique,
+  // CounterAPI 3 ayrı anahtarla çalışıyorsa öncelikle onun ayrıştırılmış gerçek değerlerini baz al
+  const resolvedTodayVisits =
+    counterData?.todayVisits ??
+    gasData?.todayVisits ??
+    memStats.todayVisits;
+
+  const resolvedTotalUnique = Math.max(
     counterData?.totalUnique ?? 0,
-    gasData?.totalUnique ?? 0
-  );
-  const finalTodayVisits = Math.max(
-    memStats.todayVisits,
-    counterData?.todayVisits ?? 0,
-    gasData?.todayVisits ?? 0
-  );
-  const finalTotalViews = Math.max(
-    finalTotalUnique,
-    memStats.totalViews,
-    counterData?.totalViews ?? 0,
-    gasData?.totalViews ?? 0
+    gasData?.totalUnique ?? 0,
+    memStats.totalUnique,
+    resolvedTodayVisits
   );
 
-  // Bellek içi sayacı da en yüksek gerçek değerlerle senkronize et
-  memStats.totalUnique = finalTotalUnique;
-  memStats.todayVisits = finalTodayVisits;
-  memStats.totalViews = finalTotalViews;
+  const resolvedTotalViews = Math.max(
+    counterData?.totalViews ?? 0,
+    gasData?.totalViews ?? 0,
+    memStats.totalViews,
+    resolvedTotalUnique
+  );
+
+  memStats.todayVisits = resolvedTodayVisits;
+  memStats.totalUnique = resolvedTotalUnique;
+  memStats.totalViews = resolvedTotalViews;
 
   return NextResponse.json(
     {
       ok: true,
-      totalUnique: finalTotalUnique,
-      todayVisits: finalTodayVisits,
-      totalViews: finalTotalViews,
+      totalUnique: resolvedTotalUnique,
+      todayVisits: resolvedTodayVisits,
+      totalViews: resolvedTotalViews,
     },
     {
       status: 200,

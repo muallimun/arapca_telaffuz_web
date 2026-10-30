@@ -799,8 +799,8 @@ export default function GuideAndInfoModal() {
           </div>
         </div>
 
-        {/* ALT PAYLAŞ, HATA BİLDİR & KAPAT BUTONLARI */}
-        <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-5 py-3 border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+        {/* ALT PAYLAŞ, İLETİŞİM & KAPAT BUTONLARI */}
+        <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-4 sm:px-5 py-3 border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-2 shrink-0 whitespace-nowrap">
           <button
             type="button"
             onClick={() => {
@@ -808,14 +808,14 @@ export default function GuideAndInfoModal() {
               setIsOpen(false);
               triggerFeedbackModal();
             }}
-            data-tooltip="Hata Bildirimi, Eksik Kelime/Hareke veya Öneri Gönderin"
+            data-tooltip="Görüş, Öneri ve Hata Bildirim Formu"
             data-tooltip-pos="top"
-            className="h-9 px-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 border-2 border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer"
+            className="h-9 px-3 sm:px-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 border-2 border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
           >
-            <span>💬 Görüş, Öneri ve Hata Bildir</span>
+            <span>💬 İletişim</span>
           </button>
 
-          <div className="flex flex-wrap items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 ml-auto shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -824,10 +824,10 @@ export default function GuideAndInfoModal() {
               }}
               data-tooltip="Uygulamayı Arkadaşlarınızla ve Öğrencilerinizle Paylaşın"
               data-tooltip-pos="top"
-              className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white text-xs font-extrabold border-b-3 border-[#4C28B5] flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              className="h-9 px-3.5 sm:px-4 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white text-xs font-extrabold border-b-3 border-[#4C28B5] flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Share2 size={14} />
-              <span>Uygulamayı Paylaş</span>
+              <span>Paylaş</span>
             </button>
 
             <button
@@ -836,9 +836,9 @@ export default function GuideAndInfoModal() {
                 playClick();
                 setIsOpen(false);
               }}
-              className="h-9 px-5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white text-xs font-extrabold border-b-3 border-[#087F5B] cursor-pointer"
+              className="h-9 px-4 sm:px-5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white text-xs font-extrabold border-b-3 border-[#087F5B] cursor-pointer"
             >
-              Anladım, Kapat
+              Kapat
             </button>
           </div>
         </div>

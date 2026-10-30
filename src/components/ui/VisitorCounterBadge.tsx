@@ -27,11 +27,24 @@ let inFlightPromise: Promise<VisitorStatsData> | null = null;
 let latestMemoryStats: VisitorStatsData | null = null;
 
 function getTodayDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Istanbul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const year = parts.find((p) => p.type === "year")?.value ?? "2026";
+    const month = parts.find((p) => p.type === "month")?.value ?? "01";
+    const day = parts.find((p) => p.type === "day")?.value ?? "01";
+    return `${year}-${month}-${day}`;
+  } catch {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
 }
 
 function readCachedStats(): VisitorStatsData {
@@ -46,11 +59,14 @@ function readCachedStats(): VisitorStatsData {
       typeof parsed.totalUnique === "number" &&
       parsed.totalUnique > 0
     ) {
+      const todayVisits = Math.max(1, Number(parsed.todayVisits) || 1);
+      const totalUnique = Math.max(todayVisits, Number(parsed.totalUnique) || 1);
+      const totalViews = Math.max(totalUnique, Number(parsed.totalViews) || 1);
       return {
         ok: true,
-        totalUnique: Math.max(1, parsed.totalUnique),
-        todayVisits: Math.max(1, Number(parsed.todayVisits) || 1),
-        totalViews: Math.max(1, Number(parsed.totalViews) || 1),
+        totalUnique,
+        todayVisits,
+        totalViews,
       };
     }
   } catch {
@@ -97,11 +113,14 @@ async function fetchAndRegisterVisitorStats(): Promise<VisitorStatsData> {
       if (res.ok) {
         const json = await res.json();
         if (json && typeof json.totalUnique === "number" && json.totalUnique > 0) {
+          const todayVisits = Math.max(1, Number(json.todayVisits) || 1);
+          const totalUnique = Math.max(todayVisits, Number(json.totalUnique) || 1);
+          const totalViews = Math.max(totalUnique, Number(json.totalViews) || 1);
           result = {
             ok: true,
-            totalUnique: Math.max(1, Number(json.totalUnique)),
-            todayVisits: Math.max(1, Number(json.todayVisits) || 1),
-            totalViews: Math.max(1, Number(json.totalViews) || 1),
+            totalUnique,
+            todayVisits,
+            totalViews,
           };
         }
       }
@@ -192,8 +211,8 @@ export default function VisitorCounterBadge({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span className="text-[11px] sm:text-xs font-extrabold text-[#087F5B] dark:text-emerald-300 uppercase tracking-wider truncate">
-              CANLI ZİYARETÇİ VE ÇALIŞMA İSTATİSTİKLERİ
+            <span className="text-xs font-bold text-[#087F5B] dark:text-emerald-300 uppercase tracking-wide">
+              CANLI ZİYARETÇİ İSTATİSTİKLERİ
             </span>
           </div>
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 shrink-0">
@@ -203,8 +222,8 @@ export default function VisitorCounterBadge({
 
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <div className="p-2.5 sm:p-3.5 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] text-center flex flex-col items-center justify-center gap-1 min-w-0">
-            <span className="text-[10px] sm:text-[11px] font-bold text-[var(--muted)] leading-tight line-clamp-1">
-              Toplam Ziyaretçi
+            <span className="text-[10px] sm:text-xs font-bold text-[var(--muted)] leading-tight whitespace-nowrap">
+              Toplam Kişi
             </span>
             <div className="flex items-center justify-center gap-1 text-[#087F5B] dark:text-emerald-300">
               <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 opacity-85" />
@@ -215,8 +234,8 @@ export default function VisitorCounterBadge({
           </div>
 
           <div className="p-2.5 sm:p-3.5 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] text-center flex flex-col items-center justify-center gap-1 min-w-0">
-            <span className="text-[10px] sm:text-[11px] font-bold text-[var(--muted)] leading-tight line-clamp-1">
-              Bugünkü Ziyaret
+            <span className="text-[10px] sm:text-xs font-bold text-[var(--muted)] leading-tight whitespace-nowrap">
+              Bugün
             </span>
             <div className="flex items-center justify-center gap-1 text-[#6741D9] dark:text-indigo-300">
               <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 opacity-85" />
@@ -227,8 +246,8 @@ export default function VisitorCounterBadge({
           </div>
 
           <div className="p-2.5 sm:p-3.5 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] text-center flex flex-col items-center justify-center gap-1 min-w-0">
-            <span className="text-[10px] sm:text-[11px] font-bold text-[var(--muted)] leading-tight line-clamp-1">
-              Çalışma Oturumu
+            <span className="text-[10px] sm:text-xs font-bold text-[var(--muted)] leading-tight whitespace-nowrap">
+              Toplam Oturum
             </span>
             <div className="flex items-center justify-center gap-1 text-amber-700 dark:text-amber-300">
               <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 opacity-85" />
