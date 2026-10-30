@@ -163,6 +163,12 @@ export default function DialogueDetailPage({
   const [isClassroomMode, setIsClassroomMode] = useState<boolean>(false);
   const [classroomScale, setClassroomScale] = useState<number>(1.5);
   const [spotlightMode, setSpotlightMode] = useState<boolean>(true);
+  const [focusedLineIndex, setFocusedLineIndex] = useState<number>(0);
+  const [isClassroomLoop, setIsClassroomLoop] = useState<boolean>(false);
+  const isClassroomLoopRef = useRef<boolean>(false);
+  isClassroomLoopRef.current = isClassroomLoop;
+  const isClassroomModeRef = useRef<boolean>(false);
+  isClassroomModeRef.current = isClassroomMode;
   const [selectedClassroomLine, setSelectedClassroomLine] = useState<
     number | null
   >(1);
@@ -512,7 +518,7 @@ export default function DialogueDetailPage({
       roleplaySpeakingLine ??
       playingLineId ??
       shadowingPauseLineSira ??
-      (isClassroomMode ? selectedClassroomLine : null);
+      null;
     if (targetLine !== null && lineRefs.current[targetLine]) {
       lineRefs.current[targetLine]?.scrollIntoView({
         behavior: "smooth",
@@ -524,17 +530,32 @@ export default function DialogueDetailPage({
     shadowingPauseLineSira,
     roleplayActiveLine,
     roleplaySpeakingLine,
-    isClassroomMode,
-    selectedClassroomLine,
   ]);
 
   useEffect(() => {
+    if (!isClassroomMode) return;
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`classroom-line-${focusedLineIndex}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+  }, [focusedLineIndex, isClassroomMode]);
+
+  useEffect(() => {
+    if (!dialogue) return;
     if (playingLineId !== null) {
       setSelectedClassroomLine(playingLineId);
+      const idx = dialogue.satirlar.findIndex((s) => s.sira === playingLineId);
+      if (idx >= 0) setFocusedLineIndex(idx);
     } else if (shadowingPauseLineSira !== null) {
       setSelectedClassroomLine(shadowingPauseLineSira);
+      const idx = dialogue.satirlar.findIndex(
+        (s) => s.sira === shadowingPauseLineSira
+      );
+      if (idx >= 0) setFocusedLineIndex(idx);
     }
-  }, [playingLineId, shadowingPauseLineSira]);
+  }, [dialogue, playingLineId, shadowingPauseLineSira]);
 
   // Gölgeleme Boşluğu (Shadowing Pause) görsel geri sayım animasyonu
   useEffect(() => {
@@ -907,6 +928,26 @@ export default function DialogueDetailPage({
       }
     }
 
+    // 1.5. Eğer Sınıf Modunda Tekrarlı Dinleme (isClassroomLoop) açıksa ve tek cümle dinleniyorsa 1 sn (1000ms) bekleyip tekrar çal
+    if (
+      !autoAdvance &&
+      !inRoleplay &&
+      isClassroomModeRef.current &&
+      isClassroomLoopRef.current
+    ) {
+      const clsWaitOk = await waitShadowingPause(1000, false);
+      if (
+        !clsWaitOk ||
+        playToken.current !== currentToken ||
+        !isClassroomModeRef.current ||
+        !isClassroomLoopRef.current
+      ) {
+        return;
+      }
+      await playSentence(line, false, false, false, null, currentDlgTurn);
+      return;
+    }
+
     // 2. Eğer "2. Telaffuz & Mahreç Stüdyosu" modunda Otomatik Gölgeleme Akışı açıksa
     if (studyMode === "shadowing" && autoShadowingFlow && !autoAdvance) {
       stop();
@@ -959,11 +1000,12 @@ export default function DialogueDetailPage({
           currentDlgTurn
         );
       } else {
-        // Diyalog sonuna gelindi: Eğer Rol Yapma değilse ve dialogueLoopCount > 1 veya infinite ise baştan başlat
+        // Diyalog sonuna gelindi: Eğer Rol Yapma değilse ve (Sınıf Modu Döngü veya dialogueLoopCount > 1 veya infinite) ise baştan başlat
         const targetDlgLoops = useSettings.getState().dialogueLoopCount;
         const shouldRepeatDialogue =
           !inRoleplay &&
-          (targetDlgLoops === "infinite" ||
+          ((isClassroomModeRef.current && isClassroomLoopRef.current) ||
+            targetDlgLoops === "infinite" ||
             (typeof targetDlgLoops === "number" &&
               currentDlgTurn < targetDlgLoops));
 
@@ -1103,6 +1145,8 @@ export default function DialogueDetailPage({
     setRoleplayTransitionNotice(false);
     setIsRoleplayRunning(false);
     setSelectedClassroomLine(line.sira);
+    const idx = dialogue.satirlar.findIndex((s) => s.sira === line.sira);
+    if (idx >= 0) setFocusedLineIndex(idx);
     playSentence(line, false, false, false, null, 1);
   };
 
@@ -1130,6 +1174,10 @@ export default function DialogueDetailPage({
       const targetStartLine = startLineOverride || dialogue.satirlar[0];
       if (targetStartLine) {
         setSelectedClassroomLine(targetStartLine.sira);
+        const idx = dialogue.satirlar.findIndex(
+          (s) => s.sira === targetStartLine.sira
+        );
+        if (idx >= 0) setFocusedLineIndex(idx);
         playSentence(targetStartLine, true, false, false, null, 1);
       }
     }
@@ -1156,36 +1204,60 @@ export default function DialogueDetailPage({
   classroomKeyHandlerRef.current = (e: KeyboardEvent) => {
     if (!dialogue) return;
     const totalLines = dialogue.satirlar.length;
-    const currentSira =
-      playingLineId ??
-      shadowingPauseLineSira ??
-      loopingLineSira ??
-      selectedClassroomLine ??
-      dialogue.satirlar[0]?.sira ??
-      1;
-    const currentIdx = Math.max(
-      0,
-      dialogue.satirlar.findIndex((s) => s.sira === currentSira)
-    );
+    const currentIdx =
+      playingLineId !== null
+        ? Math.max(
+            0,
+            dialogue.satirlar.findIndex((s) => s.sira === playingLineId)
+          )
+        : Math.min(Math.max(0, focusedLineIndex), Math.max(0, totalLines - 1));
     const activeLineObj =
       dialogue.satirlar[currentIdx] || dialogue.satirlar[0];
 
-    if (isClassroomMode && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+    if (
+      isClassroomMode &&
+      (e.key === "ArrowDown" ||
+        e.key === "ArrowRight" ||
+        e.key === "ArrowUp" ||
+        e.key === "ArrowLeft")
+    ) {
       e.preventDefault();
+      e.stopPropagation();
       playClick();
       if (isPlayingAll || playingLineId !== null) {
         playToken.current += 1;
         stop();
         setIsPlayingAll(false);
       }
-      const nextIdx =
-        e.key === "ArrowDown"
-          ? Math.min(totalLines - 1, currentIdx + 1)
-          : Math.max(0, currentIdx - 1);
-      const nextLineObj = dialogue.satirlar[nextIdx];
-      if (nextLineObj) {
-        setSelectedClassroomLine(nextLineObj.sira);
-      }
+      setFocusedLineIndex((prev) => {
+        const baseIdx =
+          playingLineId !== null ? currentIdx : Math.max(0, prev);
+        const nextIdx =
+          e.key === "ArrowDown" || e.key === "ArrowRight"
+            ? Math.min(totalLines - 1, baseIdx + 1)
+            : Math.max(0, baseIdx - 1);
+        const nextLineObj = dialogue.satirlar[nextIdx];
+        if (nextLineObj) {
+          setSelectedClassroomLine(nextLineObj.sira);
+        }
+        return nextIdx;
+      });
+      return;
+    }
+
+    if (isClassroomMode && e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      playClick();
+      setIsClassroomMode(false);
+      return;
+    }
+
+    if (isClassroomMode && (e.key === "r" || e.key === "R") && !e.repeat) {
+      e.preventDefault();
+      e.stopPropagation();
+      playClick();
+      setIsClassroomLoop((prev) => !prev);
       return;
     }
 
@@ -1198,6 +1270,7 @@ export default function DialogueDetailPage({
         e.key === "P")
     ) {
       e.preventDefault();
+      e.stopPropagation();
       handleToggleClassroomPlayAll(activeLineObj);
       return;
     }
@@ -1205,6 +1278,7 @@ export default function DialogueDetailPage({
     if (e.code === "Space" && !e.repeat) {
       e.preventDefault();
       if (isClassroomMode) {
+        e.stopPropagation();
         if (activeLineObj) {
           handlePlaySingleClassroomLine(activeLineObj);
         }
@@ -1216,25 +1290,35 @@ export default function DialogueDetailPage({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isClassroomNavKey =
-        isClassroomMode &&
-        (e.key === "ArrowDown" ||
-          e.key === "ArrowUp" ||
-          e.key === "p" ||
-          e.key === "P");
-      if (e.code !== "Space" && !isClassroomNavKey) {
-        return;
-      }
-      if (e.ctrlKey || e.altKey || e.metaKey) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (
         tag === "INPUT" ||
         tag === "TEXTAREA" ||
         tag === "SELECT" ||
-        tag === "BUTTON" ||
-        tag === "A" ||
         target?.isContentEditable
+      ) {
+        return;
+      }
+
+      const isClassroomNavKey =
+        isClassroomMode &&
+        (e.key === "ArrowDown" ||
+          e.key === "ArrowUp" ||
+          e.key === "ArrowLeft" ||
+          e.key === "ArrowRight" ||
+          e.key === "Escape" ||
+          e.key === "p" ||
+          e.key === "P" ||
+          e.key === "r" ||
+          e.key === "R");
+      if (e.code !== "Space" && !isClassroomNavKey) {
+        return;
+      }
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      if (
+        !isClassroomMode &&
+        (tag === "BUTTON" || tag === "A")
       ) {
         return;
       }
@@ -1243,20 +1327,30 @@ export default function DialogueDetailPage({
         isPdfModalOpen ||
         isShareModalOpen ||
         isLightboxOpen ||
+        isTeacherHwModalOpen ||
+        isHwReportModalOpen ||
+        isHwQuizModalOpen ||
         document.querySelector(".fixed.inset-0")
       ) {
         return;
       }
+      if (isClassroomMode && document.activeElement?.tagName === "BUTTON") {
+        (document.activeElement as HTMLElement)?.blur();
+      }
       classroomKeyHandlerRef.current(e);
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
   }, [
     isClassroomMode,
     shadowingTarget,
     isPdfModalOpen,
     isShareModalOpen,
     isLightboxOpen,
+    isTeacherHwModalOpen,
+    isHwReportModalOpen,
+    isHwQuizModalOpen,
   ]);
 
   const cycleRoleplayHintLevel = (sira: number) => {
@@ -1513,21 +1607,26 @@ export default function DialogueDetailPage({
     }));
   })();
 
-  const activeClassroomSira =
+  const activePlaybackSira =
     playingLineId ??
     shadowingPauseLineSira ??
     loopingLineSira ??
     roleplayActiveLine ??
     roleplaySpeakingLine ??
-    selectedClassroomLine ??
-    dialogue.satirlar[0]?.sira ??
-    1;
-  const activeClassroomLineIndex = Math.max(
-    0,
-    dialogue.satirlar.findIndex((s) => s.sira === activeClassroomSira)
-  );
+    null;
+  const activeClassroomLineIndex =
+    activePlaybackSira !== null
+      ? Math.max(
+          0,
+          dialogue.satirlar.findIndex((s) => s.sira === activePlaybackSira)
+        )
+      : Math.min(
+          Math.max(0, focusedLineIndex),
+          Math.max(0, dialogue.satirlar.length - 1)
+        );
   const activeClassroomLineObj =
     dialogue.satirlar[activeClassroomLineIndex] || dialogue.satirlar[0];
+  const activeClassroomSira = activeClassroomLineObj?.sira ?? 1;
 
   return (
     <div
@@ -2269,12 +2368,14 @@ export default function DialogueDetailPage({
               {/* 9. 🖥️ Akıllı Tahta / Sınıf Sunum Modu Butonu (Sadece Tablet/Masaüstü/Tahta: hidden sm:inline-flex) */}
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  (e.currentTarget as HTMLElement)?.blur();
                   playClick();
                   setIsClassroomMode((v) => {
                     const next = !v;
                     if (next && selectedClassroomLine === null) {
                       setSelectedClassroomLine(dialogue.satirlar[0]?.sira ?? 1);
+                      setFocusedLineIndex(0);
                     }
                     return next;
                   });
@@ -3260,7 +3361,7 @@ export default function DialogueDetailPage({
         </div>
       ) : (
         <section className="space-y-2.5">
-          {dialogue.satirlar.map((line) => {
+          {dialogue.satirlar.map((line, index) => {
             const isPlaying = playingLineId === line.sira;
             const isLooping = loopingLineSira === line.sira;
             const lineHasMp3 = hasMp3(dialogue.id, line.sira);
@@ -3422,6 +3523,7 @@ export default function DialogueDetailPage({
             };
 
             const isClassroomActiveLine =
+              index === activeClassroomLineIndex ||
               activeClassroomSira === line.sira ||
               isPlaying ||
               isLooping ||
@@ -3431,11 +3533,13 @@ export default function DialogueDetailPage({
             return (
               <div
                 key={line.sira}
+                id={`classroom-line-${index}`}
                 ref={(el) => {
                   lineRefs.current[line.sira] = el;
                 }}
                 onClick={() => {
                   if (isClassroomMode) {
+                    setFocusedLineIndex(index);
                     setSelectedClassroomLine(line.sira);
                   }
                 }}
@@ -3957,8 +4061,9 @@ export default function DialogueDetailPage({
                 stop();
                 setIsPlayingAll(false);
               }
-              const prevObj =
-                dialogue.satirlar[Math.max(0, activeClassroomLineIndex - 1)];
+              const prevIdx = Math.max(0, activeClassroomLineIndex - 1);
+              const prevObj = dialogue.satirlar[prevIdx];
+              setFocusedLineIndex(prevIdx);
               if (prevObj) {
                 setSelectedClassroomLine(prevObj.sira);
               }
@@ -4010,6 +4115,23 @@ export default function DialogueDetailPage({
             </span>
           </button>
 
+          {/* 4.5. Tekrarlı Dinleme / Döngü (İkonik) */}
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              setIsClassroomLoop((prev) => !prev);
+            }}
+            title="Tekrarlı Dinleme (Açıkken cümleyi veya diyaloğu sürekli tekrarlar - Kısayol: R)"
+            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 cursor-pointer transition-all ${
+              isClassroomLoop
+                ? "bg-amber-500 text-slate-950 shadow-md"
+                : "bg-white/15 hover:bg-white/25 text-white"
+            }`}
+          >
+            <Repeat size={16} />
+          </button>
+
           {/* 5. Telaffuz Et */}
           <button
             type="button"
@@ -4044,13 +4166,12 @@ export default function DialogueDetailPage({
                 stop();
                 setIsPlayingAll(false);
               }
-              const nextObj =
-                dialogue.satirlar[
-                  Math.min(
-                    dialogue.satirlar.length - 1,
-                    activeClassroomLineIndex + 1
-                  )
-                ];
+              const nextIdx = Math.min(
+                dialogue.satirlar.length - 1,
+                activeClassroomLineIndex + 1
+              );
+              const nextObj = dialogue.satirlar[nextIdx];
+              setFocusedLineIndex(nextIdx);
               if (nextObj) {
                 setSelectedClassroomLine(nextObj.sira);
               }
@@ -4058,6 +4179,21 @@ export default function DialogueDetailPage({
             className="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 disabled:opacity-40 text-xs sm:text-sm font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all"
           >
             <span>⏭️ Sonraki</span>
+          </button>
+
+          <span className="w-px h-6 bg-slate-700 shrink-0" />
+
+          {/* 7. Sınıf Modundan Çık (İkonik) */}
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              setIsClassroomMode(false);
+            }}
+            title="Sınıf Modundan Çık (Esc)"
+            className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-400 hover:bg-rose-600 hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-all"
+          >
+            <X size={16} />
           </button>
         </div>
       )}

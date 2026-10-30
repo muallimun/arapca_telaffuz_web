@@ -1546,7 +1546,7 @@
         "konusmaci": "Ruveyde",
         "konusmaci_ar": "رُوَيْدَةُ",
         "cinsiyet": "K",
-        "arapca": "أَنَا أُرِيدُ اللَّحْمَ الْمَشْوِيَّ وَمَاءً مَعْدَنِيّاً.",
+        "arapca": "أَنَا أُرِيدُ اللَّحْمَ الْمَشْوِيَّ وَمَاءً مَعْدِنِيّاً.",
         "turkce": "Ben ızgara et ve maden suyu istiyorum."
       },
       {
@@ -2875,7 +2875,7 @@
         "konusmaci_ar": "يَاسَمِينُ",
         "cinsiyet": "K",
         "arapca": "مَرْحَباً يَا سَنَاءُ، نَعَمْ، فِي الْحَقِيقَةِ انْتَظَرْتُ قَلِيلاً، أَنَا هُنَا مُنْذُ السَّاعَةِ الثَّانِيَةِ.",
-        "turkce": "Merhaba Sena evet, aslında biraz bekledim. Saat ikiden beri buradayım."
+        "turkce": "Merhaba Sena, evet, aslında biraz bekledim. Saat ikiden beri buradayım."
       },
       {
         "sira": 3,
@@ -2890,7 +2890,7 @@
         "konusmaci": "Yasemin",
         "konusmaci_ar": "يَاسَمِينُ",
         "cinsiyet": "K",
-        "arapca": "الْحَمْدُ لِلَّهِ، أَنَا بِخَيْرٍ يَا عَزِيزَتِي سَنَاءُ، نَعَمْ لَمْ نَلْتَقِ مُنْذُ حَفْلِ زَفَافِ لَيْلَى. أَنْتِ كَيْفَ حَالُكِ؟",
+        "arapca": "الْحَمْدُ لِلَّهِ، أَنَا بِخَيْرٍ يَا عَزِيزَتِي سَنَاءُ، نَعَمْ لَمْ نَلْتَقِ مُنْذُ حَفْلِ زِفَافِ لَيْلَى. أَنْتِ كَيْفَ حَالُكِ؟",
         "turkce": "Çok şükür iyiyim Senacığım. Evet, Leyla’nın düğününden beri görüşmedik. Sen nasılsın?"
       },
       {
@@ -3026,7 +3026,7 @@
         "konusmaci": "Sena",
         "konusmaci_ar": "سَنَاءُ",
         "cinsiyet": "K",
-        "arapca": "نَعَمْ، جَادَّةٌ جِدّاً، وَبَعْدَ شَهْرٍ، فِي السَّابِعِ عَشَرَ مِنْ أُغُسْطُسَ (آبَ) حَفْلُ زَفَافِي، وَهَذِهِ دَعْوَتُكِ.",
+        "arapca": "نَعَمْ، جَادَّةٌ جِدّاً، وَبَعْدَ شَهْرٍ، فِي السَّابِعِ عَشَرَ مِنْ أُغُسْطُسَ (آبَ) حَفْلُ زِفَافِي، وَهَذِهِ دَعْوَتُكِ.",
         "turkce": "Evet, çok ciddiyim. Hem de bir ay sonra. Ağustosun 17'sinde düğünüm var. Bu da senin davetiyen."
       },
       {
