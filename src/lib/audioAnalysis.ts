@@ -528,11 +528,11 @@ export async function start16kHzRecorder(options?: {
 }): Promise<RecordingSession16kHz> {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
       channelCount: 1,
       sampleRate: 16000,
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
     },
   });
 

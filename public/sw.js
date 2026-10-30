@@ -1,4 +1,8 @@
 const CACHE_NAME = "muallimun-arapca-pwa-v2.0";
+const PROTECTED_CACHES = [
+  "muallimun-offline-audio-v1",
+  "transformers-cache",
+];
 const OFFLINE_URL = "/offline";
 
 const PRECACHE_ASSETS = [
@@ -37,7 +41,8 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Aktivasyon: Eski versiyon önbelleklerini temizle
+// Aktivasyon: Yalnızca eski uygulama kabuğu (muallimun-arapca-pwa-*) önbelleklerini temizle;
+// çevrimdışı ses paketleri (muallimun-offline-audio-v1) ve Whisper AI model önbelleğini (transformers-cache) koru
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
@@ -45,7 +50,11 @@ self.addEventListener("activate", (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
+            if (
+              cacheName !== CACHE_NAME &&
+              !PROTECTED_CACHES.includes(cacheName) &&
+              cacheName.startsWith("muallimun-arapca-pwa-")
+            ) {
               return caches.delete(cacheName);
             }
           })

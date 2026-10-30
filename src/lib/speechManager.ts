@@ -5,6 +5,7 @@
 // Otomatik Fallback: Seçili motor başarısız olursa veya boş dönerse diğer motor devreye girer.
 
 import type { WhisperWorkerResponse } from "./whisperWorker";
+import { useSettings } from "@/store/settings";
 
 export type SttEngineType = "whisper" | "webspeech";
 
@@ -51,12 +52,17 @@ export class HybridSpeechManager {
   }
 
   /**
-   * Kayıt başlarken Web Speech API'yi paralel veya birincil olarak başlatır
-   * (Böylece Whisper başarısız olursa bile Web Speech çıktısı hazırda bekler)
+   * Kayıt başlarken Web Speech API'yi başlatır.
+   * "Yalnızca Cihazda İşle" (localSttOnly) açıksa kesinlikle çevrimiçi SpeechRecognition başlatılmaz.
    */
   public startLiveWebSpeech(callbacks?: SttCallbacks) {
     this.webSpeechFinalTranscript = "";
     this.webSpeechInterimTranscript = "";
+
+    if (useSettings.getState().localSttOnly) {
+      this.isWebSpeechActive = false;
+      return;
+    }
 
     if (!this.isWebSpeechSupported()) return;
 
@@ -323,13 +329,19 @@ export class HybridSpeechManager {
     audioData16kHz: Float32Array,
     callbacks?: SttCallbacks
   ): Promise<{ text: string; usedEngine: SttEngineType }> {
-    const capturedWebSpeech = (
-      this.getCapturedWebSpeechText() ||
-      callbacks?.backupTranscript ||
-      ""
-    ).trim();
+    const isLocalOnly = useSettings.getState().localSttOnly;
+    const effectiveEngine: SttEngineType = isLocalOnly
+      ? "whisper"
+      : preferredEngine;
+    const capturedWebSpeech = isLocalOnly
+      ? ""
+      : (
+          this.getCapturedWebSpeechText() ||
+          callbacks?.backupTranscript ||
+          ""
+        ).trim();
 
-    if (preferredEngine === "whisper") {
+    if (effectiveEngine === "whisper") {
       try {
         const whisperText = await this.transcribeWithWhisper(
           audioData16kHz,
@@ -337,6 +349,9 @@ export class HybridSpeechManager {
         );
         if (whisperText && /[\u0600-\u06FF]/.test(whisperText)) {
           return { text: whisperText, usedEngine: "whisper" };
+        }
+        if (isLocalOnly) {
+          return { text: whisperText || "", usedEngine: "whisper" };
         }
         // Whisper boş döndüyse varsa yedek metni kontrol et
         const latestBackup = (
@@ -349,6 +364,10 @@ export class HybridSpeechManager {
         }
         return { text: whisperText || latestBackup, usedEngine: "whisper" };
       } catch {
+        if (isLocalOnly) {
+          callbacks?.onStatusChange?.("");
+          return { text: "", usedEngine: "whisper" };
+        }
         // Whisper zaman aşımı veya hata durumunda yedek metin varsa kullan
         const latestBackup = (
           this.getCapturedWebSpeechText() ||

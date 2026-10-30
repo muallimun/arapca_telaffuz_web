@@ -25,11 +25,21 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
 
   const sessionRef = useRef<RecordingSession16kHz | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const isMountedRef = useRef<boolean>(true);
+  const sessionTokenRef = useRef<number>(0);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
+      sessionTokenRef.current += 1;
       if (sessionRef.current) {
-        sessionRef.current.stop().catch(() => {});
+        try {
+          sessionRef.current.getStream()?.getTracks().forEach((t) => t.stop());
+          sessionRef.current.killStreamImmediately();
+        } catch {
+          // ignore
+        }
         sessionRef.current = null;
       }
       if (audioPlayerRef.current) audioPlayerRef.current.pause();
@@ -47,6 +57,7 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
     playRecordStart();
+    const myToken = ++sessionTokenRef.current;
 
     try {
       const targetWords = (text || "").trim().split(/\s+/).filter(Boolean);
@@ -61,10 +72,21 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
           stopRecording();
         },
       });
+      if (!isMountedRef.current || myToken !== sessionTokenRef.current) {
+        try {
+          session.getStream()?.getTracks().forEach((t) => t.stop());
+          session.killStreamImmediately();
+        } catch {
+          // ignore
+        }
+        return;
+      }
       sessionRef.current = session;
       setIsRecording(true);
     } catch {
-      setErrorMsg("Mikrofon izni gerekli");
+      if (isMountedRef.current) {
+        setErrorMsg("Mikrofon izni gerekli");
+      }
     }
   };
 

@@ -217,8 +217,11 @@ export default function ShadowingModal({
   const waveformCardRef = useRef<HTMLDivElement | null>(null);
   const userAudioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const refAudioBufferRef = useRef<AudioBuffer | null>(null);
+  const isMountedRef = useRef<boolean>(true);
+  const recordingSessionIdRef = useRef<number>(0);
 
   const cleanupMediaResources = useCallback(() => {
+    recordingSessionIdRef.current += 1;
     if (rafIdRef.current !== null && typeof window !== "undefined") {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
@@ -266,6 +269,7 @@ export default function ShadowingModal({
   }, []);
 
   const handleClose = useCallback(() => {
+    isMountedRef.current = false;
     cleanupMediaResources();
     stopAllAudio();
     onClose();
@@ -273,8 +277,10 @@ export default function ShadowingModal({
 
   // Unmount sırasında açık kalan MediaStream, AudioContext, RAF ve Web Speech kaydını KESİNLİKLE kapat
   useEffect(() => {
+    isMountedRef.current = true;
     speechManagerRef.current = new HybridSpeechManager();
     return () => {
+      isMountedRef.current = false;
       cleanupMediaResources();
       speechManagerRef.current?.terminate();
     };
@@ -482,6 +488,7 @@ export default function ShadowingModal({
     setIsPlayingUser(false);
 
     cleanupMediaResources();
+    const currentSessionId = ++recordingSessionIdRef.current;
     playRecordStart();
 
     if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
@@ -504,11 +511,23 @@ export default function ShadowingModal({
     backupBrowserTranscriptRef.current = "";
 
     try {
+      const { localSttOnly: currentLocalOnly, sttEngine: currentEngine } =
+        useSettings.getState();
+      const shouldUseWebSpeech =
+        !currentLocalOnly && currentEngine === "webspeech";
       const isMobileDevice =
         typeof navigator !== "undefined" &&
         /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
       const startLiveSpeechRecognition = () => {
+        if (
+          !isMountedRef.current ||
+          currentSessionId !== recordingSessionIdRef.current ||
+          useSettings.getState().localSttOnly ||
+          useSettings.getState().sttEngine !== "webspeech"
+        ) {
+          return;
+        }
         speechManagerRef.current?.startLiveWebSpeech({
           onInterimTranscript: (combined, finalPart, interimPart) => {
             if (typeof finalPart === "string" && finalPart.trim()) {
@@ -533,9 +552,9 @@ export default function ShadowingModal({
         });
       };
 
-      // Masaüstünde Hızlı Tarayıcı Motoru seçiliyse ve Yalnızca Cihazda İşle kapalıysa hemen başlat;
-      // mobilde ise getUserMedia mikrofon kilidinin SpeechRecognition'ı düşürmemesi için stream alındıktan hemen sonra başlat
-      if (!localSttOnly && sttEngine === "webspeech" && !isMobileDevice) {
+      // Yalnızca Hızlı Tarayıcı Motoru seçiliyse ve Yalnızca Cihazda İşle kapalıysa Web Speech başlat;
+      // Whisper seçiliyse hem masaüstünde hem mobilde arka planda izinsiz Web Speech başlatma!
+      if (shouldUseWebSpeech && !isMobileDevice) {
         startLiveSpeechRecognition();
       }
 
@@ -567,17 +586,32 @@ export default function ShadowingModal({
         },
       });
 
+      // Mikrofon İzin Yarışı Koruması: İzin penceresi açıkken modal kapatıldıysa stream'i anında durdur
+      if (
+        !isMountedRef.current ||
+        currentSessionId !== recordingSessionIdRef.current
+      ) {
+        try {
+          session
+            .getStream()
+            ?.getTracks()
+            .forEach((track) => track.stop());
+          session.killStreamImmediately();
+        } catch {
+          // ignore
+        }
+        return;
+      }
+
       recordingSessionRef.current = session;
       mediaStreamRef.current = session.getStream();
       audioContextRef.current = session.getAudioContext();
 
-      // Mobil cihazlarda getUserMedia açıldıktan hemen sonra SpeechRecognition'ı başlat (Android mikrofon çakışması koruması)
-      if (!localSttOnly && (isMobileDevice || sttEngine === "webspeech")) {
-        if (isMobileDevice) {
-          setTimeout(() => {
-            startLiveSpeechRecognition();
-          }, 80);
-        }
+      // Mobil cihazlarda yalnızca Hızlı Tarayıcı Motoru seçiliyse getUserMedia açıldıktan hemen sonra SpeechRecognition'ı başlat
+      if (shouldUseWebSpeech && isMobileDevice) {
+        setTimeout(() => {
+          startLiveSpeechRecognition();
+        }, 80);
       }
 
       // Mobil (iOS Safari & Android) ses formatı uyumluluğu için desteklenen MIME türünü dinamik seç
@@ -1008,16 +1042,24 @@ export default function ShadowingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] print:hidden flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shadowing-modal-title"
+      className="fixed inset-0 z-[60] print:hidden flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-hidden"
+    >
       <div className="bg-[#FDFBF7] dark:bg-[var(--background)] w-full max-w-3xl max-h-[92vh] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl flex flex-col overflow-hidden">
         {/* ÜST BAŞLIK + ÇİFT MOTORLU STT SEÇİCİ */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3.5 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] dark:bg-[var(--surface)] shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#0CA678] border-b-3 border-[#087F5B] text-white flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-[#087F5B] border-b-3 border-[#066649] text-white flex items-center justify-center shrink-0">
               <Activity size={18} />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-extrabold text-[var(--foreground)]">
+              <h2
+                id="shadowing-modal-title"
+                className="text-sm sm:text-base font-extrabold text-[var(--foreground)]"
+              >
                 Gölgeleme & 38 Çiftlik Mahreç Koçu
               </h2>
               <p className="text-[11px] font-medium text-[var(--muted)]">
@@ -1037,7 +1079,7 @@ export default function ShadowingModal({
                 }}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   sttEngine === "whisper"
-                    ? "bg-[#0CA678] text-white font-semibold"
+                    ? "bg-[#087F5B] text-white font-semibold"
                     : "text-[var(--muted)]"
                 }`}
               >
@@ -1052,7 +1094,7 @@ export default function ShadowingModal({
                 }}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   !localSttOnly && sttEngine === "webspeech"
-                    ? "bg-[#0CA678] text-white font-semibold"
+                    ? "bg-[#087F5B] text-white font-semibold"
                     : "text-[var(--muted)]"
                 }`}
               >
@@ -1079,10 +1121,8 @@ export default function ShadowingModal({
           <div className="flex items-center gap-2 text-[var(--muted)] font-semibold">
             <span
               className={`inline-block w-2 h-2 rounded-full shrink-0 ${
-                localSttOnly
-                  ? "bg-emerald-500"
-                  : sttEngine === "whisper"
-                  ? "bg-teal-500"
+                localSttOnly || sttEngine === "whisper"
+                  ? "bg-emerald-600"
                   : "bg-sky-500"
               }`}
             />
@@ -1090,8 +1130,8 @@ export default function ShadowingModal({
               {localSttOnly
                 ? "🔒 Aktif: Yalnızca Cihaz İçi Whisper — Sesiniz tarayıcı dışına çıkmaz ve hiçbir sunucuda saklanmaz."
                 : sttEngine === "whisper"
-                ? "🛡️ Aktif: Hibrit Yapay Zeka (Cihaz İçi Whisper + Tarayıcı Destekli) — Ses kayıtlarınız hiçbir sunucuda saklanmaz."
-                : "⚡ Aktif: Hızlı Tarayıcı Motoru (Anlık İşleme) — Ses kayıtlarınız hiçbir sunucuda saklanmaz."}
+                ? "🔒 Aktif: Cihaz İçi Yapay Zeka (Whisper) — Sesiniz cihaz içinde işlenir, arka planda tarayıcı ses servisi başlatılmaz."
+                : "🌐 Aktif: Hızlı Tarayıcı Motoru (Tarayıcı Ses Servisi) — Ses kayıtlarınız hiçbir sunucuda saklanmaz."}
             </span>
           </div>
           <button
@@ -1100,19 +1140,19 @@ export default function ShadowingModal({
               playClick();
               toggleLocalSttOnly();
             }}
-            data-tooltip="Açıldığında tarayıcının çevrimiçi ses tanıma servisi devre dışı bırakılır; sesiniz %100 cihaz içinde işlenir"
+            data-tooltip="Açıldığında tarayıcının çevrimiçi ses tanıma servisi tüm modüllerde devre dışı bırakılır; sesiniz %100 cihaz içinde işlenir"
             data-tooltip-pos="bottom"
             className={`px-2.5 py-1 rounded-lg border font-extrabold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
               localSttOnly
-                ? "bg-[#E6FCF5] dark:bg-emerald-950/50 border-[#0CA678] text-[#087F5B] dark:text-emerald-300"
-                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#0CA678]"
+                ? "bg-[#E6FCF5] dark:bg-emerald-950/50 border-[#087F5B] text-[#087F5B] dark:text-emerald-300"
+                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
             }`}
           >
             <span>🔒 Yalnızca Cihazda İşle (Çevrimdışı Whisper)</span>
             <span
               className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
                 localSttOnly
-                  ? "bg-[#0CA678] text-white"
+                  ? "bg-[#087F5B] text-white"
                   : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
               }`}
             >
@@ -1774,7 +1814,7 @@ export default function ShadowingModal({
             <button
               type="button"
               onClick={startRecording}
-              className="w-full py-2.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm sm:text-base border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-[#087F5B] hover:bg-[#066649] text-white font-bold text-sm sm:text-base border-b-4 border-[#054d37] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Mic size={17} className="shrink-0" />
               <span>
@@ -1800,7 +1840,7 @@ export default function ShadowingModal({
             <button
               type="button"
               onClick={startRecording}
-              className="w-full py-2.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white font-bold text-sm sm:text-base border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-[#087F5B] hover:bg-[#066649] text-white font-bold text-sm sm:text-base border-b-4 border-[#054d37] active:border-b-0 active:translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <RotateCcw size={16} className="shrink-0" />
               <span>Tekrar Kaydet ve Dene (16kHz)</span>
