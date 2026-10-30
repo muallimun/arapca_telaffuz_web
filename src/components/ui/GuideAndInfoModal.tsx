@@ -150,7 +150,7 @@ export default function GuideAndInfoModal() {
         </div>
 
         {/* SEKME İÇERİĞİ */}
-        <div className="p-4 sm:p-5 pb-6 overflow-y-auto space-y-4 flex-1">
+        <div className="p-4 sm:p-5 pb-6 overflow-y-auto overflow-x-hidden space-y-4 flex-1">
           {activeTab === "quickstart" && (
             <div className="space-y-4">
               {/* Tanıtım Turu Başlatma Kartı */}
@@ -307,46 +307,6 @@ export default function GuideAndInfoModal() {
                     .
                   </p>
                 </div>
-              </div>
-
-              {/* Diğer 10 Uygulamamıza Hızlı Geçiş Butonu */}
-              <button
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setActiveTab("apps");
-                }}
-                className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600/10 via-teal-600/10 to-indigo-600/10 hover:from-emerald-600/20 hover:to-indigo-600/20 border-2 border-emerald-500/40 flex items-center justify-between gap-2 text-left transition-all cursor-pointer group"
-              >
-                <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-emerald-300 group-hover:underline">
-                  🌐 Muallimun Ekosistemindeki Diğer 10 Uygulamamıza Göz Atın →
-                </span>
-                <span className="px-2.5 py-1 rounded-lg bg-[#0CA678] text-white text-[11px] font-extrabold shrink-0">
-                  Keşfet
-                </span>
-              </button>
-
-              {/* Arkadaşına Öner / Paylaş Kartı */}
-              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#0CA678]/10 via-emerald-500/10 to-[#6741D9]/15 border-2 border-[#0CA678]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-emerald-300 block">
-                    📲 Arkadaşına Öner &amp; Öğrencilerinle Paylaş
-                  </span>
-                  <p className="text-[11px] sm:text-xs text-[var(--muted)]">
-                    Uygulamayı WhatsApp, Telegram veya tek tıkla bağlantı kopyalayarak çalışma gruplarınızla paylaşın.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    playClick();
-                    triggerShareAppModal();
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white text-xs font-extrabold border-b-3 border-[#087F5B] flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
-                >
-                  <Share2 size={14} />
-                  <span>Arkadaşına Öner / Paylaş</span>
-                </button>
               </div>
             </div>
           )}
@@ -607,45 +567,6 @@ export default function GuideAndInfoModal() {
                 >
                   muallimun.net
                 </a>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setActiveTab("apps");
-                }}
-                className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600/10 via-teal-600/10 to-indigo-600/10 hover:from-emerald-600/20 hover:to-indigo-600/20 border-2 border-emerald-500/40 flex items-center justify-between gap-2 text-left transition-all cursor-pointer group"
-              >
-                <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-emerald-300 group-hover:underline">
-                  🌐 Muallimun Ekosistemindeki Diğer 10 Uygulamamıza Göz Atın →
-                </span>
-                <span className="px-2.5 py-1 rounded-lg bg-[#0CA678] text-white text-[11px] font-extrabold shrink-0">
-                  Keşfet
-                </span>
-              </button>
-
-              {/* Hakkında Sekmesi Altı Arkadaşına Öner / Paylaş Kartı */}
-              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#0CA678]/10 via-emerald-500/10 to-[#6741D9]/15 border-2 border-[#0CA678]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-emerald-300 block">
-                    📲 Meslektaşlarınıza ve Öğrencilerinize Önerin
-                  </span>
-                  <p className="text-[11px] sm:text-xs text-[var(--muted)]">
-                    Bu ücretsiz Arapça eğitim platformunu tek tıkla WhatsApp veya Telegram&apos;da paylaşarak daha fazla kişiye ulaşmasına destek olun.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    playClick();
-                    triggerShareAppModal();
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white text-xs font-extrabold border-b-3 border-[#087F5B] flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
-                >
-                  <Share2 size={14} />
-                  <span>Arkadaşına Öner / Paylaş</span>
-                </button>
               </div>
             </div>
           )}

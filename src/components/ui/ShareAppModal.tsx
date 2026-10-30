@@ -32,14 +32,13 @@ export function FooterShareButton() {
         playClick();
         triggerShareAppModal();
       }}
-      data-tooltip="Uygulamayı Arkadaşlarınızla ve Öğrencilerinizle Paylaşın"
+      data-tooltip="Uygulamayı Paylaş"
       data-tooltip-pos="top"
       data-tooltip-align="right"
-      aria-label="Uygulamayı Arkadaşlarınla Paylaş"
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:border-indigo-300 transition-all shadow-xs cursor-pointer"
+      aria-label="Uygulamayı Paylaş"
+      className="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:border-indigo-300 transition-all shadow-xs cursor-pointer shrink-0"
     >
-      <Share2 className="w-3.5 h-3.5 shrink-0" />
-      <span>🔗 Paylaş</span>
+      <Share2 className="w-4 h-4" />
     </button>
   );
 }

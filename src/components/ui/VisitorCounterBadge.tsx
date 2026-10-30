@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Users, Calendar, Activity } from "lucide-react";
 
 export interface VisitorStatsData {
   ok: boolean;
@@ -9,16 +10,20 @@ export interface VisitorStatsData {
   totalViews: number;
 }
 
-const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbxnozrFJ9z1X2TMsO-S1TJm70bu-mreYtuOqU96Oyu_hArYspQaQPvv9rbNeRX8zaGt/exec";
-
 const STORAGE_KEY_UNIQUE = "muallimun_visitor_registered";
 const STORAGE_KEY_LAST_DATE = "muallimun_last_visit_date";
 const STORAGE_KEY_SESSION = "muallimun_session_counted";
 const STORAGE_KEY_CACHE = "muallimun_cached_visitor_stats";
 const STATS_EVENT_NAME = "muallimun-visitor-stats-updated";
 
-let inFlightPromise: Promise<VisitorStatsData | null> | null = null;
+const DEFAULT_FALLBACK_STATS: VisitorStatsData = {
+  ok: true,
+  totalUnique: 1,
+  todayVisits: 1,
+  totalViews: 1,
+};
+
+let inFlightPromise: Promise<VisitorStatsData> | null = null;
 let latestMemoryStats: VisitorStatsData | null = null;
 
 function getTodayDateString(): string {
@@ -29,34 +34,33 @@ function getTodayDateString(): string {
   return `${year}-${month}-${day}`;
 }
 
-function readCachedStats(): VisitorStatsData | null {
+function readCachedStats(): VisitorStatsData {
   if (latestMemoryStats) return latestMemoryStats;
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") return DEFAULT_FALLBACK_STATS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CACHE);
-    if (!raw) return null;
+    if (!raw) return DEFAULT_FALLBACK_STATS;
     const parsed = JSON.parse(raw);
     if (
       parsed &&
       typeof parsed.totalUnique === "number" &&
-      typeof parsed.todayVisits === "number" &&
-      typeof parsed.totalViews === "number"
+      parsed.totalUnique > 0
     ) {
       return {
         ok: true,
-        totalUnique: parsed.totalUnique,
-        todayVisits: parsed.todayVisits,
-        totalViews: parsed.totalViews,
+        totalUnique: Math.max(1, parsed.totalUnique),
+        todayVisits: Math.max(1, Number(parsed.todayVisits) || 1),
+        totalViews: Math.max(1, Number(parsed.totalViews) || 1),
       };
     }
   } catch {
     // ignore storage errors
   }
-  return null;
+  return DEFAULT_FALLBACK_STATS;
 }
 
-async function fetchAndRegisterVisitorStats(): Promise<VisitorStatsData | null> {
-  if (typeof window === "undefined") return null;
+async function fetchAndRegisterVisitorStats(): Promise<VisitorStatsData> {
+  if (typeof window === "undefined") return DEFAULT_FALLBACK_STATS;
   if (inFlightPromise) return inFlightPromise;
 
   inFlightPromise = (async () => {
@@ -85,7 +89,6 @@ async function fetchAndRegisterVisitorStats(): Promise<VisitorStatsData | null> 
 
     let result: VisitorStatsData | null = null;
 
-    // 1. Önce sunucu köprüsünü (/api/stats) dene
     try {
       const res = await fetch(`/api/stats?${query}`, {
         method: "GET",
@@ -93,44 +96,17 @@ async function fetchAndRegisterVisitorStats(): Promise<VisitorStatsData | null> 
       });
       if (res.ok) {
         const json = await res.json();
-        if (json && json.ok && Number(json.totalUnique) > 0) {
+        if (json && typeof json.totalUnique === "number" && json.totalUnique > 0) {
           result = {
             ok: true,
-            totalUnique: Number(json.totalUnique),
-            todayVisits: Number(json.todayVisits),
-            totalViews: Number(json.totalViews),
+            totalUnique: Math.max(1, Number(json.totalUnique)),
+            todayVisits: Math.max(1, Number(json.todayVisits) || 1),
+            totalViews: Math.max(1, Number(json.totalViews) || 1),
           };
         }
       }
     } catch {
-      // Sunucu köprüsü başarısız olursa doğrudan Google Apps Script'e düş
-    }
-
-    // 2. Yedek: Doğrudan Google Apps Script URL'sine istemciden istek at
-    if (!result) {
-      try {
-        const directRes = await fetch(
-          `${GOOGLE_SCRIPT_URL}?action=hit&${query}`,
-          {
-            method: "GET",
-            redirect: "follow",
-            cache: "no-store",
-          }
-        );
-        if (directRes.ok) {
-          const directJson = await directRes.json();
-          if (directJson && Number(directJson.totalUnique) > 0) {
-            result = {
-              ok: true,
-              totalUnique: Number(directJson.totalUnique),
-              todayVisits: Number(directJson.todayVisits),
-              totalViews: Number(directJson.totalViews),
-            };
-          }
-        }
-      } catch {
-        // ignore network error
-      }
+      // ignore network error and fall back to cached stats
     }
 
     if (result && result.ok) {
@@ -161,7 +137,9 @@ async function fetchAndRegisterVisitorStats(): Promise<VisitorStatsData | null> 
       return result;
     }
 
-    return readCachedStats();
+    const fallback = readCachedStats();
+    latestMemoryStats = fallback;
+    return fallback;
   })();
 
   try {
@@ -178,15 +156,11 @@ interface VisitorCounterBadgeProps {
 export default function VisitorCounterBadge({
   variant = "footer",
 }: VisitorCounterBadgeProps) {
-  const [stats, setStats] = useState<VisitorStatsData | null>(() =>
-    readCachedStats()
-  );
+  const [stats, setStats] = useState<VisitorStatsData>(DEFAULT_FALLBACK_STATS);
 
   useEffect(() => {
     const cached = readCachedStats();
-    if (cached) {
-      setStats(cached);
-    }
+    setStats(cached);
 
     const handleStatsUpdate = (e: Event) => {
       const custom = e as CustomEvent<VisitorStatsData>;
@@ -208,57 +182,60 @@ export default function VisitorCounterBadge({
     };
   }, []);
 
-  const formattedUnique = stats
-    ? stats.totalUnique.toLocaleString("tr-TR")
-    : "…";
-  const formattedToday = stats
-    ? stats.todayVisits.toLocaleString("tr-TR")
-    : "…";
-  const formattedViews = stats
-    ? stats.totalViews.toLocaleString("tr-TR")
-    : "…";
+  const formattedUnique = stats.totalUnique.toLocaleString("tr-TR");
+  const formattedToday = stats.todayVisits.toLocaleString("tr-TR");
+  const formattedViews = stats.totalViews.toLocaleString("tr-TR");
 
   if (variant === "modal") {
     return (
-      <div className="p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] space-y-2.5">
+      <div className="p-3 sm:p-3.5 rounded-2xl bg-[#F7EFE1] dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] space-y-2.5 overflow-hidden">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span className="text-xs font-extrabold text-[#087F5B] dark:text-emerald-300 uppercase tracking-wider">
-              📊 Canlı Ziyaretçi ve Çalışma İstatistikleri
+            <span className="text-[11px] sm:text-xs font-extrabold text-[#087F5B] dark:text-emerald-300 uppercase tracking-wider truncate">
+              CANLI ZİYARETÇİ VE ÇALIŞMA İSTATİSTİKLERİ
             </span>
           </div>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
-            Gerçek Zamanlı Sayaç
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 shrink-0">
+            Canlı
           </span>
         </div>
 
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] text-center space-y-0.5">
-            <span className="text-[10px] sm:text-[11px] font-bold text-[var(--muted)] block">
-              👥 Toplam Tekil Ziyaretçi
+          <div className="p-2.5 sm:p-3.5 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] text-center flex flex-col items-center justify-center gap-1 min-w-0">
+            <span className="text-[10px] sm:text-[11px] font-bold text-[var(--muted)] leading-tight line-clamp-1">
+              Toplam Ziyaretçi
             </span>
-            <span className="text-sm sm:text-base font-black text-[#087F5B] dark:text-emerald-300 block">
-              {formattedUnique}
-            </span>
+            <div className="flex items-center justify-center gap-1 text-[#087F5B] dark:text-emerald-300">
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 opacity-85" />
+              <span className="text-sm sm:text-lg font-black tabular-nums">
+                {formattedUnique}
+              </span>
+            </div>
           </div>
 
-          <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] text-center space-y-0.5">
-            <span className="text-[10px] sm:text-[11px] font-bold text-[var(--muted)] block">
-              📅 Bugünkü Ziyaretçi
+          <div className="p-2.5 sm:p-3.5 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] text-center flex flex-col items-center justify-center gap-1 min-w-0">
+            <span className="text-[10px] sm:text-[11px] font-bold text-[var(--muted)] leading-tight line-clamp-1">
+              Bugünkü Ziyaret
             </span>
-            <span className="text-sm sm:text-base font-black text-[#6741D9] dark:text-indigo-300 block">
-              {formattedToday}
-            </span>
+            <div className="flex items-center justify-center gap-1 text-[#6741D9] dark:text-indigo-300">
+              <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 opacity-85" />
+              <span className="text-sm sm:text-lg font-black tabular-nums">
+                {formattedToday}
+              </span>
+            </div>
           </div>
 
-          <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] text-center space-y-0.5">
-            <span className="text-[10px] sm:text-[11px] font-bold text-[var(--muted)] block">
-              📈 Toplam Çalışma Oturumu
+          <div className="p-2.5 sm:p-3.5 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] text-center flex flex-col items-center justify-center gap-1 min-w-0">
+            <span className="text-[10px] sm:text-[11px] font-bold text-[var(--muted)] leading-tight line-clamp-1">
+              Çalışma Oturumu
             </span>
-            <span className="text-sm sm:text-base font-black text-amber-700 dark:text-amber-300 block">
-              {formattedViews}
-            </span>
+            <div className="flex items-center justify-center gap-1 text-amber-700 dark:text-amber-300">
+              <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 opacity-85" />
+              <span className="text-sm sm:text-lg font-black tabular-nums">
+                {formattedViews}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -269,16 +246,25 @@ export default function VisitorCounterBadge({
     <div
       data-tooltip={`📊 Gerçek Ziyaretçi İstatistiği — Tekil Kişi: ${formattedUnique} | Bugün: ${formattedToday} | Toplam Çalışma Oturumu: ${formattedViews}`}
       data-tooltip-pos="top"
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-full bg-white dark:bg-slate-800 border border-[#E6D7BE] dark:border-slate-700 text-[var(--foreground)] shadow-xs select-none"
+      className="inline-flex items-center divide-x divide-emerald-500/20 rounded-full bg-white dark:bg-slate-800 border border-[#E6D7BE] dark:border-slate-700 text-[11px] font-semibold text-[var(--foreground)] shadow-xs select-none whitespace-nowrap"
     >
-      <span
-        className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"
-        aria-hidden="true"
-      />
-      <span className="whitespace-nowrap">
-        Bugün: <strong className="font-extrabold text-[#087F5B] dark:text-emerald-400">{formattedToday}</strong> • Toplam:{" "}
-        <strong className="font-extrabold text-[#6741D9] dark:text-indigo-300">{formattedUnique}</strong> Kişi
-      </span>
+      <div className="flex items-center gap-1.5 px-2.5 py-1">
+        <span
+          className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"
+          aria-hidden="true"
+        />
+        <span className="text-[var(--muted)]">Bugün</span>
+        <span className="tabular-nums font-bold text-emerald-700 dark:text-emerald-300">
+          {formattedToday}
+        </span>
+      </div>
+      <div className="flex items-center gap-1 px-2.5 py-1">
+        <Users className="w-3 h-3 text-[#6741D9] dark:text-indigo-400 shrink-0" />
+        <span className="text-[var(--muted)]">Toplam</span>
+        <span className="tabular-nums font-bold text-[#6741D9] dark:text-indigo-300">
+          {formattedUnique}
+        </span>
+      </div>
     </div>
   );
 }
