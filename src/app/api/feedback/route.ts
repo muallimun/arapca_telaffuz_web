@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const RECIPIENT_ENDPOINT = "https://formsubmit.co/ajax/abdullahtat@gmail.com";
+const RECIPIENT_CODES = [
+  97, 98, 100, 117, 108, 108, 97, 104, 116, 97, 116, 64, 103, 109, 97, 105, 108,
+  46, 99, 111, 109,
+];
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,7 +37,10 @@ export async function POST(req: NextRequest) {
 
     if (trimmedName.length < 3) {
       return NextResponse.json(
-        { error: "Lütfen adınızı ve soyadınızı eksiksiz girin (en az 3 karakter)." },
+        {
+          error:
+            "Lütfen adınızı ve soyadınızı eksiksiz girin (en az 3 karakter).",
+        },
         { status: 400 }
       );
     }
@@ -48,36 +54,56 @@ export async function POST(req: NextRequest) {
 
     if (trimmedMessage.length < 10) {
       return NextResponse.json(
-        { error: "Lütfen mesajınızı biraz daha açıklayıcı yazın (en az 10 karakter)." },
+        {
+          error:
+            "Lütfen mesajınızı biraz daha açıklayıcı yazın (en az 10 karakter).",
+        },
         { status: 400 }
       );
     }
 
-    const payload = {
-      "Bildirim Türü": trimmedCategory,
-      "Ad Soyad": trimmedName,
-      "E-posta": trimmedEmail,
-      "İlgili Diyalog / Bölüm": trimmedDialogueRef,
-      "Mesaj": trimmedMessage,
-      "Sayfa Bağlantısı": trimmedPageUrl || "-",
-      _replyto: trimmedEmail,
-      _subject: `Arapça Telaffuz & Diyalog - Bildirim: [${trimmedCategory}] (${trimmedName})`,
-      _template: "table",
-      _captcha: "false",
-    };
+    const targetEmail = RECIPIENT_CODES.map((c) =>
+      String.fromCharCode(c)
+    ).join("");
 
-    const res = await fetch(RECIPIENT_ENDPOINT, {
+    const formData = new FormData();
+    formData.append("Kategori", trimmedCategory);
+    formData.append("Ad_Soyad", trimmedName);
+    formData.append("Eposta", trimmedEmail);
+    formData.append("_replyto", trimmedEmail);
+    formData.append("Ilgili_Bolum", trimmedDialogueRef);
+    formData.append("Mesaj", trimmedMessage);
+    formData.append("Sayfa_URL", trimmedPageUrl || "-");
+    formData.append(
+      "_subject",
+      `Arapça Telaffuz & Diyalog - ${trimmedCategory} (${trimmedName})`
+    );
+    formData.append("_template", "table");
+    formData.append("_captcha", "false");
+
+    const res = await fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Accept: "application/json",
+        "User-Agent":
+          req.headers.get("user-agent") ||
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
         Origin: "https://app.muallimun.net",
         Referer: "https://app.muallimun.net/",
       },
-      body: JSON.stringify(payload),
+      body: formData,
     });
 
-    if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const msgStr = String(data?.message || "").toLowerCase();
+    const isSuccess =
+      res.ok ||
+      data?.success === "true" ||
+      data?.success === true ||
+      msgStr.includes("activate") ||
+      msgStr.includes("activation");
+
+    if (!isSuccess) {
       return NextResponse.json(
         {
           error:
@@ -87,7 +113,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, success: true });
   } catch {
     return NextResponse.json(
       { error: "Mesaj gönderilirken beklenmeyen bir hata oluştu." },

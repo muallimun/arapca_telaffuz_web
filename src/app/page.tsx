@@ -382,8 +382,8 @@ export default function HomePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
           {/* 1. Günün Diyaloğu (3 sütun) */}
-          <div className="lg:col-span-4 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] p-3 flex flex-col justify-between gap-1.5">
-            <div className="space-y-1">
+          <div className="lg:col-span-4 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] p-3 flex flex-col justify-between gap-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-1.5">
                 <span className="text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997] uppercase tracking-wide">
                   📖 1. Günün Diyaloğu
@@ -396,33 +396,36 @@ export default function HomePage() {
               <Link
                 href={`/diyalog/${recommendedDialogue.id}`}
                 onClick={() => playClick()}
-                className="block group"
+                className="relative h-28 sm:h-32 w-full rounded-xl overflow-hidden border border-emerald-500/15 shadow-sm block group"
               >
-                <h3 className="text-sm font-extrabold text-[var(--foreground)] group-hover:text-[#087F5B] dark:group-hover:text-[#20c997] transition-colors leading-snug">
-                  #{recommendedDialogue.id.replace("dlg_", "")} —{" "}
-                  {recommendedDialogue.baslik_tr}
-                </h3>
-                <p
-                  dir="rtl"
-                  className="arabic text-lg font-bold text-[#087F5B] dark:text-[#20c997]"
-                >
-                  {displayArabic(recommendedDialogue.baslik_ar)}
-                </p>
+                {!recImgFailed ? (
+                  <img
+                    src={recommendedCoverSrc}
+                    alt={recommendedDialogue.baslik_tr}
+                    onError={() => setRecImgFailed(true)}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-emerald-700 via-teal-800 to-indigo-900 flex items-center justify-center">
+                    <BookOpen size={32} className="text-white/80" />
+                  </div>
+                )}
 
-                <div className="relative h-28 sm:h-32 w-full rounded-xl overflow-hidden border border-emerald-500/15 shadow-sm my-2 group">
-                  {!recImgFailed ? (
-                    <img
-                      src={recommendedCoverSrc}
-                      alt={recommendedDialogue.baslik_tr}
-                      onError={() => setRecImgFailed(true)}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-emerald-700 via-teal-800 to-indigo-900 flex items-center justify-center">
-                      <BookOpen size={32} className="text-white/80" />
-                    </div>
-                  )}
-                  <span className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/10 p-3 flex flex-col justify-between">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-xs sm:text-sm font-extrabold text-white drop-shadow-sm leading-snug line-clamp-2">
+                      #{recommendedDialogue.id.replace("dlg_", "")} —{" "}
+                      {recommendedDialogue.baslik_tr}
+                    </h3>
+                    <p
+                      dir="rtl"
+                      className="arabic text-base sm:text-lg font-bold text-emerald-200 drop-shadow-sm leading-none shrink-0"
+                    >
+                      {displayArabic(recommendedDialogue.baslik_ar)}
+                    </p>
+                  </div>
+
+                  <span className="w-fit bg-black/60 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">
                     {recommendedSentenceCount} Cümle • Sesli Diyalog
                   </span>
                 </div>
@@ -446,7 +449,7 @@ export default function HomePage() {
           </div>
 
           {/* 2. Zamanı Gelen 6 Kelime (5 sütun) */}
-          <div className="lg:col-span-5 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] p-3 space-y-2">
+          <div className="lg:col-span-5 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] p-3 flex flex-col justify-between gap-2">
             <div className="flex items-center justify-between gap-1.5">
               <span className="text-[11px] font-extrabold text-[#6741D9] dark:text-[#d0bfff] uppercase tracking-wide">
                 🔄 2. Zamanı Gelen 6 Kelime
@@ -460,7 +463,7 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+            <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-2.5 content-stretch">
               {dailyPackage.dailyWords.map((dw) => {
                 const ar = (dw.item.mufret || dw.item.mazi || "")
                   .split("/")[0]
