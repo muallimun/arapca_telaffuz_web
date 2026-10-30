@@ -52,7 +52,11 @@ export interface SentenceEvaluationResult {
   overallScore: number;
   score?: number | null;
   isTextRecognized?: boolean;
+  isAcousticFallback?: boolean;
   rhythmScore?: number;
+  fluencyScore?: number;
+  syllablePeaks?: number;
+  expectedSyllables?: number;
   extraWordsCount?: number;
   message?: string;
   isRootGuardTriggered: boolean;

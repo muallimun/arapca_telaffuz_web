@@ -120,6 +120,76 @@ export class HybridSpeechManager {
     }
   }
 
+  /**
+   * Mobil tarayıcılarda recognition.stop() çağrıldıktan sonra 200-600ms içinde gelen
+   * son onresult olayını kaybetmemek için onend tetiklenene veya timeoutMs dolana kadar bekler.
+   */
+  public stopAndWaitForFinalResult(timeoutMs: number = 1200): Promise<string> {
+    if (!this.recognition) {
+      this.isWebSpeechActive = false;
+      return Promise.resolve(this.getCapturedWebSpeechText());
+    }
+
+    const rec = this.recognition;
+    this.recognition = null;
+
+    return new Promise<string>((resolve) => {
+      let settled = false;
+
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        try {
+          rec.onresult = null;
+          rec.onerror = null;
+          rec.onend = null;
+        } catch {
+          // ignore
+        }
+        this.isWebSpeechActive = false;
+        resolve(this.getCapturedWebSpeechText());
+      };
+
+      const timer = setTimeout(finish, timeoutMs);
+
+      const prevOnEnd = rec.onend;
+      rec.onend = (ev: any) => {
+        try {
+          if (typeof prevOnEnd === "function") prevOnEnd(ev);
+        } catch {
+          // ignore
+        }
+        // onend öncesinde kuyrukta bekleyen son onresult'ın işlenmesi için 60ms mikro bekleme
+        setTimeout(finish, 60);
+      };
+
+      const prevOnError = rec.onerror;
+      rec.onerror = (ev: any) => {
+        try {
+          if (typeof prevOnError === "function") prevOnError(ev);
+        } catch {
+          // ignore
+        }
+        setTimeout(finish, 60);
+      };
+
+      try {
+        if (typeof rec.stop === "function") {
+          rec.stop();
+        } else {
+          finish();
+        }
+      } catch {
+        finish();
+      }
+    });
+  }
+
+  public stopListeningAsync(timeoutMs: number = 1200): Promise<string> {
+    return this.stopAndWaitForFinalResult(timeoutMs);
+  }
+
   public stopLiveWebSpeech(): string {
     if (this.recognition) {
       const rec = this.recognition;

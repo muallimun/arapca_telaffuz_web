@@ -11,6 +11,8 @@ export interface RecordingSession16kHz {
   stop: () => Promise<{
     samples16kHz: Float32Array;
     trimmedSamples: Float32Array;
+    actualSampleRate: number;
+    syllablePeaks: number;
     wavBlob: Blob;
     wavUrl: string;
     playbackBlob: Blob;
@@ -217,36 +219,76 @@ export function audioBufferToWav(audioBuffer: AudioBuffer): Blob {
 }
 
 /**
+ * Mobil tarayıcılarda (44100 Hz veya 48000 Hz kayıt alan AudioContext)
+ * birleştirilen Float32Array ses tamponunu lineer interpolasyon ile kesin olarak
+ * hedef frekansa (varsayılan 16000 Hz) yeniden örnekler.
+ */
+export function resampleFloat32Audio(
+  buffer: Float32Array,
+  fromSampleRate: number,
+  toSampleRate: number = 16000
+): Float32Array {
+  if (!buffer || buffer.length === 0) return new Float32Array(0);
+  if (
+    !fromSampleRate ||
+    fromSampleRate <= 0 ||
+    fromSampleRate === toSampleRate
+  ) {
+    return buffer;
+  }
+  const ratio = fromSampleRate / toSampleRate;
+  const newLength = Math.max(1, Math.round(buffer.length / ratio));
+  const result = new Float32Array(newLength);
+  for (let i = 0; i < newLength; i++) {
+    const srcIndex = i * ratio;
+    const idx0 = Math.floor(srcIndex);
+    const idx1 = Math.min(buffer.length - 1, idx0 + 1);
+    const frac = srcIndex - idx0;
+    result[i] = buffer[idx0] * (1 - frac) + buffer[idx1] * frac;
+  }
+  return result;
+}
+
+/**
  * Herhangi bir AudioBuffer'ı Whisper'ın beklediği 16.000 Hz Mono Float32'ye çevirir.
  */
 export async function resampleTo16kHz(
   audioBuffer: AudioBuffer
 ): Promise<Float32Array> {
   const targetSampleRate = 16000;
+  const rawChannel = audioBuffer.getChannelData(0);
   if (audioBuffer.sampleRate === targetSampleRate) {
-    return new Float32Array(audioBuffer.getChannelData(0));
+    return new Float32Array(rawChannel);
   }
 
-  const offlineCtx = new OfflineAudioContext(
-    1,
-    Math.max(1, Math.ceil(audioBuffer.duration * targetSampleRate)),
-    targetSampleRate
-  );
-  const source = offlineCtx.createBufferSource();
-  source.buffer = audioBuffer;
-  source.connect(offlineCtx.destination);
-  source.start(0);
+  try {
+    const offlineCtx = new OfflineAudioContext(
+      1,
+      Math.max(1, Math.ceil(audioBuffer.duration * targetSampleRate)),
+      targetSampleRate
+    );
+    const source = offlineCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(offlineCtx.destination);
+    source.start(0);
 
-  const resampled = await offlineCtx.startRendering();
-  return new Float32Array(resampled.getChannelData(0));
+    const resampled = await offlineCtx.startRendering();
+    return new Float32Array(resampled.getChannelData(0));
+  } catch {
+    return resampleFloat32Audio(
+      rawChannel,
+      audioBuffer.sampleRate,
+      targetSampleRate
+    );
+  }
 }
 
 /**
- * Ses dizisinin tepe genliğini (peak amplitude) hedef seviyeye (varsayılan 0.95) normalize eder.
+ * Ses dizisinin tepe genliğini (peak amplitude) hedef seviyeye (varsayılan 0.90) normalize eder.
  */
 export function normalizeAudioPeak(
   samples: Float32Array,
-  targetPeak: number = 0.95
+  targetPeak: number = 0.9
 ): Float32Array {
   if (!samples || samples.length === 0) return new Float32Array(0);
   let maxAbs = 0;
@@ -263,9 +305,16 @@ export function normalizeAudioPeak(
   return out;
 }
 
+export function normalizeAudioBuffer(
+  buffer: Float32Array,
+  targetPeak: number = 0.9
+): Float32Array {
+  return normalizeAudioPeak(buffer, targetPeak);
+}
+
 /**
  * Sesteki baş ve sondaki sessizlik kısımlarını kırpar (VAD - Voice Activity Detection)
- * ve tepe genliğini 0.95 seviyesine normalize eder.
+ * ve tepe genliğini 0.90 seviyesine normalize eder.
  */
 export function trimSilence(
   float32Data: Float32Array,
@@ -310,13 +359,50 @@ export function trimSilence(
   }
 
   const sliced = float32Data.slice(start, end + 1);
-  return normalizeAudioPeak(sliced, 0.95);
+  return normalizeAudioPeak(sliced, 0.9);
 }
 
 /**
- * Tarayıcı ses-metin (STT) motoru yanıt vermediğinde (ör. Firefox Web Speech eksikliği veya çevrimdışı durum),
- * kaydedilen 16kHz DSP ses dalgasının referans ses dalgasıyla olan zarf, süre, hece enerjisi ve ritim uyumunu
- * kullanarak gerçekçi kelime ve cümle telaffuz analizi üretir.
+ * Ses zarfı (envelopeBars) içindeki aktif hece tepe noktalarını (syllablePeaks) sayar.
+ */
+export function countSyllablePeaks(bars: number[]): number {
+  if (!bars || bars.length === 0) return 0;
+  let peaks = 0;
+  let activeBars = 0;
+  for (let i = 0; i < bars.length; i++) {
+    const val = bars[i];
+    if (val >= 0.15) {
+      activeBars++;
+    }
+    const prev = i > 0 ? bars[i - 1] : 0;
+    const next = i < bars.length - 1 ? bars[i + 1] : 0;
+    if (val >= 0.18 && val >= prev && val > next) {
+      peaks++;
+    }
+  }
+  if (peaks === 0 && activeBars >= 2) {
+    return Math.max(1, Math.round(activeBars / 4));
+  }
+  return peaks;
+}
+
+/**
+ * Arapça metindeki beklenen yaklaşık hece/vurgu sayısını tahmin eder.
+ */
+export function estimateArabicSyllables(sentence: string): number {
+  const clean = sentence
+    .replace(/[\u064B-\u065F\u0670.,!?؟،؛:"'«»()[\]-]/g, "")
+    .trim();
+  if (!clean) return 1;
+  const words = clean.split(/\s+/).filter(Boolean);
+  const charCount = words.join("").length;
+  return Math.max(words.length, Math.round(charCount * 0.45));
+}
+
+/**
+ * Tarayıcı ses-metin (STT) motoru yanıt vermediğinde (ör. mobil tarayıcı mikrofon kısıtlaması veya çevrimdışı durum),
+ * kaydedilen 16kHz DSP ses dalgasının referans ses dalgasıyla olan zarf, süre, hece tepe noktaları (syllablePeaks)
+ * ve ritim korelasyonunu kullanarak Akustik Hece, Süre ve Zarf Korelasyonu Analizi üretir.
  */
 export function evaluateAcousticDspSentence(
   expectedSentence: string,
@@ -347,20 +433,70 @@ export function evaluateAcousticDspSentence(
     refDuration > 0.3 ? refDuration : Math.max(1.2, cleanWords.length * 0.65 + 0.4);
   const overallRhythm = calculateRhythmMatch(refBars, userBars);
   const overallTempo = calculateTempoScore(safeRefDur, userDuration);
+  const syllablePeaks = countSyllablePeaks(userBars);
+  const expectedSyllables = estimateArabicSyllables(expectedSentence);
+
+  const syllableRatio =
+    Math.min(syllablePeaks, expectedSyllables) /
+    Math.max(syllablePeaks, expectedSyllables, 1);
+  const syllableHarmonyScore =
+    syllablePeaks > 0
+      ? Math.round(Math.min(100, Math.max(55, syllableRatio * 100)))
+      : 0;
 
   const calculatedRhythmScore = Math.max(
     0,
-    Math.min(100, Math.round(overallRhythm * 0.6 + overallTempo * 0.4))
+    Math.min(
+      100,
+      Math.round(
+        overallRhythm * 0.5 +
+          overallTempo * 0.35 +
+          syllableHarmonyScore * 0.15
+      )
+    )
   );
 
-  // Eğer konuşma tanıma motorundan metin alınamadıysa (recognizedText boşsa),
-  // kesinlikle sahte kelime bazlı "doğru telaffuz" puanı üretme ve hedef kelimeleri spokenWord'e kopyalama!
+  // Eğer konuşma tanıma motorundan metin alınamadıysa (recognizedText boşsa):
+  // Kullanıcı mikrofona gerçekten konuştuysa (userDuration >= 0.8 sn [tek kelimede >= 0.45 sn] ve syllablePeaks >= 1),
+  // Akustik Hece, Süre ve Zarf Korelasyonu Analizi çalıştır (Akustik Mod).
   if (!recognizedText || recognizedText.trim().length === 0) {
+    const minValidDur = cleanWords.length <= 1 ? 0.45 : 0.8;
+    const hasValidAcousticSpeech =
+      userDuration >= minValidDur && syllablePeaks >= 1;
+
+    if (hasValidAcousticSpeech) {
+      const acousticFluency = Math.max(
+        58,
+        Math.min(
+          95,
+          Math.round(calculatedRhythmScore * 0.65 + syllableHarmonyScore * 0.35)
+        )
+      );
+      const boostedRhythm = Math.max(55, calculatedRhythmScore);
+      return {
+        isTextRecognized: false,
+        isAcousticFallback: true,
+        score: acousticFluency,
+        overallScore: acousticFluency,
+        rhythmScore: boostedRhythm,
+        fluencyScore: acousticFluency,
+        syllablePeaks,
+        expectedSyllables,
+        words: [],
+        isRootGuardTriggered: false,
+        message:
+          "📱 Mobil tarayıcınızda ses-metin motoru yanıt vermediği için değerlendirme Akustik Ritim ve Hece Uyumu üzerinden yapıldı.",
+      };
+    }
+
     return {
       isTextRecognized: false,
+      isAcousticFallback: false,
       score: null,
       overallScore: 0,
       rhythmScore: calculatedRhythmScore,
+      syllablePeaks,
+      expectedSyllables,
       words: [],
       isRootGuardTriggered: false,
       message:
@@ -372,8 +508,11 @@ export function evaluateAcousticDspSentence(
   return {
     ...evalRes,
     isTextRecognized: true,
+    isAcousticFallback: false,
     score: evalRes.overallScore,
     rhythmScore: calculatedRhythmScore,
+    syllablePeaks,
+    expectedSyllables,
   };
 }
 
@@ -588,23 +727,15 @@ export async function start16kHzRecorder(options?: {
           ? new Blob(mediaChunks, { type: actualMimeType })
           : null;
 
-      // Cihaz 16000 Hz desteklemediyse (ör. 48000 Hz açtıysa) 16000 Hz'e resample et
-      let samples16kHz: Float32Array = merged;
-      if (audioCtx.sampleRate !== 16000 && merged.length > 0) {
-        try {
-          const tempBuf = audioCtx.createBuffer(
-            1,
-            merged.length,
-            audioCtx.sampleRate
-          );
-          tempBuf.getChannelData(0).set(merged);
-          samples16kHz = await resampleTo16kHz(tempBuf);
-        } catch {
-          samples16kHz = merged;
-        }
-      }
+      // Mobil tarayıcılar AudioContext({ sampleRate: 16000 }) parametresini yok sayıp
+      // 44100 Hz veya 48000 Hz ile kayıt aldıysa lineer interpolasyon ile kesin olarak 16000 Hz'e yeniden örnekle
+      const actualSampleRate = audioCtx.sampleRate || 16000;
+      let samples16kHz: Float32Array =
+        actualSampleRate !== 16000 && merged.length > 0
+          ? resampleFloat32Audio(merged, actualSampleRate, 16000)
+          : merged;
 
-      // iOS Safari'de ScriptProcessor bazen sessiz kalabilir; nativeMediaBlob varsa oradan decode et
+      // iOS Safari / Android'de ScriptProcessor bazen sessiz kalabilir; nativeMediaBlob varsa oradan decode et
       if (
         (samples16kHz.length === 0 || peakRawRms < 0.003) &&
         nativeMediaBlob &&
@@ -613,7 +744,11 @@ export async function start16kHzRecorder(options?: {
         try {
           const ab = await nativeMediaBlob.arrayBuffer();
           const decoded = await audioCtx.decodeAudioData(ab);
-          samples16kHz = await resampleTo16kHz(decoded);
+          samples16kHz = resampleFloat32Audio(
+            decoded.getChannelData(0),
+            decoded.sampleRate,
+            16000
+          );
           let sumSq = 0;
           let maxAbs = 0;
           for (let i = 0; i < samples16kHz.length; i++) {
@@ -627,6 +762,11 @@ export async function start16kHzRecorder(options?: {
         } catch {
           // ignore decode fallback error
         }
+      }
+
+      // Telefondaki kısık seslerin de net algılanması için tepe noktasını 0.9'a normalize et
+      if (samples16kHz.length > 0) {
+        samples16kHz = normalizeAudioBuffer(samples16kHz, 0.9);
       }
 
       await audioCtx.close().catch(() => {});
@@ -643,10 +783,17 @@ export async function start16kHzRecorder(options?: {
           ? rawRmsValues.reduce((a, b) => a + b, 0) / rawRmsValues.length
           : 0;
 
+      const env =
+        trimmedSamples.length >= 1600
+          ? extractFloat32Envelope(trimmedSamples, 16000, 48)
+          : { bars: Array(48).fill(0.05), duration: 0 };
+
+      const syllablePeaks = countSyllablePeaks(env.bars);
+
       const isSilent =
         rawDuration < 0.3 ||
-        voicedDuration < 0.12 ||
-        (peakRawRms < 0.006 && !hasSpoken);
+        (voicedDuration < 0.12 && syllablePeaks === 0) ||
+        (peakRawRms < 0.005 && !hasSpoken && syllablePeaks === 0);
 
       const finalSamplesForWav =
         trimmedSamples.length > 0 ? trimmedSamples : samples16kHz;
@@ -661,14 +808,11 @@ export async function start16kHzRecorder(options?: {
       const playbackUrl =
         playbackBlob === wavBlob ? wavUrl : URL.createObjectURL(playbackBlob);
 
-      const env =
-        trimmedSamples.length >= 1600
-          ? extractFloat32Envelope(trimmedSamples, 16000, 48)
-          : { bars: Array(48).fill(0.05), duration: 0 };
-
       return {
         samples16kHz,
         trimmedSamples,
+        actualSampleRate,
+        syllablePeaks,
         wavBlob,
         wavUrl,
         playbackBlob,

@@ -53,6 +53,9 @@ import {
   calculateOverallFluency,
   evaluateAcousticDspSentence,
   start16kHzRecorder,
+  resampleFloat32Audio,
+  normalizeAudioBuffer,
+  countSyllablePeaks,
   RecordingSession16kHz,
 } from "@/lib/audioAnalysis";
 import {
@@ -498,8 +501,11 @@ export default function ShadowingModal({
     backupBrowserTranscriptRef.current = "";
 
     try {
-      // Yalnızca Hızlı Tarayıcı Motoru (webspeech) seçiliyse kayıt sırasında çevrimiçi Web Speech API'yi başlat
-      if (sttEngine === "webspeech") {
+      const isMobileDevice =
+        typeof navigator !== "undefined" &&
+        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      const startLiveSpeechRecognition = () => {
         speechManagerRef.current?.startLiveWebSpeech({
           onInterimTranscript: (combined, finalPart, interimPart) => {
             if (typeof finalPart === "string" && finalPart.trim()) {
@@ -522,6 +528,12 @@ export default function ShadowingModal({
             setLiveInterimText(combined);
           },
         });
+      };
+
+      // Masaüstünde Hızlı Tarayıcı Motoru seçiliyse hemen başlat;
+      // mobilde ise getUserMedia mikrofon kilidinin SpeechRecognition'ı düşürmemesi için stream alındıktan hemen sonra başlat
+      if (sttEngine === "webspeech" && !isMobileDevice) {
+        startLiveSpeechRecognition();
       }
 
       // Kelime sayısına göre dinamik maksimum kayıt süresi (15 sn - 45 sn arası) ve 2.5 sn sessizlik toleransı
@@ -555,6 +567,15 @@ export default function ShadowingModal({
       recordingSessionRef.current = session;
       mediaStreamRef.current = session.getStream();
       audioContextRef.current = session.getAudioContext();
+
+      // Mobil cihazlarda getUserMedia açıldıktan hemen sonra SpeechRecognition'ı başlat (Android mikrofon çakışması koruması)
+      if (isMobileDevice || sttEngine === "webspeech") {
+        if (isMobileDevice) {
+          setTimeout(() => {
+            startLiveSpeechRecognition();
+          }, 80);
+        }
+      }
 
       // Mobil (iOS Safari & Android) ses formatı uyumluluğu için desteklenen MIME türünü dinamik seç
       if (
@@ -614,19 +635,6 @@ export default function ShadowingModal({
     setIsRecording(false);
     setIsAnalyzing(true);
 
-    const stoppedWebSpeechText =
-      speechManagerRef.current?.stopLiveWebSpeech() || "";
-    const fullSpokenText = (
-      finalTranscriptRef.current +
-      " " +
-      interimTranscriptRef.current
-    ).trim();
-    const bestWebSpeechText =
-      fullSpokenText ||
-      stoppedWebSpeechText ||
-      backupBrowserTranscriptRef.current.trim();
-    backupBrowserTranscriptRef.current = bestWebSpeechText;
-
     if (sttEngine === "whisper") {
       setWhisperStatus(
         "🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor..."
@@ -634,15 +642,59 @@ export default function ShadowingModal({
     }
 
     try {
-      const recorded = await activeSession.stop();
+      const contextSampleRate =
+        audioContextRef.current?.sampleRate || 16000;
+
+      // Ses kaydı durdurulurken paralel olarak mobil Web Speech API'nin son onresult (nihai metin) yanıtını 1200ms'ye kadar bekle
+      const [recorded, stoppedWebSpeechText] = await Promise.all([
+        activeSession.stop(),
+        speechManagerRef.current
+          ? speechManagerRef.current.stopAndWaitForFinalResult(1200)
+          : Promise.resolve(""),
+      ]);
+
       mediaStreamRef.current = null;
       audioContextRef.current = null;
       mediaRecorderRef.current = null;
+
+      const fullSpokenText = (
+        finalTranscriptRef.current +
+        " " +
+        interimTranscriptRef.current
+      ).trim();
+      const bestWebSpeechText =
+        stoppedWebSpeechText ||
+        fullSpokenText ||
+        backupBrowserTranscriptRef.current.trim();
+      backupBrowserTranscriptRef.current = bestWebSpeechText;
 
       setUserAudioUrl(recorded.playbackUrl || recorded.wavUrl);
       setUserWavBlob(recorded.wavBlob);
       setUserDuration(recorded.duration);
       setUserBars(recorded.envelopeBars);
+
+      // Mobil AudioContext 44100 Hz veya 48000 Hz ile kayıt aldıysa Whisper'a göndermeden önce
+      // kesin olarak 16000 Hz'e yeniden örnekle ve tepe genliğini 0.9'a normalize et
+      const actualRate = recorded.actualSampleRate || contextSampleRate || 16000;
+      let whisperInputBuffer =
+        recorded.trimmedSamples.length > 0
+          ? recorded.trimmedSamples
+          : recorded.samples16kHz;
+
+      if (
+        actualRate !== 16000 &&
+        whisperInputBuffer.length > 0 &&
+        recorded.samples16kHz.length === 0
+      ) {
+        whisperInputBuffer = resampleFloat32Audio(
+          whisperInputBuffer,
+          actualRate,
+          16000
+        );
+      }
+      if (whisperInputBuffer.length > 0) {
+        whisperInputBuffer = normalizeAudioBuffer(whisperInputBuffer, 0.9);
+      }
 
       let recognizedText = "";
       let usedEngine: SttEngineType = sttEngine;
@@ -654,9 +706,7 @@ export default function ShadowingModal({
         } else {
           const hybridRes = await speechManagerRef.current.transcribeHybrid(
             sttEngine,
-            recorded.trimmedSamples.length > 0
-              ? recorded.trimmedSamples
-              : recorded.samples16kHz,
+            whisperInputBuffer,
             {
               onStatusChange: (st) => setWhisperStatus(st),
               backupTranscript: backupBrowserTranscriptRef.current,
@@ -693,10 +743,14 @@ export default function ShadowingModal({
       const hasDetectedWords =
         normalizedSpoken.length > 0 && /[\u0600-\u06FF]/.test(normalizedSpoken);
 
+      const detectedSyllablePeaks =
+        recorded.syllablePeaks ?? countSyllablePeaks(recorded.envelopeBars);
+
       const hasSpeechEnergy =
         !recorded.isSilent &&
         (recorded.voicedDuration >= 0.14 ||
           recorded.peakRms >= 0.008 ||
+          detectedSyllablePeaks >= 1 ||
           recorded.envelopeBars.some((b) => b > 0.14));
 
       if (!hasDetectedWords && !hasSpeechEnergy) {
@@ -792,7 +846,7 @@ export default function ShadowingModal({
     setSilentWarning(null);
 
     if (!hasArabicText) {
-      // Metin çözümlenemediğinde sahte yüksek puan üretme, istatistiklere kaydetme ve Hata Defteri'nden silme!
+      // Mobil veya masaüstünde ses-metin motoru yanıt vermediğinde Akustik Hece, Süre ve Zarf Korelasyonu Analizi çalıştır
       const dspRes = evaluateAcousticDspSentence(
         activeText,
         userEnvelopeBars,
@@ -803,15 +857,28 @@ export default function ShadowingModal({
       );
       setDspFallbackNotice(
         dspRes.message ||
-          "Ses kaydınız alındı ve ritim karşılaştırıldı; ancak kelimeler net çözümlenemediği için telaffuz doğruluğu puanlanamadı. Lütfen mikrofona biraz daha yakın konuşarak tekrar deneyin."
+          "📱 Mobil tarayıcınızda ses-metin motoru yanıt vermediği için değerlendirme Akustik Ritim ve Hece Uyumu üzerinden yapıldı."
       );
       setEvaluation(dspRes);
-      setRhythmScore(dspRes.rhythmScore ?? currentRhythm);
-      setFluencyScore(null);
+      const finalRhythm = dspRes.rhythmScore ?? currentRhythm;
+      setRhythmScore(finalRhythm);
+      if (dspRes.isAcousticFallback) {
+        const acousticFluency =
+          dspRes.fluencyScore ?? dspRes.overallScore ?? finalRhythm;
+        setFluencyScore(acousticFluency);
+        if (acousticFluency > 0) {
+          recordPronunciationScore(acousticFluency);
+        }
+        onEvaluated?.(acousticFluency, activeText);
+        if (acousticFluency >= 75) playSuccess();
+        else playPartial();
+      } else {
+        setFluencyScore(null);
+        onEvaluated?.(finalRhythm ?? 0, activeText);
+        playPartial();
+      }
       setAdaptiveResult(null);
       setActiveWordTip(null);
-      onEvaluated?.(dspRes.rhythmScore ?? currentRhythm ?? 0, activeText);
-      playPartial();
       return;
     }
 
@@ -1159,19 +1226,19 @@ export default function ShadowingModal({
             }`}
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3.5">
-              {/* Üst / Sol Bölüm: Referans Ses + Süre + Küçük Hız Seçici (Tek Kompakt Satır) */}
+              {/* Üst / Sol Bölüm: Referans Ses + Süre + Küçük Hız Seçici (Taşmasız Mobil Satır) */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-1 mb-1.5">
-                  <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-xs font-extrabold text-[#087F5B] flex items-center gap-1 whitespace-nowrap">
                       <Volume2 size={14} className="shrink-0" />
-                      <span>🔊 Referans Ses</span>
+                      <span>Referans Ses</span>
                     </span>
-                    <span className="text-xs font-semibold text-[var(--muted)] tabular-nums whitespace-nowrap">
+                    <span className="text-xs font-semibold text-[var(--muted)] tabular-nums whitespace-nowrap shrink-0">
                       {refDuration > 0 ? `${refDuration.toFixed(1)} sn` : "Hazır"}
                     </span>
                   </div>
-                  <div className="bg-white dark:bg-[var(--background)] rounded-lg p-0.5 border border-[#E6D7BE] flex items-center gap-0.5 shrink-0">
+                  <div className="bg-white dark:bg-[var(--background)] rounded-lg p-0.5 border border-[#E6D7BE] flex items-center gap-0.5 shrink-0 ml-auto">
                     {([0.5, 0.75, 1, 1.25] as SpeechRate[]).map((r) => (
                       <button
                         key={r}
@@ -1180,7 +1247,7 @@ export default function ShadowingModal({
                           playClick();
                           setSpeechRate(r);
                         }}
-                        className={`px-1.5 py-0.5 rounded-md text-[11px] tabular-nums transition-all cursor-pointer ${
+                        className={`px-2 py-0.5 rounded-md text-xs tabular-nums transition-all cursor-pointer ${
                           speechRate === r
                             ? "bg-[#0CA678] text-white font-bold"
                             : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
@@ -1219,16 +1286,20 @@ export default function ShadowingModal({
                         : "Sizin Ses Ritminiz (16kHz)"}
                     </span>
                   </span>
-                  <div className="flex items-center gap-1.5 ml-auto">
+                  <div className="flex items-center gap-1.5 ml-auto shrink-0">
                     {evaluation &&
-                      evaluation.isTextRecognized !== false &&
+                      (evaluation.isTextRecognized !== false ||
+                        evaluation.isAcousticFallback) &&
                       !isRecording &&
                       !isAnalyzing && (
-                        <span className="px-2 py-0.5 rounded-lg bg-[#0CA678] text-white text-[10px] font-extrabold tabular-nums shadow-2xs">
-                          🎯 Genel Puan: %{fluencyScore ?? evaluation.overallScore}
+                        <span className="px-2 py-0.5 rounded-lg bg-[#0CA678] text-white text-[10px] font-extrabold tabular-nums whitespace-nowrap shadow-2xs">
+                          🎯 Genel Puan: %
+                          {fluencyScore ??
+                            evaluation.fluencyScore ??
+                            evaluation.overallScore}
                         </span>
                       )}
-                    <span className="text-[11px] font-bold text-[var(--muted)] tabular-nums">
+                    <span className="text-[11px] font-bold text-[var(--muted)] tabular-nums whitespace-nowrap shrink-0">
                       {userDuration > 0 ? `${userDuration.toFixed(1)} sn` : "0.0 sn"}
                     </span>
                   </div>
@@ -1314,19 +1385,27 @@ export default function ShadowingModal({
                 </div>
               )}
 
-              {/* 3'lü Skor Özeti: Metin Uyumu ve Ritim/Süre Uyumu Ayrı Gösterilir */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-3 text-center">
-                  <span className="text-[11px] font-bold text-[var(--muted)] block">
+              {/* 3'lü Skor Özeti: Metin Uyumu ve Ritim/Süre Uyumu Ayrı Gösterilir (Mobilde Taşmasız) */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-2.5 sm:p-3 text-center flex flex-col items-center justify-center min-w-0 overflow-hidden">
+                  <span className="text-[11px] font-bold text-[var(--muted)] block leading-tight">
                     Metin Uyumu
                   </span>
                   {evaluation.isTextRecognized === false ? (
-                    <span className="text-sm sm:text-base font-extrabold text-amber-700 dark:text-amber-300 mt-1 block">
-                      Çözümlenemedi
+                    <span
+                      className={`text-xs sm:text-sm font-bold leading-tight break-words text-center mt-1 block ${
+                        evaluation.isAcousticFallback
+                          ? "text-[#087F5B] dark:text-emerald-300"
+                          : "text-amber-700 dark:text-amber-300"
+                      }`}
+                    >
+                      {evaluation.isAcousticFallback
+                        ? "Akustik Mod"
+                        : "Ölçülemedi"}
                     </span>
                   ) : (
                     <>
-                      <span className="text-xl sm:text-2xl font-black tabular-nums text-[#087F5B]">
+                      <span className="text-xl sm:text-2xl font-black tabular-nums text-[#087F5B] mt-0.5">
                         %{evaluation.overallScore}
                       </span>
                       {evaluation.extraWordsCount &&
@@ -1339,27 +1418,31 @@ export default function ShadowingModal({
                   )}
                 </div>
 
-                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-3 text-center">
-                  <span className="text-[11px] font-bold text-[var(--muted)] block">
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-2.5 sm:p-3 text-center flex flex-col items-center justify-center min-w-0 overflow-hidden">
+                  <span className="text-[11px] font-bold text-[var(--muted)] block leading-tight">
                     Ritim ve Süre Uyumu
                   </span>
-                  <span className="text-xl sm:text-2xl font-black tabular-nums text-[#6741D9]">
+                  <span className="text-xl sm:text-2xl font-black tabular-nums text-[#6741D9] mt-0.5">
                     %{evaluation.rhythmScore ?? rhythmScore ?? tempoScore ?? 0}
                   </span>
                 </div>
 
-                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-3 text-center">
-                  <span className="text-[11px] font-bold text-[var(--muted)] flex items-center justify-center gap-1">
-                    <Award size={12} className="text-amber-600" />
-                    Genel Akıcılık
+                <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] border-b-4 p-2.5 sm:p-3 text-center flex flex-col items-center justify-center min-w-0 overflow-hidden">
+                  <span className="text-[11px] font-bold text-[var(--muted)] flex items-center justify-center gap-1 leading-tight">
+                    <Award size={12} className="text-amber-600 shrink-0" />
+                    <span>Genel Akıcılık</span>
                   </span>
-                  {evaluation.isTextRecognized === false ? (
-                    <span className="text-sm sm:text-base font-extrabold text-[var(--muted)] mt-1 block">
-                      —
+                  {evaluation.isTextRecognized === false &&
+                  !evaluation.isAcousticFallback ? (
+                    <span className="text-xs sm:text-sm font-bold leading-tight break-words text-center text-[var(--muted)] mt-1 block">
+                      Ölçülemedi
                     </span>
                   ) : (
-                    <span className="text-xl sm:text-2xl font-black tabular-nums text-[var(--foreground)]">
-                      %{fluencyScore ?? evaluation.overallScore}
+                    <span className="text-xl sm:text-2xl font-black tabular-nums text-[var(--foreground)] mt-0.5">
+                      %
+                      {fluencyScore ??
+                        evaluation.fluencyScore ??
+                        evaluation.overallScore}
                     </span>
                   )}
                 </div>

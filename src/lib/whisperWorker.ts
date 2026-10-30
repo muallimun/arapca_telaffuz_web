@@ -11,6 +11,7 @@ export interface WhisperWorkerRequest {
   type: "transcribe" | "preload";
   requestId?: string;
   audioData?: Float32Array;
+  sampleRate?: number;
   language?: string;
 }
 
@@ -64,13 +65,46 @@ async function hasUsableWebGPU(): Promise<boolean> {
 }
 
 /**
- * 16kHz Float32Array PCM ses dizisinin başındaki ve sonundaki sessizlikleri kırpar (trim silence)
- * ve tepe genliğini (peak normalization) 0.95 seviyesine normalize eder.
+ * Mobil tarayıcılardan 44100 Hz veya 48000 Hz gelebilecek ses tamponunu
+ * lineer interpolasyon ile kesin olarak 16000 Hz frekansına yeniden örnekler.
  */
-function preprocessAudioForWhisper(samples: Float32Array): Float32Array {
-  if (!samples || samples.length === 0) {
+function resampleWorkerAudioTo16kHz(
+  buffer: Float32Array,
+  fromSampleRate: number = 16000
+): Float32Array {
+  if (!buffer || buffer.length === 0) return new Float32Array(0);
+  if (!fromSampleRate || fromSampleRate <= 0 || fromSampleRate === 16000) {
+    return buffer;
+  }
+  const ratio = fromSampleRate / 16000;
+  const newLength = Math.max(1, Math.round(buffer.length / ratio));
+  const result = new Float32Array(newLength);
+  for (let i = 0; i < newLength; i++) {
+    const srcIndex = i * ratio;
+    const idx0 = Math.floor(srcIndex);
+    const idx1 = Math.min(buffer.length - 1, idx0 + 1);
+    const frac = srcIndex - idx0;
+    result[i] = buffer[idx0] * (1 - frac) + buffer[idx1] * frac;
+  }
+  return result;
+}
+
+/**
+ * 16kHz Float32Array PCM ses dizisinin başındaki ve sonundaki sessizlikleri kırpar (trim silence)
+ * ve tepe genliğini (peak normalization) 0.90 seviyesine normalize eder.
+ */
+function preprocessAudioForWhisper(
+  rawSamples: Float32Array,
+  inputSampleRate: number = 16000
+): Float32Array {
+  if (!rawSamples || rawSamples.length === 0) {
     return new Float32Array(0);
   }
+
+  const samples =
+    inputSampleRate !== 16000
+      ? resampleWorkerAudioTo16kHz(rawSamples, inputSampleRate)
+      : rawSamples;
 
   let maxAbs = 0;
   for (let i = 0; i < samples.length; i++) {
@@ -79,12 +113,12 @@ function preprocessAudioForWhisper(samples: Float32Array): Float32Array {
   }
 
   // Tamamen sessiz kayıt
-  if (maxAbs < 0.0025) {
+  if (maxAbs < 0.002) {
     return new Float32Array(0);
   }
 
   // Adaptif sessizlik eşiği: düşük mikrofon kazançlarında bile konuşma başlangıcını yakalar
-  const threshold = Math.min(0.015, Math.max(0.0035, maxAbs * 0.1));
+  const threshold = Math.min(0.015, Math.max(0.003, maxAbs * 0.1));
   let start = -1;
   let end = -1;
 
@@ -107,7 +141,7 @@ function preprocessAudioForWhisper(samples: Float32Array): Float32Array {
       ? samples.slice(start, end + 1)
       : samples.slice();
 
-  // Tepe genliğini (Peak Normalization) 0.95 seviyesine normalize et
+  // Tepe genliğini (Peak Normalization) 0.90 seviyesine normalize et
   let trimmedPeak = 0;
   for (let i = 0; i < trimmed.length; i++) {
     const v = Math.abs(trimmed[i]);
@@ -115,7 +149,7 @@ function preprocessAudioForWhisper(samples: Float32Array): Float32Array {
   }
 
   if (trimmedPeak > 0.002) {
-    const gain = 0.95 / trimmedPeak;
+    const gain = 0.9 / trimmedPeak;
     const normalized = new Float32Array(trimmed.length);
     for (let i = 0; i < trimmed.length; i++) {
       normalized[i] = Math.max(-1, Math.min(1, trimmed[i] * gain));
@@ -176,7 +210,7 @@ async function getTranscriber(forceWasm: boolean = false) {
 }
 
 self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
-  const { type, audioData, requestId } = event.data;
+  const { type, audioData, sampleRate, requestId } = event.data;
   currentActiveRequestId = requestId;
 
   if (type === "preload") {
@@ -203,8 +237,11 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
 
   if (type === "transcribe" && audioData) {
     try {
-      // 1. ÖN İŞLEME: Baştaki ve sondaki sessizlikleri kırp ve tepe genliğini 0.95'e normalize et
-      const processedAudio = preprocessAudioForWhisper(audioData);
+      // 1. ÖN İŞLEME: Varsa 44.1kHz/48kHz veriyi 16kHz'e yeniden örnekle, sessizlikleri kırp ve tepe genliğini 0.90'a normalize et
+      const processedAudio = preprocessAudioForWhisper(
+        audioData,
+        sampleRate || 16000
+      );
 
       // Çok kısa (< 0.15 sn / 2400 örnek) veya tamamen sessiz ses verisinde Whisper halüsinasyonunu önle
       if (!processedAudio || processedAudio.length < 2400) {
