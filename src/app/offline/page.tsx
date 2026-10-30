@@ -48,9 +48,9 @@ export default function OfflinePage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
           <Link
             href="/kutuphane"
-            className="p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 hover:border-[#0CA678] transition-all flex flex-col justify-between gap-2"
+            className="p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 hover:border-[#087F5B] transition-all flex flex-col justify-between gap-2"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#0CA678]/15 text-[#087F5B] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-[#087F5B]/15 text-[#087F5B] flex items-center justify-center">
               <BookOpen size={18} />
             </div>
             <div>
@@ -65,7 +65,7 @@ export default function OfflinePage() {
 
           <Link
             href="/sozluk"
-            className="p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 hover:border-[#0CA678] transition-all flex flex-col justify-between gap-2"
+            className="p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 hover:border-[#087F5B] transition-all flex flex-col justify-between gap-2"
           >
             <div className="w-9 h-9 rounded-xl bg-[#6741D9]/15 text-[#6741D9] flex items-center justify-center">
               <BookMarked size={18} />
@@ -75,14 +75,14 @@ export default function OfflinePage() {
                 İnteraktif Sözlük
               </span>
               <span className="block text-[11px] text-[var(--muted)]">
-                1075+ Kelime & Kök Analizi
+                1494 Kelime & Kök Analizi
               </span>
             </div>
           </Link>
 
           <Link
             href="/alistirmalar"
-            className="p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 hover:border-[#0CA678] transition-all flex flex-col justify-between gap-2"
+            className="p-3.5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 hover:border-[#087F5B] transition-all flex flex-col justify-between gap-2"
           >
             <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-700 flex items-center justify-center">
               <Gamepad2 size={18} />
@@ -101,16 +101,16 @@ export default function OfflinePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
           <Link
             href="/"
-            className="py-3 px-5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 hover:border-[#0CA678] text-[var(--foreground)] font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all"
+            className="py-3 px-5 rounded-2xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 hover:border-[#087F5B] text-[var(--foreground)] font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all"
           >
-            <Home size={16} className="text-[#0CA678]" />
+            <Home size={16} className="text-[#087F5B]" />
             <span>Ana Sayfaya Dön</span>
           </Link>
 
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="py-3 px-5 bg-[#0CA678] hover:bg-[#099268] text-white font-extrabold text-xs sm:text-sm rounded-2xl border-b-4 border-[#087F5B] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="py-3 px-5 bg-[#087F5B] hover:bg-[#065F46] text-white font-extrabold text-xs sm:text-sm rounded-2xl border-b-4 border-[#065F46] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <RefreshCw size={16} />
             <span>Tekrar Dene</span>

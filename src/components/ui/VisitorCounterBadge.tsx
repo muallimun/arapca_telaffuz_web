@@ -101,15 +101,26 @@ async function fetchAndRegisterVisitorStats(): Promise<VisitorStatsData> {
     const uniqueParam = isNewUnique ? "1" : "0";
     const todayParam = isNewToday ? "1" : "0";
     const sessionParam = isNewSession ? "1" : "0";
-    const query = `unique=${uniqueParam}&today=${todayParam}&session=${sessionParam}`;
+    const shouldIncrement = isNewUnique || isNewToday || isNewSession;
 
     let result: VisitorStatsData | null = null;
 
     try {
-      const res = await fetch(`/api/stats?${query}`, {
-        method: "GET",
-        cache: "no-store",
-      });
+      const res = shouldIncrement
+        ? await fetch("/api/stats", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              unique: uniqueParam,
+              today: todayParam,
+              session: sessionParam,
+            }),
+            cache: "no-store",
+          })
+        : await fetch("/api/stats", {
+            method: "GET",
+            cache: "no-store",
+          });
       if (res.ok) {
         const json = await res.json();
         if (json && typeof json.totalUnique === "number" && json.totalUnique > 0) {
@@ -178,8 +189,9 @@ export default function VisitorCounterBadge({
   const [stats, setStats] = useState<VisitorStatsData>(DEFAULT_FALLBACK_STATS);
 
   useEffect(() => {
-    const cached = readCachedStats();
-    setStats(cached);
+    const raf = requestAnimationFrame(() => {
+      setStats(readCachedStats());
+    });
 
     const handleStatsUpdate = (e: Event) => {
       const custom = e as CustomEvent<VisitorStatsData>;
@@ -197,6 +209,7 @@ export default function VisitorCounterBadge({
     });
 
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener(STATS_EVENT_NAME, handleStatsUpdate);
     };
   }, []);

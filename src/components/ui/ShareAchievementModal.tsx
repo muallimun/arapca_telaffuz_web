@@ -30,7 +30,7 @@ export interface ShareAchievementProps {
   arabicTitle?: string;
   subtitle?: string;
   levelLabel?: string;
-  scorePercent: number;
+  scorePercent: number | null;
   pointsText?: string;
   wordsCount: number;
   badgeType?: "dialogue" | "exercise" | "homework";
@@ -572,6 +572,12 @@ export default function ShareAchievementModal({
   const [studentName, setStudentName] = useState<string>("");
 
   const isHomework = badgeType === "homework";
+  const hasMeasuredScore =
+    typeof scorePercent === "number" && Number.isFinite(scorePercent);
+  const safeScoreNumber = hasMeasuredScore ? scorePercent : 0;
+  const formattedScoreText = hasMeasuredScore
+    ? `%${scorePercent}`
+    : "Ölçülmedi";
 
   const verificationCode = useMemo(
     () =>
@@ -579,9 +585,9 @@ export default function ShareAchievementModal({
         studentName,
         dialogueId,
         completionPercent,
-        scorePercent
+        safeScoreNumber
       ),
-    [studentName, dialogueId, completionPercent, scorePercent]
+    [studentName, dialogueId, completionPercent, safeScoreNumber]
   );
 
   const weakWordsSummaryText = useMemo(() => {
@@ -597,10 +603,12 @@ export default function ShareAchievementModal({
   const shareMessage = isHomework
     ? `📋 *ÖDEV SONUÇ RAPORU — ${homeworkTitle || "Arapça Diyalog Ödevi"}*\n👤 *Öğrenci:* ${
         studentName.trim() || "Belirtilmedi"
-      }\n📖 *Diyalog:* ${title} (${levelLabel})\n✅ *Tamamlanma Oranı:* %${completionPercent} (Dinleme: ${listenedCount}/${totalLinesCount} • Telaffuz: ${pronPracticedCount}/${pronTargetCount} • Alıştırma: ${
+      }\n📖 *Diyalog:* ${title} (${levelLabel})\n✅ *Görev Tamamlanma Oranı:* %${completionPercent} (Dinleme: ${listenedCount}/${totalLinesCount} • Telaffuz: ${pronPracticedCount}/${pronTargetCount} • Alıştırma: ${
         quizCompleted ? "Tamamlandı ✓" : "Eksik"
-      })\n🎙️ *Ortalama Telaffuz/Alıştırma Uyumu:* %${scorePercent}\n📌 *Tekrar Edilecek Kelimeler:* ${weakWordsSummaryText}\n🔐 *Doğrulama Kodu:* #${verificationCode}\n🌐 ${APP_URL}`
-    : `🎯 Arapça Telaffuz ve Diyalog Asistanı ile "${title}" çalışmamı %${scorePercent} başarı oranıyla tamamladım! (${wordsCount} Kelime • Seviye: ${levelLabel})\n👉 Hemen ücretsiz dene: ${APP_URL}`;
+      })\n🎙️ *Ortalama Telaffuz Uyumu:* ${formattedScoreText}\n📌 *Tekrar Edilecek Kelimeler:* ${weakWordsSummaryText}\n🔐 *Doğrulama Kodu:* #${verificationCode}\n🌐 ${APP_URL}`
+    : `🎯 Arapça Telaffuz ve Diyalog Asistanı ile "${title}" çalışmamı ${
+        hasMeasuredScore ? `%${scorePercent} başarı oranıyla ` : ""
+      }tamamladım! (${wordsCount} Kelime • Seviye: ${levelLabel})\n👉 Hemen ücretsiz dene: ${APP_URL}`;
 
   const drawRoundRect = (
     ctx: CanvasRenderingContext2D,
@@ -821,20 +829,24 @@ export default function ShareAchievementModal({
     const stats = isHomework
       ? [
           {
-            label: "TAMAMLANMA ORANI",
+            label: "GÖREV TAMAMLAMA",
             value: `%${completionPercent}`,
             sub:
               completionPercent >= 100
                 ? "Tüm Görevler Tamam"
                 : "Kısmi Tamamlama",
             bg: "#ECFDF5",
-            border: "#0CA678",
-            color: "#087F5B",
+            border: "#087F5B",
+            color: "#065F46",
           },
           {
-            label: "TELAFFUZ / UYUM",
-            value: `%${scorePercent}`,
-            sub: scorePercent >= 80 ? "Yüksek Başarı" : "Geliştirilebilir",
+            label: "TELAFFUZ ÖLÇÜMÜ",
+            value: formattedScoreText,
+            sub: hasMeasuredScore
+              ? safeScoreNumber >= 80
+                ? "Yüksek Başarı"
+                : "Geliştirilebilir"
+              : "Telaffuz Kaydı Yok",
             bg: "#F3F0FF",
             border: "#6741D9",
             color: "#5230B5",
@@ -855,11 +867,15 @@ export default function ShareAchievementModal({
       : [
           {
             label: "BAŞARI / TELAFFUZ",
-            value: `%${scorePercent}`,
-            sub: scorePercent >= 85 ? "Mükemmel Uyum" : "Başarılı Pratik",
+            value: formattedScoreText,
+            sub: hasMeasuredScore
+              ? safeScoreNumber >= 85
+                ? "Mükemmel Uyum"
+                : "Başarılı Pratik"
+              : "Telaffuz Ölçülmedi",
             bg: "#ECFDF5",
-            border: "#0CA678",
-            color: "#087F5B",
+            border: "#087F5B",
+            color: "#065F46",
           },
           {
             label: "ÇALIŞILAN KELİME",
@@ -871,7 +887,9 @@ export default function ShareAchievementModal({
           },
           {
             label: "DEĞERLENDİRME",
-            value: pointsText || `${scorePercent * 10} Puan`,
+            value:
+              pointsText ||
+              (hasMeasuredScore ? `${safeScoreNumber * 10} Puan` : "Tamamlandı"),
             sub: new Date().toLocaleDateString("tr-TR", {
               day: "2-digit",
               month: "long",
@@ -899,6 +917,8 @@ export default function ShareAchievementModal({
       ctx.font =
         idx === 2 && isHomework
           ? "900 32px ui-monospace, monospace"
+          : st.value === "Ölçülmedi"
+          ? "900 34px system-ui, -apple-system, sans-serif"
           : "900 46px system-ui, -apple-system, sans-serif";
       ctx.fillText(st.value, x + boxW / 2, boxY + 102);
 
@@ -958,6 +978,8 @@ export default function ShareAchievementModal({
     arabicTitle,
     badgeType,
     completionPercent,
+    formattedScoreText,
+    hasMeasuredScore,
     homeworkTitle,
     isHomework,
     levelLabel,
@@ -966,7 +988,7 @@ export default function ShareAchievementModal({
     pronPracticedCount,
     pronTargetCount,
     quizCompleted,
-    scorePercent,
+    safeScoreNumber,
     studentName,
     subtitle,
     title,
@@ -1165,10 +1187,10 @@ export default function ShareAchievementModal({
           <div className="min-w-0">
             <span className="text-[10px] font-extrabold uppercase text-slate-600 dark:text-slate-300 block">
               {isHomework
-                ? `Tamamlanma: %${completionPercent} • Uyum: %${scorePercent}`
+                ? `Görev Tamamlama: %${completionPercent} • Telaffuz: ${formattedScoreText}`
                 : "Paylaşılacak Tıklanabilir Uygulama Linki"}
             </span>
-            <span className="text-xs font-extrabold text-[#087F5B] dark:text-[#20c997] truncate block">
+            <span className="text-xs font-extrabold text-[#065F46] dark:text-[#20c997] truncate block">
               {isHomework
                 ? `Tekrar Kelimeleri: ${weakWordsSummaryText}`
                 : APP_URL}

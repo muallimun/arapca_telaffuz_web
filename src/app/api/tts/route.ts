@@ -11,6 +11,7 @@ const MAX_CACHE_ITEMS = 300;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 45;
+const MAX_MAP_SIZE = 2000;
 
 function checkIpRateLimit(ip: string): boolean {
   const now = Date.now();
@@ -20,6 +21,10 @@ function checkIpRateLimit(ip: string): boolean {
       if (now >= entry.resetAt) {
         rateLimitMap.delete(key);
       }
+    }
+    if (rateLimitMap.size > MAX_MAP_SIZE) {
+      const oldestKey = rateLimitMap.keys().next().value;
+      if (oldestKey) rateLimitMap.delete(oldestKey);
     }
   }
 
@@ -46,9 +51,9 @@ function setServerCache(key: string, buffer: ArrayBuffer) {
 }
 
 /**
- * Katman 2A: Microsoft Edge Neural TTS (Ücretsiz WebSocket/REST Sentezleyici)
- * Sesler: ar-SA-HamedNeural (Erkek), ar-SA-ZariyahNeural (Kadın)
- */
+  * Katman 2A: Microsoft Edge Neural TTS (Ücretsiz WebSocket/REST Sentezleyici)
+  * Sesler: ar-SA-HamedNeural (Erkek), ar-SA-ZariyahNeural (Kadın)
+  */
 async function fetchEdgeNeuralTTS(
   text: string,
   voiceName: string,
@@ -84,18 +89,40 @@ async function fetchEdgeNeuralTTS(
     // Node.js 22 native WebSocket varsa doğrudan Edge Neural WSS üzerinden MP3 al
     if (typeof WebSocket !== "undefined") {
       const mp3Buffer = await new Promise<ArrayBuffer | null>((resolve) => {
+        let ws: WebSocket | null = null;
+        let settled = false;
+
+        const safeCloseAndResolve = (val: ArrayBuffer | null) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          if (ws) {
+            try {
+              ws.onopen = null;
+              ws.onmessage = null;
+              ws.onerror = null;
+              ws.close();
+            } catch {
+              // ignore close errors
+            }
+            ws = null;
+          }
+          resolve(val);
+        };
+
         const timeout = setTimeout(() => {
-          resolve(null);
+          safeCloseAndResolve(null);
         }, 3800);
 
         try {
           const reqId = crypto.randomUUID().replace(/-/g, "");
           const wsUrl = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=${trustedToken}&Sec-MS-GEC=${secMsGec}&Sec-MS-GEC-Version=1-130.0.2849.68&ConnectionId=${reqId}`;
-          const ws = new WebSocket(wsUrl);
+          ws = new WebSocket(wsUrl);
           ws.binaryType = "arraybuffer";
           const audioChunks: Uint8Array[] = [];
 
           ws.onopen = () => {
+            if (!ws || settled) return;
             const configMsg =
               `X-Timestamp:${new Date().toISOString()}\r\n` +
               `Content-Type:application/json; charset=utf-8\r\n` +
@@ -137,12 +164,11 @@ async function fetchEdgeNeuralTTS(
           };
 
           ws.onmessage = (event) => {
+            if (settled) return;
             if (typeof event.data === "string") {
               if (event.data.includes("Path:turn.end")) {
-                clearTimeout(timeout);
-                ws.close();
                 if (audioChunks.length === 0) {
-                  resolve(null);
+                  safeCloseAndResolve(null);
                   return;
                 }
                 const totalLen = audioChunks.reduce(
@@ -155,7 +181,7 @@ async function fetchEdgeNeuralTTS(
                   merged.set(chunk, offset);
                   offset += chunk.byteLength;
                 }
-                resolve(merged.buffer);
+                safeCloseAndResolve(merged.buffer);
               }
             } else if (event.data instanceof ArrayBuffer) {
               const view = new DataView(event.data);
@@ -168,12 +194,10 @@ async function fetchEdgeNeuralTTS(
           };
 
           ws.onerror = () => {
-            clearTimeout(timeout);
-            resolve(null);
+            safeCloseAndResolve(null);
           };
         } catch {
-          clearTimeout(timeout);
-          resolve(null);
+          safeCloseAndResolve(null);
         }
       });
 

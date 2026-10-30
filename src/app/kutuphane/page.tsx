@@ -64,21 +64,24 @@ export default function LibraryPage() {
   const [downloadingPct, setDownloadingPct] = useState<number>(0);
 
   useEffect(() => {
-    setMounted(true);
     void loadAudioManifest().then(() => {
       void getDownloadedDialogueIds().then((ids) => setOfflineIds(ids));
     });
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const lvl = params.get("seviye") as Level | null;
-      const durum = params.get("durum");
-      if (lvl && ["A1", "A2", "B1", "B2"].includes(lvl)) {
-        setLevelFilter(lvl);
+    const raf = requestAnimationFrame(() => {
+      setMounted(true);
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const lvl = params.get("seviye") as Level | null;
+        const durum = params.get("durum");
+        if (lvl && ["A1", "A2", "B1", "B2"].includes(lvl)) {
+          setLevelFilter(lvl);
+        }
+        if (durum === "completed") {
+          setStatusFilter("completed");
+        }
       }
-      if (durum === "completed") {
-        setStatusFilter("completed");
-      }
-    }
+    });
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   const handleDownloadDialogueCardOffline = async (dlgId: string) => {

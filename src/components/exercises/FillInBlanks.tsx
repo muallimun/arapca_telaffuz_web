@@ -166,7 +166,10 @@ export default function FillInBlanks({
   }, []);
 
   useEffect(() => {
-    setSubMode(initialSubMode);
+    const raf = requestAnimationFrame(() => {
+      setSubMode(initialSubMode);
+    });
+    return () => cancelAnimationFrame(raf);
   }, [initialSubMode]);
 
   const handleTimeout = () => setIsTimeUp(true);

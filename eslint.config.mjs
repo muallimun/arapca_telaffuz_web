@@ -7,9 +7,6 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     rules: {
-      "react-hooks/set-state-in-effect": "off",
-      "react-hooks/purity": "off",
-      "react-hooks/refs": "off",
       "@next/next/no-img-element": "off",
       "@next/next/no-page-custom-font": "off",
       "@typescript-eslint/no-unused-vars": [

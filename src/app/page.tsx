@@ -65,6 +65,7 @@ export default function HomePage() {
     streakDays,
     lastStudyDate,
     dailyGoalMinutes,
+    addStudyMinutes,
     syncDailyProgress,
   } = useUserStore();
 
@@ -81,14 +82,20 @@ export default function HomePage() {
         syncDailyProgress();
       }
     };
+    const studyTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        addStudyMinutes(1);
+      }
+    }, 60000);
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("focus", handleVisibilityChange);
     return () => {
       cancelAnimationFrame(raf);
+      window.clearInterval(studyTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleVisibilityChange);
     };
-  }, [syncDailyProgress]);
+  }, [syncDailyProgress, addStudyMinutes]);
 
   const dailyPackage = useMemo(() => {
     return buildDailyStudyPackage({
@@ -324,7 +331,7 @@ export default function HomePage() {
                     className={`w-9 h-9 rounded-xl border-2 border-b-3 flex items-center justify-center mb-2.5 transition-colors ${
                       isPurple
                         ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#6741D9] dark:text-[#d0bfff] group-hover:bg-[#6741D9] group-hover:text-white"
-                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[#087F5B] dark:text-[#20c997] group-hover:bg-[#0CA678] group-hover:border-[#087F5B] group-hover:text-white"
+                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[#087F5B] dark:text-[#20c997] group-hover:bg-[#087F5B] group-hover:border-[#065F46] group-hover:text-white"
                     }`}
                   >
                     <Icon size={18} strokeWidth={2.3} />
@@ -466,11 +473,15 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* 2. Zamanı Gelen 6 Kelime (5 sütun) */}
+          {/* 2. Zamanı Gelen veya Bugün Öğrenilecek 6 Kelime (5 sütun) */}
           <div className="lg:col-span-5 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] p-3 flex flex-col justify-between gap-2">
             <div className="flex items-center justify-between gap-1.5">
               <span className="text-[11px] font-extrabold text-[#6741D9] dark:text-[#d0bfff] uppercase tracking-wide">
-                🔄 2. Zamanı Gelen 6 Kelime
+                {dailyPackage.dailyWords.some(
+                  (dw) => dw.badgeTone === "due" || dw.badgeTone === "mistake"
+                )
+                  ? "🔄 2. Zamanı Gelen 6 Kelime"
+                  : "🌱 2. Bugün Öğrenilecek 6 Yeni Kelime"}
               </span>
               <Link
                 href="/alistirmalar?plan=daily"
@@ -614,7 +625,7 @@ export default function HomePage() {
               data-tooltip="Cümleyi doğal Arapça seslendirmeyle dinle"
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:bg-[#FDFBF7] active:border-b-1 active:translate-y-0.5 transition-all whitespace-nowrap cursor-pointer"
             >
-              <Volume2 size={15} className="text-[#0CA678]" />
+              <Volume2 size={15} className="text-[#087F5B]" />
               <span>Sesli Dinle</span>
             </button>
 
@@ -650,9 +661,9 @@ export default function HomePage() {
             href="/kutuphane?durum=completed"
             onClick={() => playClick()}
             data-tooltip="Tamamladığınız diyalogların toplam ilerleme durumu"
-            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 hover:border-[#0CA678] transition-colors"
+            className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 hover:border-[#087F5B] transition-colors"
           >
-            <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[#0CA678] shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[#087F5B] shrink-0">
               <CheckCircle2 size={20} strokeWidth={2.4} />
             </div>
             <div className="min-w-0">
@@ -765,7 +776,7 @@ export default function HomePage() {
             </div>
             <div className="w-full h-1.5 bg-white dark:bg-[var(--background)] rounded-full overflow-hidden border border-[#E6D7BE]/70 dark:border-[var(--border)]">
               <div
-                className="h-full bg-[#0CA678] rounded-full transition-all duration-500"
+                className="h-full bg-[#087F5B] rounded-full transition-all duration-500"
                 style={{
                   width: `${Math.min(
                     100,

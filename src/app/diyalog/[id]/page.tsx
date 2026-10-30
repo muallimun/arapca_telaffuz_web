@@ -77,8 +77,6 @@ import { DialogueLine, DictionaryItem } from "@/types/data";
 import {
   start16kHzRecorder,
   RecordingSession16kHz,
-  evaluateAcousticDspSentence,
-  extractAudioEnvelope,
 } from "@/lib/audioAnalysis";
 import { HybridSpeechManager } from "@/lib/speechManager";
 import { evaluateSentenceWords } from "@/lib/arabicNlpEngine";
@@ -99,7 +97,8 @@ export default function DialogueDetailPage({
 }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const dialogue = getDialogueById(resolvedParams.id);
+  const rawDialogue = getDialogueById(resolvedParams.id);
+  const dialogue = rawDialogue ?? diyaloglar[0];
 
   const {
     stop,
@@ -342,31 +341,74 @@ export default function DialogueDetailPage({
         // ignore
       }
     }
-    roleplaySpeechRef.current?.stopLiveWebSpeech();
+    roleplaySpeechRef.current?.stopLiveWebSpeech(true);
     roleplayFinalTranscriptRef.current = "";
     roleplayInterimTranscriptRef.current = "";
-    setRoleplayMicLevel(0);
-    setRoleplayLiveBars(Array(24).fill(0.08));
-    setRoleplayInterimText("");
-    setRoleplayRemainingPct(100);
+    requestAnimationFrame(() => {
+      setRoleplayMicLevel(0);
+      setRoleplayLiveBars(Array(24).fill(0.08));
+      setRoleplayInterimText("");
+      setRoleplayRemainingPct(100);
+    });
   };
 
   // Sekme (studyMode) değiştiğinde veya başka bir diyaloğa geçildiğinde aktif rol yapma mikrofonunu derhal kapat
   useEffect(() => {
     if (studyMode !== "roleplay") {
       cleanupRoleplayMic();
-      setIsRoleplayRunning(false);
-      setRoleplayActiveLine(null);
-      setRoleplaySpeakingLine(null);
-      setRoleplayTransitionNotice(false);
+      const raf = requestAnimationFrame(() => {
+        setIsRoleplayRunning(false);
+        setRoleplayActiveLine(null);
+        setRoleplaySpeakingLine(null);
+        setRoleplayTransitionNotice(false);
+      });
+      return () => {
+        cancelAnimationFrame(raf);
+        cleanupRoleplayMic();
+      };
     }
     return () => {
       cleanupRoleplayMic();
     };
   }, [studyMode, resolvedParams.id]);
 
+  // Sekme arka plana atıldığında (visibilitychange -> hidden) veya sayfa kapatıldığında (pagehide)
+  // ya da kayıt sırasında gizlilik (localSttOnly / sttEngine === "whisper") değiştiğinde mikrofon/WebSpeech temizliği
   useEffect(() => {
-    setMounted(true);
+    const handleBackgroundStop = () => {
+      cleanupRoleplayMic();
+      setIsRoleplayRunning(false);
+      setRoleplayActiveLine(null);
+      setRoleplaySpeakingLine(null);
+      setRoleplayTransitionNotice(false);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        handleBackgroundStop();
+      }
+    };
+    const unsubSettings = useSettings.subscribe((state, prevState) => {
+      if (
+        (state.localSttOnly && !prevState.localSttOnly) ||
+        (state.sttEngine === "whisper" && prevState.sttEngine !== "whisper")
+      ) {
+        roleplaySpeechRef.current?.stopLiveWebSpeech(true);
+        roleplayFinalTranscriptRef.current = "";
+        roleplayInterimTranscriptRef.current = "";
+        setRoleplayInterimText("");
+      }
+    });
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handleBackgroundStop);
+    return () => {
+      unsubSettings();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handleBackgroundStop);
+    };
+  }, []);
+
+  useEffect(() => {
     roleplaySpeechRef.current = new HybridSpeechManager();
     loadAudioManifest().then(() => {
       setManifestLoaded(true);
@@ -380,42 +422,46 @@ export default function DialogueDetailPage({
       });
     });
 
-    // URL'den Öğretmen-Öğrenci Ödev Parametrelerini (?hw=1&pron=3&quiz=1&title=...) Çözümle
-    if (typeof window !== "undefined") {
-      const sp = new URLSearchParams(window.location.search);
-      if (sp.get("hw") === "1") {
-        const titleParam = sp.get("title") || "";
-        const listenParam = sp.get("listen") !== "0";
-        const pronParam = Math.max(0, parseInt(sp.get("pron") || "3", 10) || 0);
-        const quizParam = sp.get("quiz") !== "0";
-        setHwConfig({
-          active: true,
-          title: titleParam,
-          requireListen: listenParam,
-          pronCount: pronParam,
-          requireQuiz: quizParam,
-        });
-        try {
-          const savedRaw = sessionStorage.getItem(
-            `muallimun-hw-${resolvedParams.id}`
-          );
-          if (savedRaw) {
-            const parsed = JSON.parse(savedRaw);
-            if (Array.isArray(parsed.listened))
-              setHwListenedLines(parsed.listened);
-            if (typeof parsed.pronCount === "number")
-              setHwPronouncedCount(parsed.pronCount);
-            if (Array.isArray(parsed.scores))
-              setHwCollectedScores(parsed.scores);
-            if (Boolean(parsed.quizDone)) setHwQuizCompleted(true);
+    const raf = requestAnimationFrame(() => {
+      setMounted(true);
+      // URL'den Öğretmen-Öğrenci Ödev Parametrelerini (?hw=1&pron=3&quiz=1&title=...) Çözümle
+      if (typeof window !== "undefined") {
+        const sp = new URLSearchParams(window.location.search);
+        if (sp.get("hw") === "1") {
+          const titleParam = sp.get("title") || "";
+          const listenParam = sp.get("listen") !== "0";
+          const pronParam = Math.max(0, parseInt(sp.get("pron") || "3", 10) || 0);
+          const quizParam = sp.get("quiz") !== "0";
+          setHwConfig({
+            active: true,
+            title: titleParam,
+            requireListen: listenParam,
+            pronCount: pronParam,
+            requireQuiz: quizParam,
+          });
+          try {
+            const savedRaw = sessionStorage.getItem(
+              `muallimun-hw-${resolvedParams.id}`
+            );
+            if (savedRaw) {
+              const parsed = JSON.parse(savedRaw);
+              if (Array.isArray(parsed.listened))
+                setHwListenedLines(parsed.listened);
+              if (typeof parsed.pronCount === "number")
+                setHwPronouncedCount(parsed.pronCount);
+              if (Array.isArray(parsed.scores))
+                setHwCollectedScores(parsed.scores);
+              if (Boolean(parsed.quizDone)) setHwQuizCompleted(true);
+            }
+          } catch {
+            // ignore
           }
-        } catch {
-          // ignore
         }
       }
-    }
+    });
 
     return () => {
+      cancelAnimationFrame(raf);
       playToken.current += 1;
       stop();
       cleanupRoleplayMic();
@@ -464,10 +510,13 @@ export default function DialogueDetailPage({
       if (hwConfig.active) {
         const lastScore =
           pronunciationScores[pronunciationScores.length - 1] ?? 75;
-        setHwPronouncedCount((c) => c + 1);
-        if (lastScore >= 0) {
-          setHwCollectedScores((prev) => [...prev, lastScore]);
-        }
+        const raf = requestAnimationFrame(() => {
+          setHwPronouncedCount((c) => c + 1);
+          if (lastScore >= 0) {
+            setHwCollectedScores((prev) => [...prev, lastScore]);
+          }
+        });
+        return () => cancelAnimationFrame(raf);
       }
     }
   }, [totalPronunciationAttempts, pronunciationScores, hwConfig.active]);
@@ -516,7 +565,10 @@ export default function DialogueDetailPage({
 
   useEffect(() => {
     if (dialogue && dialogue.satirlar.length > 0 && !selectedRoleSpeaker) {
-      setSelectedRoleSpeaker(dialogue.satirlar[0].konusmaci);
+      const raf = requestAnimationFrame(() => {
+        setSelectedRoleSpeaker(dialogue.satirlar[0].konusmaci);
+      });
+      return () => cancelAnimationFrame(raf);
     }
   }, [dialogue, selectedRoleSpeaker]);
 
@@ -552,24 +604,29 @@ export default function DialogueDetailPage({
 
   useEffect(() => {
     if (!dialogue) return;
-    if (playingLineId !== null) {
-      setSelectedClassroomLine(playingLineId);
-      const idx = dialogue.satirlar.findIndex((s) => s.sira === playingLineId);
-      if (idx >= 0) setFocusedLineIndex(idx);
-    } else if (shadowingPauseLineSira !== null) {
-      setSelectedClassroomLine(shadowingPauseLineSira);
-      const idx = dialogue.satirlar.findIndex(
-        (s) => s.sira === shadowingPauseLineSira
-      );
-      if (idx >= 0) setFocusedLineIndex(idx);
-    }
+    const raf = requestAnimationFrame(() => {
+      if (playingLineId !== null) {
+        setSelectedClassroomLine(playingLineId);
+        const idx = dialogue.satirlar.findIndex((s) => s.sira === playingLineId);
+        if (idx >= 0) setFocusedLineIndex(idx);
+      } else if (shadowingPauseLineSira !== null) {
+        setSelectedClassroomLine(shadowingPauseLineSira);
+        const idx = dialogue.satirlar.findIndex(
+          (s) => s.sira === shadowingPauseLineSira
+        );
+        if (idx >= 0) setFocusedLineIndex(idx);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [dialogue, playingLineId, shadowingPauseLineSira]);
 
   // Gölgeleme Boşluğu (Shadowing Pause) görsel geri sayım animasyonu
   useEffect(() => {
     if (!isShadowingPause || shadowingPauseMs <= 0) {
-      setShadowingPauseRemainingPct(100);
-      return;
+      const resetRaf = requestAnimationFrame(() => {
+        setShadowingPauseRemainingPct(100);
+      });
+      return () => cancelAnimationFrame(resetRaf);
     }
     const startAt = performance.now();
     let rafId: number | null = null;
@@ -583,7 +640,6 @@ export default function DialogueDetailPage({
       }
     };
 
-    setShadowingPauseRemainingPct(100);
     rafId = requestAnimationFrame(tick);
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
@@ -654,8 +710,6 @@ export default function DialogueDetailPage({
     isHwReportModalOpen,
     isHwQuizModalOpen,
   ]);
-
-  if (!dialogue) return notFound();
 
   const currentIndex = diyaloglar.findIndex((d) => d.id === dialogue.id);
   const prevDialogue = currentIndex > 0 ? diyaloglar[currentIndex - 1] : null;
@@ -776,11 +830,7 @@ export default function DialogueDetailPage({
       });
     };
 
-    if (shouldUseRoleplayWebSpeech && !isMobileDevice) {
-      startRoleplaySpeechRec();
-    }
-
-    // 2. Canlı 16kHz AudioContext RMS ve ses dalgası kaydını başlat
+    // Önce getUserMedia() ile 16kHz mikrofon akışını al; startRoleplaySpeechRec() çağrısını yalnızca mikrofon başarıyla alındıktan sonra başlat!
     try {
       const recSession = await start16kHzRecorder({
         silenceDurationMs: 2500,
@@ -803,10 +853,14 @@ export default function DialogueDetailPage({
         mySessionToken === roleplaySessionTokenRef.current
       ) {
         roleplayRecorderRef.current = recSession;
-        if (shouldUseRoleplayWebSpeech && isMobileDevice) {
-          setTimeout(() => {
+        if (shouldUseRoleplayWebSpeech) {
+          if (isMobileDevice) {
+            setTimeout(() => {
+              startRoleplaySpeechRec();
+            }, 80);
+          } else {
             startRoleplaySpeechRec();
-          }, 80);
+          }
         }
       } else {
         try {
@@ -815,13 +869,12 @@ export default function DialogueDetailPage({
           // ignore
         }
         recSession.killStreamImmediately();
+        roleplaySpeechRef.current?.stopLiveWebSpeech(true);
       }
     } catch {
-      // Mikrofon izni verilmediyse veya açılamadıysa sayaç yine çalışır, ses olmadığı için %0 kaydedilir
+      // Mikrofon izni verilmediyse veya hata oluştuysa açık kalan tüm kaynakları temizle
       roleplayRecorderRef.current = null;
-      if (shouldUseRoleplayWebSpeech && isMobileDevice) {
-        startRoleplaySpeechRec();
-      }
+      roleplaySpeechRef.current?.stopLiveWebSpeech(true);
     }
 
     if (
@@ -831,8 +884,9 @@ export default function DialogueDetailPage({
       return;
     }
 
-    const startAt = performance.now();
+    let startAt = 0;
     const tick = () => {
+      if (!startAt) startAt = performance.now();
       const elapsed = performance.now() - startAt;
       const ratio = Math.max(0, 1 - elapsed / waitDurationMs);
       setRoleplayRemainingPct(Math.round(ratio * 100));
@@ -937,52 +991,19 @@ export default function DialogueDetailPage({
       const hasArabicSpeechText =
         Boolean(capturedText) && /[\u0600-\u06FF]/.test(capturedText);
 
-      if (!hasArabicSpeechText && !hasMicSpeechEnergy) {
-        // Kullanıcı süre boyunca susup hiçbir şey söylemediyse puan %0 (Okunmadı / Ses Yok)
+      if (!hasArabicSpeechText) {
+        // Metin çözümlenemediğinde (!isTextRecognized) rhythmScore değerini roleplayLineScores içine veya Genel Telaffuz ortalamasına DAHİL ETME!
         computedScore = 0;
-      } else if (hasArabicSpeechText) {
+      } else {
         // Arapça metin yakalandıysa hedef cümle ile karşılaştırarak gerçek puan hesapla
         const evalRes = evaluateSentenceWords(line.arapca, capturedText);
-        computedScore = evalRes.overallScore;
+        computedScore =
+          evalRes.isTextRecognized !== false && evalRes.isEvaluated !== false
+            ? evalRes.overallScore
+            : 0;
         if (evalRes.isEvaluated !== false && computedScore > 0) {
           recordPronunciationScore(computedScore);
         }
-      } else if (recordedData && hasMicSpeechEnergy) {
-        // Ses dalgası var ama metin çözümlenemediyse sahte Math.sin referansı KULLANMA ve recordPronunciationScore ÇAĞIRMA!
-        let realRefBars: number[] = [];
-        let realRefDuration = 0;
-        if (hasMp3(dialogue.id, line.sira)) {
-          try {
-            const mp3Url = getMp3Path(dialogue.id, line.sira);
-            const res = await fetch(mp3Url);
-            if (res.ok) {
-              const ab = await res.arrayBuffer();
-              if (ab.byteLength > 128) {
-                const ctx = new AudioContext();
-                try {
-                  const decoded = await ctx.decodeAudioData(ab);
-                  const env = extractAudioEnvelope(decoded, 48);
-                  realRefBars = env.bars;
-                  realRefDuration = env.duration;
-                } finally {
-                  await ctx.close().catch(() => {});
-                }
-              }
-            }
-          } catch {
-            realRefBars = [];
-          }
-        }
-        const dspEval = evaluateAcousticDspSentence(
-          line.arapca,
-          recordedData.envelopeBars,
-          realRefBars,
-          recordedData.duration,
-          realRefDuration,
-          ""
-        );
-        // Metin doğrulanamadığı için userStore/streak verisine telaffuz puanı yazılmaz; yalnızca satır içi ritim bilgisi tutulur
-        computedScore = dspEval.rhythmScore ?? 0;
       }
     }
 
@@ -993,10 +1014,18 @@ export default function DialogueDetailPage({
     setRoleplayTransitionNotice(false);
     setRoleplayCompletedLines((prev) => ({ ...prev, [line.sira]: true }));
     setRoleplayHintLevels((prev) => ({ ...prev, [line.sira]: 3 }));
-    setRoleplayLineScores((prev) => ({
-      ...prev,
-      [line.sira]: computedScore,
-    }));
+    if (computedScore > 0) {
+      setRoleplayLineScores((prev) => ({
+        ...prev,
+        [line.sira]: computedScore,
+      }));
+    } else {
+      setRoleplayLineScores((prev) => {
+        const next = { ...prev };
+        delete next[line.sira];
+        return next;
+      });
+    }
 
     setTimeout(() => {
       handleContinueRoleplayFromLine(line.sira);
@@ -1234,7 +1263,8 @@ export default function DialogueDetailPage({
     }
   };
 
-  const handleTogglePlayAll = () => {
+  function handleTogglePlayAll() {
+    if (!dialogue) return;
     playClick();
     setLoopingLineSira(null);
     setSentenceLoopRemaining(null);
@@ -1257,10 +1287,11 @@ export default function DialogueDetailPage({
       const firstLine = dialogue.satirlar[0];
       playSentence(firstLine, true, false, false, null, 1);
     }
-  };
+  }
 
   // Sınıf Modu: Sadece seçili tek cümleyi seslendirir ve durur
-  const handlePlaySingleClassroomLine = (line: DialogueLine) => {
+  function handlePlaySingleClassroomLine(line: DialogueLine) {
+    if (!dialogue) return;
     playClick();
     if (!isPlayingAll && playingLineId === line.sira) {
       playToken.current += 1;
@@ -1283,10 +1314,11 @@ export default function DialogueDetailPage({
     const idx = dialogue.satirlar.findIndex((s) => s.sira === line.sira);
     if (idx >= 0) setFocusedLineIndex(idx);
     playSentence(line, false, false, false, null, 1);
-  };
+  }
 
   // Sınıf Modu: Odaklanılan cümleden itibaren (veya baştan) tüm diyaloğu sırayla oynatır / duraklatır
-  const handleToggleClassroomPlayAll = (startLineOverride?: DialogueLine) => {
+  function handleToggleClassroomPlayAll(startLineOverride?: DialogueLine) {
+    if (!dialogue) return;
     playClick();
     setLoopingLineSira(null);
     setSentenceLoopRemaining(null);
@@ -1316,110 +1348,113 @@ export default function DialogueDetailPage({
         playSentence(targetStartLine, true, false, false, null, 1);
       }
     }
-  };
+  }
 
-  togglePlayAllShortcutRef.current = () => {
-    if (isRoleplayRunning) return;
-    if (
-      !isPlayingAll &&
-      (playingLineId !== null || isShadowingPause || loopingLineSira !== null)
-    ) {
-      playClick();
-      playToken.current += 1;
-      stop();
-      setLoopingLineSira(null);
-      setSentenceLoopRemaining(null);
-      return;
-    }
-    handleTogglePlayAll();
-  };
-
-  classroomKeyHandlerRef.current = (e: KeyboardEvent) => {
-    if (!dialogue) return;
-    const totalLines = dialogue.satirlar.length;
-    const currentIdx =
-      playingLineId !== null
-        ? Math.max(
-            0,
-            dialogue.satirlar.findIndex((s) => s.sira === playingLineId)
-          )
-        : Math.min(Math.max(0, focusedLineIndex), Math.max(0, totalLines - 1));
-    const activeLineObj =
-      dialogue.satirlar[currentIdx] || dialogue.satirlar[0];
-
-    if (
-      isClassroomMode &&
-      (e.key === "ArrowDown" ||
-        e.key === "ArrowRight" ||
-        e.key === "ArrowUp" ||
-        e.key === "ArrowLeft")
-    ) {
-      e.preventDefault();
-      e.stopPropagation();
-      playClick();
-      if (isPlayingAll || playingLineId !== null) {
+  useEffect(() => {
+    togglePlayAllShortcutRef.current = () => {
+      if (isRoleplayRunning) return;
+      if (
+        !isPlayingAll &&
+        (playingLineId !== null || isShadowingPause || loopingLineSira !== null)
+      ) {
+        playClick();
         playToken.current += 1;
         stop();
-        setIsPlayingAll(false);
-      }
-      setFocusedLineIndex((prev) => {
-        const baseIdx =
-          playingLineId !== null ? currentIdx : Math.max(0, prev);
-        const nextIdx =
-          e.key === "ArrowDown" || e.key === "ArrowRight"
-            ? Math.min(totalLines - 1, baseIdx + 1)
-            : Math.max(0, baseIdx - 1);
-        const nextLineObj = dialogue.satirlar[nextIdx];
-        if (nextLineObj) {
-          setSelectedClassroomLine(nextLineObj.sira);
-        }
-        return nextIdx;
-      });
-      return;
-    }
-
-    if (isClassroomMode && e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
-      playClick();
-      setIsClassroomMode(false);
-      return;
-    }
-
-    if (isClassroomMode && (e.key === "r" || e.key === "R") && !e.repeat) {
-      e.preventDefault();
-      e.stopPropagation();
-      playClick();
-      setIsClassroomLoop((prev) => !prev);
-      return;
-    }
-
-    // Sınıf Modunda Shift+Space veya P tuşu: Tüm Diyaloğu Oynat / Duraklat
-    if (
-      isClassroomMode &&
-      !e.repeat &&
-      ((e.code === "Space" && e.shiftKey) ||
-        e.key === "p" ||
-        e.key === "P")
-    ) {
-      e.preventDefault();
-      e.stopPropagation();
-      handleToggleClassroomPlayAll(activeLineObj);
-      return;
-    }
-
-    if (e.code === "Space" && !e.repeat) {
-      e.preventDefault();
-      if (isClassroomMode) {
-        e.stopPropagation();
-        if (activeLineObj) {
-          handlePlaySingleClassroomLine(activeLineObj);
-        }
+        setLoopingLineSira(null);
+        setSentenceLoopRemaining(null);
         return;
       }
-      togglePlayAllShortcutRef.current();
-    }
-  };
+      handleTogglePlayAll();
+    };
+
+    classroomKeyHandlerRef.current = (e: KeyboardEvent) => {
+      if (!dialogue) return;
+      const totalLines = dialogue.satirlar.length;
+      const currentIdx =
+        playingLineId !== null
+          ? Math.max(
+              0,
+              dialogue.satirlar.findIndex((s) => s.sira === playingLineId)
+            )
+          : Math.min(Math.max(0, focusedLineIndex), Math.max(0, totalLines - 1));
+      const activeLineObj =
+        dialogue.satirlar[currentIdx] || dialogue.satirlar[0];
+
+      if (
+        isClassroomMode &&
+        (e.key === "ArrowDown" ||
+          e.key === "ArrowRight" ||
+          e.key === "ArrowUp" ||
+          e.key === "ArrowLeft")
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        playClick();
+        if (isPlayingAll || playingLineId !== null) {
+          playToken.current += 1;
+          stop();
+          setIsPlayingAll(false);
+        }
+        setFocusedLineIndex((prev) => {
+          const baseIdx =
+            playingLineId !== null ? currentIdx : Math.max(0, prev);
+          const nextIdx =
+            e.key === "ArrowDown" || e.key === "ArrowRight"
+              ? Math.min(totalLines - 1, baseIdx + 1)
+              : Math.max(0, baseIdx - 1);
+          const nextLineObj = dialogue.satirlar[nextIdx];
+          if (nextLineObj) {
+            setSelectedClassroomLine(nextLineObj.sira);
+          }
+          return nextIdx;
+        });
+        return;
+      }
+
+      if (isClassroomMode && e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        playClick();
+        setIsClassroomMode(false);
+        return;
+      }
+
+      if (isClassroomMode && (e.key === "r" || e.key === "R") && !e.repeat) {
+        e.preventDefault();
+        e.stopPropagation();
+        playClick();
+        setIsClassroomLoop((prev) => !prev);
+        return;
+      }
+
+      if (
+        isClassroomMode &&
+        !e.repeat &&
+        ((e.code === "Space" && e.shiftKey) ||
+          e.key === "p" ||
+          e.key === "P")
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleToggleClassroomPlayAll(activeLineObj);
+        return;
+      }
+
+      if (e.code === "Space" && !e.repeat) {
+        e.preventDefault();
+        if (isClassroomMode) {
+          e.stopPropagation();
+          if (activeLineObj) {
+            handlePlaySingleClassroomLine(activeLineObj);
+          }
+          return;
+        }
+        togglePlayAllShortcutRef.current();
+      }
+    };
+  });
+
+  if (!rawDialogue) return notFound();
 
 
   const cycleRoleplayHintLevel = (sira: number) => {
@@ -1647,19 +1682,21 @@ export default function DialogueDetailPage({
   const hwCompletionRatioPct =
     hwTotalTasks > 0 ? Math.round((hwCompletedTasks / hwTotalTasks) * 100) : 100;
 
-  const hwAverageScore = (() => {
+  const hwAverageScore: number | null = (() => {
     if (hwCollectedScores.length > 0) {
       return Math.round(
         hwCollectedScores.reduce((a, b) => a + b, 0) / hwCollectedScores.length
       );
     }
-    const roleplayVals = Object.values(roleplayLineScores).filter((s) => s > 0);
+    const roleplayVals = Object.values(roleplayLineScores).filter(
+      (s): s is number => typeof s === "number" && s > 0
+    );
     if (roleplayVals.length > 0) {
       return Math.round(
         roleplayVals.reduce((a, b) => a + b, 0) / roleplayVals.length
       );
     }
-    return hwQuizCompleted ? 88 : hwCompletedTasks > 0 ? 85 : 0;
+    return null;
   })();
 
   const hwWeakWordsList: { arabic: string; turkish: string }[] = (() => {
@@ -1780,12 +1817,12 @@ export default function DialogueDetailPage({
           const userLines = dialogue.satirlar.filter(
             (l) => l.konusmaci === selectedRoleSpeaker
           );
-          if (userLines.length === 0) return 0;
-          const total = userLines.reduce(
-            (acc, l) => acc + (roleplayLineScores[l.sira] ?? 0),
-            0
-          );
-          return Math.round(total / userLines.length);
+          const measuredScores = userLines
+            .map((l) => roleplayLineScores[l.sira])
+            .filter((s): s is number => typeof s === "number" && s > 0);
+          if (measuredScores.length === 0) return null;
+          const total = measuredScores.reduce((acc, s) => acc + s, 0);
+          return Math.round(total / measuredScores.length);
         })()}
         pointsText={`${dialogue.satirlar.length} Cümle`}
         wordsCount={dialogueVocabEntries.length}
@@ -1885,15 +1922,6 @@ export default function DialogueDetailPage({
                                   setHwQuizStep((s) => s + 1);
                                   setHwQuizSelectedOpt(null);
                                 } else {
-                                  const finalQuizPct = Math.round(
-                                    (nextCorrect /
-                                      hwMiniQuizQuestions.length) *
-                                      100
-                                  );
-                                  setHwCollectedScores((prev) => [
-                                    ...prev,
-                                    Math.max(60, finalQuizPct),
-                                  ]);
                                   setHwQuizCompleted(true);
                                   setIsHwQuizModalOpen(false);
                                   playFanfare();
@@ -2907,16 +2935,16 @@ export default function DialogueDetailPage({
                 const userLines = dialogue.satirlar.filter(
                   (l) => l.konusmaci === selectedRoleSpeaker
                 );
-                const lineScoreList = userLines.map(
-                  (l) => roleplayLineScores[l.sira] ?? 0
-                );
+                const measuredScores = userLines
+                  .map((l) => roleplayLineScores[l.sira])
+                  .filter((s): s is number => typeof s === "number" && s > 0);
                 const avgScore =
-                  lineScoreList.length > 0
+                  measuredScores.length > 0
                     ? Math.round(
-                        lineScoreList.reduce((a, b) => a + b, 0) /
-                          lineScoreList.length
+                        measuredScores.reduce((a, b) => a + b, 0) /
+                          measuredScores.length
                       )
-                    : 0;
+                    : null;
                 const otherSpeaker =
                   speakers.find((sp) => sp !== selectedRoleSpeaker) ||
                   selectedRoleSpeaker;
@@ -2925,13 +2953,13 @@ export default function DialogueDetailPage({
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="space-y-0.5">
-                        <span className="text-xs sm:text-sm font-extrabold text-[#087F5B] dark:text-[#20c997] block">
+                        <span className="text-xs sm:text-sm font-extrabold text-[#065F46] dark:text-[#20c997] block">
                           🎉 Tebrikler! &ldquo;{selectedRoleSpeaker}&rdquo; Rolüyle Diyalog Simülasyonunu Tamamladınız!
                         </span>
                         <span className="text-[11px] font-semibold text-[var(--muted)] block">
-                          {avgScore >= 80
+                          {avgScore !== null && avgScore >= 80
                             ? "Harika akıcılık ve mahreç uyumu! Şimdi diğer karakterin rolüne geçerek diyaloğu pekiştirebilirsiniz."
-                            : avgScore > 0
+                            : avgScore !== null && avgScore > 0
                             ? "İyi bir pratik oldu! Cümleleri 0.75x hızda dinleyip tekrar canlandırarak puanınızı yükseltebilirsiniz."
                             : "Sıra size geldiğinde mikrofona sesli okuyarak gerçek telaffuz puanınızı ölçebilirsiniz."}
                         </span>
@@ -2940,16 +2968,17 @@ export default function DialogueDetailPage({
                       <div className="flex items-center gap-2 shrink-0">
                         <span
                           className={`px-3 py-1 rounded-xl text-white text-xs font-extrabold tabular-nums shadow-xs ${
-                            avgScore >= 70
-                              ? "bg-[#0CA678]"
-                              : avgScore > 0
+                            avgScore !== null && avgScore >= 70
+                              ? "bg-[#087F5B]"
+                              : avgScore !== null && avgScore > 0
                               ? "bg-amber-600"
-                              : "bg-rose-600"
+                              : "bg-slate-600"
                           }`}
                         >
-                          Genel Telaffuz: %{avgScore}
+                          Genel Telaffuz:{" "}
+                          {avgScore !== null ? `%${avgScore}` : "Ölçülmedi"}
                         </span>
-                        <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#0CA678]/40 text-[11px] font-extrabold text-[var(--foreground)] tabular-nums">
+                        <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-[var(--surface)] border border-[#087F5B]/40 text-[11px] font-extrabold text-[var(--foreground)] tabular-nums">
                           {userLines.length} / {userLines.length} Replik
                         </span>
                       </div>
@@ -2957,11 +2986,12 @@ export default function DialogueDetailPage({
 
                     {userLines.length > 0 && (
                       <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-emerald-200/70 dark:border-emerald-800/60">
-                        <span className="text-[10px] font-extrabold uppercase text-[#087F5B] dark:text-emerald-300">
+                        <span className="text-[10px] font-extrabold uppercase text-[#065F46] dark:text-emerald-300">
                           Replik Puanlarınız:
                         </span>
                         {userLines.map((ul) => {
-                          const sc = roleplayLineScores[ul.sira] ?? 0;
+                          const sc = roleplayLineScores[ul.sira];
+                          const hasSc = typeof sc === "number" && sc > 0;
                           return (
                             <button
                               key={ul.sira}
@@ -2975,15 +3005,14 @@ export default function DialogueDetailPage({
                               }}
                               title={`#${ul.sira}. repliğe git`}
                               className={`px-2 py-0.5 rounded-lg border text-[10px] font-extrabold tabular-nums cursor-pointer hover:scale-105 transition ${
-                                sc >= 70
-                                  ? "bg-white dark:bg-[var(--background)] border-[#0CA678]/50 text-[#087F5B] dark:text-emerald-300"
-                                  : sc > 0
+                                hasSc && sc >= 70
+                                  ? "bg-white dark:bg-[var(--background)] border-[#087F5B]/50 text-[#065F46] dark:text-emerald-300"
+                                  : hasSc
                                   ? "bg-amber-50 dark:bg-amber-950/60 border-amber-400 text-amber-800 dark:text-amber-200"
-                                  : "bg-rose-50 dark:bg-rose-950/60 border-rose-400 text-rose-800 dark:text-rose-200"
+                                  : "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
                               }`}
                             >
-                              #{ul.sira}: %{sc}
-                              {sc === 0 ? " (Okunmadı / Ses Yok)" : ""}
+                              #{ul.sira}: {hasSc ? `%${sc}` : "Ölçülmedi"}
                             </button>
                           );
                         })}

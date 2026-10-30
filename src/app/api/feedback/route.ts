@@ -6,7 +6,20 @@ const GOOGLE_SCRIPT_URL =
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
+const MAX_MAP_SIZE = 2000;
+const MAX_BODY_BYTES = 16_384;
 const ipRequestTimestamps = new Map<string, number[]>();
+
+/**
+ * Google Sheets formül enjeksiyonunu (=, +, -, @, sekme/satır başı) önler.
+ */
+function sanitizeSheetCell(value: string): string {
+  const cleaned = value.replace(/^[\s\u0000-\u001F]+/, "").trim();
+  if (/^[=+\-@]/.test(cleaned)) {
+    return `'${cleaned}`;
+  }
+  return cleaned;
+}
 
 function getClientIp(req: NextRequest): string {
   const forwardedFor = req.headers.get("x-forwarded-for");
@@ -32,11 +45,15 @@ function isRateLimited(ip: string): boolean {
   recent.push(now);
   ipRequestTimestamps.set(ip, recent);
 
-  if (ipRequestTimestamps.size > 1000) {
+  if (ipRequestTimestamps.size > MAX_MAP_SIZE) {
     for (const [key, list] of ipRequestTimestamps.entries()) {
       if (list.every((ts) => now - ts >= RATE_LIMIT_WINDOW_MS)) {
         ipRequestTimestamps.delete(key);
       }
+    }
+    if (ipRequestTimestamps.size > MAX_MAP_SIZE) {
+      const oldestKey = ipRequestTimestamps.keys().next().value;
+      if (oldestKey) ipRequestTimestamps.delete(oldestKey);
     }
   }
 
@@ -44,6 +61,17 @@ function isRateLimited(ip: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const contentLengthHeader = req.headers.get("content-length");
+  if (contentLengthHeader) {
+    const contentLength = Number(contentLengthHeader);
+    if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+      return NextResponse.json(
+        { error: "İstek gövdesi çok büyük (en fazla 16 KB kabul edilir)." },
+        { status: 413 }
+      );
+    }
+  }
+
   const clientIp = getClientIp(req);
   if (isRateLimited(clientIp)) {
     return NextResponse.json(
@@ -57,7 +85,14 @@ export async function POST(req: NextRequest) {
 
   let body: Record<string, unknown>;
   try {
-    const parsed: unknown = await req.json();
+    const rawText = await req.text();
+    if (rawText.length > MAX_BODY_BYTES) {
+      return NextResponse.json(
+        { error: "İstek gövdesi çok büyük (en fazla 16 KB kabul edilir)." },
+        { status: 413 }
+      );
+    }
+    const parsed: unknown = JSON.parse(rawText);
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
       return NextResponse.json(
         { error: "Geçersiz istek gövdesi (JSON nesnesi bekleniyor)." },
@@ -71,6 +106,9 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
   try {
     const {
@@ -146,14 +184,15 @@ export async function POST(req: NextRequest) {
         "Content-Type": "text/plain;charset=utf-8",
       },
       body: JSON.stringify({
-        category: trimmedCategory.slice(0, 150),
-        name: trimmedName,
-        email: trimmedEmail,
-        dialogueRef: trimmedDialogueRef.slice(0, 200),
-        message: trimmedMessage,
-        pageUrl: trimmedPageUrl.slice(0, 500),
+        category: sanitizeSheetCell(trimmedCategory.slice(0, 150)),
+        name: sanitizeSheetCell(trimmedName),
+        email: sanitizeSheetCell(trimmedEmail),
+        dialogueRef: sanitizeSheetCell(trimmedDialogueRef.slice(0, 200)),
+        message: sanitizeSheetCell(trimmedMessage),
+        pageUrl: sanitizeSheetCell(trimmedPageUrl.slice(0, 500)),
       }),
       redirect: "follow",
+      signal: controller.signal,
     });
 
     if (!res.ok) {
@@ -180,15 +219,17 @@ export async function POST(req: NextRequest) {
           );
         }
       } catch {
-        // Yanıt JSON değilse אך HTTP 200 ise geçerli kabul et
+        // Yanıt JSON değilse ancak HTTP 200 ise geçerli kabul et
       }
     }
 
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(
-      { error: "Mesaj gönderilirken beklenmeyen bir hata oluştu." },
-      { status: 500 }
+      { error: "Mesaj gönderilirken beklenmeyen bir hata veya zaman aşımı oluştu." },
+      { status: 502 }
     );
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

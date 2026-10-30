@@ -7,8 +7,11 @@ export function useCountdown(timeLimit: number | null, onTimeout: () => void, is
 
   // Oyun başladığında veya süre limiti değiştiğinde sayacı sıfırla
   useEffect(() => {
-    setTimeLeft(timeLimit);
     timeUpCalled.current = false;
+    const raf = requestAnimationFrame(() => {
+      setTimeLeft(timeLimit);
+    });
+    return () => cancelAnimationFrame(raf);
   }, [timeLimit, isActive]);
 
   useEffect(() => {

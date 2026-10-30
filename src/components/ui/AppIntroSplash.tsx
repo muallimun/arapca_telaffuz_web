@@ -23,8 +23,8 @@ export default function AppIntroSplash() {
       // sessionStorage erişilemezse yine de 1 kez göster
     }
 
-    setVisible(true);
     const enterRaf = requestAnimationFrame(() => {
+      setVisible(true);
       setEntered(true);
     });
 

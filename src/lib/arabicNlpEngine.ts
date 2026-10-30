@@ -1,7 +1,13 @@
 // src/lib/arabicNlpEngine.ts
 // Arapça Fonetik, 38 Çiftlik Mahreç Koçluğu, 2D Levenshtein Hizalama, Kök Harf Kalkanı ve Adaptif Rehberlik Motoru
 
-import { normalizeArabicForPronunciation } from "./arabicTextUtils";
+import {
+  normalizeArabicForPronunciation,
+  canonicalizeArabicDiacritics,
+  stripParentheticalNotesForScoring,
+  normalizeArabicNumbersInText,
+  COMMON_PUNCTUATION_AND_QUOTES_REGEX,
+} from "./arabicTextUtils";
 
 // ==============================================================================
 // 1. TİP TANIMLAMALARI (INTERFACES & TYPES)
@@ -444,14 +450,15 @@ export function getCanonicalMakhrajPairsCount(): number {
 
 /**
  * 1. Aşama: Görsel Temizleme — Harekeleri KESİNLİKLE KORUR.
- * Sadece tatweel (ـ), parantez, rakam ve noktalama işaretlerini temizler.
+ * Parantez içi açıklamaları, % sembollerini, tatweel (ـ), tırnak ve noktalama işaretlerini temizler;
+ * şedde + hareke sırasını kanonik Unicode sırasına normalize eder.
  */
 export function cleanDisplayText(text: string): string {
-  return text
-    .replace(/\([\d\s\u0660-\u0669\u06F0-\u06F9\-+]+\)/g, " ")
-    .replace(/\u0640/g, "")
-    .replace(/[\(\)\[\]\{\}\d\u0660-\u0669\u06F0-\u06F9]/g, "")
-    .replace(/[.,،؛؟?!:"'«»…\-–—/\\]/g, "")
+  const withoutParens = stripParentheticalNotesForScoring(text);
+  return canonicalizeArabicDiacritics(withoutParens)
+    .replace(/[\u0640\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, "")
+    .replace(/[\d\u0660-\u0669\u06F0-\u06F9]/g, " ")
+    .replace(COMMON_PUNCTUATION_AND_QUOTES_REGEX, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -471,8 +478,11 @@ export function stripDiacriticsOnly(text: string): string {
  * 2. Aşama: Karşılaştırma Normalizasyonu — Harekeleri, şeddeyi, tatweel ve noktalamaları soyar;
  * Elif/Hemze, Elif-i Maksûre, Tâ-i Merbûta (vakıf ه) ve med-i mukadder (هذا/هاذا vb.) varyantlarını eşitler.
  */
-export function normalizeForComparison(text: string): string {
-  return normalizeArabicForPronunciation(text);
+export function normalizeForComparison(
+  text: string,
+  referenceText?: string
+): string {
+  return normalizeArabicForPronunciation(text, referenceText);
 }
 
 export function shapeArabic(
@@ -1003,7 +1013,7 @@ interface LetterDiacriticUnit {
 }
 
 function parseLetterDiacritics(rawWord: string): LetterDiacriticUnit[] {
-  const cleaned = cleanDisplayText(rawWord);
+  const cleaned = cleanDisplayText(canonicalizeArabicDiacritics(rawWord));
   const units: LetterDiacriticUnit[] = [];
 
   for (const ch of cleaned) {
@@ -1021,8 +1031,8 @@ function parseLetterDiacritics(rawWord: string): LetterDiacriticUnit[] {
       const current = units[units.length - 1];
       if (ch === "\u0651") {
         current.hasShadda = true;
-      } else if (/[\u064E\u064F\u0650\u064B\u064C\u064D\u0652]/.test(ch)) {
-        current.vowel = ch;
+      } else if (/[\u064E\u064F\u0650\u064B\u064C\u064D\u0652\u0670]/.test(ch)) {
+        current.vowel = ch === "\u0670" ? "\u064E" : ch;
       }
     }
   }
@@ -1030,9 +1040,10 @@ function parseLetterDiacritics(rawWord: string): LetterDiacriticUnit[] {
 }
 
 /**
- * Ham metinler arasındaki şedde (\u0651) ve kısa ünlü harekelerini (\u064E, \u0650, \u064F) karşılaştırır.
- * - Hedef kelimede şedde varken algılanan metin harekeli dönmüş ve şeddeyi düşürmüşse (veya farklı harfteyse) en az 15 puan düşer.
- * - Algılanan metinde açık hareke varsa ve hedef kelimenin harekeleriyle çelişiyorsa her uyuşmayan hareke için 12 puan düşer.
+ * Ham metinler arasındaki şedde (\u0651) ve kısa ünlü harekelerini (\u064E, \u0650, \u064F, tenvin, sükûn)
+ * kelimenin ünsüz iskeletindeki harf indeksine göre karşılaştırır.
+ * - Şedde eksikliği, fazladan şedde eklenmesi (دَرَسَ vs دَرَّسَ) veya şeddenin yanlış harfe kayması durumlarını yakalar.
+ * - Şedde veya hareke uyuşmazlığı tespit edildiğinde hasMismatch: true döner; kelime puanı en fazla 74 ile sınırlandırılır.
  * - STT tamamen harekesiz metin döndürdüyse şeffaf biçimde diacriticsVerified: false işaretler.
  */
 export function evaluateDiacriticsAndShadda(
@@ -1040,6 +1051,7 @@ export function evaluateDiacriticsAndShadda(
   recognizedRaw: string
 ): {
   penalty: number;
+  hasMismatch: boolean;
   warning?: string;
   diacriticsVerified: boolean;
   verificationNote?: string;
@@ -1048,8 +1060,9 @@ export function evaluateDiacriticsAndShadda(
   if (!hasSpokenDiacritics) {
     return {
       penalty: 0,
+      hasMismatch: false,
       diacriticsVerified: false,
-      verificationNote: "Metin Uyumu (Harekeler STT tarafından doğrulanmadı)",
+      verificationNote: "Hareke/Şedde: STT metninde yer almadığı için doğrulanmadı",
     };
   }
 
@@ -1059,48 +1072,77 @@ export function evaluateDiacriticsAndShadda(
   let penalty = 0;
   const warnings: string[] = [];
 
-  // 1. Şedde (\u0651) kontrolü
-  const expShaddaLetters = expUnits
-    .map((u, idx) => (u.hasShadda ? `${u.baseLetter}@${idx}` : null))
-    .filter(Boolean) as string[];
-  const spkShaddaLetters = spkUnits
-    .map((u, idx) => (u.hasShadda ? `${u.baseLetter}@${idx}` : null))
-    .filter(Boolean) as string[];
+  // 1. Ünsüz iskeleti harf indeksine göre Şedde (\u0651) kontrolü (eksik, fazladan veya kaymış şedde)
+  const expShaddaIndices = expUnits
+    .map((u, idx) => (u.hasShadda ? idx : -1))
+    .filter((idx) => idx >= 0);
+  const spkShaddaIndices = spkUnits
+    .map((u, idx) => (u.hasShadda ? idx : -1))
+    .filter((idx) => idx >= 0);
 
-  if (expShaddaLetters.length > 0) {
-    const expShaddaBase = expUnits
-      .filter((u) => u.hasShadda)
-      .map((u) => u.baseLetter)
-      .join("");
-    const spkShaddaBase = spkUnits
-      .filter((u) => u.hasShadda)
-      .map((u) => u.baseLetter)
-      .join("");
-    if (
-      spkShaddaLetters.length < expShaddaLetters.length ||
-      expShaddaBase !== spkShaddaBase
+  let missingShadda = false;
+  let extraShadda = false;
+  let shiftedShadda = false;
+
+  const maxLen = Math.max(expUnits.length, spkUnits.length);
+  for (let i = 0; i < maxLen; i++) {
+    const expHas = Boolean(expUnits[i]?.hasShadda);
+    const spkHas = Boolean(spkUnits[i]?.hasShadda);
+    if (expHas && !spkHas) {
+      missingShadda = true;
+    } else if (!expHas && spkHas) {
+      extraShadda = true;
+    } else if (
+      expHas &&
+      spkHas &&
+      expUnits[i]?.baseLetter !== spkUnits[i]?.baseLetter
     ) {
-      penalty += 15;
-      warnings.push("Şedde (تَشْدِيد) eksik veya zayıf okundu");
+      shiftedShadda = true;
     }
   }
 
-  // 2. Kısa ünlü hareke (\u064E fetha, \u0650 kesra, \u064F damme) kontrolü
-  const shortVowels = new Set(["\u064E", "\u064F", "\u0650"]);
+  if (missingShadda && extraShadda && expShaddaIndices.length === spkShaddaIndices.length) {
+    shiftedShadda = true;
+  }
+
+  if (shiftedShadda) {
+    penalty += 26;
+    warnings.push("Şedde (تَشْدِيد) yanlış harf üzerinde okundu");
+  } else {
+    if (missingShadda) {
+      penalty += 26;
+      warnings.push("Şedde (تَشْدِيد) eksik veya zayıf okundu");
+    }
+    if (extraShadda) {
+      penalty += 26;
+      warnings.push("Fazladan şedde (تَشْدِيد) eklendi");
+    }
+  }
+
+  // 2. Kısa ünlü hareke (\u064E fetha, \u0650 kesra, \u064F damme, tenvin ve iç sükûn) kontrolü
+  const vowelSet = new Set([
+    "\u064E",
+    "\u064F",
+    "\u0650",
+    "\u064B",
+    "\u064C",
+    "\u064D",
+    "\u0652",
+  ]);
   const minLen = Math.min(expUnits.length, spkUnits.length);
   let vowelMismatchCount = 0;
 
   for (let i = 0; i < minLen; i++) {
-    // Kelime sonu vakıf (duruş) sükûnunu hareke hatası sayma
     const isLastLetter = i === minLen - 1;
     const expV = expUnits[i].vowel;
     const spkV = spkUnits[i].vowel;
 
+    // Kelime sonu vakıf (duruş) sükûnunu hareke hatası sayma
     if (isLastLetter && spkV === "\u0652") {
       continue;
     }
 
-    if (expV && spkV && shortVowels.has(expV) && shortVowels.has(spkV)) {
+    if (expV && spkV && vowelSet.has(expV) && vowelSet.has(spkV)) {
       if (expV !== spkV) {
         vowelMismatchCount += 1;
       }
@@ -1108,14 +1150,20 @@ export function evaluateDiacriticsAndShadda(
   }
 
   if (vowelMismatchCount > 0) {
-    penalty += vowelMismatchCount * 12;
+    penalty += Math.max(26, vowelMismatchCount * 14);
     warnings.push("Hareke uyuşmazlığı tespit edildi");
   }
 
+  const hasMismatch = warnings.length > 0 || penalty > 0;
+
   return {
     penalty,
+    hasMismatch,
     warning: warnings.length > 0 ? warnings.join(" · ") : undefined,
-    diacriticsVerified: true,
+    diacriticsVerified: !hasMismatch,
+    verificationNote: hasMismatch
+      ? "Algılanan metinde kısmi hareke uyumu"
+      : "Harekeler ve Şedde Doğrulandı",
   };
 }
 
@@ -1123,25 +1171,28 @@ export function evaluateSingleWord(
   expected: string,
   spoken: string
 ): WordEvaluationResult {
+  const expectedCleaned = stripParentheticalNotesForScoring(expected);
+  const spokenWithNums = normalizeArabicNumbersInText(spoken, expectedCleaned);
+
   // 1. ÖNCE ham ünsüzleri hazırla
-  const rawExp = stripDiacriticsOnly(expected);
-  const rawSpk = stripDiacriticsOnly(spoken);
+  const rawExp = stripDiacriticsOnly(expectedCleaned);
+  const rawSpk = stripDiacriticsOnly(spokenWithNums);
   // 2. SONRA fonetik ve vakıf normalizasyonunu hazırla
-  const cleanExp = normalizeForComparison(expected);
-  const cleanSpk = normalizeForComparison(spoken);
+  const cleanExp = normalizeForComparison(expectedCleaned, expectedCleaned);
+  const cleanSpk = normalizeForComparison(spokenWithNums, expectedCleaned);
 
   const hasArabicSpoken = /[\u0600-\u06FF]/.test(cleanSpk);
   if (!hasArabicSpoken && cleanSpk.trim().length > 0) {
     return {
-      targetWord: expected,
+      targetWord: expectedCleaned || expected,
       spokenWord: "Anlaşılamadı",
       score: 0,
       status: "wrong",
-      makhrajTip: findCriticalLetterMakhrajTip(expected),
+      makhrajTip: findCriticalLetterMakhrajTip(expectedCleaned || expected),
       medVezinTip:
         "Mikrofondan bu kelime net algılanamadı. Doğal telaffuzunu dinleyip tekrar deneyebilirsiniz.",
       diacriticsVerified: false,
-      diacriticNote: "Metin Uyumu (Harekeler STT tarafından doğrulanmadı)",
+      diacriticNote: "Hareke/Şedde: STT metninde yer almadığı için doğrulanmadı",
     };
   }
 
@@ -1159,7 +1210,9 @@ export function evaluateSingleWord(
   const generalAlignmentTip =
     findMakhrajPairFromAlignment(rawAlignment, false) ||
     findMakhrajPairFromAlignment(alignment, false);
-  const fallbackCriticalTip = findCriticalLetterMakhrajTip(expected);
+  const fallbackCriticalTip = findCriticalLetterMakhrajTip(
+    expectedCleaned || expected
+  );
 
   const detectedSubstitutionTip = criticalAlignmentTip || generalAlignmentTip;
   const makhrajTip = detectedSubstitutionTip || fallbackCriticalTip;
@@ -1173,25 +1226,45 @@ export function evaluateSingleWord(
   );
 
   // Şedde (\u0651) ve Hareke (\u064E, \u0650, \u064F) kontrolü
-  const diacriticEval = evaluateDiacriticsAndShadda(expected, spoken);
-  const finalScore = Math.max(0, rootGuard.finalScore - diacriticEval.penalty);
+  const diacriticEval = evaluateDiacriticsAndShadda(
+    expectedCleaned || expected,
+    spokenWithNums
+  );
+  const rawFinalScore = Math.max(
+    0,
+    rootGuard.finalScore - diacriticEval.penalty
+  );
+  // Şedde veya hareke uyuşmazlığı tespit edildiğinde kelimenin puanını en fazla 74 (< 80) ile sınırla
+  const finalScore = diacriticEval.hasMismatch
+    ? Math.min(rawFinalScore, 74)
+    : rawFinalScore;
 
-  // >=80 yeşil (correct), 60-79 sarı (warning), <60 kırmızı (wrong)
+  // >=80 yeşil (correct), 60-79 sarı (warning / almost), <60 kırmızı (wrong)
+  // Şedde veya hareke uyuşmazlığında durum asla yeşil "correct" olamaz!
   let status: "correct" | "warning" | "wrong" = "wrong";
-  if (finalScore >= 80 && !rootGuard.isTriggered && !detectedSubstitutionTip) {
+  if (
+    finalScore >= 80 &&
+    !rootGuard.isTriggered &&
+    !detectedSubstitutionTip &&
+    !diacriticEval.hasMismatch
+  ) {
     status = "correct";
-  } else if (finalScore >= 60 && !rootGuard.isTriggered && !detectedSubstitutionTip) {
+  } else if (
+    finalScore >= 60 &&
+    !rootGuard.isTriggered &&
+    !detectedSubstitutionTip
+  ) {
     status = "warning";
   } else {
     status = "wrong";
   }
 
-  const combinedMedVezinTip = [diacriticEval.warning, medVezinTip]
-    .filter(Boolean)
-    .join(" · ") || undefined;
+  const combinedMedVezinTip =
+    [diacriticEval.warning, medVezinTip].filter(Boolean).join(" · ") ||
+    undefined;
 
   return {
-    targetWord: expected,
+    targetWord: expectedCleaned || expected,
     spokenWord: spoken,
     score: finalScore,
     status,
@@ -1325,10 +1398,17 @@ export function evaluateSentenceWords(
   expectedSentence: string,
   spokenSentence: string
 ): SentenceEvaluationResult {
-  const expWords = cleanDisplayText(expectedSentence)
+  const strippedTargetSentence =
+    stripParentheticalNotesForScoring(expectedSentence);
+  const normalizedSpokenWithNums = normalizeArabicNumbersInText(
+    spokenSentence,
+    strippedTargetSentence
+  );
+
+  const expWords = cleanDisplayText(strippedTargetSentence)
     .split(/\s+/)
-    .filter((w) => w.length > 0);
-  let spkWords = cleanDisplayText(spokenSentence)
+    .filter((w) => w.length > 0 && /[\u0600-\u06FF]/.test(w));
+  let spkWords = cleanDisplayText(normalizedSpokenWithNums)
     .split(/\s+/)
     .filter((w) => /[\u0600-\u06FF]/.test(w));
 
@@ -1395,9 +1475,24 @@ export function evaluateSentenceWords(
   const overallScore = Math.max(0, rawAverageScore - extraWordPenalty);
 
   const firstRootGuardWord = wordResults.find((w) => w.isRootGuardTriggered);
-  const anyDiacriticsVerified = wordResults.some(
-    (w) => w.diacriticsVerified === true
-  );
+  const spokenHasAnyDiacritics = /[\u064B-\u0652\u0670]/.test(spokenSentence);
+  const allDiacriticsVerified =
+    spokenHasAnyDiacritics &&
+    wordResults.length > 0 &&
+    wordResults.every((w) => w.diacriticsVerified === true && !w.diacriticWarning);
+  const anyDiacriticEvaluated =
+    spokenHasAnyDiacritics &&
+    wordResults.some(
+      (w) => w.diacriticsVerified === true || Boolean(w.diacriticWarning)
+    );
+
+  const sentenceDiacriticNote = !spokenHasAnyDiacritics
+    ? "Hareke/Şedde: STT metninde yer almadığı için doğrulanmadı"
+    : allDiacriticsVerified
+    ? "Harekeler ve Şedde Doğrulandı"
+    : anyDiacriticEvaluated
+    ? "Algılanan metinde kısmi hareke uyumu"
+    : "Hareke/Şedde: STT metninde yer almadığı için doğrulanmadı";
 
   return {
     words: wordResults,
@@ -1409,10 +1504,8 @@ export function evaluateSentenceWords(
     insertedWords,
     omittedCount,
     substitutedCount,
-    diacriticsVerified: anyDiacriticsVerified,
-    diacriticNote: anyDiacriticsVerified
-      ? "Harekeler ve Şedde Doğrulandı"
-      : "Metin Uyumu (Harekeler STT tarafından doğrulanmadı)",
+    diacriticsVerified: allDiacriticsVerified,
+    diacriticNote: sentenceDiacriticNote,
     isRootGuardTriggered: Boolean(firstRootGuardWord),
     rootGuardMessage: firstRootGuardWord?.rootGuardMessage,
   };

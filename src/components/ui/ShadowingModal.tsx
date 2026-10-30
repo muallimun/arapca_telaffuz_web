@@ -274,16 +274,47 @@ export default function ShadowingModal({
     onClose();
   }, [cleanupMediaResources, onClose]);
 
-  // Unmount sırasında açık kalan MediaStream, AudioContext, RAF ve Web Speech kaydını KESİNLİKLE kapat
+  // Unmount sırasında veya sekme gizlendiğinde açık kalan MediaStream, AudioContext, RAF ve Web Speech kaydını KESİNLİKLE kapat
   useEffect(() => {
     isMountedRef.current = true;
     speechManagerRef.current = new HybridSpeechManager();
+
+    const handleBackgroundStop = () => {
+      cleanupMediaResources();
+      setIsRecording(false);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        handleBackgroundStop();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handleBackgroundStop);
+
     return () => {
       isMountedRef.current = false;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handleBackgroundStop);
       cleanupMediaResources();
       speechManagerRef.current?.terminate();
     };
   }, [cleanupMediaResources]);
+
+  // Aktif kayıt sırasında kullanıcı "Yalnızca Cihazda İşle" (localSttOnly) açarsa veya motoru "whisper" yaparsa
+  // çalışan çevrimiçi SpeechRecognition oturumunu anında iptal et ve çevrimiçi metin tamponunu temizle
+  useEffect(() => {
+    if (localSttOnly || sttEngine === "whisper") {
+      speechManagerRef.current?.stopLiveWebSpeech(true);
+      finalTranscriptRef.current = "";
+      interimTranscriptRef.current = "";
+      backupBrowserTranscriptRef.current = "";
+      const raf = requestAnimationFrame(() => {
+        setLiveInterimText("");
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [localSttOnly, sttEngine]);
 
   useEffect(() => {
     return () => {
@@ -545,12 +576,6 @@ export default function ShadowingModal({
         });
       };
 
-      // Yalnızca Hızlı Tarayıcı Motoru seçiliyse ve Yalnızca Cihazda İşle kapalıysa Web Speech başlat;
-      // Whisper seçiliyse hem masaüstünde hem mobilde arka planda izinsiz Web Speech başlatma!
-      if (shouldUseWebSpeech && !isMobileDevice) {
-        startLiveSpeechRecognition();
-      }
-
       // Kelime sayısına göre dinamik maksimum kayıt süresi (15 sn - 45 sn arası) ve 2.5 sn sessizlik toleransı
       const targetWords = activeText.trim().split(/\s+/).filter(Boolean);
       const maxRecordingDurationMs = Math.max(
@@ -558,6 +583,7 @@ export default function ShadowingModal({
         Math.min(45000, targetWords.length * 1800 + 8000)
       );
 
+      // Önce getUserMedia() iznini al; startLiveWebSpeech() çağrısını yalnızca mikrofon akışı başarıyla alındıktan sonra başlat!
       const session = await start16kHzRecorder({
         silenceDurationMs: 2500,
         maxDurationMs: maxRecordingDurationMs,
@@ -593,6 +619,7 @@ export default function ShadowingModal({
         } catch {
           // ignore
         }
+        speechManagerRef.current?.stopLiveWebSpeech(true);
         return;
       }
 
@@ -600,11 +627,15 @@ export default function ShadowingModal({
       mediaStreamRef.current = session.getStream();
       audioContextRef.current = session.getAudioContext();
 
-      // Mobil cihazlarda yalnızca Hızlı Tarayıcı Motoru seçiliyse getUserMedia açıldıktan hemen sonra SpeechRecognition'ı başlat
-      if (shouldUseWebSpeech && isMobileDevice) {
-        setTimeout(() => {
+      // Yalnızca getUserMedia mikrofon akışı başarıyla alındıktan sonra ve Hızlı Tarayıcı Motoru seçiliyse Web Speech başlat
+      if (shouldUseWebSpeech) {
+        if (isMobileDevice) {
+          setTimeout(() => {
+            startLiveSpeechRecognition();
+          }, 80);
+        } else {
           startLiveSpeechRecognition();
-        }, 80);
+        }
       }
 
       // Mobil (iOS Safari & Android) ses formatı uyumluluğu için desteklenen MIME türünü dinamik seç
@@ -643,6 +674,8 @@ export default function ShadowingModal({
         });
       }, 120);
     } catch {
+      cleanupMediaResources();
+      setIsRecording(false);
       setAdaptiveResult({
         action: "keep_going",
         message:
@@ -1126,11 +1159,9 @@ export default function ShadowingModal({
               }`}
             />
             <span>
-              {localSttOnly
-                ? "🔒 Aktif: Yalnızca Cihaz İçi Whisper — Sesiniz tarayıcı dışına çıkmaz ve hiçbir sunucuda saklanmaz."
-                : sttEngine === "whisper"
-                ? "🔒 Aktif: Cihaz İçi Yapay Zeka (Whisper) — Sesiniz cihaz içinde işlenir, arka planda tarayıcı ses servisi başlatılmaz."
-                : "🌐 Aktif: Hızlı Tarayıcı Motoru (Tarayıcı Ses Servisi) — Ses kayıtlarınız hiçbir sunucuda saklanmaz."}
+              {localSttOnly || sttEngine === "whisper"
+                ? "🔒 Cihaz İçi Mod: Sesiniz tarayıcı dışına çıkmaz, tamamen cihazınızda işlenir."
+                : "🌐 Tarayıcı Servisi Modu: Ses tanıma işlemi tarayıcınızın konuşma servisi üzerinden yapılır (Uygulamamız ses kaydı tutmaz)."}
             </span>
           </div>
           <button

@@ -30,9 +30,37 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
 
   useEffect(() => {
     isMountedRef.current = true;
+    const initialPlayer = audioPlayerRef.current;
+
+    const forceStopActiveMic = () => {
+      sessionTokenRef.current += 1;
+      if (sessionRef.current) {
+        const activeSession = sessionRef.current;
+        sessionRef.current = null;
+        try {
+          activeSession.getStream()?.getTracks().forEach((t) => t.stop());
+          activeSession.killStreamImmediately();
+        } catch {
+          // ignore
+        }
+        setIsRecording(false);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        forceStopActiveMic();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", forceStopActiveMic);
+
     return () => {
       isMountedRef.current = false;
       sessionTokenRef.current += 1;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", forceStopActiveMic);
       if (sessionRef.current) {
         try {
           sessionRef.current.getStream()?.getTracks().forEach((t) => t.stop());
@@ -42,8 +70,7 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
         }
         sessionRef.current = null;
       }
-      const player = audioPlayerRef.current;
-      if (player) player.pause();
+      if (initialPlayer) initialPlayer.pause();
     };
   }, []);
 
@@ -85,7 +112,17 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
       sessionRef.current = session;
       setIsRecording(true);
     } catch {
+      if (sessionRef.current) {
+        try {
+          sessionRef.current.getStream()?.getTracks().forEach((t) => t.stop());
+          sessionRef.current.killStreamImmediately();
+        } catch {
+          // ignore
+        }
+        sessionRef.current = null;
+      }
       if (isMountedRef.current) {
+        setIsRecording(false);
         setErrorMsg("Mikrofon izni gerekli");
       }
     }
@@ -101,6 +138,12 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
         const res = await activeSession.stop();
         setAudioUrl(res.wavUrl);
       } catch {
+        try {
+          activeSession.getStream()?.getTracks().forEach((t) => t.stop());
+          activeSession.killStreamImmediately();
+        } catch {
+          // ignore
+        }
         setErrorMsg("Kayıt tamamlanamadı");
       }
     }
@@ -135,11 +178,11 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
         <button
           type="button"
           onClick={startRecording}
-          className="group relative w-9 h-9 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-[var(--foreground)] hover:border-[#0CA678] active:border-b-1 active:translate-y-0.5 transition-all inline-flex items-center justify-center cursor-pointer"
+          className="group relative w-9 h-9 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-[var(--foreground)] hover:border-[#087F5B] active:border-b-1 active:translate-y-0.5 transition-all inline-flex items-center justify-center cursor-pointer"
           data-tooltip="Sesimi Kaydet (16kHz)"
           aria-label="Sesimi Kaydet (16kHz)"
         >
-          <Mic size={15} className="text-[#0CA678]" />
+          <Mic size={15} className="text-[#065F46] dark:text-emerald-400" />
         </button>
       )}
 
@@ -164,8 +207,8 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
             onClick={playRecording}
             className={`group relative w-9 h-9 rounded-xl border-2 border-b-3 inline-flex items-center justify-center transition-all cursor-pointer ${
               isPlaying
-                ? "bg-[#0CA678] border-[#087F5B] text-white"
-                : "bg-white dark:bg-[var(--background)] border-[#0CA678] text-[#087F5B]"
+                ? "bg-[#087F5B] border-[#065F46] text-white"
+                : "bg-white dark:bg-[var(--background)] border-[#087F5B] text-[#065F46] dark:text-emerald-400"
             }`}
             data-tooltip={isPlaying ? "Durdur" : "Kaydımı Dinle"}
             aria-label={isPlaying ? "Durdur" : "Kaydımı Dinle"}

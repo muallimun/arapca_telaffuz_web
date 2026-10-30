@@ -42,6 +42,7 @@ interface SpeechRecognitionInstanceLike {
   onend: ((event?: unknown) => void) | null;
   start: () => void;
   stop: () => void;
+  abort?: () => void;
 }
 
 type WindowWithSpeechRecognition = Window & {
@@ -59,6 +60,16 @@ export class HybridSpeechManager {
   constructor() {
     if (typeof window !== "undefined") {
       this.initWorker();
+      // Kullanıcı kayıt devam ederken "Yalnızca Cihazda İşle" (localSttOnly) seçeneğini açarsa
+      // veya motoru "whisper" yaparsa çalışan SpeechRecognition oturumunu anında iptal et ve çevrimiçi metin tamponunu temizle.
+      useSettings.subscribe((state, prevState) => {
+        if (
+          (state.localSttOnly && !prevState.localSttOnly) ||
+          (state.sttEngine === "whisper" && prevState.sttEngine !== "whisper")
+        ) {
+          this.stopLiveWebSpeech(true);
+        }
+      });
     }
   }
 
@@ -81,13 +92,15 @@ export class HybridSpeechManager {
 
   /**
    * Kayıt başlarken Web Speech API'yi başlatır.
-   * "Yalnızca Cihazda İşle" (localSttOnly) açıksa kesinlikle çevrimiçi SpeechRecognition başlatılmaz.
+   * "Yalnızca Cihazda İşle" (localSttOnly) açıksa veya motor "whisper" ise kesinlikle çevrimiçi SpeechRecognition başlatılmaz.
    */
   public startLiveWebSpeech(callbacks?: SttCallbacks) {
+    this.stopLiveWebSpeech(true);
     this.webSpeechFinalTranscript = "";
     this.webSpeechInterimTranscript = "";
 
-    if (useSettings.getState().localSttOnly) {
+    const { localSttOnly, sttEngine } = useSettings.getState();
+    if (localSttOnly || sttEngine === "whisper") {
       this.isWebSpeechActive = false;
       return;
     }
@@ -104,6 +117,15 @@ export class HybridSpeechManager {
       rec.interimResults = true;
 
       rec.onresult = (event: SpeechRecognitionEventLike) => {
+        const currentSettings = useSettings.getState();
+        if (
+          currentSettings.localSttOnly ||
+          currentSettings.sttEngine === "whisper"
+        ) {
+          this.stopLiveWebSpeech(true);
+          callbacks?.onInterimTranscript?.("", "", "");
+          return;
+        }
         let finalChunk = "";
         let interimChunk = "";
         for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -159,6 +181,12 @@ export class HybridSpeechManager {
    * son onresult olayını kaybetmemek için onend tetiklenene veya timeoutMs dolana kadar bekler.
    */
   public stopAndWaitForFinalResult(timeoutMs: number = 1200): Promise<string> {
+    const { localSttOnly, sttEngine } = useSettings.getState();
+    if (localSttOnly || sttEngine === "whisper") {
+      this.stopLiveWebSpeech(true);
+      return Promise.resolve("");
+    }
+
     if (!this.recognition) {
       this.isWebSpeechActive = false;
       return Promise.resolve(this.getCapturedWebSpeechText());
@@ -224,7 +252,7 @@ export class HybridSpeechManager {
     return this.stopAndWaitForFinalResult(timeoutMs);
   }
 
-  public stopLiveWebSpeech(): string {
+  public stopLiveWebSpeech(clearBuffers: boolean = false): string {
     if (this.recognition) {
       const rec = this.recognition;
       this.recognition = null;
@@ -232,12 +260,22 @@ export class HybridSpeechManager {
         rec.onresult = null;
         rec.onerror = null;
         rec.onend = null;
-        if (typeof rec.stop === "function") rec.stop();
+        if (clearBuffers && typeof rec.abort === "function") {
+          rec.abort();
+        } else if (typeof rec.stop === "function") {
+          rec.stop();
+        }
       } catch {
         // sessizce geç
       }
     }
     this.isWebSpeechActive = false;
+    const { localSttOnly, sttEngine } = useSettings.getState();
+    if (clearBuffers || localSttOnly || sttEngine === "whisper") {
+      this.webSpeechFinalTranscript = "";
+      this.webSpeechInterimTranscript = "";
+      return "";
+    }
     return (
       this.webSpeechFinalTranscript +
       " " +
@@ -246,6 +284,12 @@ export class HybridSpeechManager {
   }
 
   public getCapturedWebSpeechText(): string {
+    const { localSttOnly, sttEngine } = useSettings.getState();
+    if (localSttOnly || sttEngine === "whisper") {
+      this.webSpeechFinalTranscript = "";
+      this.webSpeechInterimTranscript = "";
+      return "";
+    }
     return (
       this.webSpeechFinalTranscript +
       " " +

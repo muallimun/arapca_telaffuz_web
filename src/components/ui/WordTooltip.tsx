@@ -152,7 +152,10 @@ export default function WordTooltip({
   const activeWordElRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
-    setMounted(true);
+    const raf = requestAnimationFrame(() => {
+      setMounted(true);
+    });
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   const computePosition = useCallback((el: HTMLElement) => {
@@ -203,15 +206,13 @@ export default function WordTooltip({
   }, [isClassroomMode]);
 
   useEffect(() => {
-    setShowDesktopRootFamily(false);
-    if (activeIndex !== null && activeWordElRef.current) {
-      const raf = requestAnimationFrame(() => {
-        if (activeWordElRef.current) {
-          computePosition(activeWordElRef.current);
-        }
-      });
-      return () => cancelAnimationFrame(raf);
-    }
+    const raf = requestAnimationFrame(() => {
+      setShowDesktopRootFamily(false);
+      if (activeIndex !== null && activeWordElRef.current) {
+        computePosition(activeWordElRef.current);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [activeIndex, computePosition]);
 
   useEffect(() => {

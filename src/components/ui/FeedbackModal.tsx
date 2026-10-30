@@ -12,9 +12,6 @@ import {
 import { diyaloglar } from "@/lib/data";
 import { playClick, playSuccess } from "@/lib/sfxManager";
 
-const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbxnozrFJ9z1X2TMsO-S1TJm70bu-mreYtuOqU96Oyu_hArYspQaQPvv9rbNeRX8zaGt/exec";
-
 const FEEDBACK_CATEGORIES = [
   {
     id: "Hata / Eksik Kelime-Hareke",
@@ -215,37 +212,16 @@ export default function FeedbackModal() {
       });
 
       const data = await res.json().catch(() => ({}));
-      if (res.status === 400 && data?.error) {
-        setErrorMsg(data.error);
+      if (!res.ok || data?.ok === false) {
+        setErrorMsg(
+          typeof data?.error === "string" && data.error
+            ? data.error
+            : "Bildiriminiz şu an iletilemedi. Lütfen kısa bir süre sonra tekrar deneyin."
+        );
         setIsSubmitting(false);
         return;
       }
 
-      if (res.ok && data?.ok) {
-        markSuccess(category);
-        return;
-      }
-    } catch {
-      // Sunucu/ağ hatası durumunda aşağıdaki doğrudan Google Apps Script yedek kanalına geç
-    }
-
-    // Yedek Kanal: Doğrudan tarayıcıdan Google Apps Script'e no-cors ile gönderim
-    try {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
-        },
-        body: JSON.stringify({
-          category: payload.category,
-          name: payload.name,
-          email: payload.email,
-          dialogueRef: payload.dialogueRef,
-          message: payload.message,
-          pageUrl: payload.pageUrl,
-        }),
-      });
       markSuccess(category);
     } catch {
       setErrorMsg(
@@ -267,7 +243,7 @@ export default function FeedbackModal() {
         {/* ÜST BAŞLIK */}
         <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-5 py-3.5 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#0CA678] border-b-3 border-[#087F5B] text-white flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#087F5B] border-b-3 border-[#065F46] text-white flex items-center justify-center shrink-0">
               <MessageSquarePlus size={20} />
             </div>
             <div className="min-w-0">
@@ -315,7 +291,7 @@ export default function FeedbackModal() {
                     playClick();
                     setIsOpen(false);
                   }}
-                  className="px-5 py-2.5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white text-xs sm:text-sm font-extrabold border-b-3 border-[#087F5B] cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white text-xs sm:text-sm font-extrabold border-b-3 border-[#065F46] cursor-pointer"
                 >
                   Tamam, Kapat
                 </button>
@@ -353,8 +329,8 @@ export default function FeedbackModal() {
                         }}
                         className={`py-2 px-3 rounded-xl border-2 text-xs font-extrabold text-left transition-all cursor-pointer ${
                           active
-                            ? "bg-[#0CA678] border-[#087F5B] text-white shadow-2xs"
-                            : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#0CA678]"
+                            ? "bg-[#087F5B] border-[#065F46] text-white shadow-2xs"
+                            : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
                         }`}
                       >
                         {cat.label}
@@ -457,9 +433,14 @@ export default function FeedbackModal() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Tespit ettiğiniz hatayı, eksik kelime/harekeyi veya önerinizi buraya detaylıca yazabilirsiniz..."
-                  className="w-full p-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] text-xs sm:text-sm font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678] resize-y"
+                  className="w-full p-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] text-xs sm:text-sm font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#087F5B] resize-y"
                 />
               </div>
+
+              {/* KVKK ve Veri Gizliliği Aydınlatma Notu */}
+              <p className="text-[11px] font-medium text-[var(--muted)] leading-snug bg-[#F7EFE1]/70 dark:bg-[var(--background)] px-3 py-2 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)]">
+                🔒 <strong>Gizlilik ve KVKK Notu:</strong> Paylaştığınız ad, e-posta ve mesaj bilgileri yalnızca geri bildiriminizi yanıtlamak ve eğitim içeriğini iyileştirmek amacıyla güvenli sunucu köprüsü üzerinden Muallimun ekibine iletilir; üçüncü taraflarla paylaşılmaz.
+              </p>
 
               {/* Hata Mesajı */}
               {errorMsg && (
@@ -484,7 +465,7 @@ export default function FeedbackModal() {
                 <button
                   type="submit"
                   disabled={isSubmitting || cooldownRemaining > 0}
-                  className="h-10 px-5 rounded-xl bg-[#0CA678] hover:bg-[#099268] disabled:opacity-55 text-white text-xs sm:text-sm font-extrabold border-b-3 border-[#087F5B] flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  className="h-10 px-5 rounded-xl bg-[#087F5B] hover:bg-[#065F46] disabled:opacity-55 text-white text-xs sm:text-sm font-extrabold border-b-3 border-[#065F46] flex items-center justify-center gap-1.5 cursor-pointer transition-all"
                 >
                   {isSubmitting ? (
                     <>

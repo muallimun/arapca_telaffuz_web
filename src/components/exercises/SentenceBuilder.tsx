@@ -298,14 +298,19 @@ export default function SentenceBuilder({
 
   // Geri sayım sayacı
   useEffect(() => {
-    setTimeLeft(timeLimit);
+    const raf = requestAnimationFrame(() => {
+      setTimeLeft(timeLimit);
+    });
+    return () => cancelAnimationFrame(raf);
   }, [timeLimit, roundSeed, customQuestions]);
 
   useEffect(() => {
     if (timeLeft === null || isFinished || isTimeUp) return;
     if (timeLeft <= 0) {
-      setIsTimeUp(true);
-      return;
+      const raf = requestAnimationFrame(() => {
+        setIsTimeUp(true);
+      });
+      return () => cancelAnimationFrame(raf);
     }
     const id = setInterval(() => {
       setTimeLeft((prev) => (prev !== null ? prev - 1 : null));

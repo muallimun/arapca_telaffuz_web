@@ -49,14 +49,19 @@ export default function ShareAppModal() {
   const [supportsWebShare, setSupportsWebShare] = useState(false);
 
   useEffect(() => {
-    setSupportsWebShare(canUseNativeWebShare());
+    const raf = requestAnimationFrame(() => {
+      setSupportsWebShare(canUseNativeWebShare());
+    });
 
     const handleOpen = () => {
       setCopied(false);
       setIsOpen(true);
     };
     window.addEventListener("open-share-app-modal", handleOpen);
-    return () => window.removeEventListener("open-share-app-modal", handleOpen);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("open-share-app-modal", handleOpen);
+    };
   }, []);
 
   useEffect(() => {

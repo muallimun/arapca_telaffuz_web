@@ -48,11 +48,14 @@ export default function OnboardingTourModal() {
   };
 
   useEffect(() => {
+    let raf: number | null = null;
     try {
       const done = localStorage.getItem(ONBOARDING_STORAGE_KEY);
       if (!done) {
-        setIsOpen(true);
-        setStep(0);
+        raf = requestAnimationFrame(() => {
+          setIsOpen(true);
+          setStep(0);
+        });
       }
     } catch {
       // ignore storage errors
@@ -65,6 +68,7 @@ export default function OnboardingTourModal() {
 
     window.addEventListener("open-onboarding-tour", handleOpenEvent);
     return () => {
+      if (raf !== null) cancelAnimationFrame(raf);
       window.removeEventListener("open-onboarding-tour", handleOpenEvent);
     };
   }, []);

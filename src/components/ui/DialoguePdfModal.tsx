@@ -388,25 +388,26 @@ export default function DialoguePdfModal({
   // Herhangi bir çalışma kağıdı / boşluk modu seçildiğinde Öğrenci Bilgi Şeridi ve Cevap Anahtarını otomatik aktif et
   useEffect(() => {
     if (hasAnyBlankActivity) {
-      setIncludeStudentHeader(true);
-      setIncludeAnswerKey(true);
+      const raf = requestAnimationFrame(() => {
+        setIncludeStudentHeader(true);
+        setIncludeAnswerKey(true);
+      });
+      return () => cancelAnimationFrame(raf);
     }
   }, [hasAnyBlankActivity]);
 
   // İçerik veya mizanpaj ayarları değiştiğinde fitMode'a göre başlangıç yoğunluğunu belirle
   useEffect(() => {
-    if (fitMode === "normal") {
-      setActiveDensity("normal");
-    } else if (fitMode === "compact") {
-      // Kullanıcı manuel olarak "Sıkı" seçtiğinde "tight" kademesini doğrudan uygula
-      setActiveDensity("tight");
-    } else if (fitMode === "ultra") {
-      // Kullanıcı manuel olarak "Maksimum Sıkı" seçtiğinde "ultra" kademesini doğrudan uygula
-      setActiveDensity("ultra");
-    } else {
-      // "auto" modunda önce doğal yüksekliği ölçmek için "normal" ile başla
-      setActiveDensity("normal");
-    }
+    const nextDensity: DensityLevel =
+      fitMode === "compact"
+        ? "tight"
+        : fitMode === "ultra"
+        ? "ultra"
+        : "normal";
+    const raf = requestAnimationFrame(() => {
+      setActiveDensity(nextDensity);
+    });
+    return () => cancelAnimationFrame(raf);
   }, [
     fitMode,
     dialogue.id,

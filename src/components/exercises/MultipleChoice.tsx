@@ -321,7 +321,10 @@ export default function MultipleChoice({
   );
 
   useEffect(() => {
-    setSelected(userAnswers[currentIndex]?.chosen ?? null);
+    const raf = requestAnimationFrame(() => {
+      setSelected(userAnswers[currentIndex]?.chosen ?? null);
+    });
+    return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, questionsSignature]);
 

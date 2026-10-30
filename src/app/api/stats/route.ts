@@ -97,6 +97,50 @@ async function fetchWithTimeout(
   }
 }
 
+const STATS_RATE_WINDOW_MS = 60_000;
+const STATS_MAX_POST_PER_MIN = 10;
+const MAX_MAP_SIZE = 2000;
+const statsIpTimestamps = new Map<string, number[]>();
+
+function getClientIp(req: NextRequest): string {
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const firstIp = forwardedFor.split(",")[0]?.trim();
+    if (firstIp) return firstIp;
+  }
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+  return "unknown";
+}
+
+function isStatsPostRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = statsIpTimestamps.get(ip) ?? [];
+  const recent = timestamps.filter((ts) => now - ts < STATS_RATE_WINDOW_MS);
+
+  if (recent.length >= STATS_MAX_POST_PER_MIN) {
+    statsIpTimestamps.set(ip, recent);
+    return true;
+  }
+
+  recent.push(now);
+  statsIpTimestamps.set(ip, recent);
+
+  if (statsIpTimestamps.size > MAX_MAP_SIZE) {
+    for (const [key, list] of statsIpTimestamps.entries()) {
+      if (list.every((ts) => now - ts >= STATS_RATE_WINDOW_MS)) {
+        statsIpTimestamps.delete(key);
+      }
+    }
+    if (statsIpTimestamps.size > MAX_MAP_SIZE) {
+      const oldestKey = statsIpTimestamps.keys().next().value;
+      if (oldestKey) statsIpTimestamps.delete(oldestKey);
+    }
+  }
+
+  return false;
+}
+
 async function hitOrReadCounterKey(
   key: string,
   increment: boolean
@@ -108,18 +152,6 @@ async function hitOrReadCounterKey(
       3500
     );
     if (!res.ok) {
-      if (!increment) {
-        const initRes = await fetchWithTimeout(
-          `${COUNTER_API_BASE}/${key}/up`,
-          3500
-        );
-        if (initRes.ok) {
-          const initJson = await initRes.json();
-          if (typeof initJson?.count === "number" && initJson.count > 0) {
-            return initJson.count;
-          }
-        }
-      }
       return null;
     }
     const json = await res.json();
@@ -210,15 +242,14 @@ async function tryGoogleAppsScript(
   }
 }
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = req.nextUrl;
-  const unique = searchParams.get("unique") === "1" ? "1" : "0";
-  const today = searchParams.get("today") === "1" ? "1" : "0";
-  const session = searchParams.get("session") === "1" ? "1" : "0";
-
-  const isUnique = unique === "1";
-  const isToday = today === "1";
-  const isSession = session === "1";
+async function resolveStatsResponse(
+  isUnique: boolean,
+  isToday: boolean,
+  isSession: boolean
+) {
+  const unique = isUnique ? "1" : "0";
+  const today = isToday ? "1" : "0";
+  const session = isSession ? "1" : "0";
 
   const memStats = getOrUpdateInMemoryStats(isUnique, isToday, isSession);
 
@@ -227,7 +258,6 @@ export async function GET(req: NextRequest) {
     tryGoogleAppsScript(unique, today, session),
   ]);
 
-  // CounterAPI 3 ayrı anahtarla çalışıyorsa öncelikle onun ayrıştırılmış gerçek değerlerini baz al
   const resolvedTodayVisits =
     counterData?.todayVisits ??
     gasData?.todayVisits ??
@@ -265,4 +295,44 @@ export async function GET(req: NextRequest) {
       },
     }
   );
+}
+
+/**
+ * GET /api/stats — Salt okunur (Read-Only): Sayaçları artırmadan mevcut istatistikleri döndürür.
+ */
+export async function GET() {
+  return resolveStatsResponse(false, false, false);
+}
+
+/**
+ * POST /api/stats — Yeni tekil cihaz, günlük ziyaret veya oturum artışını kaydeder (IP hız sınırlı).
+ */
+export async function POST(req: NextRequest) {
+  const clientIp = getClientIp(req);
+  if (isStatsPostRateLimited(clientIp)) {
+    return resolveStatsResponse(false, false, false);
+  }
+
+  let unique = req.nextUrl.searchParams.get("unique") === "1";
+  let today = req.nextUrl.searchParams.get("today") === "1";
+  let session = req.nextUrl.searchParams.get("session") === "1";
+
+  try {
+    const body = (await req.json()) as Record<string, unknown>;
+    if (body && typeof body === "object") {
+      if (body.unique === "1" || body.unique === true || body.unique === 1) {
+        unique = true;
+      }
+      if (body.today === "1" || body.today === true || body.today === 1) {
+        today = true;
+      }
+      if (body.session === "1" || body.session === true || body.session === 1) {
+        session = true;
+      }
+    }
+  } catch {
+    // Query param veya boş gövde kabul edilir
+  }
+
+  return resolveStatsResponse(unique, today, session);
 }

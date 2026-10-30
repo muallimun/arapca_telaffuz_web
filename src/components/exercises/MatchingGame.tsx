@@ -567,7 +567,9 @@ export default function MatchingGame({
     }
     setShowEndBar(true);
   };
-  evaluateEndModeRef.current = evaluateEndModeConnections;
+  useEffect(() => {
+    evaluateEndModeRef.current = evaluateEndModeConnections;
+  });
 
   // In end mode, remove only the wrong connections while keeping the green/correct ones locked
   const handleFixWrongConnectionsInPlace = () => {

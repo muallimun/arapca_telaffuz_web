@@ -94,6 +94,7 @@ export default function SettingsPage() {
   const { enabled: sfxEnabled, setEnabled: setSfxEnabled } = useSfxStore();
   const {
     streakDays,
+    activityXp,
     dailyGoalMinutes,
     setDailyGoalMinutes,
     exportProgress,
@@ -338,7 +339,7 @@ export default function SettingsPage() {
                 }}
                 className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer ${
                   isSelected
-                    ? "bg-[#0CA678] text-white shadow-xs"
+                    ? "bg-[#087F5B] text-white shadow-xs"
                     : "bg-white/75 dark:bg-[var(--background)] text-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
@@ -510,7 +511,7 @@ export default function SettingsPage() {
                           }}
                           className={`px-2 py-1 text-xs rounded-lg transition-all text-center truncate cursor-pointer ${
                             active
-                              ? "bg-[#0CA678] text-white font-bold shadow-2xs"
+                              ? "bg-[#087F5B] text-white font-bold shadow-2xs"
                               : "bg-white/60 dark:bg-[var(--background)]/50 text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                           }`}
                         >
@@ -548,7 +549,7 @@ export default function SettingsPage() {
                         }}
                         className={`px-2 py-1 text-xs rounded-lg transition-all text-center truncate cursor-pointer ${
                           isSelected
-                            ? "bg-[#0CA678] text-white font-bold shadow-2xs"
+                            ? "bg-[#087F5B] text-white font-bold shadow-2xs"
                             : "bg-white/60 dark:bg-[var(--background)]/50 text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                         }`}
                       >
@@ -572,7 +573,7 @@ export default function SettingsPage() {
                     playClick();
                     playTTS(rawSampleArabic, speechRate);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#0CA678] text-white text-xs font-bold border-b-2 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#087F5B] text-white text-xs font-bold border-b-2 border-[#087F5B] active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
                 >
                   <Volume2 size={13} />
                   <span>Örnek Cümleyi Dinle ({speechRate}x)</span>
@@ -748,7 +749,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
                       showHareke
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -762,7 +763,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
                       !showHareke
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -794,7 +795,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
                       showTooltips
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -808,7 +809,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
                       !showTooltips
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -841,7 +842,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
                       showShadowing
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -855,7 +856,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
                       !showShadowing
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -888,7 +889,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
                       sfxEnabled
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -899,7 +900,7 @@ export default function SettingsPage() {
                     onClick={() => setSfxEnabled(false)}
                     className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
                       !sfxEnabled
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -931,7 +932,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
                       theme === "light"
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -945,7 +946,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
                       theme === "dark"
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -987,7 +988,7 @@ export default function SettingsPage() {
                       }}
                       className={`px-2 py-1.5 text-[11px] rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                         wordTrackingStyle === opt.id
-                          ? "bg-[#0CA678] text-white font-bold"
+                          ? "bg-[#087F5B] text-white font-bold"
                           : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                       }`}
                     >
@@ -1037,7 +1038,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-2 py-1.5 text-xs tabular-nums rounded-lg transition-all cursor-pointer ${
                       speechRate === rate
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -1078,7 +1079,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-2 py-1.5 text-[11px] rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                       pauseBetweenLines === opt.id
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -1164,7 +1165,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-2 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
                       sentenceLoopCount === opt.id
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -1195,10 +1196,10 @@ export default function SettingsPage() {
                 <div>
                   <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                     Günlük Çalışma Hedefi ({dailyGoalMinutes} dk) · {streakDays}{" "}
-                    Gün Seri
+                    Gün Seri · {activityXp || 0} XP
                   </span>
                   <span className="block text-[11px] text-[var(--muted)]">
-                    Her gün düzenli Arapça pratik için hedef sürenizi belirleyin
+                    Aktif çalışma süreniz dakikalarla, tamamladığınız görevler ise XP puanıyla takip edilir
                   </span>
                 </div>
               </div>
@@ -1214,7 +1215,7 @@ export default function SettingsPage() {
                     }}
                     className={`px-2.5 py-1.5 text-xs tabular-nums rounded-lg transition-all cursor-pointer ${
                       dailyGoalMinutes === mins
-                        ? "bg-[#0CA678] text-white font-bold"
+                        ? "bg-[#087F5B] text-white font-bold"
                         : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -1244,7 +1245,7 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-end">
                 {isInstalled ? (
-                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#E6FCF5] dark:bg-emerald-950/50 text-[#087F5B] dark:text-emerald-300 border border-[#0CA678]/40 text-xs font-extrabold">
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#E6FCF5] dark:bg-emerald-950/50 text-[#065F46] dark:text-emerald-300 border border-[#087F5B]/40 text-xs font-extrabold">
                     <CheckCircle2 size={14} />
                     Cihaza Kurulu
                   </span>
@@ -1295,7 +1296,7 @@ export default function SettingsPage() {
           {/* 2B. Uygulamayı Arkadaşına Öner & Paylaş */}
           <div className="bg-white dark:bg-[var(--background)] p-3.5 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-2.5">
-              <Share2 size={18} className="text-[#0CA678] shrink-0 mt-0.5" />
+              <Share2 size={18} className="text-[#087F5B] shrink-0 mt-0.5" />
               <div>
                 <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
                   📲 Uygulamayı Arkadaşına Öner &amp; Paylaş
@@ -1312,7 +1313,7 @@ export default function SettingsPage() {
                 playClick();
                 triggerShareAppModal();
               }}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white border-b-3 border-[#087F5B] text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all shrink-0 cursor-pointer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#087F5B] to-[#6741D9] hover:opacity-95 text-white border-b-3 border-[#065F46] text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all shrink-0 cursor-pointer"
             >
               <Share2 size={14} />
               <span>Uygulamayı Paylaş</span>
@@ -1448,7 +1449,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={handleExportBackup}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white border-b-3 border-[#087F5B] text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#087F5B] hover:bg-[#065F46] text-white border-b-3 border-[#065F46] text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
                 >
                   <Download size={14} />
                   <span>İlerlemeyi Dışa Aktar (.json)</span>
@@ -1533,7 +1534,7 @@ export default function SettingsPage() {
                   }}
                   className={`px-3 py-1.5 text-[11px] rounded-lg transition-all cursor-pointer ${
                     importMode === "merge"
-                      ? "bg-[#0CA678] text-white font-bold"
+                      ? "bg-[#087F5B] text-white font-bold"
                       : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
                   }`}
                 >
@@ -1560,7 +1561,7 @@ export default function SettingsPage() {
               <div
                 className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-between gap-2 ${
                   dataMessage.type === "success"
-                    ? "bg-[#E6FCF5] dark:bg-emerald-950/40 border-[#0CA678]/50 text-[#087F5B] dark:text-emerald-300"
+                    ? "bg-[#E6FCF5] dark:bg-emerald-950/40 border-[#087F5B]/50 text-[#065F46] dark:text-emerald-300"
                     : "bg-rose-50 dark:bg-rose-950/40 border-rose-400 text-rose-800 dark:text-rose-200"
                 }`}
               >

@@ -83,7 +83,7 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         name: "İnteraktif Sözlük",
         short_name: "Sözlük",
-        description: "1075+ kelime, kök analizi ve kalıp ifadeler",
+        description: "1494 kelime, kök analizi ve kalıp ifadeler",
         url: "/sozluk",
         icons: [
           {

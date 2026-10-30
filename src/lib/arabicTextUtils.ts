@@ -185,29 +185,190 @@ const MED_MUKADDER_EQUIVALENTS: Record<string, string> = {
   بهاذا: "بهذا",
   لهاذه: "لهذه",
   بهاذه: "بهذه",
+  مائه: "مئه",
+  مائة: "مئه",
+  المائه: "المئه",
+  المائة: "المئه",
+  بالمائه: "بالمئه",
+  بالمائة: "بالمئه",
 };
 
 /**
- * Telaffuz ve Mahreç Karşılaştırması İçin Arapça Fonetik ve Vakıf (Durak) Normalizasyonu:
- * 1. Tüm harekeleri, şeddeyi, tatweel (ـ) karakterini ve noktalama işaretlerini (., ،, ؛, ؟, ?, !, :, ", ') temizler.
- * 2. Hemzeli elifleri (أ, إ, آ, ٱ) standart ا harfine dönüştürür.
- * 3. Elif-i maksûreyi (ى) ي harfine dönüştürür.
- * 4. Kelime sonundaki Tâ-i Merbûta (ة) ile ه harfini eşdeğer kabul eder (vakıf kuralı).
- * 5. هذا/هاذا, هذه/هاذه, ذلك/ذالك, لكن/لاكن, رحمن/رحمان gibi med-i mukadder kelimelerini eşitler.
+ * Şedde (\u0651) ve hareke (\u064B-\u0650, \u0652, \u0670) sıralamasını kanonik Unicode sırasına
+ * (önce şedde, sonra hareke: \u0651 + hareke) normalize eder ve ardışık mükerrer şeddeleri tekilleştirir.
  */
-export function normalizeArabicForPronunciation(text: string): string {
+export function canonicalizeArabicDiacritics(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\u0651{2,}/g, "\u0651")
+    .replace(/([\u064B-\u0650\u0652\u0670])\u0651/g, "\u0651$1")
+    .replace(/\u0651{2,}/g, "\u0651");
+}
+
+/**
+ * Hedef metindeki parantez içi sayı/açıklama bloklarını (ör. "(40)", "(167)")
+ * ve yüzde (٪ / %) sembollerini telaffuz puanlamasından önce temizler.
+ */
+export function stripParentheticalNotesForScoring(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[%٪]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const ARABIC_ONES: Record<number, string> = {
+  0: "صفر",
+  1: "واحد",
+  2: "اثنان",
+  3: "ثلاثه",
+  4: "اربعه",
+  5: "خمسه",
+  6: "سته",
+  7: "سبعه",
+  8: "ثمانيه",
+  9: "تسعه",
+  10: "عشره",
+  11: "احد عشر",
+  12: "اثنا عشر",
+  13: "ثلاثه عشر",
+  14: "اربعه عشر",
+  15: "خمسه عشر",
+  16: "سته عشر",
+  17: "سبعه عشر",
+  18: "ثمانيه عشر",
+  19: "تسعه عشر",
+};
+
+const ARABIC_TENS_NOM: Record<number, string> = {
+  20: "عشرون",
+  30: "ثلاثون",
+  40: "اربعون",
+  50: "خمسون",
+  60: "ستون",
+  70: "سبعون",
+  80: "ثمانون",
+  90: "تسعون",
+};
+
+const ARABIC_TENS_OBL: Record<number, string> = {
+  20: "عشرين",
+  30: "ثلاثين",
+  40: "اربعين",
+  50: "خمسين",
+  60: "ستين",
+  70: "سبعين",
+  80: "ثمانين",
+  90: "تسعين",
+};
+
+export function numberToArabicWords(
+  num: number,
+  preferOblique: boolean = false
+): string {
+  if (!Number.isFinite(num) || num < 0) return "";
+  const n = Math.floor(num);
+  if (n <= 19) {
+    if (n === 2 && preferOblique) return "اثنين";
+    if (n === 12 && preferOblique) return "اثني عشر";
+    return ARABIC_ONES[n] || "";
+  }
+  const tensTable = preferOblique ? ARABIC_TENS_OBL : ARABIC_TENS_NOM;
+  if (n < 100) {
+    const ten = Math.floor(n / 10) * 10;
+    const rem = n % 10;
+    if (rem === 0) return tensTable[ten] || "";
+    const oneWord =
+      rem === 2 && preferOblique ? "اثنين" : ARABIC_ONES[rem] || "";
+    return `${oneWord} و${tensTable[ten]}`;
+  }
+  if (n < 1000) {
+    const hundreds = Math.floor(n / 100);
+    const rem = n % 100;
+    let hWord = "مئه";
+    if (hundreds === 2) hWord = preferOblique ? "مئتين" : "مئتان";
+    else if (hundreds >= 3) hWord = `${ARABIC_ONES[hundreds]} مئه`;
+    if (rem === 0) return hWord;
+    return `${hWord} و${numberToArabicWords(rem, preferOblique)}`;
+  }
+  if (n < 10000) {
+    const thousands = Math.floor(n / 1000);
+    const rem = n % 1000;
+    let tWord = "الف";
+    if (thousands === 2) tWord = preferOblique ? "الفين" : "الفان";
+    else if (thousands >= 3) tWord = `${ARABIC_ONES[thousands]} الاف`;
+    if (rem === 0) return tWord;
+    return `${tWord} و${numberToArabicWords(rem, preferOblique)}`;
+  }
+  return String(n);
+}
+
+/**
+ * STT çıktısındaki veya metindeki rakamları (0-9, ٠-٩, ۰-۹) Arapça sayı kelimelerine dönüştürür.
+ * Referans metin (expectedText) verilmişse ve referansta mansub/mecrur (-ين) çekimi geçiyorsa ona uyum sağlar.
+ */
+export function normalizeArabicNumbersInText(
+  text: string,
+  referenceText?: string
+): string {
+  if (!text) return "";
+  const refStripped = referenceText
+    ? referenceText
+        .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
+        .replace(/[أإآٱ]/g, "ا")
+    : "";
+  const preferOblique =
+    /(عشرين|ثلاثين|اربعين|خمسين|ستين|سبعين|ثمانين|تسعين|اثنين|مئتين|الفين)/.test(
+      refStripped
+    );
+
+  // Doğu Arapça (٠-٩) ve Farsça/Urduca (۰-۹) rakamlarını standart 0-9'a çevir
+  const asciiDigits = text
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0));
+
+  return asciiDigits.replace(/\b\d{1,4}\b/g, (match) => {
+    const parsed = parseInt(match, 10);
+    if (Number.isNaN(parsed)) return match;
+    return numberToArabicWords(parsed, preferOblique) || match;
+  });
+}
+
+/**
+ * Ortak noktalama, tırnak (", «, », ', “, ”, ‘, ’, „, ‚, ‹, ›), yüzde (% / ٪) ve tatweel (ـ) temizleyici
+ */
+export const COMMON_PUNCTUATION_AND_QUOTES_REGEX =
+  /[.,،؛؟?!:"'«»“”‘’„‚‹›()\[\]{}…\-–—/\\*%٪]/g;
+
+/**
+ * Telaffuz ve Mahreç Karşılaştırması İçin Arapça Fonetik ve Vakıf (Durak) Normalizasyonu:
+ * 1. Parantez içi açıklamaları ve % sembollerini temizler, rakamları Arapça sayı kelimelerine dönüştürür.
+ * 2. Tüm harekeleri, şeddeyi, tatweel (ـ) karakterini ve noktalama/tırnak işaretlerini temizler.
+ * 3. Hemzeli elifleri (أ, إ, آ, ٱ) standart ا harfine dönüştürür.
+ * 4. Elif-i maksûreyi (ى) ي harfine dönüştürür.
+ * 5. Kelime sonundaki Tâ-i Merbûta (ة) ile ه harfini eşdeğer kabul eder (vakıf kuralı).
+ * 6. هذا/هاذا, هذه/هاذه, ذلك/ذالك, لكن/لاكن, رحمن/رحمان, مائة/مئة gibi med-i mukadder kelimelerini eşitler.
+ */
+export function normalizeArabicForPronunciation(
+  text: string,
+  referenceText?: string
+): string {
   if (!text) return "";
 
-  const cleaned = text
-    // 0. Parantez içi rakamları ve tüm rakamları temizle
-    .replace(/\([\d\s\u0660-\u0669\u06F0-\u06F9\-+]+\)/g, " ")
-    .replace(/[\d\u0660-\u0669\u06F0-\u06F9]/g, " ")
+  const withoutParens = stripParentheticalNotesForScoring(text);
+  const withNumberWords = normalizeArabicNumbersInText(
+    withoutParens,
+    referenceText
+  );
+
+  const cleaned = canonicalizeArabicDiacritics(withNumberWords)
     // 1. Harekeler, şedde, çeker ve Kur'an durak/tecvid işaretlerini temizle
     .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
     // Tatweel (keşide) ve sıfır genişlikli karakterleri temizle
     .replace(/[\u0640\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, "")
-    // Noktalama işaretlerini (., ،, ؛, ؟, ?, !, :, ", ', parantez vb.) temizle
-    .replace(/[.,،؛؟?!:"'«»()\[\]{}…\-–—/\\]/g, " ")
+    // Noktalama ve tırnak işaretlerini temizle
+    .replace(COMMON_PUNCTUATION_AND_QUOTES_REGEX, " ")
     // 2. Hemzeli elifleri standart elif (ا) harfine dönüştür
     .replace(/[أإآٱ]/g, "ا")
     // 3. Elif-i maksûreyi (ى) ي harfine dönüştür
@@ -233,7 +394,7 @@ export function normalizeArabicForPronunciation(text: string): string {
  */
 export function normalizeArabicText(text: string): string {
   if (!text) return "";
-  return text
+  return canonicalizeArabicDiacritics(text)
     .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
     .replace(/[\u0640\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, "")
     .replace(/[أإآٱ]/g, "ا")
@@ -241,7 +402,7 @@ export function normalizeArabicText(text: string): string {
     .replace(/ئ/g, "ي")
     .replace(/ة/g, "ه")
     .replace(/ى/g, "ي")
-    .replace(/[.,،؛؟?!:"'«»()\[\]{}…\-–—/\\]/g, " ")
+    .replace(COMMON_PUNCTUATION_AND_QUOTES_REGEX, " ")
     .replace(/\s+/g, " ")
     .trim();
 }

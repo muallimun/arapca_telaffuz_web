@@ -698,43 +698,60 @@ export async function start16kHzRecorder(options?: {
     },
   });
 
-  // Mobil (iOS Safari / Android) ve masaüstü için MediaRecorder başlat
-  const supportedMimeType = getSupportedAudioMimeType();
   let mediaRecorder: MediaRecorder | null = null;
   const mediaChunks: BlobPart[] = [];
-
-  if (typeof MediaRecorder !== "undefined") {
-    try {
-      mediaRecorder = supportedMimeType
-        ? new MediaRecorder(stream, { mimeType: supportedMimeType })
-        : new MediaRecorder(stream);
-      mediaRecorder.ondataavailable = (e: BlobEvent) => {
-        if (e.data && e.data.size > 0) {
-          mediaChunks.push(e.data);
-        }
-      };
-      mediaRecorder.start(200);
-    } catch {
-      mediaRecorder = null;
-    }
-  }
-
-  const AudioCtx =
-    window.AudioContext ||
-    (window as unknown as { webkitAudioContext: typeof AudioContext })
-      .webkitAudioContext;
+  const supportedMimeType = getSupportedAudioMimeType();
   let audioCtx: AudioContext;
-  try {
-    audioCtx = new AudioCtx({ sampleRate: 16000 });
-  } catch {
-    audioCtx = new AudioCtx();
-  }
-  if (audioCtx.state === "suspended") {
-    await audioCtx.resume().catch(() => {});
-  }
+  let source: MediaStreamAudioSourceNode;
+  let processor: ScriptProcessorNode;
 
-  const source = audioCtx.createMediaStreamSource(stream);
-  const processor = audioCtx.createScriptProcessor(2048, 1, 1);
+  try {
+    if (typeof MediaRecorder !== "undefined") {
+      try {
+        mediaRecorder = supportedMimeType
+          ? new MediaRecorder(stream, { mimeType: supportedMimeType })
+          : new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = (e: BlobEvent) => {
+          if (e.data && e.data.size > 0) {
+            mediaChunks.push(e.data);
+          }
+        };
+        mediaRecorder.start(200);
+      } catch {
+        mediaRecorder = null;
+      }
+    }
+
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
+    try {
+      audioCtx = new AudioCtx({ sampleRate: 16000 });
+    } catch {
+      audioCtx = new AudioCtx();
+    }
+    if (audioCtx.state === "suspended") {
+      await audioCtx.resume().catch(() => {});
+    }
+
+    source = audioCtx.createMediaStreamSource(stream);
+    processor = audioCtx.createScriptProcessor(2048, 1, 1);
+  } catch (setupError) {
+    try {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      stream.getTracks().forEach((t) => t.stop());
+    } catch {
+      // ignore
+    }
+    throw setupError;
+  }
 
   const chunks: Float32Array[] = [];
   const rawRmsValues: number[] = [];

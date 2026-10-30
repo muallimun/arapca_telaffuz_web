@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -112,6 +112,8 @@ export default function DictionaryPage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [speakingWordId, setSpeakingWordId] = useState<string | null>(null);
   const [manifest, setManifest] = useState<Record<string, string[]>>({});
+  const [visibleCount, setVisibleCount] = useState<number>(48);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const [shadowingTarget, setShadowingTarget] = useState<{
     text: string;
@@ -136,17 +138,20 @@ export default function DictionaryPage() {
   const { playAudio } = useAudioStore();
 
   useEffect(() => {
-    setMounted(true);
     loadAudioManifest().then((m) => setManifest(m || {}));
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const durum = params.get("durum");
-      const dlg = params.get("diyalog");
-      const kokParam = params.get("kok");
-      if (durum === "learned") setStatusFilter("learned");
-      if (dlg) setSelectedDialogueId(dlg);
-      if (kokParam) setRootFilter(kokParam);
-    }
+    const raf = requestAnimationFrame(() => {
+      setMounted(true);
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const durum = params.get("durum");
+        const dlg = params.get("diyalog");
+        const kokParam = params.get("kok");
+        if (durum === "learned") setStatusFilter("learned");
+        if (dlg) setSelectedDialogueId(dlg);
+        if (kokParam) setRootFilter(kokParam);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   const getDisplayArabic = (text: string) =>
@@ -491,6 +496,28 @@ export default function DictionaryPage() {
     idiomDetailsByIdMap,
   ]);
 
+  const visibleWords = useMemo(
+    () => filteredWords.slice(0, visibleCount),
+    [filteredWords, visibleCount]
+  );
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || visibleCount >= filteredWords.length) return;
+    if (typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((prev) => Math.min(filteredWords.length, prev + 48));
+        }
+      },
+      { rootMargin: "240px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [visibleCount, filteredWords.length]);
+
   // Kelimeyi sesli dinle (MP3 varsa MP3, yoksa TTS)
   const handleListenWord = async (
     word: DictionaryItem,
@@ -623,13 +650,19 @@ export default function DictionaryPage() {
               type="text"
               placeholder="Arapça, Türkçe anlam veya kök ara (ör: أستودعك)..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-9 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] rounded-xl pl-8 pr-8 text-xs font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#0CA678]"
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setVisibleCount(48);
+              }}
+              className="w-full h-9 bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] rounded-xl pl-8 pr-8 text-xs font-semibold text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[#087F5B]"
             />
             {search && (
               <button
                 type="button"
-                onClick={() => setSearch("")}
+                onClick={() => {
+                  setSearch("");
+                  setVisibleCount(48);
+                }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
                 aria-label="Aramayı Temizle"
               >
@@ -662,6 +695,7 @@ export default function DictionaryPage() {
               onChange={(e) => {
                 playClick();
                 setSelectedDialogueId(e.target.value);
+                setVisibleCount(48);
               }}
               className="bg-transparent text-xs font-bold text-[var(--foreground)] focus:outline-none cursor-pointer max-w-[190px] truncate"
             >
@@ -705,12 +739,13 @@ export default function DictionaryPage() {
                   onClick={() => {
                     playClick();
                     setStatusFilter(tab.id);
+                    setVisibleCount(48);
                   }}
                   className={`px-2 py-1 text-xs rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                     active
                       ? tab.id === "mistakes"
                         ? "bg-amber-600 text-white font-semibold shadow-2xs"
-                        : "bg-[#0CA678] text-white font-semibold shadow-2xs"
+                        : "bg-[#087F5B] text-white font-semibold shadow-2xs"
                       : "text-[var(--muted)] font-medium hover:text-[var(--foreground)]"
                   }`}
                 >
@@ -728,7 +763,7 @@ export default function DictionaryPage() {
               {
                 id: "all",
                 label: "Tümü",
-                activeClass: "bg-[#0CA678] border-[#087F5B] text-white",
+                activeClass: "bg-[#087F5B] border-[#065F46] text-white",
               },
               {
                 id: "isim",
@@ -765,6 +800,7 @@ export default function DictionaryPage() {
                 onClick={() => {
                   playClick();
                   setTypeFilter(t.id);
+                  setVisibleCount(48);
                   if (statusFilter === "mistakes" && t.id === "all") {
                     setStatusFilter("all");
                   }
@@ -788,6 +824,7 @@ export default function DictionaryPage() {
               setStatusFilter((prev) =>
                 prev === "mistakes" ? "all" : "mistakes"
               );
+              setVisibleCount(48);
             }}
             className={`whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm rounded-xl border transition-all shrink-0 cursor-pointer ${
               statusFilter === "mistakes"
@@ -811,6 +848,7 @@ export default function DictionaryPage() {
                 onChange={(e) => {
                   playClick();
                   setSelectedDialogueId(e.target.value);
+                  setVisibleCount(48);
                 }}
                 className="bg-transparent text-xs font-bold text-[var(--foreground)] focus:outline-none cursor-pointer w-full truncate"
               >
@@ -853,10 +891,11 @@ export default function DictionaryPage() {
                     onClick={() => {
                       playClick();
                       setStatusFilter(tab.id);
+                      setVisibleCount(48);
                     }}
                     className={`whitespace-nowrap px-3 py-1.5 text-xs rounded-xl border transition-all shrink-0 cursor-pointer ${
                       active
-                        ? "bg-[#0CA678] border-[#087F5B] text-white font-semibold"
+                        ? "bg-[#087F5B] border-[#065F46] text-white font-semibold"
                         : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--muted)] font-medium"
                     }`}
                   >
@@ -890,6 +929,7 @@ export default function DictionaryPage() {
               onClick={() => {
                 playClick();
                 setRootFilter(null);
+                setVisibleCount(48);
               }}
               className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 hover:bg-rose-50 border border-emerald-400 hover:border-rose-400 text-xs font-extrabold text-[var(--foreground)] hover:text-rose-600 transition-all cursor-pointer shrink-0"
             >
@@ -916,15 +956,17 @@ export default function DictionaryPage() {
               setStatusFilter("all");
               setTypeFilter("all");
               setRootFilter(null);
+              setVisibleCount(48);
             }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0CA678] text-white text-xs font-bold border-b-4 border-[#087F5B] cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#087F5B] text-white text-xs font-bold border-b-4 border-[#065F46] cursor-pointer"
           >
             Filtreleri Temizle
           </button>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredWords.map((word) => {
+          {visibleWords.map((word) => {
             const isFav = mounted && isWordFavorite(word.id);
             const isLearned =
               mounted &&
@@ -990,12 +1032,13 @@ export default function DictionaryPage() {
                               setRootFilter((prev) =>
                                 prev === word.kok ? null : word.kok || null
                               );
+                              setVisibleCount(48);
                             }}
                             title="Bu kökten türeyen tüm kelimeleri (Kök Ailesini) filtrelemek için tıklayın"
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-xs font-bold transition-all cursor-pointer ${
                               rootFilter === word.kok
                                 ? "bg-emerald-600 border-emerald-700 text-white shadow-2xs"
-                                : "bg-white/80 dark:bg-slate-800/80 border-[#E6D7BE] dark:border-slate-700 text-[var(--muted)] hover:border-[#0CA678] hover:text-[#087F5B]"
+                                : "bg-white/80 dark:bg-slate-800/80 border-[#E6D7BE] dark:border-slate-700 text-[var(--muted)] hover:border-[#087F5B] hover:text-[#087F5B]"
                             }`}
                           >
                             <span>🌿 Kök:</span>
@@ -1417,13 +1460,13 @@ export default function DictionaryPage() {
                     data-tooltip="Kelimeyi doğal Arapça seslendirmeyle dinle"
                     className={`flex-1 h-9 px-3 rounded-xl border-2 border-b-3 text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       isSpeaking
-                        ? "bg-[#0CA678] border-[#087F5B] text-white"
-                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#0CA678]"
+                        ? "bg-[#087F5B] border-[#065F46] text-white"
+                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
                     }`}
                   >
                     <Volume2
                       size={15}
-                      className={isSpeaking ? "text-white" : "text-[#0CA678]"}
+                      className={isSpeaking ? "text-white" : "text-[#087F5B]"}
                     />
                     <span>Dinle</span>
                   </button>
@@ -1481,7 +1524,7 @@ export default function DictionaryPage() {
                     className={`h-9 w-9 rounded-xl border-2 border-b-3 flex items-center justify-center transition-all cursor-pointer shrink-0 ${
                       isLearned
                         ? "bg-[#6741D9] border-[#5230B5] text-white"
-                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[#0CA678]"
+                        : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[#087F5B]"
                     }`}
                   >
                     <CheckCircle2 size={15} />
@@ -1491,6 +1534,28 @@ export default function DictionaryPage() {
             );
           })}
         </div>
+
+        {visibleCount < filteredWords.length && (
+          <div
+            ref={loadMoreRef}
+            className="pt-2 pb-4 flex flex-col items-center justify-center gap-2"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setVisibleCount((prev) =>
+                  Math.min(filteredWords.length, prev + 48)
+                );
+              }}
+              className="px-5 py-2.5 rounded-2xl bg-[#087F5B] hover:bg-[#065F46] text-white text-xs sm:text-sm font-extrabold border-b-4 border-[#065F46] active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer shadow-xs"
+            >
+              Daha Fazla Kelime Göster (+48) · ({visibleWords.length} /{" "}
+              {filteredWords.length})
+            </button>
+          </div>
+        )}
+        </>
       )}
     </div>
   );
