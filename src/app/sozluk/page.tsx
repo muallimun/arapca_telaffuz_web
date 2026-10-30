@@ -1037,7 +1037,7 @@ export default function DictionaryPage() {
                     <button
                       type="button"
                       onClick={() => handleListenWord(word)}
-                      title="Dinlemek için tıkla"
+                      data-tooltip="Kelimeyi sesli dinlemek için tıklayın"
                       className="text-right group cursor-pointer shrink-0 max-w-[55%]"
                     >
                       <span
@@ -1201,7 +1201,7 @@ export default function DictionaryPage() {
                               type="button"
                               onClick={() => handleListenWord(word, word.cemi)}
                               className="inline-flex items-center gap-1.5 bg-white dark:bg-[var(--background)] px-2.5 py-1 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] hover:border-sky-500 transition-colors cursor-pointer"
-                              title="Çoğul halini sesli dinle"
+                              data-tooltip="Çoğul halini sesli dinle"
                             >
                               <span className="text-xs md:text-sm font-medium text-[var(--muted)]">
                                 Cemî:
@@ -1415,6 +1415,7 @@ export default function DictionaryPage() {
                   <button
                     type="button"
                     onClick={() => handleListenWord(word)}
+                    data-tooltip="Kelimeyi doğal Arapça seslendirmeyle dinle"
                     className={`flex-1 h-9 px-3 rounded-xl border-2 border-b-3 text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       isSpeaking
                         ? "bg-[#0CA678] border-[#087F5B] text-white"
@@ -1433,7 +1434,7 @@ export default function DictionaryPage() {
                     type="button"
                     onClick={() => handleMicClick(word)}
                     className="h-9 px-3 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#6741D9] hover:text-[#6741D9] flex items-center justify-center gap-1 transition-all cursor-pointer"
-                    title="Telaffuz & Mahreç Kontrolü"
+                    data-tooltip="Telaffuz & Mahreç Kontrolü"
                   >
                     <Mic size={14} />
                     <span>{isIdiomCard ? "Telaffuz Et" : "Telaffuz"}</span>
@@ -1446,7 +1447,8 @@ export default function DictionaryPage() {
                       playClick();
                       toggleFavoriteWord(word);
                     }}
-                    title={isFav ? "Favorilerden Çıkar" : "Favorilere Ekle"}
+                    data-tooltip={isFav ? "Favorilerden Çıkar" : "Favorilere Ekle"}
+                    aria-label={isFav ? "Favorilerden Çıkar" : "Favorilere Ekle"}
                     className={`h-9 w-9 rounded-xl border-2 border-b-3 flex items-center justify-center transition-all cursor-pointer shrink-0 ${
                       isFav
                         ? "bg-red-50 border-red-300 text-red-600"
@@ -1466,7 +1468,13 @@ export default function DictionaryPage() {
                         removeMistake(word.id);
                       }
                     }}
-                    title={
+                    data-tooltip={
+                      isLearned
+                        ? "Öğrenildi İşaretini Kaldır"
+                        : "Öğrendim Olarak İşaretle"
+                    }
+                    data-tooltip-align="right"
+                    aria-label={
                       isLearned
                         ? "Öğrenildi İşaretini Kaldır"
                         : "Öğrendim Olarak İşaretle"

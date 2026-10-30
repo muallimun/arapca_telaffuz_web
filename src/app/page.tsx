@@ -36,6 +36,7 @@ interface ModuleItem {
   arabicBadge: string;
   subtitle: string;
   meta: string;
+  tooltip: string;
   icon: typeof BookOpen;
   targetHref: string;
   accentColor: "emerald" | "purple";
@@ -114,6 +115,7 @@ export default function HomePage() {
         arabicBadge: "الحِوَارَات",
         subtitle: "Günlük hayattan sesli Arapça konuşma metinleri",
         meta: `${diyaloglar.length} Diyalog · A1-B2`,
+        tooltip: "A1'den B2'ye 60 sesli Arapça diyaloğu inceleyin ve dinleyin",
         icon: BookOpen,
         targetHref: "/kutuphane",
         accentColor: "emerald",
@@ -124,6 +126,7 @@ export default function HomePage() {
         arabicBadge: "التَّلَفُّظ",
         subtitle: "Mahreç analizi, ses dalgası ve yapay zeka koçluğu",
         meta: "Canlı Mikrofon · 38 Mahreç Çifti",
+        tooltip: "16kHz ses analizi ve 38 mahreç çifti ile telaffuz pratiği yapın",
         icon: Mic,
         targetHref: `/diyalog/${recommendedDialogueId}`,
         accentColor: "purple",
@@ -134,6 +137,7 @@ export default function HomePage() {
         arabicBadge: "التَّدْرِيبَات",
         subtitle: "Kartlar, çoktan seçmeli test, eşleştirme ve boşluk doldurma",
         meta: "5 Farklı Modül · Süreli/Süresiz",
+        tooltip: "Kelime kartları, test, eşleştirme, boşluk doldurma ve cümle sıralama",
         icon: Gamepad2,
         targetHref: "/alistirmalar",
         accentColor: "emerald",
@@ -144,6 +148,7 @@ export default function HomePage() {
         arabicBadge: "المُعْجَم",
         subtitle: "Kök harfler, müfret-cemî, mâzî-muzâri ve sesli telaffuz",
         meta: `${sozluk.length} Kelime · Sesli Sözlük`,
+        tooltip: "Kök harflere göre kelimeleri, çoğulları, fiil çekimlerini ve kalıpları arayın",
         icon: BookMarked,
         targetHref: "/sozluk",
         accentColor: "purple",
@@ -300,6 +305,7 @@ export default function HomePage() {
                 key={mod.id}
                 href={mod.targetHref}
                 onClick={() => playClick()}
+                data-tooltip={mod.tooltip}
                 className="group relative text-left p-3.5 rounded-2xl border-2 border-b-4 bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] dark:hover:border-[#0CA678] hover:-translate-y-0.5 active:translate-y-0 transition-all flex flex-col justify-between min-h-[138px]"
               >
                 <span className="arabic absolute top-2.5 right-3.5 text-lg font-bold text-[var(--muted)] opacity-80 group-hover:text-[#087F5B] dark:group-hover:text-[#20c997] transition-colors">
@@ -363,6 +369,7 @@ export default function HomePage() {
             <Link
               href={`/diyalog/${dailyPackage.dailyDialogue.dialogue.id}`}
               onClick={() => playClick()}
+              data-tooltip="Bugün için önerilen sesli diyaloğu açın ve dinleyin"
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:border-[#0CA678] transition-all whitespace-nowrap"
             >
               <BookOpen size={14} className="text-emerald-600" />
@@ -372,6 +379,8 @@ export default function HomePage() {
             <Link
               href="/alistirmalar?plan=daily"
               onClick={() => playClick()}
+              data-tooltip="Aralıklı tekrar (SRS) algoritmasıyla seçilen kelimelerle günlük çalışmayı başlatın"
+              data-tooltip-align="right"
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 text-white border-b-3 border-emerald-800 text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all whitespace-nowrap shadow-xs"
             >
               <Play size={14} fill="currentColor" />
@@ -396,6 +405,7 @@ export default function HomePage() {
               <Link
                 href={`/diyalog/${recommendedDialogue.id}`}
                 onClick={() => playClick()}
+                data-tooltip="Diyaloğu açmak, cümleleri dinlemek ve telaffuz çalışmak için tıklayın"
                 className="relative h-28 sm:h-32 w-full rounded-xl overflow-hidden border border-emerald-500/15 shadow-sm block group"
               >
                 {!recImgFailed ? (
@@ -440,6 +450,7 @@ export default function HomePage() {
               <Link
                 href={`/diyalog/${recommendedDialogue.id}`}
                 onClick={() => playClick()}
+                data-tooltip="Diyaloğu açmak, cümleleri dinlemek ve telaffuz çalışmak için tıklayın"
                 className="text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997] inline-flex items-center gap-0.5 hover:underline shrink-0"
               >
                 <span>Aç</span>
@@ -483,7 +494,7 @@ export default function HomePage() {
                       playClick();
                       playTTS(ar, mounted ? speechRate : 1);
                     }}
-                    title="Dinlemek için dokunun"
+                    data-tooltip="Kelimeyi sesli dinlemek için tıklayın"
                     className="p-2 rounded-lg bg-[#F7EFE1]/60 dark:bg-[var(--surface)] border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] text-left flex flex-col justify-between gap-1 transition-colors cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-1 w-full">
@@ -523,7 +534,7 @@ export default function HomePage() {
                     playClick();
                     playTTS(di.idiom.arabic, mounted ? speechRate : 1);
                   }}
-                  title="Dinlemek için dokunun"
+                  data-tooltip="Kalıp ifadeyi sesli dinlemek için tıklayın"
                   className="w-full p-2 rounded-lg bg-[#F3F0FF]/70 dark:bg-[var(--lavender-bg)] border border-[#6741D9]/30 hover:border-[#6741D9] text-left space-y-0.5 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center justify-between gap-1.5">
@@ -568,7 +579,7 @@ export default function HomePage() {
                   setTipIndex((prev) => (prev + 1) % levelQuotesPool.length);
                 }}
                 className="ml-auto md:ml-2 inline-flex items-center gap-1 text-[11px] font-bold text-[var(--muted)] hover:text-[var(--foreground)] bg-white dark:bg-[var(--background)] px-2.5 py-0.5 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] transition-colors cursor-pointer"
-                title={`Seviye ${activeLevel} diyaloglarından farklı bir cümle göster`}
+                data-tooltip="Farklı bir günlük Arapça konuşma kalıbı göster"
               >
                 <RefreshCw size={11} />
                 <span>Değiştir</span>
@@ -593,6 +604,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={handleListenFeatured}
+              data-tooltip="Cümleyi doğal Arapça seslendirmeyle dinle"
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 text-xs font-extrabold text-[var(--foreground)] hover:bg-[#FDFBF7] active:border-b-1 active:translate-y-0.5 transition-all whitespace-nowrap cursor-pointer"
             >
               <Volume2 size={15} className="text-[#0CA678]" />
@@ -602,6 +614,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={handlePracticeFeatured}
+              data-tooltip="Bu cümleyi mikrofona okuyarak telaffuz puanınızı ölçün"
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-3 text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] hover:opacity-95 active:border-b-1 active:translate-y-0.5 transition-all whitespace-nowrap cursor-pointer"
             >
               <Mic size={15} />
@@ -611,6 +624,8 @@ export default function HomePage() {
             <Link
               href={`/diyalog/${featuredDialogue.dlg.id}`}
               onClick={() => playClick()}
+              data-tooltip="Bu cümlenin yer aldığı diyaloğun tamamını aç"
+              data-tooltip-align="right"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 text-white border-b-3 border-emerald-800 text-xs font-extrabold active:border-b-0 active:translate-y-0.5 transition-all whitespace-nowrap"
             >
               <span>Diyaloğa Git</span>
@@ -627,6 +642,7 @@ export default function HomePage() {
           <Link
             href="/kutuphane?durum=completed"
             onClick={() => playClick()}
+            data-tooltip="Tamamladığınız diyalogların toplam ilerleme durumu"
             className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 hover:border-[#0CA678] transition-colors"
           >
             <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[#0CA678] shrink-0">
@@ -649,6 +665,7 @@ export default function HomePage() {
           <Link
             href="/sozluk?durum=learned"
             onClick={() => playClick()}
+            data-tooltip="Sözlükte 'Öğrendim' olarak işaretlediğiniz kelime sayısı"
             className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 hover:border-[#0CA678] transition-colors"
           >
             <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-[#6741D9] shrink-0">
@@ -682,6 +699,7 @@ export default function HomePage() {
           <button
             type="button"
             onClick={handlePracticeFeatured}
+            data-tooltip="Gölgeleme ve Mahreç Koçu denemelerinizin ortalama başarı skoru"
             className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex items-center gap-3 text-left hover:border-[#0CA678] transition-colors cursor-pointer"
           >
             <div className="w-10 h-10 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center text-amber-600 shrink-0">
@@ -712,6 +730,8 @@ export default function HomePage() {
           <Link
             href="/alistirmalar"
             onClick={() => playClick()}
+            data-tooltip="Kesintisiz çalışma seriniz (Streak) ve bugünkü çalışma süreniz"
+            data-tooltip-align="right"
             className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 px-3.5 pb-3.5 pt-3.5 sm:pt-4 flex flex-col justify-between gap-2 hover:border-[#0CA678] transition-colors"
           >
             <div className="flex items-center gap-3">

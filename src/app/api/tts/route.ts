@@ -7,6 +7,36 @@ export const runtime = "nodejs";
 const serverAudioCache = new Map<string, ArrayBuffer>();
 const MAX_CACHE_ITEMS = 300;
 
+// IP bazlı bellek içi hız sınırlaması (Rate Limiting: dakikada maksimum 45 istek)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 45;
+
+function checkIpRateLimit(ip: string): boolean {
+  const now = Date.now();
+  // Süresi dolmuş eski IP kayıtlarını temizle (Bellek sızıntısı önlemi)
+  if (rateLimitMap.size > 500) {
+    for (const [key, entry] of rateLimitMap.entries()) {
+      if (now >= entry.resetAt) {
+        rateLimitMap.delete(key);
+      }
+    }
+  }
+
+  const current = rateLimitMap.get(ip);
+  if (!current || now >= current.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (current.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+
+  current.count += 1;
+  return true;
+}
+
 function setServerCache(key: string, buffer: ArrayBuffer) {
   if (serverAudioCache.size >= MAX_CACHE_ITEMS) {
     const firstKey = serverAudioCache.keys().next().value;
@@ -164,6 +194,11 @@ async function fetchGoogleTranslateTTS(
   text: string,
   rate: number
 ): Promise<ArrayBuffer | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, 8000);
+
   try {
     const ttsspeed = rate < 0.9 ? "0.24" : "1";
     const googleUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ar&client=tw-ob&ttsspeed=${ttsspeed}&q=${encodeURIComponent(
@@ -176,7 +211,7 @@ async function fetchGoogleTranslateTTS(
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
         Referer: "https://translate.google.com/",
       },
-      signal: AbortSignal.timeout(4500),
+      signal: controller.signal,
     });
 
     if (res.ok) {
@@ -185,15 +220,31 @@ async function fetchGoogleTranslateTTS(
     }
   } catch {
     // Sessizce geç
+  } finally {
+    clearTimeout(timeoutId);
   }
   return null;
 }
 
 export async function GET(req: NextRequest) {
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  const clientIp =
+    (forwardedFor ? forwardedFor.split(",")[0].trim() : null) ||
+    req.headers.get("x-real-ip") ||
+    "anonymous";
+
+  if (!checkIpRateLimit(clientIp)) {
+    return NextResponse.json(
+      { error: "Çok fazla seslendirme isteği gönderildi. Lütfen kısa bir süre bekleyin." },
+      { status: 429 }
+    );
+  }
+
   const { searchParams } = new URL(req.url);
   const rawText = (searchParams.get("text") || "").trim();
   const voiceParam = searchParams.get("voice") || "male";
-  const rateParam = parseFloat(searchParams.get("rate") || "1") || 1;
+  const rawSpeed = searchParams.get("rate") || searchParams.get("speed") || "1";
+  const clampedRate = Math.min(1.5, Math.max(0.5, Number(rawSpeed) || 1.0));
 
   if (!rawText) {
     return NextResponse.json(
@@ -202,7 +253,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const trimmedText = rawText.slice(0, 500);
+  const trimmedText = rawText.slice(0, 600);
   const voiceKey =
     voiceParam === "female" ||
     voiceParam === "K" ||
@@ -210,7 +261,7 @@ export async function GET(req: NextRequest) {
       ? "ar-SA-ZariyahNeural"
       : "ar-SA-HamedNeural";
 
-  const cacheKey = `${voiceKey}:${rateParam}:${trimmedText}`;
+  const cacheKey = `${voiceKey}:${clampedRate}:${trimmedText}`;
   const cached = serverAudioCache.get(cacheKey);
   if (cached) {
     return new NextResponse(cached, {
@@ -225,12 +276,12 @@ export async function GET(req: NextRequest) {
   }
 
   // 1. Birincil: Microsoft Edge Neural TTS (HamedNeural / ZariyahNeural)
-  let audioBuffer = await fetchEdgeNeuralTTS(trimmedText, voiceKey, rateParam);
+  let audioBuffer = await fetchEdgeNeuralTTS(trimmedText, voiceKey, clampedRate);
   let provider = "edge-neural";
 
   // 2. Yedek: Google Translate Doğal Arapça TTS
   if (!audioBuffer) {
-    audioBuffer = await fetchGoogleTranslateTTS(trimmedText, rateParam);
+    audioBuffer = await fetchGoogleTranslateTTS(trimmedText, clampedRate);
     provider = "google-tts";
   }
 

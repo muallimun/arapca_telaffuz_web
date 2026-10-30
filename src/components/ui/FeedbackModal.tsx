@@ -66,7 +66,10 @@ export function FooterFeedbackButton() {
         playClick();
         triggerFeedbackModal();
       }}
-      title="Görüş, Öneri veya Hata Bildir"
+      data-tooltip="Hata Bildirimi, Eksik Kelime/Hareke veya Öneri Gönderin"
+      data-tooltip-pos="top"
+      data-tooltip-align="right"
+      aria-label="Görüş, Öneri veya Hata Bildir"
       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold rounded-full bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-all shadow-xs cursor-pointer"
     >
       <span>💬 Görüş, Öneri &amp; Hata Bildir</span>

@@ -162,3 +162,112 @@ body {
   background: var(--border);
   border-radius: 9999px;
 }
+
+/* ==========================================================================
+   MASAÜSTÜ ÖZEL BİLGİ BALONCUĞU (TOOLTIP) SİSTEMİ (Mobilde %100 Devre Dışı)
+   ========================================================================== */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  [data-tooltip] {
+    position: relative;
+  }
+
+  [data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background-color: rgba(15, 23, 42, 0.96);
+    color: #ffffff;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    font-weight: 600;
+    padding: 0.375rem 0.625rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35);
+    white-space: nowrap;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
+    z-index: 90;
+  }
+
+  [data-tooltip]::before {
+    content: "";
+    position: absolute;
+    bottom: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    border-width: 5px 5px 0 5px;
+    border-style: solid;
+    border-color: rgba(15, 23, 42, 0.96) transparent transparent transparent;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
+    z-index: 90;
+  }
+
+  [data-tooltip][data-tooltip-pos="bottom"]::after {
+    bottom: auto;
+    top: calc(100% + 8px);
+    transform: translateX(-50%) translateY(-4px);
+  }
+
+  [data-tooltip][data-tooltip-pos="bottom"]::before {
+    bottom: auto;
+    top: calc(100% + 3px);
+    transform: translateX(-50%) translateY(-4px);
+    border-width: 0 5px 5px 5px;
+    border-color: transparent transparent rgba(15, 23, 42, 0.96) transparent;
+  }
+
+  [data-tooltip][data-tooltip-align="right"]::after {
+    left: auto;
+    right: 0;
+    transform: translateX(0) translateY(4px);
+  }
+
+  [data-tooltip][data-tooltip-pos="bottom"][data-tooltip-align="right"]::after {
+    left: auto;
+    right: 0;
+    transform: translateX(0) translateY(-4px);
+  }
+
+  [data-tooltip][data-tooltip-align="left"]::after {
+    left: 0;
+    transform: translateX(0) translateY(4px);
+  }
+
+  [data-tooltip][data-tooltip-pos="bottom"][data-tooltip-align="left"]::after {
+    left: 0;
+    transform: translateX(0) translateY(-4px);
+  }
+
+  [data-tooltip]:hover::after,
+  [data-tooltip]:hover::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  [data-tooltip][data-tooltip-align="right"]:hover::after,
+  [data-tooltip][data-tooltip-align="left"]:hover::after {
+    transform: translateX(0) translateY(0);
+  }
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 1023px) {
+  [data-tooltip]::before,
+  [data-tooltip]::after {
+    display: none !important;
+    content: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}

@@ -162,7 +162,9 @@ export default function RootLayout({
               href="https://t.me/muallimun"
               target="_blank"
               rel="noopener noreferrer"
-              title="Telegram Kanalımıza Katılın"
+              data-tooltip="Muallimun Resmi Telegram Kanalı"
+              data-tooltip-pos="top"
+              aria-label="Muallimun Resmi Telegram Kanalı"
               className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 hover:border-sky-300 transition-all shadow-xs"
             >
               <svg
@@ -179,7 +181,9 @@ export default function RootLayout({
               href="https://whatsapp.com/channel/0029VaAif947oQhgdaDMjK1Q"
               target="_blank"
               rel="noopener noreferrer"
-              title="WhatsApp Kanalımızı Takip Edin"
+              data-tooltip="Muallimun WhatsApp Duyuru Kanalı"
+              data-tooltip-pos="top"
+              aria-label="Muallimun WhatsApp Duyuru Kanalı"
               className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 transition-all shadow-xs"
             >
               <svg
@@ -196,7 +200,9 @@ export default function RootLayout({
               href="https://www.youtube.com/@MuallimunNet"
               target="_blank"
               rel="noopener noreferrer"
-              title="YouTube Kanalımıza Abone Olun"
+              data-tooltip="Muallimun YouTube Eğitim Kanalı"
+              data-tooltip-pos="top"
+              aria-label="Muallimun YouTube Eğitim Kanalı"
               className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:border-red-300 transition-all shadow-xs"
             >
               <svg
@@ -213,6 +219,9 @@ export default function RootLayout({
               href="https://muallimun.net"
               target="_blank"
               rel="noopener noreferrer"
+              data-tooltip="Muallimun Ana Eğitim Portalı"
+              data-tooltip-pos="top"
+              aria-label="Muallimun Ana Eğitim Portalı"
               className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold text-[#087F5B] dark:text-[#20c997] hover:text-[#0CA678] transition-colors bg-white dark:bg-[var(--background)] rounded-full border border-[#E6D7BE] dark:border-[var(--border)] shadow-xs"
             >
               <span>muallimun.net</span>

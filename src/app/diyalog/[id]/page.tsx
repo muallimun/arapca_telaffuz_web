@@ -2055,7 +2055,8 @@ export default function DialogueDetailPage({
             <Link
               href="/kutuphane"
               onClick={() => playClick()}
-              title="Kütüphaneye Dön"
+              data-tooltip="Kütüphaneye Dön"
+              data-tooltip-align="left"
               aria-label="Kütüphaneye Dön"
               className="w-8 h-8 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-3 flex items-center justify-center text-[var(--foreground)] hover:border-[#0CA678] shrink-0 transition-all"
             >
@@ -2094,7 +2095,8 @@ export default function DialogueDetailPage({
               playClick();
               setIsLightboxOpen(true);
             }}
-            title="Görseli Büyüt"
+            data-tooltip="Görseli Büyüt"
+            data-tooltip-align="right"
             aria-label="Diyalog Kapak Görselini Büyüt"
             className="w-14 h-14 md:w-16 md:h-16 rounded-xl object-cover shrink-0 shadow-xs overflow-hidden border-2 border-white/80 dark:border-slate-700 relative group cursor-pointer"
           >
@@ -2162,6 +2164,7 @@ export default function DialogueDetailPage({
                 <button
                   type="button"
                   onClick={handleToggleRoleplay}
+                  data-tooltip="Karşılıklı Rol Yapma (Role-Play) Simülasyonunu Başlat / Bitir"
                   className={`px-3 py-1.5 rounded-xl font-extrabold text-xs border-b-2 transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
                     isRoleplayRunning
                       ? "bg-red-600 hover:bg-red-700 text-white border-red-800"
@@ -2184,6 +2187,7 @@ export default function DialogueDetailPage({
                 <button
                   type="button"
                   onClick={handleTogglePlayAll}
+                  data-tooltip="Tüm diyaloğu sırayla seslendir / durdur"
                   className={`px-3 py-1.5 rounded-xl font-extrabold text-xs border-b-2 transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
                     isPlayingAll
                       ? "bg-red-600 hover:bg-red-700 text-white border-red-800"
@@ -2208,7 +2212,7 @@ export default function DialogueDetailPage({
                   setSpeechRate(nextRate);
                   setPlaybackRate(nextRate);
                 }}
-                title="Okuma Hızını Değiştir (1.0x Normal / 0.75x Yavaşlatılmış)"
+                data-tooltip="Okuma Hızını Değiştir (1.0x Normal / 0.75x Yavaşlatılmış)"
                 aria-label="Okuma Hızı"
                 className={`px-2 py-1.5 rounded-xl border text-xs font-semibold tabular-nums transition-all cursor-pointer shrink-0 ${
                   mounted && speechRate === 0.75
@@ -2226,7 +2230,7 @@ export default function DialogueDetailPage({
                   playClick();
                   toggleHareke();
                 }}
-                title="Harekeli / Harekesiz"
+                data-tooltip="Harekeli / Harekesiz Görünüm"
                 aria-label="Harekeli / Harekesiz"
                 className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
                   !mounted || showHareke
@@ -2252,7 +2256,7 @@ export default function DialogueDetailPage({
                   setRoleplaySpeakingLine(null);
                   setStudyMode(studyMode === "roleplay" ? "listen" : "roleplay");
                 }}
-                title="Karşılıklı Rol Yapma (Role-Play) Modu"
+                data-tooltip="Karşılıklı Rol Yapma (Role-Play) Modu"
                 aria-label="Rol Yapma Modu"
                 className={`w-8 h-8 rounded-xl border flex items-center justify-center text-sm transition-all cursor-pointer shrink-0 ${
                   studyMode === "roleplay"
@@ -2270,7 +2274,7 @@ export default function DialogueDetailPage({
                   playClick();
                   setIsPdfModalOpen(true);
                 }}
-                title="PDF Ders Notu veya A4 Çalışma/Quiz Yaprağı Üret"
+                data-tooltip="PDF Ders Notu veya A4 Çalışma/Quiz Yaprağı Üret"
                 aria-label="PDF / Ders Notu"
                 className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#0CA678] text-[var(--foreground)] flex items-center gap-1 text-xs font-extrabold transition-all cursor-pointer shrink-0"
               >
@@ -2285,7 +2289,7 @@ export default function DialogueDetailPage({
                   playClick();
                   setIsTeacherHwModalOpen(true);
                 }}
-                title="Öğretmen-Öğrenci Ödev Bağlantısı ve Karekodu Oluştur"
+                data-tooltip="Öğretmen-Öğrenci Ödev Bağlantısı ve Karekodu Oluştur"
                 aria-label="Ödev Oluştur"
                 className="px-2.5 py-1.5 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border border-[#6741D9]/50 hover:border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff] flex items-center gap-1 text-xs font-extrabold transition-all cursor-pointer shrink-0"
               >
@@ -2305,11 +2309,12 @@ export default function DialogueDetailPage({
                   }
                 }}
                 disabled={isDownloadingOffline}
-                title={
+                data-tooltip={
                   isOfflineReady
                     ? "Bu diyalog ve tüm ses dosyaları çevrimdışı kullanıma hazır"
                     : `Bu diyaloğun seslerini çevrimdışı kullanım için indir (~${offlineEstimatedMb} MB)`
                 }
+                aria-label="Çevrimdışı İndir"
                 className={`px-2.5 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
                   isOfflineReady
                     ? "bg-emerald-600 hover:bg-emerald-700 border-emerald-800 text-white shadow-2xs"
@@ -2346,7 +2351,7 @@ export default function DialogueDetailPage({
                   setBlurArabic((v) => !v);
                   setRevealedArabicLines({});
                 }}
-                title="Kör Dinleme (Metni Gizle): Arapça metni bulanıklaştırır; dinledikten sonra tıklayarak cümle cümle açıp kontrol edebilirsiniz"
+                data-tooltip="Kör Dinleme: Arapça metni bulanıklaştırır, tıklayarak cümle cümle açabilirsiniz"
                 aria-label="Kör Dinleme (Metni Gizle)"
                 className={`px-2.5 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
                   blurArabic
@@ -2380,7 +2385,7 @@ export default function DialogueDetailPage({
                     return next;
                   });
                 }}
-                title="🖥️ Sınıf / Tahta Modu: Arapça metinleri sınıfın en arkasından okunacak boyuta büyütür ve aktif satırı öne çıkarır"
+                data-tooltip="Sınıf / Tahta Modu: Metinleri büyütür ve alt sunum kumandasını açar"
                 aria-label="Sınıf / Tahta Modu"
                 className={`hidden sm:inline-flex px-2.5 py-1.5 rounded-xl border text-xs font-extrabold items-center gap-1 transition-all cursor-pointer shrink-0 ${
                   isClassroomMode
@@ -2469,7 +2474,8 @@ export default function DialogueDetailPage({
                   playClick();
                   setIsMoreMenuOpen((v) => !v);
                 }}
-                title="Diğer Seçenekler, Görünüm, Döngü, Favori ve Rehber"
+                data-tooltip="Diğer Seçenekler, Görünüm, Döngü, Favori ve Rehber"
+                data-tooltip-align="right"
                 aria-label="Diğer Seçenekler Menüsü"
                 className={`w-8 h-8 rounded-xl border-2 border-b-3 flex items-center justify-center transition-all cursor-pointer ${
                   isMoreMenuOpen
@@ -3646,7 +3652,7 @@ export default function DialogueDetailPage({
                           ? "bg-[#0CA678] border-[#087F5B] text-white animate-pulse"
                           : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#0CA678]"
                       }`}
-                      title="Doğal Sesle Dinle"
+                      data-tooltip="Doğal Sesle Dinle"
                       aria-label="Doğal Sesle Dinle"
                     >
                       <Volume2
@@ -3657,9 +3663,6 @@ export default function DialogueDetailPage({
                             : "text-[#0CA678]"
                         }
                       />
-                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2.5 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-50 shadow-md">
-                        Doğal Sesle Dinle
-                      </span>
                     </button>
 
                     {/* 🔁 Cümleyi Döngüde Tekrarla */}
@@ -3671,7 +3674,7 @@ export default function DialogueDetailPage({
                           ? "bg-[#6741D9] border-[#5230B5] text-white"
                           : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[#6741D9] hover:border-[#6741D9]"
                       }`}
-                      title="Cümleyi Döngüde Tekrarla (800ms es ile)"
+                      data-tooltip="Cümleyi Döngüde Tekrarla (800ms es ile)"
                       aria-label="Cümleyi Döngüde Tekrarla"
                     >
                       <Repeat
@@ -3685,9 +3688,6 @@ export default function DialogueDetailPage({
                             : `${sentenceLoopRemaining}x`}
                         </span>
                       )}
-                      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#2b241d] px-2.5 py-1 text-[10px] font-bold text-white opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-50 shadow-md">
-                        Cümleyi Tekrarla
-                      </span>
                     </button>
 
                     {/* 🎤 Kaydet / ▶️ Kaydımı Dinle / ✨ Yapay Zeka Koçu (ShadowingButton) */}
@@ -4068,6 +4068,8 @@ export default function DialogueDetailPage({
                 setSelectedClassroomLine(prevObj.sira);
               }
             }}
+            data-tooltip="Önceki Cümle (↑ veya ←)"
+            data-tooltip-pos="top"
             className="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 disabled:opacity-40 text-xs sm:text-sm font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all"
           >
             <span>⏮️ Önceki</span>
@@ -4075,7 +4077,8 @@ export default function DialogueDetailPage({
 
           {/* 2. Ortada Sayaç Rozeti [1 / 9] */}
           <span
-            title={`Cümle ${activeClassroomLineIndex + 1} / ${dialogue.satirlar.length}`}
+            data-tooltip={`Cümle ${activeClassroomLineIndex + 1} / ${dialogue.satirlar.length}`}
+            data-tooltip-pos="top"
             className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs sm:text-sm font-black tabular-nums shrink-0"
           >
             {activeClassroomLineIndex + 1} / {dialogue.satirlar.length}
@@ -4085,7 +4088,8 @@ export default function DialogueDetailPage({
           <button
             type="button"
             onClick={() => handlePlaySingleClassroomLine(activeClassroomLineObj)}
-            title="Sadece seçili cümleyi seslendirir ve durur (Kısayol: Space)"
+            data-tooltip="Sadece seçili cümleyi seslendirir ve durur (Kısayol: Space)"
+            data-tooltip-pos="top"
             className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black border-b-2 flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
               !isPlayingAll && playingLineId === activeClassroomLineObj.sira
                 ? "bg-red-600 hover:bg-red-700 border-red-800 text-white"
@@ -4103,7 +4107,8 @@ export default function DialogueDetailPage({
           <button
             type="button"
             onClick={() => handleToggleClassroomPlayAll(activeClassroomLineObj)}
-            title="Seçili cümleden itibaren tüm diyaloğu sırayla oynatır (Kısayol: Shift+Space veya P)"
+            data-tooltip="Seçili cümleden itibaren tüm diyaloğu sırayla oynatır (Shift+Space veya P)"
+            data-tooltip-pos="top"
             className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black border-b-2 flex items-center gap-1.5 shrink-0 cursor-pointer transition-all ${
               isPlayingAll
                 ? "bg-amber-500 hover:bg-amber-600 border-amber-700 text-slate-950"
@@ -4122,7 +4127,9 @@ export default function DialogueDetailPage({
               playClick();
               setIsClassroomLoop((prev) => !prev);
             }}
-            title="Tekrarlı Dinleme (Açıkken cümleyi veya diyaloğu sürekli tekrarlar - Kısayol: R)"
+            data-tooltip="Tekrarlı Dinleme (Açıkken cümleyi veya diyaloğu sürekli tekrarlar - Kısayol: R)"
+            data-tooltip-pos="top"
+            aria-label="Tekrarlı Dinleme"
             className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 cursor-pointer transition-all ${
               isClassroomLoop
                 ? "bg-amber-500 text-slate-950 shadow-md"
@@ -4150,6 +4157,8 @@ export default function DialogueDetailPage({
                 voice: getSpeakerVoice(activeClassroomLineObj),
               });
             }}
+            data-tooltip="Seçili cümle için Gölgeleme ve Mahreç Koçunu aç"
+            data-tooltip-pos="top"
             className="px-3.5 py-2 rounded-xl bg-[#6741D9] hover:bg-[#5230B5] border-b-2 border-indigo-900 text-white text-xs sm:text-sm font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all"
           >
             <span>🎙️ Telaffuz Et</span>
@@ -4176,6 +4185,8 @@ export default function DialogueDetailPage({
                 setSelectedClassroomLine(nextObj.sira);
               }
             }}
+            data-tooltip="Sonraki Cümle (↓ veya →)"
+            data-tooltip-pos="top"
             className="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 disabled:opacity-40 text-xs sm:text-sm font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all"
           >
             <span>⏭️ Sonraki</span>
@@ -4190,7 +4201,10 @@ export default function DialogueDetailPage({
               playClick();
               setIsClassroomMode(false);
             }}
-            title="Sınıf Modundan Çık (Esc)"
+            data-tooltip="Sınıf Modundan Çık (Esc)"
+            data-tooltip-pos="top"
+            data-tooltip-align="right"
+            aria-label="Sınıf Modundan Çık"
             className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-400 hover:bg-rose-600 hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-all"
           >
             <X size={16} />

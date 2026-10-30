@@ -29,6 +29,7 @@ interface SettingsState {
   speechRate: SpeechRate;
   preferredLevel: PreferredLevel;
   sttEngine: SttEngine;
+  localSttOnly: boolean;
   wordTrackingStyle: WordTrackingStyle;
   dialogueLoopCount: DialogueLoopCount;
   sentenceLoopCount: SentenceLoopCount;
@@ -51,6 +52,8 @@ interface SettingsState {
   cycleSpeechRate: () => void;
   setPreferredLevel: (level: PreferredLevel) => void;
   setSttEngine: (engine: SttEngine) => void;
+  setLocalSttOnly: (val: boolean) => void;
+  toggleLocalSttOnly: () => void;
   setWordTrackingStyle: (style: WordTrackingStyle) => void;
   setDialogueLoopCount: (count: DialogueLoopCount) => void;
   cycleDialogueLoopCount: () => void;
@@ -89,6 +92,7 @@ export const useSettings = create<SettingsState>()(
       speechRate: 1,
       preferredLevel: "Başlangıç",
       sttEngine: "whisper",
+      localSttOnly: false,
       wordTrackingStyle: "both",
       dialogueLoopCount: 1,
       sentenceLoopCount: 3,
@@ -137,6 +141,19 @@ export const useSettings = create<SettingsState>()(
         }),
       setPreferredLevel: (level) => set({ preferredLevel: level }),
       setSttEngine: (engine) => set({ sttEngine: engine }),
+      setLocalSttOnly: (val) =>
+        set((state) => ({
+          localSttOnly: val,
+          sttEngine: val ? "whisper" : state.sttEngine,
+        })),
+      toggleLocalSttOnly: () =>
+        set((state) => {
+          const next = !state.localSttOnly;
+          return {
+            localSttOnly: next,
+            sttEngine: next ? "whisper" : state.sttEngine,
+          };
+        }),
       setWordTrackingStyle: (style) => set({ wordTrackingStyle: style }),
       setDialogueLoopCount: (count) => set({ dialogueLoopCount: count }),
       cycleDialogueLoopCount: () =>

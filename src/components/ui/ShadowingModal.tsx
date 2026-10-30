@@ -161,6 +161,9 @@ export default function ShadowingModal({
     setSpeechRate,
     sttEngine,
     setSttEngine,
+    localSttOnly,
+    setLocalSttOnly,
+    toggleLocalSttOnly,
     setPreferredLevel,
   } = useSettings();
 
@@ -530,9 +533,9 @@ export default function ShadowingModal({
         });
       };
 
-      // Masaüstünde Hızlı Tarayıcı Motoru seçiliyse hemen başlat;
+      // Masaüstünde Hızlı Tarayıcı Motoru seçiliyse ve Yalnızca Cihazda İşle kapalıysa hemen başlat;
       // mobilde ise getUserMedia mikrofon kilidinin SpeechRecognition'ı düşürmemesi için stream alındıktan hemen sonra başlat
-      if (sttEngine === "webspeech" && !isMobileDevice) {
+      if (!localSttOnly && sttEngine === "webspeech" && !isMobileDevice) {
         startLiveSpeechRecognition();
       }
 
@@ -569,7 +572,7 @@ export default function ShadowingModal({
       audioContextRef.current = session.getAudioContext();
 
       // Mobil cihazlarda getUserMedia açıldıktan hemen sonra SpeechRecognition'ı başlat (Android mikrofon çakışması koruması)
-      if (isMobileDevice || sttEngine === "webspeech") {
+      if (!localSttOnly && (isMobileDevice || sttEngine === "webspeech")) {
         if (isMobileDevice) {
           setTimeout(() => {
             startLiveSpeechRecognition();
@@ -635,7 +638,8 @@ export default function ShadowingModal({
     setIsRecording(false);
     setIsAnalyzing(true);
 
-    if (sttEngine === "whisper") {
+    const effectiveEngine: SttEngineType = localSttOnly ? "whisper" : sttEngine;
+    if (effectiveEngine === "whisper") {
       setWhisperStatus(
         "🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor..."
       );
@@ -645,10 +649,10 @@ export default function ShadowingModal({
       const contextSampleRate =
         audioContextRef.current?.sampleRate || 16000;
 
-      // Ses kaydı durdurulurken paralel olarak mobil Web Speech API'nin son onresult (nihai metin) yanıtını 1200ms'ye kadar bekle
+      // Ses kaydı durdurulurken paralel olarak mobil Web Speech API'nin son onresult (nihai metin) yanıtını 1200ms'ye kadar bekle (localSttOnly aktifse Web Speech kullanılmaz)
       const [recorded, stoppedWebSpeechText] = await Promise.all([
         activeSession.stop(),
-        speechManagerRef.current
+        !localSttOnly && speechManagerRef.current
           ? speechManagerRef.current.stopAndWaitForFinalResult(1200)
           : Promise.resolve(""),
       ]);
@@ -697,19 +701,22 @@ export default function ShadowingModal({
       }
 
       let recognizedText = "";
-      let usedEngine: SttEngineType = sttEngine;
+      let usedEngine: SttEngineType = localSttOnly ? "whisper" : sttEngine;
+      const effectiveBackupTranscript = localSttOnly
+        ? ""
+        : backupBrowserTranscriptRef.current;
 
       if (speechManagerRef.current) {
         // Eğer kayıt çok kısaysa (< 0.4 sn) veya tamamen sessizse ve Web Speech de boşsa Whisper'ı boşuna çalıştırma
-        if (recorded.isSilent && !backupBrowserTranscriptRef.current) {
+        if (recorded.isSilent && !effectiveBackupTranscript) {
           recognizedText = "";
         } else {
           const hybridRes = await speechManagerRef.current.transcribeHybrid(
-            sttEngine,
+            localSttOnly ? "whisper" : sttEngine,
             whisperInputBuffer,
             {
               onStatusChange: (st) => setWhisperStatus(st),
-              backupTranscript: backupBrowserTranscriptRef.current,
+              backupTranscript: effectiveBackupTranscript,
             }
           );
           const candidateWhisperOrHybrid = (hybridRes.text || "").trim();
@@ -718,22 +725,23 @@ export default function ShadowingModal({
             /[\u0600-\u06FF]/.test(candidateWhisperOrHybrid)
           ) {
             recognizedText = candidateWhisperOrHybrid;
-            usedEngine = hybridRes.usedEngine;
+            usedEngine = localSttOnly ? "whisper" : hybridRes.usedEngine;
           } else if (
-            backupBrowserTranscriptRef.current &&
-            /[\u0600-\u06FF]/.test(backupBrowserTranscriptRef.current)
+            !localSttOnly &&
+            effectiveBackupTranscript &&
+            /[\u0600-\u06FF]/.test(effectiveBackupTranscript)
           ) {
-            recognizedText = backupBrowserTranscriptRef.current;
+            recognizedText = effectiveBackupTranscript;
             usedEngine = "webspeech";
           } else {
             recognizedText =
-              candidateWhisperOrHybrid || backupBrowserTranscriptRef.current;
-            usedEngine = hybridRes.usedEngine;
+              candidateWhisperOrHybrid || effectiveBackupTranscript;
+            usedEngine = localSttOnly ? "whisper" : hybridRes.usedEngine;
           }
         }
         setUsedEngineBadge(usedEngine);
       } else {
-        recognizedText = backupBrowserTranscriptRef.current;
+        recognizedText = effectiveBackupTranscript;
       }
 
       // E. Sessiz Kayıt / Düşük Ses Kontrolü:
@@ -1039,10 +1047,11 @@ export default function ShadowingModal({
                 type="button"
                 onClick={() => {
                   playClick();
+                  setLocalSttOnly(false);
                   setSttEngine("webspeech");
                 }}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                  sttEngine === "webspeech"
+                  !localSttOnly && sttEngine === "webspeech"
                     ? "bg-[#0CA678] text-white font-semibold"
                     : "text-[var(--muted)]"
                 }`}
@@ -1063,6 +1072,53 @@ export default function ShadowingModal({
               <X size={18} />
             </button>
           </div>
+        </div>
+
+        {/* GİZLİLİK & MOTOR DURUM ŞERİDİ */}
+        <div className="px-4 sm:px-5 py-2 bg-[#FFF8EC] dark:bg-[var(--surface-hover)] border-b border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center justify-between gap-2 text-[11px]">
+          <div className="flex items-center gap-2 text-[var(--muted)] font-semibold">
+            <span
+              className={`inline-block w-2 h-2 rounded-full shrink-0 ${
+                localSttOnly
+                  ? "bg-emerald-500"
+                  : sttEngine === "whisper"
+                  ? "bg-teal-500"
+                  : "bg-sky-500"
+              }`}
+            />
+            <span>
+              {localSttOnly
+                ? "🔒 Aktif: Yalnızca Cihaz İçi Whisper — Sesiniz tarayıcı dışına çıkmaz ve hiçbir sunucuda saklanmaz."
+                : sttEngine === "whisper"
+                ? "🛡️ Aktif: Hibrit Yapay Zeka (Cihaz İçi Whisper + Tarayıcı Destekli) — Ses kayıtlarınız hiçbir sunucuda saklanmaz."
+                : "⚡ Aktif: Hızlı Tarayıcı Motoru (Anlık İşleme) — Ses kayıtlarınız hiçbir sunucuda saklanmaz."}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              toggleLocalSttOnly();
+            }}
+            data-tooltip="Açıldığında tarayıcının çevrimiçi ses tanıma servisi devre dışı bırakılır; sesiniz %100 cihaz içinde işlenir"
+            data-tooltip-pos="bottom"
+            className={`px-2.5 py-1 rounded-lg border font-extrabold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+              localSttOnly
+                ? "bg-[#E6FCF5] dark:bg-emerald-950/50 border-[#0CA678] text-[#087F5B] dark:text-emerald-300"
+                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#0CA678]"
+            }`}
+          >
+            <span>🔒 Yalnızca Cihazda İşle (Çevrimdışı Whisper)</span>
+            <span
+              className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                localSttOnly
+                  ? "bg-[#0CA678] text-white"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+              }`}
+            >
+              {localSttOnly ? "AÇIK" : "KAPALI"}
+            </span>
+          </button>
         </div>
 
         {/* İÇERİK GÖVDESİ */}

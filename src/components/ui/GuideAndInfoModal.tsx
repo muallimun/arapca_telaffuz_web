@@ -101,7 +101,7 @@ export default function GuideAndInfoModal() {
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-extrabold text-[var(--foreground)] leading-tight">
-                📖 Kullanım Kılavuzu & Uygulama Bilgisi
+                Kullanım Kılavuzu & Uygulama Bilgisi
               </h2>
               <p className="text-xs font-semibold text-[var(--muted)]">
                 Modüller, İkon Rehberi, 5 Adımlı Çalışma Yöntemi ve Teknik Künye
@@ -816,7 +816,9 @@ export default function GuideAndInfoModal() {
                 href="https://t.me/muallimun"
                 target="_blank"
                 rel="noopener noreferrer"
-                title="Telegram Kanalımıza Katılın"
+                data-tooltip="Muallimun Resmi Telegram Kanalı"
+                data-tooltip-pos="top"
+                aria-label="Muallimun Resmi Telegram Kanalı"
                 onClick={() => playClick()}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 hover:border-sky-300 transition-all shadow-xs"
               >
@@ -834,7 +836,9 @@ export default function GuideAndInfoModal() {
                 href="https://whatsapp.com/channel/0029VaAif947oQhgdaDMjK1Q"
                 target="_blank"
                 rel="noopener noreferrer"
-                title="WhatsApp Kanalımızı Takip Edin"
+                data-tooltip="Muallimun WhatsApp Duyuru Kanalı"
+                data-tooltip-pos="top"
+                aria-label="Muallimun WhatsApp Duyuru Kanalı"
                 onClick={() => playClick()}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 transition-all shadow-xs"
               >
@@ -852,7 +856,9 @@ export default function GuideAndInfoModal() {
                 href="https://www.youtube.com/@MuallimunNet"
                 target="_blank"
                 rel="noopener noreferrer"
-                title="YouTube Kanalımıza Abone Olun"
+                data-tooltip="Muallimun YouTube Eğitim Kanalı"
+                data-tooltip-pos="top"
+                aria-label="Muallimun YouTube Eğitim Kanalı"
                 onClick={() => playClick()}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded-full bg-white dark:bg-slate-800 border border-stone-200/80 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:border-red-300 transition-all shadow-xs"
               >
@@ -866,29 +872,6 @@ export default function GuideAndInfoModal() {
                 <span>YouTube</span>
               </a>
             </div>
-
-            {/* İletişim & Hata Bildirim Kartı (Mobil & Masaüstü) */}
-            <div className="pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-              <div className="space-y-0.5 text-left">
-                <span className="text-xs font-extrabold text-[var(--foreground)] block">
-                  💬 Görüş, Öneri ve Hata Bildirimi
-                </span>
-                <p className="text-[11px] font-medium text-[var(--muted)]">
-                  Tespit ettiğiniz kelime/hareke hatalarını veya yeni özellik önerilerinizi doğrudan iletin.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setIsOpen(false);
-                  triggerFeedbackModal();
-                }}
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold border-b-3 border-amber-700 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer transition-all"
-              >
-                <span>💬 Görüş, Öneri ve Hata Bildir</span>
-              </button>
-            </div>
           </div>
         </div>
 
@@ -901,6 +884,8 @@ export default function GuideAndInfoModal() {
               setIsOpen(false);
               triggerFeedbackModal();
             }}
+            data-tooltip="Hata Bildirimi, Eksik Kelime/Hareke veya Öneri Gönderin"
+            data-tooltip-pos="top"
             className="h-9 px-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 border-2 border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span>💬 Görüş, Öneri ve Hata Bildir</span>
@@ -913,10 +898,12 @@ export default function GuideAndInfoModal() {
                 playClick();
                 triggerShareAppModal();
               }}
+              data-tooltip="Uygulamayı Arkadaşlarınızla ve Öğrencilerinizle Paylaşın"
+              data-tooltip-pos="top"
               className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white text-xs font-extrabold border-b-3 border-[#4C28B5] flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Share2 size={14} />
-              <span>📲 Uygulamayı Paylaş</span>
+              <span>Uygulamayı Paylaş</span>
             </button>
 
             <button
