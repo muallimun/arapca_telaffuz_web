@@ -686,6 +686,7 @@ export function evaluateAcousticDspSentence(
  * mobil uyumlu MediaRecorder (webm/mp4/ogg) kaydı, canlı RMS zarfı ve otomatik sessizlik algılama başlatır.
  */
 export async function start16kHzRecorder(options?: {
+  stream?: MediaStream;
   onLiveRms?: (rms: number, rmsHistory: number[]) => void;
   onAutoSilenceStop?: () => void;
   silenceDurationMs?: number;
@@ -693,22 +694,31 @@ export async function start16kHzRecorder(options?: {
   micNoiseSuppression?: boolean;
 }): Promise<RecordingSession16kHz> {
   const useNoiseFilter = Boolean(options?.micNoiseSuppression);
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: useNoiseFilter,
-      noiseSuppression: useNoiseFilter,
-      autoGainControl: false,
-      channelCount: 1,
-      sampleRate: 16000,
-    },
-  });
+  let stream: MediaStream;
+  if (options?.stream) {
+    stream = options.stream;
+  } else {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: Boolean(useNoiseFilter),
+          noiseSuppression: Boolean(useNoiseFilter),
+          autoGainControl: true,
+        },
+      });
+    } catch {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+  }
 
   let mediaRecorder: MediaRecorder | null = null;
   const mediaChunks: BlobPart[] = [];
   const supportedMimeType = getSupportedAudioMimeType();
   let audioCtx: AudioContext;
   let source: MediaStreamAudioSourceNode;
+  let analyser: AnalyserNode;
   let processor: ScriptProcessorNode;
+  let silentGain: GainNode;
 
   try {
     if (typeof MediaRecorder !== "undefined") {
@@ -731,17 +741,17 @@ export async function start16kHzRecorder(options?: {
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext })
         .webkitAudioContext;
-    try {
-      audioCtx = new AudioCtx({ sampleRate: 16000 });
-    } catch {
-      audioCtx = new AudioCtx();
-    }
+    audioCtx = new AudioCtx();
     if (audioCtx.state === "suspended") {
       await audioCtx.resume().catch(() => {});
     }
 
     source = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
     processor = audioCtx.createScriptProcessor(2048, 1, 1);
+    silentGain = audioCtx.createGain();
+    silentGain.gain.value = 0;
   } catch (setupError) {
     try {
       if (mediaRecorder && mediaRecorder.state !== "inactive") {
@@ -798,7 +808,9 @@ export async function start16kHzRecorder(options?: {
       // ignore
     }
     try {
+      silentGain.disconnect();
       processor.disconnect();
+      analyser.disconnect();
       source.disconnect();
     } catch {
       // ignore
@@ -831,7 +843,7 @@ export async function start16kHzRecorder(options?: {
     rawRmsValues.push(rms);
     if (rms > peakRawRms) peakRawRms = rms;
 
-    currentRms = Math.min(1, rms * 4.5);
+    currentRms = Math.min(1, rms * 6);
     rmsHistory.push(currentRms);
 
     options?.onLiveRms?.(currentRms, rmsHistory.slice(-48));
@@ -864,8 +876,10 @@ export async function start16kHzRecorder(options?: {
     }
   };
 
-  source.connect(processor);
-  processor.connect(audioCtx.destination);
+  source.connect(analyser);
+  analyser.connect(processor);
+  processor.connect(silentGain);
+  silentGain.connect(audioCtx.destination);
 
   return {
     killStreamImmediately,

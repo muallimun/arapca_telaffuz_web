@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, notFound } from "next/navigation";
 import {
@@ -268,6 +268,7 @@ export default function DialogueDetailPage({
     useState<number>(5500);
   const [roleplayRemainingPct, setRoleplayRemainingPct] =
     useState<number>(100);
+  const [roleplayMicError, setRoleplayMicError] = useState<string | null>(null);
 
   // Gölgeleme Modal State
   const [shadowingTarget, setShadowingTarget] = useState<{
@@ -303,9 +304,7 @@ export default function DialogueDetailPage({
     return () => clearTimeout(timer);
   }, [roleplayCompletedBanner]);
 
-  const cleanupRoleplayMic = () => {
-    roleplaySessionTokenRef.current += 1;
-    roleplayFinishingRef.current = true;
+  const closeRoleplayMicResourcesOnly = useCallback(() => {
     if (roleplayTurnTimerRef.current !== null) {
       clearTimeout(roleplayTurnTimerRef.current);
       roleplayTurnTimerRef.current = null;
@@ -341,7 +340,11 @@ export default function DialogueDetailPage({
         // ignore
       }
     }
-    roleplaySpeechRef.current?.stopLiveWebSpeech(true);
+    try {
+      roleplaySpeechRef.current?.stopLiveWebSpeech(true);
+    } catch {
+      // ignore
+    }
     roleplayFinalTranscriptRef.current = "";
     roleplayInterimTranscriptRef.current = "";
     requestAnimationFrame(() => {
@@ -350,7 +353,13 @@ export default function DialogueDetailPage({
       setRoleplayInterimText("");
       setRoleplayRemainingPct(100);
     });
-  };
+  }, []);
+
+  const cleanupRoleplayMic = useCallback(() => {
+    roleplaySessionTokenRef.current += 1;
+    roleplayFinishingRef.current = true;
+    closeRoleplayMicResourcesOnly();
+  }, [closeRoleplayMicResourcesOnly]);
 
   // Sekme (studyMode) değiştiğinde veya başka bir diyaloğa geçildiğinde aktif rol yapma mikrofonunu derhal kapat
   useEffect(() => {
@@ -370,10 +379,9 @@ export default function DialogueDetailPage({
     return () => {
       cleanupRoleplayMic();
     };
-  }, [studyMode, resolvedParams.id]);
+  }, [studyMode, resolvedParams.id, cleanupRoleplayMic]);
 
-  // Sekme arka plana atıldığında (visibilitychange -> hidden) veya sayfa kapatıldığında (pagehide)
-  // ya da kayıt sırasında gizlilik (localSttOnly / sttEngine === "whisper") değiştiğinde mikrofon/WebSpeech temizliği
+  // Sekme arka plana atıldığında (visibilitychange -> hidden) veya sayfa kapatıldığında (pagehide) mikrofon/WebSpeech temizliği
   useEffect(() => {
     const handleBackgroundStop = () => {
       cleanupRoleplayMic();
@@ -387,26 +395,14 @@ export default function DialogueDetailPage({
         handleBackgroundStop();
       }
     };
-    const unsubSettings = useSettings.subscribe((state, prevState) => {
-      if (
-        (state.localSttOnly && !prevState.localSttOnly) ||
-        (state.sttEngine === "whisper" && prevState.sttEngine !== "whisper")
-      ) {
-        roleplaySpeechRef.current?.stopLiveWebSpeech(true);
-        roleplayFinalTranscriptRef.current = "";
-        roleplayInterimTranscriptRef.current = "";
-        setRoleplayInterimText("");
-      }
-    });
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("pagehide", handleBackgroundStop);
     return () => {
-      unsubSettings();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handleBackgroundStop);
     };
-  }, []);
+  }, [cleanupRoleplayMic]);
 
   useEffect(() => {
     roleplaySpeechRef.current = new HybridSpeechManager();
@@ -468,7 +464,7 @@ export default function DialogueDetailPage({
       roleplaySpeechRef.current?.terminate();
       void releaseAllWakeLocks();
     };
-  }, [stop, resolvedParams.id]);
+  }, [stop, resolvedParams.id, cleanupRoleplayMic]);
 
   // Ödev ilerlemesini sessionStorage'da sakla
   useEffect(() => {
@@ -779,9 +775,13 @@ export default function DialogueDetailPage({
   // --- ROL YAPMA GERÇEK MİKROFON DİNLEMESİ VE GERÇEK TELAFFUZ PUANLAMASI ---
   const activateUserRoleplayTurn = async (line: DialogueLine) => {
     stop();
-    cleanupRoleplayMic();
-    const mySessionToken = roleplaySessionTokenRef.current;
+    // 1. Önce takılı kalmış kilitleri sıfırla ve eski kaynakları kapat (sessionId artırmadan!)
     roleplayFinishingRef.current = false;
+    setRoleplayMicError(null);
+    closeRoleplayMicResourcesOnly();
+
+    // 2. Sonra yeni oturum numarasını artır (bu satırdan sonra kesinlikle cleanupRoleplayMic() çağırma!)
+    const sessionId = ++roleplaySessionTokenRef.current;
     setRoleplayTransitionNotice(false);
     setRoleplaySpeakingLine(null);
     setRoleplayActiveLine(line.sira);
@@ -797,45 +797,45 @@ export default function DialogueDetailPage({
     setRoleplayWaitDurationMs(waitDurationMs);
     setRoleplayRemainingPct(100);
 
-    // 1. Canlı SpeechRecognition başlat (Yalnızca localSttOnly kapalı ve Hızlı Tarayıcı Motoru seçiliyse)
     roleplayFinalTranscriptRef.current = "";
     roleplayInterimTranscriptRef.current = "";
-    const { localSttOnly: currentLocalOnly, sttEngine: currentEngine } =
-      useSettings.getState();
+    const {
+      localSttOnly: currentLocalOnly,
+      sttEngine: currentEngine,
+      micNoiseSuppression: currentNoiseSuppression,
+    } = useSettings.getState();
     const shouldUseRoleplayWebSpeech =
       !currentLocalOnly && currentEngine === "webspeech";
-    const isMobileDevice =
-      typeof navigator !== "undefined" &&
-      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    const startRoleplaySpeechRec = () => {
+    let stream: MediaStream | null = null;
+    try {
+      // 3. Mikrofon iznini geri dönüşlü (fallback) yapıyla iste
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: Boolean(currentNoiseSuppression),
+            noiseSuppression: Boolean(currentNoiseSuppression),
+            autoGainControl: true,
+          },
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+
       if (
-        useSettings.getState().localSttOnly ||
-        useSettings.getState().sttEngine !== "webspeech"
+        roleplayFinishingRef.current ||
+        sessionId !== roleplaySessionTokenRef.current
       ) {
+        stream.getTracks().forEach((t) => t.stop());
         return;
       }
-      roleplaySpeechRef.current?.startLiveWebSpeech({
-        onInterimTranscript: (combined, finalPart, interimPart) => {
-          if (typeof finalPart === "string" && finalPart.trim()) {
-            roleplayFinalTranscriptRef.current = finalPart.trim();
-          }
-          if (typeof interimPart === "string") {
-            roleplayInterimTranscriptRef.current = interimPart.trim();
-          } else if (combined && !roleplayFinalTranscriptRef.current) {
-            roleplayInterimTranscriptRef.current = combined.trim();
-          }
-          setRoleplayInterimText(combined);
-        },
-      });
-    };
 
-    // Önce getUserMedia() ile 16kHz mikrofon akışını al; startRoleplaySpeechRec() çağrısını yalnızca mikrofon başarıyla alındıktan sonra başlat!
-    try {
+      // 4. stream alındığı anda 16kHz kaydediciyi ve canlı çubukları başlat
       const recSession = await start16kHzRecorder({
+        stream,
         silenceDurationMs: 2500,
         maxDurationMs: waitDurationMs,
-        micNoiseSuppression: useSettings.getState().micNoiseSuppression,
+        micNoiseSuppression: currentNoiseSuppression,
         onLiveRms: (rms, history) => {
           setRoleplayMicLevel(rms);
           const tail = history.slice(-24);
@@ -851,16 +851,26 @@ export default function DialogueDetailPage({
       });
       if (
         !roleplayFinishingRef.current &&
-        mySessionToken === roleplaySessionTokenRef.current
+        sessionId === roleplaySessionTokenRef.current
       ) {
         roleplayRecorderRef.current = recSession;
         if (shouldUseRoleplayWebSpeech) {
-          if (isMobileDevice) {
-            setTimeout(() => {
-              startRoleplaySpeechRec();
-            }, 80);
-          } else {
-            startRoleplaySpeechRec();
+          try {
+            roleplaySpeechRef.current?.startLiveWebSpeech({
+              onInterimTranscript: (combined, finalPart, interimPart) => {
+                if (typeof finalPart === "string" && finalPart.trim()) {
+                  roleplayFinalTranscriptRef.current = finalPart.trim();
+                }
+                if (typeof interimPart === "string") {
+                  roleplayInterimTranscriptRef.current = interimPart.trim();
+                } else if (combined && !roleplayFinalTranscriptRef.current) {
+                  roleplayInterimTranscriptRef.current = combined.trim();
+                }
+                setRoleplayInterimText(combined);
+              },
+            });
+          } catch {
+            // Hata verirse mikrofon kaydını durdurma, kayıt bitince Whisper'a düş
           }
         }
       } else {
@@ -870,17 +880,26 @@ export default function DialogueDetailPage({
           // ignore
         }
         recSession.killStreamImmediately();
-        roleplaySpeechRef.current?.stopLiveWebSpeech(true);
       }
-    } catch {
-      // Mikrofon izni verilmediyse veya hata oluştuysa açık kalan tüm kaynakları temizle
+    } catch (err) {
+      if (stream) {
+        try {
+          stream.getTracks().forEach((t) => t.stop());
+        } catch {
+          // ignore
+        }
+      }
       roleplayRecorderRef.current = null;
-      roleplaySpeechRef.current?.stopLiveWebSpeech(true);
+      const errMsg =
+        err instanceof Error && err.message
+          ? err.message
+          : "Tarayıcı mikrofon izni vermedi.";
+      setRoleplayMicError("Mikrofon açılamadı: " + errMsg);
     }
 
     if (
       roleplayFinishingRef.current ||
-      mySessionToken !== roleplaySessionTokenRef.current
+      sessionId !== roleplaySessionTokenRef.current
     ) {
       return;
     }
@@ -4153,6 +4172,11 @@ export default function DialogueDetailPage({
                 {/* TEKİL VE İNTERAKTİF ROL YAPMA KONTROL PANELİ (Canlı Ses Dalgası + Gerçek Mikrofon Puanlaması) */}
                 {isWaitingUser && (
                   <div className="mt-2.5 p-3 rounded-xl bg-emerald-50/95 dark:bg-emerald-950/75 border-2 border-[#087F5B] shadow-md space-y-2.5 animate-in fade-in duration-150">
+                    {roleplayMicError && (
+                      <div className="w-full rounded-xl bg-red-50 dark:bg-red-950/70 border-2 border-red-500 px-3 py-2 text-xs font-extrabold text-red-800 dark:text-red-200 flex items-center gap-2">
+                        <span>⚠️ {roleplayMicError}</span>
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping shrink-0" />

@@ -161,7 +161,6 @@ export default function ShadowingModal({
     setSttEngine,
     localSttOnly,
     setLocalSttOnly,
-    toggleLocalSttOnly,
     micNoiseSuppression,
     toggleMicNoiseSuppression,
     setPreferredLevel,
@@ -199,6 +198,7 @@ export default function ShadowingModal({
   const [adaptiveResult, setAdaptiveResult] =
     useState<AdaptiveCoachingResult | null>(null);
   const [silentWarning, setSilentWarning] = useState<string | null>(null);
+  const [micError, setMicError] = useState<string | null>(null);
   const [dspFallbackNotice, setDspFallbackNotice] = useState<string | null>(
     null
   );
@@ -211,6 +211,8 @@ export default function ShadowingModal({
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const rafIdRef = useRef<number | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isStartingRef = useRef<boolean>(false);
   const finalTranscriptRef = useRef<string>("");
   const interimTranscriptRef = useRef<string>("");
   const backupBrowserTranscriptRef = useRef<string>("");
@@ -222,8 +224,11 @@ export default function ShadowingModal({
   const recordingSessionIdRef = useRef<number>(0);
   const modalRef = useRef<HTMLDivElement | null>(null);
 
-  const cleanupMediaResources = useCallback(() => {
-    recordingSessionIdRef.current += 1;
+  const stopPreviousMediaOnly = useCallback(() => {
+    if (recordingTimerRef.current !== null) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
     if (rafIdRef.current !== null && typeof window !== "undefined") {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
@@ -264,11 +269,21 @@ export default function ShadowingModal({
       }
       audioContextRef.current = null;
     }
-    speechManagerRef.current?.stopLiveWebSpeech();
+    try {
+      speechManagerRef.current?.stopLiveWebSpeech();
+    } catch {
+      // ignore
+    }
     if (typeof window !== "undefined") {
       window.speechSynthesis?.cancel();
     }
   }, []);
+
+  const cleanupMediaResources = useCallback(() => {
+    recordingSessionIdRef.current += 1;
+    isStartingRef.current = false;
+    stopPreviousMediaOnly();
+  }, [stopPreviousMediaOnly]);
 
   const handleClose = useCallback(() => {
     isMountedRef.current = false;
@@ -337,21 +352,6 @@ export default function ShadowingModal({
       speechManagerRef.current?.terminate();
     };
   }, [cleanupMediaResources, handleClose]);
-
-  // Aktif kayıt sırasında kullanıcı "Yalnızca Cihazda İşle" (localSttOnly) açarsa veya motoru "whisper" yaparsa
-  // çalışan çevrimiçi SpeechRecognition oturumunu anında iptal et ve çevrimiçi metin tamponunu temizle
-  useEffect(() => {
-    if (localSttOnly || sttEngine === "whisper") {
-      speechManagerRef.current?.stopLiveWebSpeech(true);
-      finalTranscriptRef.current = "";
-      interimTranscriptRef.current = "";
-      backupBrowserTranscriptRef.current = "";
-      const raf = requestAnimationFrame(() => {
-        setLiveInterimText("");
-      });
-      return () => cancelAnimationFrame(raf);
-    }
-  }, [localSttOnly, sttEngine]);
 
   useEffect(() => {
     return () => {
@@ -535,6 +535,11 @@ export default function ShadowingModal({
   };
 
   const startRecording = async () => {
+    // 1. Varsa takılı kalmış isStartingRef veya isAnalyzing kilitlerini sıfırla
+    isStartingRef.current = false;
+    setIsAnalyzing(false);
+    setMicError(null);
+
     // Arka planda çalan diyalog veya TTS sesinin mikrofona karışmaması için anında sustur
     audioStore.stop();
     stopAllAudio();
@@ -548,8 +553,11 @@ export default function ShadowingModal({
     setIsPlayingRef(false);
     setIsPlayingUser(false);
 
-    cleanupMediaResources();
-    const currentSessionId = ++recordingSessionIdRef.current;
+    // 2. Önce eski mediaStreamRef / audioContextRef kaynaklarını kapat (sessionId artırmadan!)
+    stopPreviousMediaOnly();
+
+    // 3. Sonra yeni oturum numarasını artır (bu satırdan sonra kesinlikle cleanup() çağırma!)
+    const sessionId = ++recordingSessionIdRef.current;
     playRecordStart();
 
     if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
@@ -566,52 +574,56 @@ export default function ShadowingModal({
     setSilentWarning(null);
     setDspFallbackNotice(null);
     setUsedEngineBadge(null);
+    setUserDuration(0);
     setUserBars(DEFAULT_BARS);
     finalTranscriptRef.current = "";
     interimTranscriptRef.current = "";
     backupBrowserTranscriptRef.current = "";
 
+    let stream: MediaStream | null = null;
     try {
-      const { localSttOnly: currentLocalOnly, sttEngine: currentEngine } =
-        useSettings.getState();
-      const shouldUseWebSpeech =
-        !currentLocalOnly && currentEngine === "webspeech";
-      const isMobileDevice =
-        typeof navigator !== "undefined" &&
-        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const {
+        localSttOnly: currentLocalOnly,
+        sttEngine: currentEngine,
+        micNoiseSuppression: currentNoiseSuppression,
+      } = useSettings.getState();
 
-      const startLiveSpeechRecognition = () => {
+      // 4. Mikrofon iznini geri dönüşlü (fallback) yapıyla iste
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: Boolean(currentNoiseSuppression),
+            noiseSuppression: Boolean(currentNoiseSuppression),
+            autoGainControl: true,
+          },
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+
+      if (
+        !isMountedRef.current ||
+        sessionId !== recordingSessionIdRef.current
+      ) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      mediaStreamRef.current = stream;
+
+      // 5. stream alındığı anda DERHAL setIsRecording(true) çağır ve süre sayacını başlat
+      setIsRecording(true);
+      let elapsedTenths = 0;
+      recordingTimerRef.current = setInterval(() => {
         if (
           !isMountedRef.current ||
-          currentSessionId !== recordingSessionIdRef.current ||
-          useSettings.getState().localSttOnly ||
-          useSettings.getState().sttEngine !== "webspeech"
+          sessionId !== recordingSessionIdRef.current
         ) {
           return;
         }
-        speechManagerRef.current?.startLiveWebSpeech({
-          onInterimTranscript: (combined, finalPart, interimPart) => {
-            if (typeof finalPart === "string" && finalPart.trim()) {
-              finalTranscriptRef.current = finalPart.trim();
-            }
-            if (typeof interimPart === "string") {
-              interimTranscriptRef.current = interimPart.trim();
-            } else if (combined && !finalTranscriptRef.current) {
-              interimTranscriptRef.current = combined.trim();
-            }
-            const latestBackup =
-              (
-                finalTranscriptRef.current +
-                " " +
-                interimTranscriptRef.current
-              ).trim() || combined.trim();
-            if (latestBackup) {
-              backupBrowserTranscriptRef.current = latestBackup;
-            }
-            setLiveInterimText(combined);
-          },
-        });
-      };
+        elapsedTenths += 1;
+        setUserDuration(elapsedTenths / 10);
+      }, 100);
 
       // Kelime sayısına göre dinamik maksimum kayıt süresi (15 sn - 45 sn arası) ve 2.5 sn sessizlik toleransı
       const targetWords = activeText.trim().split(/\s+/).filter(Boolean);
@@ -620,11 +632,11 @@ export default function ShadowingModal({
         Math.min(45000, targetWords.length * 1800 + 8000)
       );
 
-      // Önce getUserMedia() iznini al; startLiveWebSpeech() çağrısını yalnızca mikrofon akışı başarıyla alındıktan sonra başlat!
       const session = await start16kHzRecorder({
+        stream,
         silenceDurationMs: 2500,
         maxDurationMs: maxRecordingDurationMs,
-        micNoiseSuppression: useSettings.getState().micNoiseSuppression,
+        micNoiseSuppression: currentNoiseSuppression,
         onLiveRms: (_rms, liveHistory) => {
           if (rafIdRef.current !== null) {
             cancelAnimationFrame(rafIdRef.current);
@@ -639,14 +651,13 @@ export default function ShadowingModal({
           });
         },
         onAutoSilenceStop: () => {
-          stopRecording();
+          void stopRecording();
         },
       });
 
-      // Mikrofon İzin Yarışı Koruması: İzin penceresi açıkken modal kapatıldıysa stream'i anında durdur
       if (
         !isMountedRef.current ||
-        currentSessionId !== recordingSessionIdRef.current
+        sessionId !== recordingSessionIdRef.current
       ) {
         try {
           session
@@ -657,7 +668,6 @@ export default function ShadowingModal({
         } catch {
           // ignore
         }
-        speechManagerRef.current?.stopLiveWebSpeech(true);
         return;
       }
 
@@ -665,65 +675,71 @@ export default function ShadowingModal({
       mediaStreamRef.current = session.getStream();
       audioContextRef.current = session.getAudioContext();
 
-      // Yalnızca getUserMedia mikrofon akışı başarıyla alındıktan sonra ve Hızlı Tarayıcı Motoru seçiliyse Web Speech başlat
+      // Eğer "Hızlı Tarayıcı Motoru" (webspeech) seçiliyse mikrofon açıldıktan sonra try/catch içinde başlat
+      const shouldUseWebSpeech =
+        !currentLocalOnly && currentEngine === "webspeech";
       if (shouldUseWebSpeech) {
-        if (isMobileDevice) {
-          setTimeout(() => {
-            startLiveSpeechRecognition();
-          }, 80);
-        } else {
-          startLiveSpeechRecognition();
-        }
-      }
-
-      // Mobil (iOS Safari & Android) ses formatı uyumluluğu için desteklenen MIME türünü dinamik seç
-      if (
-        typeof window !== "undefined" &&
-        typeof MediaRecorder !== "undefined" &&
-        mediaStreamRef.current
-      ) {
-        const supportedType = [
-          "audio/webm;codecs=opus",
-          "audio/webm",
-          "audio/mp4",
-          "audio/ogg",
-        ].find(
-          (type) =>
-            typeof MediaRecorder.isTypeSupported === "function" &&
-            MediaRecorder.isTypeSupported(type)
-        );
         try {
-          const rec = supportedType
-            ? new MediaRecorder(mediaStreamRef.current, {
-                mimeType: supportedType,
-              })
-            : new MediaRecorder(mediaStreamRef.current);
-          mediaRecorderRef.current = rec;
+          speechManagerRef.current?.startLiveWebSpeech({
+            onInterimTranscript: (combined, finalPart, interimPart) => {
+              if (typeof finalPart === "string" && finalPart.trim()) {
+                finalTranscriptRef.current = finalPart.trim();
+              }
+              if (typeof interimPart === "string") {
+                interimTranscriptRef.current = interimPart.trim();
+              } else if (combined && !finalTranscriptRef.current) {
+                interimTranscriptRef.current = combined.trim();
+              }
+              const latestBackup =
+                (
+                  finalTranscriptRef.current +
+                  " " +
+                  interimTranscriptRef.current
+                ).trim() || combined.trim();
+              if (latestBackup) {
+                backupBrowserTranscriptRef.current = latestBackup;
+              }
+              setLiveInterimText(combined);
+            },
+          });
         } catch {
-          mediaRecorderRef.current = null;
+          // Hata verirse mikrofon kaydını durdurma, kayıt bitince Whisper'a düş
         }
       }
 
-      setIsRecording(true);
       setTimeout(() => {
         waveformCardRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "center",
         });
       }, 120);
-    } catch {
-      cleanupMediaResources();
+    } catch (err) {
+      if (stream) {
+        try {
+          stream.getTracks().forEach((t) => t.stop());
+        } catch {
+          // ignore
+        }
+      }
+      stopPreviousMediaOnly();
       setIsRecording(false);
-      setAdaptiveResult({
-        action: "keep_going",
-        message:
-          "Mikrofon izni alınamadı. Lütfen tarayıcı ayarlarından mikrofon izni verin.",
-      });
+      const errMsg =
+        err instanceof Error && err.message
+          ? err.message
+          : "Tarayıcı mikrofon erişimine izin vermedi.";
+      setMicError("Mikrofon açılamadı: " + errMsg);
     }
   };
 
   const stopRecording = async () => {
-    if (!recordingSessionRef.current) return;
+    if (recordingTimerRef.current !== null) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (!recordingSessionRef.current) {
+      setIsRecording(false);
+      return;
+    }
     const activeSession = recordingSessionRef.current;
     recordingSessionRef.current = null;
 
@@ -1154,7 +1170,7 @@ export default function ShadowingModal({
                   setSttEngine("whisper");
                 }}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                  sttEngine === "whisper"
+                  sttEngine === "whisper" || localSttOnly
                     ? "bg-[#087F5B] text-white font-semibold"
                     : "text-[var(--muted)]"
                 }`}
@@ -1165,8 +1181,8 @@ export default function ShadowingModal({
                 type="button"
                 onClick={() => {
                   playClick();
-                  setLocalSttOnly(false);
                   setSttEngine("webspeech");
+                  setLocalSttOnly(false);
                 }}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                   !localSttOnly && sttEngine === "webspeech"
@@ -1238,25 +1254,26 @@ export default function ShadowingModal({
               type="button"
               onClick={() => {
                 playClick();
-                toggleLocalSttOnly();
+                if (sttEngine === "whisper" || localSttOnly) {
+                  setLocalSttOnly(false);
+                  setSttEngine("webspeech");
+                } else {
+                  setLocalSttOnly(true);
+                  setSttEngine("whisper");
+                }
               }}
-              data-tooltip="Açıldığında tarayıcının çevrimiçi ses tanıma servisi tüm modüllerde devre dışı bırakılır; sesiniz %100 cihaz içinde işlenir"
+              data-tooltip="Tıklayarak Cihaz İçi Whisper Motoru ile Hızlı Tarayıcı Motoru arasında geçiş yapabilirsiniz"
               data-tooltip-pos="bottom"
               className={`px-2.5 py-1 rounded-lg border font-extrabold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                localSttOnly
+                sttEngine === "whisper" || localSttOnly
                   ? "bg-[#E6FCF5] dark:bg-emerald-950/50 border-[#087F5B] text-[#065F46] dark:text-emerald-300"
-                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
+                  : "bg-sky-50 dark:bg-sky-950/50 border-sky-600 text-sky-900 dark:text-sky-200"
               }`}
             >
-              <span>🔒 Yalnızca Cihazda İşle (Çevrimdışı Whisper)</span>
-              <span
-                className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
-                  localSttOnly
-                    ? "bg-[#087F5B] text-white"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-                }`}
-              >
-                {localSttOnly ? "AÇIK" : "KAPALI"}
+              <span>
+                {sttEngine === "whisper" || localSttOnly
+                  ? "🔒 Cihaz İçi Whisper Motoru: AKTİF"
+                  : "⚡ Hızlı Tarayıcı Motoru: AKTİF"}
               </span>
             </button>
           </div>
@@ -1973,6 +1990,14 @@ export default function ShadowingModal({
 
         {/* ALT KONTROL VE DİNLEME BUTONLARI BARI (12 SÜTUNLU TAŞMASIZ MOBİL GRID) */}
         <div className="w-full px-3 py-2.5 bg-[#F7EFE1] dark:bg-[var(--surface)] border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex flex-col gap-2 shrink-0">
+          {/* GÖRÜNÜR HATA KALKANI: Mikrofon izni reddedilirse veya hata oluşursa butonun hemen üstünde göster */}
+          {micError && (
+            <div className="w-full rounded-xl bg-red-50 dark:bg-red-950/60 border-2 border-red-500 px-3.5 py-2 text-xs font-extrabold text-red-800 dark:text-red-200 flex items-center gap-2">
+              <AlertTriangle size={16} className="text-red-600 shrink-0" />
+              <span>{micError}</span>
+            </div>
+          )}
+
           {/* 1. Satır: Birincil Aksiyon Butonu (Üstte Tam Genişlik) */}
           {!isRecording && !userAudioUrl && (
             <button
@@ -1996,7 +2021,7 @@ export default function ShadowingModal({
               className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm sm:text-base border-b-4 border-red-800 animate-pulse flex items-center justify-center gap-2 cursor-pointer"
             >
               <Square size={15} fill="currentColor" className="shrink-0" />
-              <span>⏹️ Kaydı Tamamla ve Analiz Et</span>
+              <span>⏹ Kaydı Durdur ve Analiz Et</span>
             </button>
           )}
 

@@ -146,7 +146,11 @@ export const useSettings = create<SettingsState>()(
           return { speechRate: next };
         }),
       setPreferredLevel: (level) => set({ preferredLevel: level }),
-      setSttEngine: (engine) => set({ sttEngine: engine }),
+      setSttEngine: (engine) =>
+        set((state) => ({
+          sttEngine: engine,
+          localSttOnly: engine === "webspeech" ? false : state.localSttOnly,
+        })),
       setLocalSttOnly: (val) =>
         set((state) => ({
           localSttOnly: val,
@@ -157,7 +161,7 @@ export const useSettings = create<SettingsState>()(
           const next = !state.localSttOnly;
           return {
             localSttOnly: next,
-            sttEngine: next ? "whisper" : state.sttEngine,
+            sttEngine: next ? "whisper" : "webspeech",
           };
         }),
       setMicNoiseSuppression: (val) => set({ micNoiseSuppression: val }),

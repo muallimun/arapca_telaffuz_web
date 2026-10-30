@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useState, useRef, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useSyncExternalStore,
+} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -102,8 +108,7 @@ export default function Header() {
     );
   }, [arabicFont]);
 
-  const stopMicTest = () => {
-    micTestSessionIdRef.current += 1;
+  const closeMicTestResourcesOnly = useCallback(() => {
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -121,7 +126,12 @@ export default function Header() {
       audioCtxRef.current = null;
     }
     setMicLevel(0);
-  };
+  }, []);
+
+  const stopMicTest = useCallback(() => {
+    micTestSessionIdRef.current += 1;
+    closeMicTestResourcesOnly();
+  }, [closeMicTestResourcesOnly]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -160,17 +170,33 @@ export default function Header() {
       window.removeEventListener("pagehide", handlePageHide);
       stopMicTest();
     };
-  }, []);
+  }, [stopMicTest]);
 
   const startMicTest = async () => {
-    stopMicTest();
+    // 1. Önce eski medya akışını kapat (sessionId artırmadan!)
+    closeMicTestResourcesOnly();
+
+    // 2. Sonra yeni oturum numarasını artır
     const sessionId = ++micTestSessionIdRef.current;
     setMicStatus("testing");
     setMicMessage("Mikrofona doğru Arapça bir kelime söyleyin...");
     let acquiredStream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      acquiredStream = stream;
+      const { micNoiseSuppression } = useSettings.getState();
+      try {
+        acquiredStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: Boolean(micNoiseSuppression),
+            noiseSuppression: Boolean(micNoiseSuppression),
+            autoGainControl: true,
+          },
+        });
+      } catch {
+        acquiredStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+      }
+      const stream = acquiredStream;
       if (
         !isMountedRef.current ||
         sessionId !== micTestSessionIdRef.current
@@ -184,12 +210,19 @@ export default function Header() {
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext;
       const ctx = new AC();
+      if (ctx.state === "suspended") {
+        await ctx.resume().catch(() => {});
+      }
       audioCtxRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
+      const silentGain = ctx.createGain();
+      silentGain.gain.value = 0;
       source.connect(analyser);
-      const data = new Uint8Array(analyser.frequencyBinCount);
+      analyser.connect(silentGain);
+      silentGain.connect(ctx.destination);
+      const data = new Float32Array(analyser.fftSize);
 
       let peakDetected = false;
       const tick = () => {
@@ -199,12 +232,13 @@ export default function Header() {
         ) {
           return;
         }
-        analyser.getByteFrequencyData(data);
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) sum += data[i];
-        const avg = Math.min(100, Math.round((sum / data.length) * 1.8));
+        analyser.getFloatTimeDomainData(data);
+        let sumSq = 0;
+        for (let i = 0; i < data.length; i++) sumSq += data[i] * data[i];
+        const rms = Math.sqrt(sumSq / data.length);
+        const avg = Math.min(100, Math.round(Math.min(1, rms * 6) * 100));
         setMicLevel(avg);
-        if (avg > 22 && !peakDetected) {
+        if (avg > 18 && !peakDetected) {
           peakDetected = true;
           setMicStatus("ok");
           setMicMessage("Harika! Mikrofonunuz net şekilde ses alıyor.");
@@ -213,7 +247,7 @@ export default function Header() {
         rafRef.current = requestAnimationFrame(tick);
       };
       tick();
-    } catch {
+    } catch (err) {
       if (acquiredStream) {
         try {
           acquiredStream.getTracks().forEach((t) => t.stop());
@@ -221,12 +255,14 @@ export default function Header() {
           // ignore
         }
       }
-      stopMicTest();
+      closeMicTestResourcesOnly();
       if (isMountedRef.current && sessionId === micTestSessionIdRef.current) {
         setMicStatus("error");
-        setMicMessage(
-          "Mikrofon izni alınamadı. Tarayıcı adres çubuğundan mikrofon iznini kontrol edin."
-        );
+        const errMsg =
+          err instanceof Error && err.message
+            ? err.message
+            : "Tarayıcı adres çubuğundan mikrofon iznini kontrol edin.";
+        setMicMessage("Mikrofon açılamadı: " + errMsg);
       }
     }
   };
@@ -694,25 +730,30 @@ export default function Header() {
                   style={{ width: `${micLevel}%` }}
                 />
               </div>
-              <div className="flex items-center gap-2 text-xs font-semibold">
-                {micStatus === "ok" && (
-                  <CheckCircle2 size={16} className="text-[#065F46] dark:text-emerald-400 shrink-0" />
-                )}
-                {micStatus === "error" && (
+              {micStatus === "error" ? (
+                <div className="rounded-xl bg-red-50 dark:bg-red-950/60 border-2 border-red-500 p-3 flex items-center gap-2 text-xs font-extrabold text-red-700 dark:text-red-200">
                   <AlertCircle size={16} className="text-red-600 shrink-0" />
-                )}
-                <span
-                  className={
-                    micStatus === "ok"
-                      ? "text-[#065F46] dark:text-emerald-400"
-                      : micStatus === "error"
-                      ? "text-red-600"
-                      : "text-[var(--muted)]"
-                  }
-                >
-                  {micMessage}
-                </span>
-              </div>
+                  <span>{micMessage}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  {micStatus === "ok" && (
+                    <CheckCircle2
+                      size={16}
+                      className="text-[#065F46] dark:text-emerald-400 shrink-0"
+                    />
+                  )}
+                  <span
+                    className={
+                      micStatus === "ok"
+                        ? "text-[#065F46] dark:text-emerald-400"
+                        : "text-[var(--muted)]"
+                    }
+                  >
+                    {micMessage}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
