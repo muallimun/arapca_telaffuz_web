@@ -1,4 +1,8 @@
-import { sozluk, diyaloglar } from "@/lib/data";
+import {
+  sozluk,
+  diyaloglar,
+  getDialoguesSortedPedagogically,
+} from "@/lib/data";
 import { DictionaryItem, Dialogue } from "@/types/data";
 import {
   cleanArabicText,
@@ -399,7 +403,9 @@ export function buildDailyStudyPackage(params: {
   });
 
   // 2. Günün Diyaloğu Seçimi:
-  // Önce içinde en çok zorlanılan/hata yapılan kelime bulunan diyaloğu kontrol et, yoksa kullanıcının seviyesindeki sıradaki tamamlanmamış diyaloğu seç
+  // Pedagojik sıra (A1 -> A2 -> B1 -> B2 ve dlg_01 .. dlg_60) ile sıralanmış diyaloglar üzerinden seçim yapılır
+  const pedagogicalDialogues = getDialoguesSortedPedagogically();
+
   const targetLevels =
     preferredLevel === "Başlangıç"
       ? ["A1"]
@@ -407,15 +413,15 @@ export function buildDailyStudyPackage(params: {
       ? ["A2"]
       : ["B1", "B2"];
 
-  let bestDialogue: Dialogue = diyaloglar[0];
+  let bestDialogue: Dialogue = pedagogicalDialogues[0] || diyaloglar[0];
   let reasonBadge = `Sıradaki ${bestDialogue.seviye} diyaloğunuz`;
 
-  const uncompletedInLevel = diyaloglar.filter(
+  const uncompletedInLevel = pedagogicalDialogues.filter(
     (d) =>
       targetLevels.includes(d.seviye) && !completedDialogues.includes(d.id)
   );
   const candidateDialogues =
-    uncompletedInLevel.length > 0 ? uncompletedInLevel : diyaloglar;
+    uncompletedInLevel.length > 0 ? uncompletedInLevel : pedagogicalDialogues;
 
   let maxMistakeHits = 0;
   let mistakeMatchedDialogue: Dialogue | null = null;
@@ -447,14 +453,14 @@ export function buildDailyStudyPackage(params: {
     bestDialogue = uncompletedInLevel[0];
     reasonBadge = `Sıradaki ${bestDialogue.seviye} diyaloğunuz`;
   } else {
-    const firstUncompleted = diyaloglar.find(
+    const firstUncompleted = pedagogicalDialogues.find(
       (d) => !completedDialogues.includes(d.id)
     );
     if (firstUncompleted) {
       bestDialogue = firstUncompleted;
       reasonBadge = `Sıradaki ${firstUncompleted.seviye} diyaloğunuz`;
     } else {
-      bestDialogue = diyaloglar[0];
+      bestDialogue = pedagogicalDialogues[0] || diyaloglar[0];
       reasonBadge = "Günlük pekiştirme diyaloğunuz";
     }
   }

@@ -212,10 +212,66 @@ async function fetchEdgeNeuralTTS(
 }
 
 /**
- * Katman 2B: Google Translate Doğal Arapça TTS Akışı (Harekeli metin uyumlu)
+ * 175 karakterden uzun Arapça cümleleri (örn. dlg_12 satır 4: 345 karakter)
+ * Arapça noktalama işaretlerinden (، . ؛ ؟ !) veya kelime boşluklarından <= 175 karakterlik parçalara böler.
  */
-async function fetchGoogleTranslateTTS(
-  text: string,
+function splitArabicTextIntoChunks(text: string, maxChunkLength = 175): string[] {
+  const cleaned = text.trim();
+  if (!cleaned) return [];
+  if (cleaned.length <= maxChunkLength) return [cleaned];
+
+  const chunks: string[] = [];
+  // Önce Arapça noktalama işaretlerinden cümle/ibare parçalarına ayır
+  const segments = cleaned
+    .split(/(?<=[،.؛؟!,?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  let current = "";
+  const pushWordsSplit = (longSegment: string) => {
+    const words = longSegment.split(/\s+/).filter(Boolean);
+    let wordBuf = "";
+    for (const word of words) {
+      if (!wordBuf) {
+        wordBuf = word.slice(0, maxChunkLength);
+      } else if (wordBuf.length + 1 + word.length <= maxChunkLength) {
+        wordBuf += " " + word;
+      } else {
+        chunks.push(wordBuf);
+        wordBuf = word.slice(0, maxChunkLength);
+      }
+    }
+    if (wordBuf) {
+      chunks.push(wordBuf);
+    }
+  };
+
+  for (const seg of segments) {
+    if (seg.length > maxChunkLength) {
+      if (current) {
+        chunks.push(current);
+        current = "";
+      }
+      pushWordsSplit(seg);
+    } else if (!current) {
+      current = seg;
+    } else if (current.length + 1 + seg.length <= maxChunkLength) {
+      current += " " + seg;
+    } else {
+      chunks.push(current);
+      current = seg;
+    }
+  }
+
+  if (current) {
+    chunks.push(current);
+  }
+
+  return chunks.length > 0 ? chunks : [cleaned.slice(0, maxChunkLength)];
+}
+
+async function fetchSingleGoogleTtsChunk(
+  chunkText: string,
   rate: number
 ): Promise<ArrayBuffer | null> {
   const controller = new AbortController();
@@ -226,7 +282,7 @@ async function fetchGoogleTranslateTTS(
   try {
     const ttsspeed = rate < 0.9 ? "0.24" : "1";
     const googleUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ar&client=tw-ob&ttsspeed=${ttsspeed}&q=${encodeURIComponent(
-      text
+      chunkText
     )}`;
 
     const res = await fetch(googleUrl, {
@@ -248,6 +304,37 @@ async function fetchGoogleTranslateTTS(
     clearTimeout(timeoutId);
   }
   return null;
+}
+
+/**
+ * Katman 2B: Google Translate Doğal Arapça TTS Akışı (Harekeli metin ve >175 karakter uzun cümle birleştirme uyumlu)
+ */
+async function fetchGoogleTranslateTTS(
+  text: string,
+  rate: number
+): Promise<ArrayBuffer | null> {
+  const chunks = splitArabicTextIntoChunks(text, 175);
+  if (chunks.length === 0) return null;
+
+  if (chunks.length === 1) {
+    return fetchSingleGoogleTtsChunk(chunks[0], rate);
+  }
+
+  const buffers: Buffer[] = [];
+  for (const chunk of chunks) {
+    const partBuf = await fetchSingleGoogleTtsChunk(chunk, rate);
+    if (!partBuf) {
+      return null;
+    }
+    buffers.push(Buffer.from(partBuf));
+  }
+
+  if (buffers.length === 0) return null;
+  const merged = Buffer.concat(buffers);
+  return merged.buffer.slice(
+    merged.byteOffset,
+    merged.byteOffset + merged.byteLength
+  );
 }
 
 export async function GET(req: NextRequest) {

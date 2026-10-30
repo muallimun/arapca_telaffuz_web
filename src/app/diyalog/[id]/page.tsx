@@ -835,6 +835,7 @@ export default function DialogueDetailPage({
       const recSession = await start16kHzRecorder({
         silenceDurationMs: 2500,
         maxDurationMs: waitDurationMs,
+        micNoiseSuppression: useSettings.getState().micNoiseSuppression,
         onLiveRms: (rms, history) => {
           setRoleplayMicLevel(rms);
           const tail = history.slice(-24);

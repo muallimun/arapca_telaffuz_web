@@ -1,4 +1,4 @@
-const CACHE_NAME = "muallimun-arapca-pwa-v2.0";
+const CACHE_NAME = "muallimun-arapca-pwa-v2.1";
 const PROTECTED_CACHES = [
   "muallimun-offline-audio-v1",
   "transformers-cache",
@@ -80,7 +80,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // HTML sayfa istekleri (Navigasyon) için: Network First (Önce internet, yoksa önbellek veya offline sayfası)
+  // HTML sayfa istekleri (Navigasyon) için: Network First (Önce internet, yoksa tüm önbellekler veya offline sayfası)
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
@@ -100,11 +100,13 @@ self.addEventListener("fetch", (event) => {
           return networkResponse;
         })
         .catch(async () => {
-          const cache = await caches.open(CACHE_NAME);
-          const cachedResponse = await cache.match(request);
+          const cachedResponse =
+            (await caches.match(request)) ||
+            (await caches.match(url.pathname));
           if (cachedResponse) {
             return cachedResponse;
           }
+          const cache = await caches.open(CACHE_NAME);
           const offlineResponse = await cache.match(OFFLINE_URL);
           if (offlineResponse) {
             return offlineResponse;
@@ -115,6 +117,41 @@ self.addEventListener("fetch", (event) => {
               headers: { "Content-Type": "text/html; charset=utf-8" },
             }
           );
+        })
+    );
+    return;
+  }
+
+  // Next.js RSC (React Server Components) istekleri ve /audio/manifest.json:
+  // Yeni sürüm dağıtımlarında (deployment) eski önbelleğin kalmaması için Network First (çevrimdışıysa önbellekten dön)
+  const isRscRequest =
+    url.searchParams.has("_rsc") || request.headers.get("RSC") === "1";
+  const isAudioManifest = url.pathname === "/audio/manifest.json";
+
+  if (isRscRequest || isAudioManifest) {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          if (
+            networkResponse &&
+            networkResponse.status === 200 &&
+            networkResponse.type === "basic"
+          ) {
+            const responseClone = networkResponse.clone();
+            caches
+              .open(CACHE_NAME)
+              .then((cache) =>
+                cache.put(event.request, responseClone).catch(() => {})
+              );
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cached =
+            (await caches.match(request)) ||
+            (await caches.match(url.pathname));
+          if (cached) return cached;
+          return new Response("", { status: 504 });
         })
     );
     return;

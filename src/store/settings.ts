@@ -8,7 +8,7 @@ import {
 
 export type ViewMode = "stacked" | "columns" | "arabic-only" | "turkish-only";
 export type PreferredLevel = "Başlangıç" | "Orta" | "İleri";
-export type SpeechRate = 0.5 | 0.75 | 1 | 1.25;
+export type SpeechRate = 0.5 | 0.75 | 1 | 1.25 | 1.5;
 export type SttEngine = "whisper" | "webspeech";
 export type WordTrackingStyle = "both" | "highlight" | "arrow" | "off";
 export type DialogueLoopCount = 1 | 2 | 3 | 5 | "infinite";
@@ -30,6 +30,7 @@ interface SettingsState {
   preferredLevel: PreferredLevel;
   sttEngine: SttEngine;
   localSttOnly: boolean;
+  micNoiseSuppression: boolean;
   wordTrackingStyle: WordTrackingStyle;
   dialogueLoopCount: DialogueLoopCount;
   sentenceLoopCount: SentenceLoopCount;
@@ -54,6 +55,8 @@ interface SettingsState {
   setSttEngine: (engine: SttEngine) => void;
   setLocalSttOnly: (val: boolean) => void;
   toggleLocalSttOnly: () => void;
+  setMicNoiseSuppression: (val: boolean) => void;
+  toggleMicNoiseSuppression: () => void;
   setWordTrackingStyle: (style: WordTrackingStyle) => void;
   setDialogueLoopCount: (count: DialogueLoopCount) => void;
   cycleDialogueLoopCount: () => void;
@@ -93,6 +96,7 @@ export const useSettings = create<SettingsState>()(
       preferredLevel: "Başlangıç",
       sttEngine: "whisper",
       localSttOnly: false,
+      micNoiseSuppression: false,
       wordTrackingStyle: "both",
       dialogueLoopCount: 1,
       sentenceLoopCount: 3,
@@ -136,6 +140,8 @@ export const useSettings = create<SettingsState>()(
               ? 1
               : state.speechRate === 1
               ? 1.25
+              : state.speechRate === 1.25
+              ? 1.5
               : 0.5;
           return { speechRate: next };
         }),
@@ -154,6 +160,9 @@ export const useSettings = create<SettingsState>()(
             sttEngine: next ? "whisper" : state.sttEngine,
           };
         }),
+      setMicNoiseSuppression: (val) => set({ micNoiseSuppression: val }),
+      toggleMicNoiseSuppression: () =>
+        set((state) => ({ micNoiseSuppression: !state.micNoiseSuppression })),
       setWordTrackingStyle: (style) => set({ wordTrackingStyle: style }),
       setDialogueLoopCount: (count) => set({ dialogueLoopCount: count }),
       cycleDialogueLoopCount: () =>

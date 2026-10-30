@@ -1394,9 +1394,128 @@ function alignWordSequences(
   };
 }
 
+/**
+ * Hedef Arapça kelime veya cümledeki Med (uzatma: ا / و / ي / آ / ى / ٰ) ve Şedde (\u0651)
+ * varlığını ve beklenen fonolojik okuma süresini (expectedPhoneticDuration) hesaplar.
+ */
+export function calculateExpectedPhoneticDuration(
+  targetText: string,
+  referenceDurationSec?: number
+): {
+  expectedPhoneticDuration: number;
+  expectedMinDuration: number;
+  hasMadd: boolean;
+  hasShadda: boolean;
+  maddCount: number;
+  shaddaCount: number;
+} {
+  const cleaned = cleanDisplayText(targetText);
+  const words = cleaned
+    .split(/\s+/)
+    .filter((w) => w.length > 0 && /[\u0600-\u06FF]/.test(w));
+
+  let baseLetters = 0;
+  let maddCount = 0;
+  let shaddaCount = 0;
+
+  for (const w of words) {
+    const letters = w.match(/[\u0621-\u063A\u0641-\u064A\u0671]/g) || [];
+    baseLetters += letters.length;
+
+    const shaddas = w.match(/\u0651/g) || [];
+    shaddaCount += shaddas.length;
+
+    // Med harfleri: آ veya kelime içi/sonu uzatma harfleri (ا، و، ي، ى، \u0670)
+    const bare = w.replace(/[^\u0621-\u063A\u0641-\u064A\u0670\u0671]/g, "");
+    const madds =
+      (w.match(/آ|\u0670/g) || []).length +
+      (bare.slice(1).match(/[اويى]/g) || []).length;
+    maddCount += madds;
+  }
+
+  // Her temel harf ~0.075 sn, her Med uzatması +0.20 sn, her Şedde tutması +0.18 sn
+  const computedPhoneticSec = Math.max(
+    0.45,
+    baseLetters * 0.075 + maddCount * 0.2 + shaddaCount * 0.18
+  );
+
+  const expectedPhoneticDuration =
+    referenceDurationSec && referenceDurationSec > 0.3
+      ? referenceDurationSec
+      : computedPhoneticSec;
+
+  return {
+    expectedPhoneticDuration,
+    expectedMinDuration: expectedPhoneticDuration,
+    hasMadd: maddCount > 0,
+    hasShadda: shaddaCount > 0,
+    maddCount,
+    shaddaCount,
+  };
+}
+
+/**
+ * STT harekesiz metin döndürdüğünde ve hedef metinde Med veya Şedde bulunduğunda,
+ * kullanıcının aktif konuşma süresini expectedMinDuration * 0.72 eşiğiyle karşılaştırır.
+ */
+export function evaluateAcousticMaddAndShaddaDuration(
+  targetText: string,
+  userActiveDurationSec?: number,
+  referenceDurationSec?: number
+): {
+  checked: boolean;
+  isShort: boolean;
+  penalty: number;
+  expectedMinDuration: number;
+  feedbackMessage?: string;
+} {
+  const phoneticInfo = calculateExpectedPhoneticDuration(
+    targetText,
+    referenceDurationSec
+  );
+
+  if (
+    (!phoneticInfo.hasMadd && !phoneticInfo.hasShadda) ||
+    userActiveDurationSec === undefined ||
+    !Number.isFinite(userActiveDurationSec) ||
+    userActiveDurationSec <= 0
+  ) {
+    return {
+      checked: false,
+      isShort: false,
+      penalty: 0,
+      expectedMinDuration: phoneticInfo.expectedMinDuration,
+    };
+  }
+
+  const minRequired = phoneticInfo.expectedMinDuration * 0.72;
+  if (userActiveDurationSec < minRequired) {
+    return {
+      checked: true,
+      isShort: true,
+      penalty: 12,
+      expectedMinDuration: phoneticInfo.expectedMinDuration,
+      feedbackMessage:
+        "Akustik Süre Uyarısı: Hedef kelimedeki Med (uzatma) veya Şedde (tutma) süresi referans sese göre kısa kaldı",
+    };
+  }
+
+  return {
+    checked: true,
+    isShort: false,
+    penalty: 0,
+    expectedMinDuration: phoneticInfo.expectedMinDuration,
+    feedbackMessage: "Akustik Med/Şedde Süresi: Uyumlu",
+  };
+}
+
 export function evaluateSentenceWords(
   expectedSentence: string,
-  spokenSentence: string
+  spokenSentence: string,
+  acousticOptions?: {
+    userDurationSec?: number;
+    refDurationSec?: number;
+  }
 ): SentenceEvaluationResult {
   const strippedTargetSentence =
     stripParentheticalNotesForScoring(expectedSentence);
@@ -1472,10 +1591,48 @@ export function evaluateSentenceWords(
           )
         )
       : 0;
-  const overallScore = Math.max(0, rawAverageScore - extraWordPenalty);
+
+  const spokenHasAnyDiacritics = /[\u064B-\u0652\u0670]/.test(spokenSentence);
+
+  // STT harekesiz metin döndürdüğünde Akustik Med/Şedde Süre Kontrolü
+  const acousticCheck = !spokenHasAnyDiacritics
+    ? evaluateAcousticMaddAndShaddaDuration(
+        strippedTargetSentence,
+        acousticOptions?.userDurationSec,
+        acousticOptions?.refDurationSec
+      )
+    : null;
+
+  if (acousticCheck?.checked && acousticCheck.isShort && acousticCheck.feedbackMessage) {
+    // Hedef cümlede Med veya Şedde içeren kelimelere akustik süre uyarısını işle
+    for (const w of wordResults) {
+      const wInfo = calculateExpectedPhoneticDuration(w.targetWord);
+      if ((wInfo.hasMadd || wInfo.hasShadda) && w.score > 0) {
+        w.score = Math.max(0, w.score - acousticCheck.penalty);
+        if (w.score < 80 && w.status === "correct") {
+          w.status = "warning";
+        }
+        w.medVezinTip = w.medVezinTip
+          ? `${w.medVezinTip} · ${acousticCheck.feedbackMessage}`
+          : acousticCheck.feedbackMessage;
+        w.diacriticNote = acousticCheck.feedbackMessage;
+      }
+    }
+  } else if (acousticCheck?.checked && !acousticCheck.isShort && acousticCheck.feedbackMessage) {
+    for (const w of wordResults) {
+      const wInfo = calculateExpectedPhoneticDuration(w.targetWord);
+      if (wInfo.hasMadd || wInfo.hasShadda) {
+        w.diacriticNote = acousticCheck.feedbackMessage;
+      }
+    }
+  }
+
+  const overallScore = Math.max(
+    0,
+    rawAverageScore - extraWordPenalty - (acousticCheck?.penalty || 0)
+  );
 
   const firstRootGuardWord = wordResults.find((w) => w.isRootGuardTriggered);
-  const spokenHasAnyDiacritics = /[\u064B-\u0652\u0670]/.test(spokenSentence);
   const allDiacriticsVerified =
     spokenHasAnyDiacritics &&
     wordResults.length > 0 &&
@@ -1487,7 +1644,9 @@ export function evaluateSentenceWords(
     );
 
   const sentenceDiacriticNote = !spokenHasAnyDiacritics
-    ? "Hareke/Şedde: STT metninde yer almadığı için doğrulanmadı"
+    ? acousticCheck?.checked && acousticCheck.feedbackMessage
+      ? acousticCheck.feedbackMessage
+      : "Hareke/Şedde: STT metninde yer almadığı için doğrulanmadı"
     : allDiacriticsVerified
     ? "Harekeler ve Şedde Doğrulandı"
     : anyDiacriticEvaluated
@@ -1504,7 +1663,9 @@ export function evaluateSentenceWords(
     insertedWords,
     omittedCount,
     substitutedCount,
-    diacriticsVerified: allDiacriticsVerified,
+    diacriticsVerified:
+      allDiacriticsVerified ||
+      Boolean(acousticCheck?.checked && !acousticCheck.isShort),
     diacriticNote: sentenceDiacriticNote,
     isRootGuardTriggered: Boolean(firstRootGuardWord),
     rootGuardMessage: firstRootGuardWord?.rootGuardMessage,

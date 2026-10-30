@@ -77,11 +77,23 @@
 | **Yapay Zeka & STT** | `@huggingface/transformers` (Whisper Web Worker — WebGPU & WASM) + Web Speech API |
 | **PWA & Çevrimdışı** | Özel Service Worker (`sw.js`), Web App Manifest, Screen Wake Lock API |
 
+## 🎯 3 Boyutlu Telaffuz, Ritim ve Mahreç Ölçme Mimarisi
+
+Uygulamadaki telaffuz değerlendirme motoru (`src/lib/arabicNlpEngine.ts` + `src/lib/audioAnalysis.ts`) üç bağımsız katmanı birleştirerek pedagojik ölçüm yapar:
+
+1. **Kelime & Kök Harf Kalkanı (`applyRootConsonantGuard` + `38 Mahreç Çifti`):**
+   - Kelime skoru `%85` üzerinde olsa dahi kök ünsüzler ve 38 mahreç çifti (boğaz: `ح/ه`, `ع/أ`, `خ/غ`; kalın/isti'lâ: `ص/س`, `ض/د`, `ط/ت`, `ظ/ذ`, `ق/ك`; peltek: `ث/س`, `ذ/ز`; akıcı: `ر/ل`) denetlenir. Kök harf değişimlerinde (`استغفار` ↔ `استغفال` veya `صباح` ↔ `سباح`) puan `<= 58` tavanına çekilerek mahreç uyarısı üretilir.
+2. **Hareke, Şedde ve Akustik Süre Doğrulaması:**
+   - Harekeli STT çıktılarında hareke ve şedde (`\u0651`) uyuşmazlığı doğrudan puanlanır (`< 80`, `warning`).
+   - Harekesiz STT çıktılarında ise hedef kelimede **Med (`ا / و / ي`)** veya **Şedde (`\u0651`)** bulunduğunda kullanıcının gerçek aktif konuşma süresi, beklenen fonetik süre (`expectedPhoneticDuration * 0.72`) ile karşılaştırılır; kısa kalan uzatma/şedde okumalarında akustik süre uyarısı verilir.
+3. **Dinamik Zaman Bükme (DTW) Ritim & Tempo Analizi (`calculateRhythmDTW`):**
+   - 16kHz PCM ses kaydından çıkarılan 48 barlık RMS enerji zarfı; tepe/vadi dinamik aralığı (varyans) ve konuşma-duraksama geçişleriyle birlikte referans ses zarfına karşı DTW algoritmasıyla analiz edilir.
+
 ---
 
-## 🚀 Kurulum ve Çalıştırma
+## 🚀 Kurulum, Birim Testler ve Dağıtım (Deployment)
 
-Projeyi yerel bilgisayarınızda çalıştırmak için aşağıdaki adımları izleyin:
+Projeyi yerel bilgisayarınızda veya üretim sunucusunda çalıştırmak için aşağıdaki adımları izleyin:
 
 ```bash
 # 1. Bağımlılıkları yükleyin
@@ -90,11 +102,25 @@ npm install
 # 2. Geliştirme sunucusunu başlatın (http://localhost:3000)
 npm run dev
 
-# 3. Üretim (Production) derlemesi oluşturun
-npm run build
+# 3. Otomatik regresyon ve birim test paketini çalıştırın
+npm test
 
-# 4. Üretim sunucusunu başlatın
-npm start
+# 4. ESLint kod doğrulamasını çalıştırın
+npm run lint
+
+# 5. Üretim (Production) derlemesi oluşturun
+npm run build
+```
+
+### 📦 Standalone Sunucu Dağıtımı (`output: "standalone"`)
+
+`next.config.ts` içinde Docker ve VPS ortamları için `output: "standalone"` yapılandırması etkindir. Standalone sunucuyu (`node .next/standalone/server.js`) doğrudan çalıştırırken statik varlıkların (`public/` ve `.next/static/`) eksiksiz sunulması için derleme sonrasında aşağıdaki kopyalama komutunu çalıştırın:
+
+```bash
+npm run build
+cp -r public .next/standalone/public
+cp -r .next/static .next/standalone/.next/static
+PORT=3000 node .next/standalone/server.js
 ```
 
 ---

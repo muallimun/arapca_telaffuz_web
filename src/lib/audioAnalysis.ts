@@ -664,7 +664,10 @@ export function evaluateAcousticDspSentence(
     };
   }
 
-  const evalRes = evaluateSentenceWords(expectedSentence, recognizedText);
+  const evalRes = evaluateSentenceWords(expectedSentence, recognizedText, {
+    userDurationSec: userDuration,
+    refDurationSec: safeRefDur,
+  });
   return {
     ...evalRes,
     isTextRecognized: true,
@@ -687,11 +690,13 @@ export async function start16kHzRecorder(options?: {
   onAutoSilenceStop?: () => void;
   silenceDurationMs?: number;
   maxDurationMs?: number;
+  micNoiseSuppression?: boolean;
 }): Promise<RecordingSession16kHz> {
+  const useNoiseFilter = Boolean(options?.micNoiseSuppression);
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
-      echoCancellation: false,
-      noiseSuppression: false,
+      echoCancellation: useNoiseFilter,
+      noiseSuppression: useNoiseFilter,
       autoGainControl: false,
       channelCount: 1,
       sampleRate: 16000,

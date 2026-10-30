@@ -162,6 +162,8 @@ export default function ShadowingModal({
     localSttOnly,
     setLocalSttOnly,
     toggleLocalSttOnly,
+    micNoiseSuppression,
+    toggleMicNoiseSuppression,
     setPreferredLevel,
   } = useSettings();
 
@@ -622,6 +624,7 @@ export default function ShadowingModal({
       const session = await start16kHzRecorder({
         silenceDurationMs: 2500,
         maxDurationMs: maxRecordingDurationMs,
+        micNoiseSuppression: useSettings.getState().micNoiseSuppression,
         onLiveRms: (_rms, liveHistory) => {
           if (rafIdRef.current !== null) {
             cancelAnimationFrame(rafIdRef.current);
@@ -987,7 +990,10 @@ export default function ShadowingModal({
     setDspFallbackNotice(null);
     const activeEngine = engineUsed || usedEngineBadge || sttEngine;
     const result: SentenceEvaluationResult = {
-      ...evaluateSentenceWords(activeText, transcribedText),
+      ...evaluateSentenceWords(activeText, transcribedText, {
+        userDurationSec: recordedDuration,
+        refDurationSec: referenceDuration,
+      }),
       isTextRecognized: true,
       isEvaluated: true,
       confidence: activeEngine === "whisper" ? "high" : "medium",
@@ -1202,31 +1208,58 @@ export default function ShadowingModal({
                 : "🌐 Tarayıcı Servisi Modu: Ses tanıma işlemi tarayıcınızın konuşma servisi üzerinden yapılır (Uygulamamız ses kaydı tutmaz)."}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              playClick();
-              toggleLocalSttOnly();
-            }}
-            data-tooltip="Açıldığında tarayıcının çevrimiçi ses tanıma servisi tüm modüllerde devre dışı bırakılır; sesiniz %100 cihaz içinde işlenir"
-            data-tooltip-pos="bottom"
-            className={`px-2.5 py-1 rounded-lg border font-extrabold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
-              localSttOnly
-                ? "bg-[#E6FCF5] dark:bg-emerald-950/50 border-[#087F5B] text-[#065F46] dark:text-emerald-300"
-                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
-            }`}
-          >
-            <span>🔒 Yalnızca Cihazda İşle (Çevrimdışı Whisper)</span>
-            <span
-              className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
-                localSttOnly
-                  ? "bg-[#087F5B] text-white"
-                  : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                toggleMicNoiseSuppression();
+              }}
+              data-tooltip="Sessiz ortamda kapalı tutun (boğaz harfleri ع، ح، خ، غ korunur). Gürültülü ortamdaysanız açabilirsiniz."
+              data-tooltip-pos="bottom"
+              className={`px-2.5 py-1 rounded-lg border font-extrabold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                micNoiseSuppression
+                  ? "bg-[#FFF4E6] dark:bg-amber-950/50 border-[#D97706] text-[#9A3412] dark:text-amber-300"
+                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
               }`}
             >
-              {localSttOnly ? "AÇIK" : "KAPALI"}
-            </span>
-          </button>
+              <span>🎙️ Gürültülü Ortam Filtresi</span>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                  micNoiseSuppression
+                    ? "bg-[#D97706] text-white"
+                    : "bg-emerald-700 text-white"
+                }`}
+              >
+                {micNoiseSuppression ? "AÇIK" : "HASSAS MAHREÇ"}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                toggleLocalSttOnly();
+              }}
+              data-tooltip="Açıldığında tarayıcının çevrimiçi ses tanıma servisi tüm modüllerde devre dışı bırakılır; sesiniz %100 cihaz içinde işlenir"
+              data-tooltip-pos="bottom"
+              className={`px-2.5 py-1 rounded-lg border font-extrabold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                localSttOnly
+                  ? "bg-[#E6FCF5] dark:bg-emerald-950/50 border-[#087F5B] text-[#065F46] dark:text-emerald-300"
+                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
+              }`}
+            >
+              <span>🔒 Yalnızca Cihazda İşle (Çevrimdışı Whisper)</span>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                  localSttOnly
+                    ? "bg-[#087F5B] text-white"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                }`}
+              >
+                {localSttOnly ? "AÇIK" : "KAPALI"}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* İÇERİK GÖVDESİ */}

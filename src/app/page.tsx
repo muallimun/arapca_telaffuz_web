@@ -19,7 +19,11 @@ import {
   Sparkles,
   Play,
 } from "lucide-react";
-import { diyaloglar, sozluk } from "@/lib/data";
+import {
+  diyaloglar,
+  sozluk,
+  getDialoguesSortedPedagogically,
+} from "@/lib/data";
 import {
   useUserStore,
   getTodayDateString,
@@ -178,23 +182,30 @@ export default function HomePage() {
     [recommendedDialogueId]
   );
 
+  const pedagogicalDialogues = useMemo(
+    () => getDialoguesSortedPedagogically(),
+    []
+  );
+
   // Kullanıcının tamamladığı diyaloglara göre aktif CEFR seviyesini belirle (A1 bitmeden üst seviyelerden cümle gösterilmez)
   const activeLevel = useMemo(() => {
     const doneSet = new Set(mounted ? completedDialogues || [] : []);
     const levels: Array<"A1" | "A2" | "B1" | "B2"> = ["A1", "A2", "B1", "B2"];
     for (const lvl of levels) {
-      const dlgsInLvl = diyaloglar.filter((d) => d.seviye === lvl);
+      const dlgsInLvl = pedagogicalDialogues.filter((d) => d.seviye === lvl);
       if (dlgsInLvl.some((d) => !doneSet.has(d.id))) {
         return lvl;
       }
     }
     return "A1";
-  }, [mounted, completedDialogues]);
+  }, [mounted, completedDialogues, pedagogicalDialogues]);
 
   // Günün Konuşma Kalıbı Havuzu: Önce Günün Diyaloğundan, ardından kullanıcının aktif seviyesindeki (ör. A1) diyaloglardan seçilir
   const levelQuotesPool = useMemo(() => {
     const dailyDlg = dailyPackage.dailyDialogue.dialogue;
-    const sameLevelDlgs = diyaloglar.filter((d) => d.seviye === activeLevel);
+    const sameLevelDlgs = pedagogicalDialogues.filter(
+      (d) => d.seviye === activeLevel
+    );
     const orderedDlgs = [
       ...(dailyDlg && dailyDlg.seviye === activeLevel ? [dailyDlg] : []),
       ...sameLevelDlgs.filter((d) => d.id !== dailyDlg?.id),
@@ -217,7 +228,7 @@ export default function HomePage() {
       return [{ dlg: fallbackDlg, line: fallbackDlg.satirlar[0] }];
     }
     return pool;
-  }, [activeLevel, dailyPackage.dailyDialogue.dialogue]);
+  }, [activeLevel, dailyPackage.dailyDialogue.dialogue, pedagogicalDialogues]);
 
   // Günün Arapça Diyaloğu / Kalıp İpucu
   const featuredDialogue = useMemo(() => {

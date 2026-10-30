@@ -89,6 +89,8 @@ export default function SettingsPage() {
     setSentenceLoopCount,
     pauseBetweenLines,
     setPauseBetweenLines,
+    micNoiseSuppression,
+    setMicNoiseSuppression,
   } = useSettings();
 
   const { enabled: sfxEnabled, setEnabled: setSfxEnabled } = useSfxStore();
@@ -1172,6 +1174,52 @@ export default function SettingsPage() {
                     {opt.label}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* 7. Gürültülü Ortam Filtresi (Mikrofon Mahreç Hassasiyeti) */}
+            <div className="bg-white dark:bg-[var(--background)] p-3 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col justify-between gap-2.5 md:col-span-2">
+              <div className="flex items-start gap-2.5">
+                <Mic size={18} className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="block text-xs sm:text-sm font-extrabold text-[var(--foreground)]">
+                    🎙️ Gürültülü Ortam Filtresi (Mikrofon Gürültü Bastırma)
+                  </span>
+                  <span className="block text-[11px] text-[var(--muted)]">
+                    Sessiz ortamlarda &ldquo;Hassas Mahreç Modu&rdquo; önerilir; tarayıcı gürültü filtresi kapatılarak boğaz harflerinin (ع، ح، خ، غ) akustik frekansları korunur.
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setMicNoiseSuppression(false);
+                  }}
+                  className={`px-2 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                    !micNoiseSuppression
+                      ? "bg-[#087F5B] text-white font-bold"
+                      : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  🎯 Hassas Mahreç Modu (Önerilen)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setMicNoiseSuppression(true);
+                  }}
+                  className={`px-2 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${
+                    micNoiseSuppression
+                      ? "bg-[#D97706] text-white font-bold"
+                      : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  🎙️ Gürültülü Ortam Filtresi Açık
+                </button>
               </div>
             </div>
           </div>

@@ -8,7 +8,7 @@ import {
   playClick,
 } from "@/lib/sfxManager";
 import { Dialogue, DictionaryItem } from "@/types/data";
-import { shuffleArray } from "@/lib/quiz";
+import { shuffleArray, selectSmartWordDistractors } from "@/lib/quiz";
 import {
   CheckCircle2,
   XCircle,
@@ -180,16 +180,27 @@ export default function MultipleChoice({
       });
     });
 
+    const vocabById = new Map<string, DictionaryItem>();
+    for (const w of vocabulary) {
+      vocabById.set(w.id, w);
+    }
+
     const buildWordQuestion = (
       target: (typeof wordPool)[number]
     ): QuizQuestionItem => {
-      const distractors = shuffleArray(
-        wordPool.filter(
-          (w) => w.id !== target.id && w.turkish !== target.turkish
-        )
-      )
-        .slice(0, 3)
-        .map((d) => ({ text: d.turkish, isCorrect: false }));
+      const targetItem = vocabById.get(target.wordId);
+      const distractors = targetItem
+        ? selectSmartWordDistractors(targetItem, vocabulary, 3).map((d) => ({
+            text: d.anlam_tr,
+            isCorrect: false,
+          }))
+        : shuffleArray(
+            wordPool.filter(
+              (w) => w.id !== target.id && w.turkish !== target.turkish
+            )
+          )
+            .slice(0, 3)
+            .map((d) => ({ text: d.turkish, isCorrect: false }));
 
       return {
         id: target.id,

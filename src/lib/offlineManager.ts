@@ -5,6 +5,7 @@ import { diyaloglar } from "@/lib/data";
 import { loadAudioManifest, getMp3Path } from "@/lib/audio";
 
 export const OFFLINE_AUDIO_CACHE_NAME = "muallimun-offline-audio-v1";
+export const OFFLINE_PWA_CACHE_NAME = "muallimun-arapca-pwa-v2.1";
 const OFFLINE_STORAGE_KEY = "muallimun-offline-dialogues-v1";
 
 // Ortalama bir diyalog cümlesi MP3 boyutu (~145 KB)
@@ -159,7 +160,8 @@ export async function getDownloadedDialogueIds(): Promise<string[]> {
 }
 
 /**
- * Bir diyaloğa ait tüm cümle MP3 dosyalarını "muallimun-offline-audio-v1" önbelleğine indirir.
+ * Bir diyaloğa ait tüm cümle MP3 dosyalarını ve diyalog sayfasını (/diyalog/${dialogueId})
+ * "muallimun-offline-audio-v1" ve uygulama önbelleğine indirir.
  */
 export async function downloadDialogueOfflinePack(
   dialogueId: string,
@@ -179,6 +181,20 @@ export async function downloadDialogueOfflinePack(
 
   try {
     const cache = await caches.open(OFFLINE_AUDIO_CACHE_NAME);
+    const pwaCache = await caches.open(OFFLINE_PWA_CACHE_NAME);
+
+    // Diyalog sayfasını (/diyalog/${dialogueId}) da önbelleğe al ki daha önce çevrimiçi ziyaret edilmemiş olsa bile internetsiz açılsın
+    const dialoguePageUrl = `/diyalog/${dialogueId}`;
+    try {
+      const pageRes = await fetch(dialoguePageUrl, { cache: "no-cache" });
+      if (pageRes.ok) {
+        await cache.put(dialoguePageUrl, pageRes.clone());
+        await pwaCache.put(dialoguePageUrl, pageRes.clone());
+      }
+    } catch {
+      // Sayfa önbellekleme hatası ses indirmeyi durdurmasın
+    }
+
     let completed = 0;
     onProgress?.(0, 0, urls.length, estimatedSizeMb);
 

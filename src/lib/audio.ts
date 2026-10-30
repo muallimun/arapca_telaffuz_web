@@ -328,8 +328,9 @@ async function getOrFetchNeuralTtsBlobUrl(
 }
 
 function applyPlaybackRateAndPitch(audio: HTMLAudioElement, rate: number) {
-  audio.defaultPlaybackRate = rate;
-  audio.playbackRate = rate;
+  const clampedRate = Math.min(1.5, Math.max(0.5, Number(rate) || 1.0));
+  audio.defaultPlaybackRate = clampedRate;
+  audio.playbackRate = clampedRate;
   audio.preservesPitch = true;
   const extAudio = audio as HTMLAudioElement & {
     webkitPreservesPitch?: boolean;
@@ -362,6 +363,14 @@ function playSingleAudioUrl(url: string, rate: number = 1): Promise<void> {
     activeAudio = audio;
 
     audio.onloadedmetadata = () => {
+      applyPlaybackRateAndPitch(audio, rate);
+    };
+
+    audio.oncanplay = () => {
+      applyPlaybackRateAndPitch(audio, rate);
+    };
+
+    audio.onplay = () => {
       applyPlaybackRateAndPitch(audio, rate);
     };
 
