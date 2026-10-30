@@ -1,6 +1,7 @@
 import { Dialogue, DialogueLine } from "@/types/data";
 import { sozluk } from "@/lib/data";
 import { SUPPLEMENT_DICTIONARY } from "@/lib/supplementDict";
+import { mergeTurkishMeanings } from "@/lib/dict";
 
 export interface ArabicIdiom {
   id: string;
@@ -1119,26 +1120,45 @@ export function normalizeForIdiomMatch(text: string): string {
  */
 export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
   const catalog: ArabicIdiom[] = [];
-  const seenNormalized = new Set<string>();
+  const seenNormalizedMap = new Map<string, ArabicIdiom>();
 
   for (let idx = 0; idx < ARABIC_IDIOMS_LIBRARY.length; idx++) {
     const item = ARABIC_IDIOMS_LIBRARY[idx];
     const normTitle = normalizeForIdiomMatch(item.arabic);
-    if (!normTitle || seenNormalized.has(normTitle)) continue;
+    if (!normTitle) continue;
+    const existing = seenNormalizedMap.get(normTitle);
+    if (existing) {
+      existing.meaningTr = mergeTurkishMeanings(
+        existing.meaningTr,
+        item.meaningTr
+      );
+      continue;
+    }
 
-    seenNormalized.add(normTitle);
-    item.arabic
-      .split("/")
-      .map((s) => s.replace(/\.\.\./g, "").trim())
-      .filter(Boolean)
-      .forEach((part) => seenNormalized.add(normalizeForIdiomMatch(part)));
-    item.variants?.forEach((v) => seenNormalized.add(normalizeForIdiomMatch(v)));
-    catalog.push({
+    const catalogEntry: ArabicIdiom = {
       ...item,
       level:
         item.level ||
         (idx < 28 ? "A1-A2" : idx < 52 ? "B1" : "B2"),
+    };
+    seenNormalizedMap.set(normTitle, catalogEntry);
+    item.arabic
+      .split("/")
+      .map((s) => s.replace(/\.\.\./g, "").trim())
+      .filter(Boolean)
+      .forEach((part) => {
+        const np = normalizeForIdiomMatch(part);
+        if (np && !seenNormalizedMap.has(np)) {
+          seenNormalizedMap.set(np, catalogEntry);
+        }
+      });
+    item.variants?.forEach((v) => {
+      const nv = normalizeForIdiomMatch(v);
+      if (nv && !seenNormalizedMap.has(nv)) {
+        seenNormalizedMap.set(nv, catalogEntry);
+      }
     });
+    catalog.push(catalogEntry);
   }
 
   const dictSources = [...sozluk, ...SUPPLEMENT_DICTIONARY];
@@ -1152,14 +1172,20 @@ export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
     const rawAr = allParts[0] || "";
     if (!rawAr) continue;
     const norm = normalizeForIdiomMatch(rawAr);
-    if (!norm || seenNormalized.has(norm)) continue;
+    if (!norm) continue;
+    const existing = seenNormalizedMap.get(norm);
+    if (existing) {
+      existing.meaningTr = mergeTurkishMeanings(
+        existing.meaningTr,
+        entry.anlam_tr
+      );
+      continue;
+    }
 
-    seenNormalized.add(norm);
-    allParts.forEach((p) => seenNormalized.add(normalizeForIdiomMatch(p)));
     const assignedLevel =
       dictIdx % 3 === 0 ? "A1-A2" : dictIdx % 3 === 1 ? "B1" : "B2";
     dictIdx++;
-    catalog.push({
+    const catalogEntry: ArabicIdiom = {
       id: `dict_idm_${entry.id}`,
       arabic: rawAr,
       meaningTr: entry.anlam_tr,
@@ -1167,7 +1193,15 @@ export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
       usageNote: "Günlük konuşma ve diyaloglarda kalıplaşmış ifade olarak kullanılır.",
       variants: allParts,
       level: assignedLevel,
+    };
+    seenNormalizedMap.set(norm, catalogEntry);
+    allParts.forEach((p) => {
+      const np = normalizeForIdiomMatch(p);
+      if (np && !seenNormalizedMap.has(np)) {
+        seenNormalizedMap.set(np, catalogEntry);
+      }
     });
+    catalog.push(catalogEntry);
   }
 
   return catalog;

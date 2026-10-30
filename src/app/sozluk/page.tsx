@@ -27,6 +27,7 @@ import {
   getWordsByRoot,
   getExampleSentencesForWord,
   ExampleSentenceMatch,
+  mergeTurkishMeanings,
 } from "@/lib/dict";
 import { loadAudioManifest, playTTS, hasMp3, getMp3Path } from "@/lib/audio";
 import { useAudioStore } from "@/store/audioStore";
@@ -151,26 +152,78 @@ export default function DictionaryPage() {
   const getDisplayArabic = (text: string) =>
     formatArabicText(text, !mounted || showHareke, arabicFont);
 
-  // Kalıp ifade (idiom_ / idm_) ID'lerini ve zengin detaylarını çözümleyen katalog haritası
-  const { idiomsByIdMap, idiomDetailsByIdMap, mergedCatalogIdiomsAsItems } =
-    useMemo(() => {
-      const idMap = new Map<string, DictionaryItem>();
-      const detailMap = new Map<string, ArabicIdiom>();
-      const catalogItems: DictionaryItem[] = [];
-      const seenCleanAr = new Set<string>();
+  // Kelime ve Kalıp İfade (idiom_ / idm_) havuzunu tekilleştirip Türkçe anlamları birleştiren katalog haritası
+  const {
+    idiomsByIdMap,
+    idiomDetailsByIdMap,
+    unifiedAllWordsAndIdioms,
+  } = useMemo(() => {
+    const idMap = new Map<string, DictionaryItem>();
+    const detailMap = new Map<string, ArabicIdiom>();
+    const normMap = new Map<string, DictionaryItem>();
+    const cleanMap = new Map<string, DictionaryItem>();
+    const unifiedList: DictionaryItem[] = [];
 
-      // Önce sozluk içindeki mevcut "ifade" kayıtlarının Arapça metinlerini kaydet (mükerrerliği önlemek için)
-      for (const w of sozluk) {
-        if ((w.tur || "").toLowerCase() === "ifade" && (w.mufret || w.mazi)) {
-          seenCleanAr.add(cleanArabicText(w.mufret || w.mazi || ""));
-        }
+    // 1. Önce sozluk içindeki tüm kayıtları (klonlayarak) listeye ve normalize haritasına ekle
+    for (const w of sozluk) {
+      const primaryAr = (w.mufret || w.mazi || "").split("/")[0].trim();
+      if (!primaryAr) continue;
+      const normKey = normalizeArabicText(primaryAr);
+      const cleanKey = cleanArabicText(primaryAr);
+      const cloned: DictionaryItem = { ...w };
+
+      const existingSameVocalAndCat = unifiedList.find(
+        (u) =>
+          (u.mufret || u.mazi || "").trim() === primaryAr &&
+          getWordCategory(u) === getWordCategory(cloned)
+      );
+      if (existingSameVocalAndCat) {
+        existingSameVocalAndCat.anlam_tr = mergeTurkishMeanings(
+          existingSameVocalAndCat.anlam_tr,
+          cloned.anlam_tr
+        );
+        continue;
       }
 
-      const catalog = getCombinedIdiomsCatalog();
-      for (const idm of catalog) {
-        const canonicalId = idm.id.startsWith("idiom_")
-          ? idm.id
-          : `idiom_${idm.id}`;
+      unifiedList.push(cloned);
+      if (normKey && !normMap.has(normKey)) normMap.set(normKey, cloned);
+      if (cleanKey && !cleanMap.has(cleanKey)) cleanMap.set(cleanKey, cloned);
+    }
+
+    // 2. Kalıp ifadeleri kontrol et: Eğer kelime havuzunda zaten varsa (ör. بِالضَّبْطِ) ikinci kart oluşturma,
+    // Türkçe anlamlarını mergeTurkishMeanings ile birleştir ve Harfiyen Anlamı / Kullanım İpucu bilgilerini tek karta bağla!
+    const catalog = getCombinedIdiomsCatalog();
+    for (const idm of catalog) {
+      const canonicalId = idm.id.startsWith("idiom_")
+        ? idm.id
+        : `idiom_${idm.id}`;
+      const primaryIdmAr = idm.arabic.split("/")[0].trim();
+      const normAr = normalizeArabicText(primaryIdmAr);
+      const cleanAr = cleanArabicText(primaryIdmAr);
+
+      const existingItem =
+        (normAr ? normMap.get(normAr) : undefined) ||
+        (cleanAr ? cleanMap.get(cleanAr) : undefined);
+
+      if (existingItem) {
+        existingItem.anlam_tr = mergeTurkishMeanings(
+          existingItem.anlam_tr,
+          idm.meaningTr
+        );
+        const enrichedIdiom: ArabicIdiom = {
+          ...idm,
+          meaningTr: existingItem.anlam_tr,
+        };
+        detailMap.set(existingItem.id, enrichedIdiom);
+        detailMap.set(idm.id, enrichedIdiom);
+        detailMap.set(canonicalId, enrichedIdiom);
+        detailMap.set(`idm_${idm.id}`, enrichedIdiom);
+
+        idMap.set(existingItem.id, existingItem);
+        idMap.set(idm.id, existingItem);
+        idMap.set(canonicalId, existingItem);
+        idMap.set(`idm_${idm.id}`, existingItem);
+      } else {
         const item: DictionaryItem = {
           id: canonicalId,
           mufret: idm.arabic,
@@ -178,6 +231,10 @@ export default function DictionaryPage() {
           kok: "-",
           tur: "ifade",
         };
+        unifiedList.push(item);
+        if (normAr) normMap.set(normAr, item);
+        if (cleanAr) cleanMap.set(cleanAr, item);
+
         idMap.set(idm.id, item);
         idMap.set(canonicalId, item);
         idMap.set(`idm_${idm.id}`, item);
@@ -185,27 +242,15 @@ export default function DictionaryPage() {
         detailMap.set(idm.id, idm);
         detailMap.set(canonicalId, idm);
         detailMap.set(`idm_${idm.id}`, idm);
-
-        const cleanAr = cleanArabicText(idm.arabic);
-        // Eğer sozluk içinde aynı Arapça kalıp ifade varsa ona da detailMap bilgisini bağla
-        const existingInSozluk = sozluk.find(
-          (w) => cleanArabicText(w.mufret || w.mazi || "") === cleanAr
-        );
-        if (existingInSozluk) {
-          detailMap.set(existingInSozluk.id, idm);
-        }
-
-        if (!seenCleanAr.has(cleanAr)) {
-          seenCleanAr.add(cleanAr);
-          catalogItems.push(item);
-        }
       }
-      return {
-        idiomsByIdMap: idMap,
-        idiomDetailsByIdMap: detailMap,
-        mergedCatalogIdiomsAsItems: catalogItems,
-      };
-    }, []);
+    }
+
+    return {
+      idiomsByIdMap: idMap,
+      idiomDetailsByIdMap: detailMap,
+      unifiedAllWordsAndIdioms: unifiedList,
+    };
+  }, []);
 
   // Seçili diyaloğun morfolojik kelime haritası (getDialogueVocabulary ile)
   const dialogueContextMap = useMemo(() => {
@@ -216,26 +261,35 @@ export default function DictionaryPage() {
     return map;
   }, [selectedDialogueId]);
 
-  const totalAllItemsCount =
-    sozluk.length + mergedCatalogIdiomsAsItems.length;
+  const totalAllItemsCount = unifiedAllWordsAndIdioms.length;
 
   const basePool = useMemo(() => {
     if (dialogueContextMap) {
-      const vocabItems = Array.from(dialogueContextMap.values()).map(
-        (e) => e.item
-      );
+      const vocabItems = Array.from(dialogueContextMap.values()).map((e) => ({
+        ...e.item,
+      }));
       const dlgObj = diyaloglar.find((d) => d.id === selectedDialogueId);
       const dlgIdioms = dlgObj
         ? extractDialogueIdioms(dlgObj.satirlar, dlgObj.seviye)
         : [];
-      const seenAr = new Set(
-        vocabItems.map((v) => cleanArabicText(v.mufret || v.mazi || ""))
-      );
+      const seenByCleanAr = new Map<string, DictionaryItem>();
+      for (const v of vocabItems) {
+        const cKey = cleanArabicText(
+          (v.mufret || v.mazi || "").split("/")[0].trim()
+        );
+        if (cKey) seenByCleanAr.set(cKey, v);
+      }
+
       const extraDlgIdiomItems: DictionaryItem[] = [];
       for (const dIdm of dlgIdioms) {
-        const cleanAr = cleanArabicText(dIdm.arabic);
-        if (!seenAr.has(cleanAr)) {
-          seenAr.add(cleanAr);
+        const cleanAr = cleanArabicText(dIdm.arabic.split("/")[0].trim());
+        const existingVocab = cleanAr ? seenByCleanAr.get(cleanAr) : undefined;
+        if (existingVocab) {
+          existingVocab.anlam_tr = mergeTurkishMeanings(
+            existingVocab.anlam_tr,
+            dIdm.meaningTr
+          );
+        } else if (cleanAr) {
           const resolved = idiomsByIdMap.get(dIdm.id) || {
             id: `idiom_${dIdm.id}`,
             mufret: dIdm.arabic,
@@ -243,18 +297,19 @@ export default function DictionaryPage() {
             kok: "-",
             tur: "ifade",
           };
+          seenByCleanAr.set(cleanAr, resolved);
           extraDlgIdiomItems.push(resolved);
         }
       }
       return [...vocabItems, ...extraDlgIdiomItems];
     }
-    // Tüm sözlük + mükerrer olmayan Kalıp İfadeler kataloğu
-    return [...sozluk, ...mergedCatalogIdiomsAsItems];
+    // Tüm sözlük + Kalıp İfadeler (tekilleştirilmiş gerçek liste)
+    return unifiedAllWordsAndIdioms;
   }, [
     dialogueContextMap,
     selectedDialogueId,
     idiomsByIdMap,
-    mergedCatalogIdiomsAsItems,
+    unifiedAllWordsAndIdioms,
   ]);
 
   const filteredWords = useMemo(() => {
@@ -435,7 +490,6 @@ export default function DictionaryPage() {
     isMistake,
     idiomsByIdMap,
     idiomDetailsByIdMap,
-    mergedCatalogIdiomsAsItems,
   ]);
 
   // Kelimeyi sesli dinle (MP3 varsa MP3, yoksa TTS)

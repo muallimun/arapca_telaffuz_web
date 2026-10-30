@@ -269,6 +269,80 @@ function cleanMeaning(meaning: string, category?: WordCategory): string {
   return (parts.slice(0, 2).join(", ").trim() || meaning).trim();
 }
 
+/**
+ * İki Türkçe anlam metnini (virgül veya noktalı virgülden bölerek, parantez içi açıklamaları koruyarak)
+ * toLocaleLowerCase("tr-TR") ile karşılaştırıp mükerrer ifadeleri eler ve farklı nüansları birleştirir.
+ */
+export function mergeTurkishMeanings(m1: string, m2: string): string {
+  const s1 = (m1 || "").trim();
+  const s2 = (m2 || "").trim();
+  if (!s1) return s2;
+  if (!s2) return s1;
+  if (s1.toLocaleLowerCase("tr-TR") === s2.toLocaleLowerCase("tr-TR")) {
+    return s1;
+  }
+
+  const splitOutsideParens = (input: string): string[] => {
+    const parts: string[] = [];
+    let current = "";
+    let depth = 0;
+    for (let i = 0; i < input.length; i++) {
+      const ch = input[i];
+      if (ch === "(") depth++;
+      else if (ch === ")" && depth > 0) depth--;
+
+      if (depth === 0 && (ch === "," || ch === ";")) {
+        if (current.trim()) parts.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    if (current.trim()) parts.push(current.trim());
+    return parts;
+  };
+
+  const normalizeToken = (tok: string): string =>
+    tok
+      .replace(/\(.*?\)/g, "")
+      .replace(/^[0-9]+[.)]\s*/, "")
+      .replace(/[.,!?]+$/, "")
+      .toLocaleLowerCase("tr-TR")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const mergedParts: string[] = [];
+  const seenKeys = new Map<string, number>();
+
+  for (const rawPart of [...splitOutsideParens(s1), ...splitOutsideParens(s2)]) {
+    const cleanedPart = rawPart.replace(/[.,]+$/, "").trim();
+    if (!cleanedPart) continue;
+    const key = normalizeToken(cleanedPart);
+    if (!key) continue;
+
+    if (!seenKeys.has(key)) {
+      seenKeys.set(key, mergedParts.length);
+      mergedParts.push(cleanedPart);
+    } else {
+      const existingIdx = seenKeys.get(key)!;
+      const existingVal = mergedParts[existingIdx];
+      // Eğer yeni parçada parantez içi örnek/açıklama varsa ve mevcut olanda yoksa zenginleştir
+      if (cleanedPart.includes("(") && !existingVal.includes("(")) {
+        mergedParts[existingIdx] = cleanedPart;
+      }
+    }
+  }
+
+  let joined = mergedParts.join(", ");
+  const startsWithUpper =
+    /^[A-ZÇĞİÖŞÜ]/.test(s1) || /^[A-ZÇĞİÖŞÜ]/.test(s2);
+  if (startsWithUpper && joined.length > 0) {
+    joined =
+      joined.charAt(0).toLocaleUpperCase("tr-TR") + joined.slice(1);
+  }
+  return joined;
+}
+
 // Sözlük + Tamamlayıcı Sözlük Yamasını birleştir ve mükerrerleri (aynı kelime + aynı tür) kesin olarak tekilleştir
 function buildUnifiedDictionary(): DictionaryItem[] {
   const combined = [
@@ -309,7 +383,13 @@ function buildUnifiedDictionary(): DictionaryItem[] {
       seenByKey.set(key, canonicalItem);
       deduplicated.push(canonicalItem);
     } else {
-      // İlk kaydı koru; ikinci kayıtta eksik alan (çoğul, muzari, mastar, kök) varsa tamamla
+      // İlk kaydı koru; Türkçe anlamı mergeTurkishMeanings ile zenginleştir ve eksik alanları tamamla
+      if (item.anlam_tr && item.anlam_tr.trim()) {
+        existing.anlam_tr = mergeTurkishMeanings(
+          existing.anlam_tr,
+          item.anlam_tr.trim()
+        );
+      }
       if ((!existing.cemi || existing.cemi === "-") && item.cemi && item.cemi !== "-") {
         existing.cemi = item.cemi;
       }

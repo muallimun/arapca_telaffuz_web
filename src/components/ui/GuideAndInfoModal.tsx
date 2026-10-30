@@ -37,6 +37,7 @@ import {
 import { playClick } from "@/lib/sfxManager";
 import { triggerOnboardingTour } from "./OnboardingTourModal";
 import { triggerShareAppModal } from "@/lib/shareApp";
+import { triggerFeedbackModal } from "./FeedbackModal";
 
 type GuideTab = "quickstart" | "icons" | "pedagogy" | "about" | "apps";
 
@@ -865,33 +866,70 @@ export default function GuideAndInfoModal() {
                 <span>YouTube</span>
               </a>
             </div>
+
+            {/* İletişim & Hata Bildirim Kartı (Mobil & Masaüstü) */}
+            <div className="pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="space-y-0.5 text-left">
+                <span className="text-xs font-extrabold text-[var(--foreground)] block">
+                  💬 Görüş, Öneri ve Hata Bildirimi
+                </span>
+                <p className="text-[11px] font-medium text-[var(--muted)]">
+                  Tespit ettiğiniz kelime/hareke hatalarını veya yeni özellik önerilerinizi doğrudan iletin.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setIsOpen(false);
+                  triggerFeedbackModal();
+                }}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold border-b-3 border-amber-700 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer transition-all"
+              >
+                <span>💬 Görüş, Öneri ve Hata Bildir</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ALT PAYLAŞ & KAPAT BUTONLARI */}
-        <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-5 py-3 border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center justify-end gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              playClick();
-              triggerShareAppModal();
-            }}
-            className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white text-xs font-extrabold border-b-3 border-[#4C28B5] flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Share2 size={14} />
-            <span>📲 Uygulamayı Paylaş</span>
-          </button>
-
+        {/* ALT PAYLAŞ, HATA BİLDİR & KAPAT BUTONLARI */}
+        <div className="bg-[#F7EFE1] dark:bg-[var(--background)] px-5 py-3 border-t-2 border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center justify-between gap-2.5 shrink-0">
           <button
             type="button"
             onClick={() => {
               playClick();
               setIsOpen(false);
+              triggerFeedbackModal();
             }}
-            className="h-9 px-5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white text-xs font-extrabold border-b-3 border-[#087F5B] cursor-pointer"
+            className="h-9 px-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 border-2 border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            Anladım, Kapat
+            <span>💬 Görüş, Öneri ve Hata Bildir</span>
           </button>
+
+          <div className="flex flex-wrap items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                triggerShareAppModal();
+              }}
+              className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#0CA678] to-[#6741D9] hover:opacity-95 text-white text-xs font-extrabold border-b-3 border-[#4C28B5] flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Share2 size={14} />
+              <span>📲 Uygulamayı Paylaş</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setIsOpen(false);
+              }}
+              className="h-9 px-5 rounded-xl bg-[#0CA678] hover:bg-[#099268] text-white text-xs font-extrabold border-b-3 border-[#087F5B] cursor-pointer"
+            >
+              Anladım, Kapat
+            </button>
+          </div>
         </div>
       </div>
     </div>

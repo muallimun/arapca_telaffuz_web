@@ -10,6 +10,9 @@ import AppIntroSplash from "@/components/ui/AppIntroSplash";
 import ShareAppModal, {
   FooterShareButton,
 } from "@/components/ui/ShareAppModal";
+import FeedbackModal, {
+  FooterFeedbackButton,
+} from "@/components/ui/FeedbackModal";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -132,6 +135,7 @@ export default function RootLayout({
         <OnboardingTourModal />
         <GuideAndInfoModal />
         <ShareAppModal />
+        <FeedbackModal />
         <Header />
         <main className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 md:py-6">
           {children}
@@ -139,7 +143,7 @@ export default function RootLayout({
         <ScrollToTopButton />
         <MobileNav />
 
-        <footer className="flex flex-col sm:flex-row print:hidden border-t-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] dark:bg-[var(--surface)] py-3 px-3 sm:py-4 sm:px-6 mt-6 sm:mt-10 mb-14 lg:mb-0 text-center text-xs text-[var(--muted)] items-center justify-between gap-2 max-w-6xl w-full mx-auto rounded-t-2xl">
+        <footer className="hidden md:flex flex-row print:hidden border-t-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] dark:bg-[var(--surface)] py-3.5 px-6 mt-10 text-center text-xs text-[var(--muted)] items-center justify-between gap-2 max-w-6xl w-full mx-auto rounded-t-2xl">
           <div className="flex items-center justify-center sm:justify-start gap-2 max-w-full">
             <div className="w-7 h-7 rounded-lg bg-white dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] flex items-center justify-center p-0.5 shrink-0">
               <img
@@ -213,6 +217,8 @@ export default function RootLayout({
             >
               <span>muallimun.net</span>
             </a>
+
+            <FooterFeedbackButton />
 
             <FooterShareButton />
           </div>

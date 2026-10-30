@@ -89,8 +89,22 @@ export default function HomePage() {
     preferredLevel,
   ]);
 
-  const recommendedDialogueId =
-    dailyPackage.dailyDialogue.dialogue.id || "dlg_01";
+  const recommendedDialogue = dailyPackage.dailyDialogue.dialogue;
+  const recommendedDialogueId = recommendedDialogue.id || "dlg_01";
+  const recRawNum =
+    parseInt(recommendedDialogueId.replace("dlg_", ""), 10) || 1;
+  const recImgIndex = ((recRawNum - 1) % 60) + 1;
+  const recommendedCoverSrc =
+    (recommendedDialogue as unknown as { gorsel?: string }).gorsel ||
+    `/gorseller/${String(recImgIndex).padStart(3, "0")}.jpg`;
+  const recommendedSentenceCount =
+    (recommendedDialogue as unknown as { cumleler?: unknown[] }).cumleler
+      ?.length ?? recommendedDialogue.satirlar.length;
+  const [recImgFailed, setRecImgFailed] = useState(false);
+
+  useEffect(() => {
+    setRecImgFailed(false);
+  }, [recommendedDialogueId]);
 
   const modules: ModuleItem[] = useMemo(
     () => [
@@ -368,27 +382,51 @@ export default function HomePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
           {/* 1. Günün Diyaloğu (3 sütun) */}
-          <div className="lg:col-span-4 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] p-3 flex flex-col justify-between gap-2">
-            <div className="space-y-1.5">
+          <div className="lg:col-span-4 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] p-3 flex flex-col justify-between gap-1.5">
+            <div className="space-y-1">
               <div className="flex items-center justify-between gap-1.5">
                 <span className="text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997] uppercase tracking-wide">
                   📖 1. Günün Diyaloğu
                 </span>
                 <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-[#087F5B] dark:text-emerald-300 text-[10px] font-extrabold">
-                  Seviye {dailyPackage.dailyDialogue.dialogue.seviye}
+                  Seviye {recommendedDialogue.seviye}
                 </span>
               </div>
 
-              <h3 className="text-sm font-extrabold text-[var(--foreground)] leading-snug">
-                #{dailyPackage.dailyDialogue.dialogue.id.replace("dlg_", "")} —{" "}
-                {dailyPackage.dailyDialogue.dialogue.baslik_tr}
-              </h3>
-              <p
-                dir="rtl"
-                className="arabic text-lg font-bold text-[#087F5B] dark:text-[#20c997]"
+              <Link
+                href={`/diyalog/${recommendedDialogue.id}`}
+                onClick={() => playClick()}
+                className="block group"
               >
-                {displayArabic(dailyPackage.dailyDialogue.dialogue.baslik_ar)}
-              </p>
+                <h3 className="text-sm font-extrabold text-[var(--foreground)] group-hover:text-[#087F5B] dark:group-hover:text-[#20c997] transition-colors leading-snug">
+                  #{recommendedDialogue.id.replace("dlg_", "")} —{" "}
+                  {recommendedDialogue.baslik_tr}
+                </h3>
+                <p
+                  dir="rtl"
+                  className="arabic text-lg font-bold text-[#087F5B] dark:text-[#20c997]"
+                >
+                  {displayArabic(recommendedDialogue.baslik_ar)}
+                </p>
+
+                <div className="relative h-28 sm:h-32 w-full rounded-xl overflow-hidden border border-emerald-500/15 shadow-sm my-2 group">
+                  {!recImgFailed ? (
+                    <img
+                      src={recommendedCoverSrc}
+                      alt={recommendedDialogue.baslik_tr}
+                      onError={() => setRecImgFailed(true)}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-emerald-700 via-teal-800 to-indigo-900 flex items-center justify-center">
+                      <BookOpen size={32} className="text-white/80" />
+                    </div>
+                  )}
+                  <span className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                    {recommendedSentenceCount} Cümle • Sesli Diyalog
+                  </span>
+                </div>
+              </Link>
             </div>
 
             <div className="pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex items-center justify-between gap-2">
@@ -397,7 +435,7 @@ export default function HomePage() {
                 <span>{dailyPackage.dailyDialogue.reasonBadge}</span>
               </span>
               <Link
-                href={`/diyalog/${dailyPackage.dailyDialogue.dialogue.id}`}
+                href={`/diyalog/${recommendedDialogue.id}`}
                 onClick={() => playClick()}
                 className="text-[11px] font-extrabold text-[#087F5B] dark:text-[#20c997] inline-flex items-center gap-0.5 hover:underline shrink-0"
               >
