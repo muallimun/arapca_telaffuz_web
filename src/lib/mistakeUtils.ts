@@ -310,7 +310,7 @@ export function formatSrsReviewBanner(
 ): string | null {
   if (!record && !isInMistakes) return null;
   if (!record) {
-    return "📌 Neden tekrar ediyorsunuz? Hata Defteri kaydı • Kademe: 0/3 • Hedef: 3 ipucusuz doğru ile uzun süreli hafıza";
+    return "📌 Neden tekrar ediyorsunuz? Hata Defteri kaydı • Kademe: 0/5 • Hedef: Farklı günlerde 3 ipucusuz doğru (Kademe 3/5) ile uzun süreli hafıza";
   }
 
   const lastDate = new Date(record.lastReviewedAt);
@@ -335,15 +335,15 @@ export function formatSrsReviewBanner(
 export function formatMistakeStageProgressText(
   record?: SrsItemRecord | null
 ): string {
-  const stage = Math.min(3, Math.max(0, record?.stage ?? 0));
+  const stage = Math.min(5, Math.max(0, record?.stage ?? 0));
   if (stage >= 3) {
-    return "🎉 Tekrar Kademesi: 3/3 — Uzun süreli hafızaya alındı ve Hata Defteri'nden mezun oldu!";
+    return `🎉 Tekrar Kademesi: ${stage}/5 — Uzun süreli hafızaya alındı ve Hata Defteri'nden mezun oldu!`;
   }
   const nextLabel =
     stage === 1 ? "Yarın (+1 gün)" : stage === 2 ? "3 gün sonra" : "Bugün";
-  return `🔄 Tekrar Kademesi: ${stage}/3 — Sonraki tekrar: ${nextLabel} (Hata Defteri'nden çıkmak için ${
+  return `🔄 Tekrar Kademesi: ${stage}/5 — Sonraki tekrar: ${nextLabel} (Hata Defteri'nden çıkmak için ${
     3 - stage
-  } ipucusuz doğru daha gerekli)`;
+  } kademe daha gerekli)`;
 }
 
 export interface DailyWordRecommendation {

@@ -6,14 +6,12 @@ import {
   Sparkles,
   Languages,
   Gauge,
-  Mic,
   Repeat,
   BookOpen,
   FileText,
   ChevronLeft,
   ChevronRight,
   Rocket,
-  Volume2,
   Sun,
   PenTool,
   Link2,
@@ -38,6 +36,16 @@ export default function OnboardingTourModal() {
   const { showHareke, arabicFont } = useSettings();
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(0);
+
+  const handleComplete = () => {
+    playClick();
+    try {
+      localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+    } catch {
+      // ignore
+    }
+    setIsOpen(false);
+  };
 
   useEffect(() => {
     try {
@@ -71,16 +79,6 @@ export default function OnboardingTourModal() {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [isOpen, step]);
-
-  const handleComplete = () => {
-    playClick();
-    try {
-      localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
-    } catch {
-      // ignore
-    }
-    setIsOpen(false);
-  };
 
   if (!isOpen) return null;
 

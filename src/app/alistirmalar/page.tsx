@@ -76,6 +76,9 @@ function ExercisesPageContent() {
 
   // Kompakt Ayar Barı State
   const [rangePreset, setRangePreset] = useState<string>("all-dict");
+  const [cefrFilter, setCefrFilter] = useState<"all" | "A1" | "A2" | "B1" | "B2">(
+    "all"
+  );
   const [singleDialogueId, setSingleDialogueId] = useState<string>("all");
   const [startNum, setStartNum] = useState(1);
   const [endNum, setEndNum] = useState(60);
@@ -102,50 +105,52 @@ function ExercisesPageContent() {
     const sourceParam = searchParams.get("source");
     const dlgParam = searchParams.get("dialogueId");
     const planParam = searchParams.get("plan");
-    if (planParam === "daily") {
-      setSingleDialogueId("all");
-      setRangePreset("srs-daily");
-      setContentType("mixed");
-      setSelectedType("multiple-choice");
-      const dueVocab =
-        dailyPackage.dueReviewPool.words.length >= 4
-          ? dailyPackage.dueReviewPool.words
-          : [
-              ...dailyPackage.dueReviewPool.words,
-              ...sozluk
-                .filter(
-                  (w) =>
-                    !dailyPackage.dueReviewPool.words.some(
-                      (dw) => dw.id === w.id
-                    )
-                )
-                .slice(0, 8),
-            ];
-      setFrozenPools({
-        vocabulary: dueVocab,
-        idioms:
-          dailyPackage.dueReviewPool.idioms.length > 0
-            ? dailyPackage.dueReviewPool.idioms
-            : getCombinedIdiomsCatalog().slice(0, 4),
-        dialogues:
-          dailyPackage.dueReviewPool.dialogues.length > 0
-            ? dailyPackage.dueReviewPool.dialogues
-            : [dailyPackage.dailyDialogue.dialogue],
-        isMistakesMode: true,
-      });
-      setIsPlaying(true);
-      return;
-    }
-    if (sourceParam === "idioms") {
-      setContentType("idioms");
-    } else if (sourceParam === "mistakes") {
-      setRangePreset("mistakes");
-    }
-    if (dlgParam && diyaloglar.some((d) => d.id === dlgParam)) {
-      setSingleDialogueId(dlgParam);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+    const raf = requestAnimationFrame(() => {
+      if (planParam === "daily") {
+        setSingleDialogueId("all");
+        setRangePreset("srs-daily");
+        setContentType("mixed");
+        setSelectedType("multiple-choice");
+        const dueVocab =
+          dailyPackage.dueReviewPool.words.length >= 4
+            ? dailyPackage.dueReviewPool.words
+            : [
+                ...dailyPackage.dueReviewPool.words,
+                ...sozluk
+                  .filter(
+                    (w) =>
+                      !dailyPackage.dueReviewPool.words.some(
+                        (dw) => dw.id === w.id
+                      )
+                  )
+                  .slice(0, 8),
+              ];
+        setFrozenPools({
+          vocabulary: dueVocab,
+          idioms:
+            dailyPackage.dueReviewPool.idioms.length > 0
+              ? dailyPackage.dueReviewPool.idioms
+              : getCombinedIdiomsCatalog().slice(0, 4),
+          dialogues:
+            dailyPackage.dueReviewPool.dialogues.length > 0
+              ? dailyPackage.dueReviewPool.dialogues
+              : [dailyPackage.dailyDialogue.dialogue],
+          isMistakesMode: true,
+        });
+        setIsPlaying(true);
+        return;
+      }
+      if (sourceParam === "idioms") {
+        setContentType("idioms");
+      } else if (sourceParam === "mistakes") {
+        setRangePreset("mistakes");
+      }
+      if (dlgParam && diyaloglar.some((d) => d.id === dlgParam)) {
+        setSingleDialogueId(dlgParam);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [searchParams, dailyPackage]);
 
   const mistakesResolved = useMemo(
     () => resolveMistakesPool(mistakeIds),
@@ -164,13 +169,19 @@ function ExercisesPageContent() {
     if (rangePreset === "mistakes" && mistakesResolved.dialogues.length > 0) {
       return mistakesResolved.dialogues;
     }
-    return diyaloglar.filter((dlg) => {
+    const rangeFiltered = diyaloglar.filter((dlg) => {
       const num = parseInt(dlg.id.replace("dlg_", ""), 10);
       return num >= startNum && num <= endNum;
     });
+    if (cefrFilter !== "all") {
+      const byCefr = rangeFiltered.filter((dlg) => dlg.seviye === cefrFilter);
+      if (byCefr.length > 0) return byCefr;
+    }
+    return rangeFiltered;
   }, [
     singleDialogueId,
     rangePreset,
+    cefrFilter,
     dailyPackage,
     mistakesResolved.dialogues,
     startNum,
@@ -226,10 +237,19 @@ function ExercisesPageContent() {
       [...extracted, ...byLevel].forEach((i) => map.set(i.id, i));
       return Array.from(map.values());
     }
+    if (cefrFilter !== "all") {
+      const targetIdiomLvl =
+        cefrFilter === "A1" || cefrFilter === "A2" ? "A1-A2" : cefrFilter;
+      const filteredByCefr = allCatalog.filter(
+        (i) => i.level === targetIdiomLvl || i.level === cefrFilter
+      );
+      if (filteredByCefr.length > 0) return filteredByCefr;
+    }
     return allCatalog;
   }, [
     singleDialogueId,
     rangePreset,
+    cefrFilter,
     selectedDialogues,
     dailyPackage.dueReviewPool.idioms,
     mistakesResolved.idioms,
@@ -294,8 +314,8 @@ function ExercisesPageContent() {
         combinedVocabulary: padded,
         poolNotice:
           cleanMistakeWords.length > 0
-            ? `Hata defterinizde ${cleanMistakeWords.length} kelime/ifade bulunduğu için şık havuzu genel sözlükle desteklendi. 3 kez ipucusuz doğru bildikleriniz (Kademe 3/3) hata defterinden mezun edilir.`
-            : `Hata defterinizdeki diyalog cümleleriyle pratik yapabilirsiniz. 3 kez ipucusuz doğru bildikleriniz (Kademe 3/3) hata defterinden mezun edilir.`,
+            ? `Hata defterinizde ${cleanMistakeWords.length} kelime/ifade bulunduğu için şık havuzu genel sözlükle desteklendi. Farklı günlerde 3 kez ipucusuz doğru bildikleriniz (Kademe 3/5) hata defterinden mezun edilir.`
+            : `Hata defterinizdeki diyalog cümleleriyle pratik yapabilirsiniz. Farklı günlerde 3 kez ipucusuz doğru bildikleriniz (Kademe 3/5) hata defterinden mezun edilir.`,
       };
     }
 
@@ -340,8 +360,13 @@ function ExercisesPageContent() {
     }
 
     if (rangePreset === "all-dict") {
+      const filteredByLevel =
+        cefrFilter === "all"
+          ? nonProperSozluk
+          : nonProperSozluk.filter((w) => w.cefr === cefrFilter);
       return {
-        combinedVocabulary: nonProperSozluk,
+        combinedVocabulary:
+          filteredByLevel.length >= 4 ? filteredByLevel : nonProperSozluk,
         poolNotice: null,
       };
     }
@@ -355,13 +380,17 @@ function ExercisesPageContent() {
         }
       });
     });
+    const list = Array.from(allVocabMap.values());
+    const filteredList =
+      cefrFilter === "all" ? list : list.filter((w) => w.cefr === cefrFilter);
     return {
-      combinedVocabulary: Array.from(allVocabMap.values()),
+      combinedVocabulary: filteredList.length >= 4 ? filteredList : list,
       poolNotice: null,
     };
   }, [
     singleDialogueId,
     rangePreset,
+    cefrFilter,
     selectedDialogues,
     favoriteWords,
     weakWords,
@@ -729,6 +758,30 @@ function ExercisesPageContent() {
                 </select>
               </div>
 
+              {/* 2.5. CEFR Seviye Filtresi (Tüm Seviyeler | A1 | A2 | B1 | B2) */}
+              <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl px-2.5 h-9 border border-[#E6D7BE] dark:border-[var(--border)] flex items-center gap-1.5 min-w-0">
+                <span className="text-[11px] font-bold text-[var(--muted)] whitespace-nowrap">
+                  Seviye:
+                </span>
+                <select
+                  value={cefrFilter}
+                  onChange={(e) => {
+                    playClick();
+                    setCefrFilter(
+                      e.target.value as "all" | "A1" | "A2" | "B1" | "B2"
+                    );
+                  }}
+                  aria-label="CEFR Seviye Filtresi"
+                  className="bg-transparent text-xs font-extrabold text-[var(--foreground)] focus:outline-none cursor-pointer w-full truncate"
+                >
+                  <option value="all">Tüm Seviyeler (A1–B2)</option>
+                  <option value="A1">Seviye A1 (Başlangıç)</option>
+                  <option value="A2">Seviye A2 (Temel)</option>
+                  <option value="B1">Seviye B1 (Orta)</option>
+                  <option value="B2">Seviye B2 (İleri)</option>
+                </select>
+              </div>
+
               {/* 3. İçerik Türü (Soru Kaynağı: Kelimeler | Kalıp İfadeler | Cümleler | Karışık) */}
               <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1.5 h-auto border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between sm:justify-start gap-1.5 w-full sm:w-auto">
                 <span className="text-[11px] font-bold text-[var(--muted)] px-1 whitespace-nowrap">
@@ -948,7 +1001,7 @@ function ExercisesPageContent() {
               mistakeIds.length > 0 && (
                 <div className="bg-amber-50 dark:bg-amber-950/40 rounded-xl px-3.5 py-2 border border-amber-300 dark:border-amber-700/60 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-amber-900 dark:text-amber-200">
                   <span>
-                    ⚡ Akıllı Hata Defterinizde <strong>{mistakeIds.length}</strong> öğe kayıtlı. 3 kez ipucusuz doğru cevapladığınız (Kademe 3/3) sorular uzun süreli hafızaya alınarak listeden otomatik mezun edilir.
+                    ⚡ Akıllı Hata Defterinizde <strong>{mistakeIds.length}</strong> öğe kayıtlı. Farklı günlerde 3 kez ipucusuz doğru cevapladığınız (Kademe 3/5) sorular uzun süreli hafızaya alınarak listeden otomatik mezun edilir.
                   </span>
                   <button
                     type="button"

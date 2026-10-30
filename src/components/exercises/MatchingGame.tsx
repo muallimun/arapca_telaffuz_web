@@ -78,7 +78,7 @@ export default function MatchingGame({
   contentType = "words",
   timeLimit,
   feedbackMode = "instant",
-  isMistakesMode = false,
+  isMistakesMode: _isMistakesMode = false,
   onClose,
 }: Props) {
   // Her sette 5 kelime ile tek ekranda kaydırmasız görünüm
@@ -149,9 +149,11 @@ export default function MatchingGame({
   const isCompleted =
     isInstantCompleted || (feedbackMode === "end" && showEndBar) || showEndBar;
 
+  const evaluateEndModeRef = useRef<() => void>(() => {});
+
   const handleTimeout = () => {
     if (feedbackMode === "end" && !isExamEvaluated) {
-      evaluateEndModeConnections();
+      evaluateEndModeRef.current();
     }
     setIsGameOver(true);
     setShowEndBar(true);
@@ -565,6 +567,7 @@ export default function MatchingGame({
     }
     setShowEndBar(true);
   };
+  evaluateEndModeRef.current = evaluateEndModeConnections;
 
   // In end mode, remove only the wrong connections while keeping the green/correct ones locked
   const handleFixWrongConnectionsInPlace = () => {
@@ -761,7 +764,7 @@ export default function MatchingGame({
   const handleRetryWrongPairs = () => {
     playClick();
     if (wrongPairsHistory.length === 0) return;
-    let retryPool = [...wrongPairsHistory];
+    const retryPool = [...wrongPairsHistory];
     if (retryPool.length < 2 && currentPairs.length >= 2) {
       const extra = currentPairs.find(
         (p) => !retryPool.some((r) => r.matchId === p.matchId)

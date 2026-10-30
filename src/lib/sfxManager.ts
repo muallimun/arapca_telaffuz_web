@@ -43,8 +43,11 @@ class SoundEffectsManager {
 
   private getContext(): AudioContext {
     if (!this.ctx) {
-      const AC =
-        window.AudioContext || (window as any).webkitAudioContext;
+      const win = window as Window & {
+        webkitAudioContext?: typeof AudioContext;
+      };
+      const AC = window.AudioContext || win.webkitAudioContext;
+      if (!AC) throw new Error("AudioContext not supported");
       this.ctx = new AC();
     }
     return this.ctx;

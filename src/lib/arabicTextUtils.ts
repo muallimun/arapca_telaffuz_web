@@ -199,6 +199,9 @@ export function normalizeArabicForPronunciation(text: string): string {
   if (!text) return "";
 
   const cleaned = text
+    // 0. Parantez içi rakamları ve tüm rakamları temizle
+    .replace(/\([\d\s\u0660-\u0669\u06F0-\u06F9\-+]+\)/g, " ")
+    .replace(/[\d\u0660-\u0669\u06F0-\u06F9]/g, " ")
     // 1. Harekeler, şedde, çeker ve Kur'an durak/tecvid işaretlerini temizle
     .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
     // Tatweel (keşide) ve sıfır genişlikli karakterleri temizle

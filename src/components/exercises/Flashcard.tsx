@@ -210,7 +210,7 @@ export default function Flashcard({
     addStudyMinutes,
   } = useUserStore();
   const { speechRate, showHareke, arabicFont } = useSettings();
-  const { playAudio, playTTS } = useAudioStore();
+  const { playAudio: _playAudio, playTTS: _playTTS } = useAudioStore();
 
   const nextCard = useCallback(() => {
     if (deck.length === 0) return;

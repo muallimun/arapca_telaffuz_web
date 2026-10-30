@@ -15,7 +15,6 @@ interface InMemoryStats {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __muallimunStats: InMemoryStats | undefined;
 }
 

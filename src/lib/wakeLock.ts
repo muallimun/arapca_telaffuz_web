@@ -13,7 +13,7 @@ interface WakeLockSentinelLike {
 }
 
 let wakeLockSentinel: WakeLockSentinelLike | null = null;
-let activeLocks = new Set<string>();
+const activeLocks = new Set<string>();
 let visibilityListenerAttached = false;
 
 async function acquireNativeWakeLock(): Promise<void> {

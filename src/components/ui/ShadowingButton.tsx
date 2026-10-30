@@ -42,7 +42,8 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
         }
         sessionRef.current = null;
       }
-      if (audioPlayerRef.current) audioPlayerRef.current.pause();
+      const player = audioPlayerRef.current;
+      if (player) player.pause();
     };
   }, []);
 

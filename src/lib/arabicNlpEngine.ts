@@ -448,8 +448,9 @@ export function getCanonicalMakhrajPairsCount(): number {
  */
 export function cleanDisplayText(text: string): string {
   return text
+    .replace(/\([\d\s\u0660-\u0669\u06F0-\u06F9\-+]+\)/g, " ")
     .replace(/\u0640/g, "")
-    .replace(/[\(\)\[\]\{\}\d]/g, "")
+    .replace(/[\(\)\[\]\{\}\d\u0660-\u0669\u06F0-\u06F9]/g, "")
     .replace(/[.,،؛؟?!:"'«»…\-–—/\\]/g, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -1428,14 +1429,13 @@ export function evaluateAdaptiveCoaching(
   lastMakhrajPair?: string,
   currentFluencyScore?: number
 ): AdaptiveCoachingResult {
-  const levelOrder = ["A1", "A2", "B1", "B2", "C1"];
+  const levelOrder = ["A1", "A2", "B1", "B2"];
   const normalizedLevel =
     levelOrder.find((l) => currentLevel.toUpperCase().includes(l)) || "A1";
   const currentIdx = levelOrder.indexOf(normalizedLevel);
+  const isAtMaxLevel = currentIdx >= levelOrder.length - 1;
   const nextLevel =
-    currentIdx >= 0 && currentIdx < levelOrder.length - 1
-      ? levelOrder[currentIdx + 1]
-      : "C1";
+    currentIdx >= 0 && !isAtMaxLevel ? levelOrder[currentIdx + 1] : "B2";
 
   // %0 (sessiz/iptal edilmiş) denemeleri geçmiş ortalamasına dahil etme
   const validScores = recentScores.filter((s) => s > 0);
@@ -1451,6 +1451,15 @@ export function evaluateAdaptiveCoaching(
     const avg6 = last6.reduce((a, b) => a + b, 0) / 6;
     const allAbove85 = last6.every((s) => s >= 85);
     if (allAbove85 || avg6 >= 85) {
+      if (isAtMaxLevel || nextLevel === "B2") {
+        return {
+          action: "level_up",
+          suggestedLevel: "B2",
+          message: `Harika! Son 6 telaffuz denemenizin ortalaması %${Math.round(
+            avg6
+          )}. B2 ileri seviye diyaloglara, Kör Dinleme veya Rol Yapma moduna geçebilirsiniz!`,
+        };
+      }
       return {
         action: "level_up",
         suggestedLevel: nextLevel,

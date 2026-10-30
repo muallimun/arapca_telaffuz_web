@@ -18,7 +18,6 @@ import { normalizeArabicForPronunciation } from "@/lib/arabicTextUtils";
 import { HybridSpeechManager, SttEngineType } from "@/lib/speechManager";
 import {
   X,
-  Play,
   Square,
   Mic,
   RotateCcw,
@@ -30,7 +29,6 @@ import {
   Download,
   Award,
   CheckCircle2,
-  Gauge,
   Target,
   ArrowLeft,
   TrendingUp,
@@ -929,7 +927,7 @@ export default function ShadowingModal({
     };
 
     setEvaluation(result);
-    if (result.isEvaluated !== false && result.overallScore > 0) {
+    if (result.isEvaluated !== false && result.overallScore >= 0) {
       recordPronunciationScore(result.overallScore);
     }
     onEvaluated?.(result.overallScore, activeText);
@@ -1684,7 +1682,7 @@ export default function ShadowingModal({
                           playClick();
                           const next = adaptiveResult.suggestedLevel;
                           if (next === "A2") setPreferredLevel("Orta");
-                          else if (next === "B1" || next === "B2" || next === "C1")
+                          else if (next === "B1" || next === "B2")
                             setPreferredLevel("İleri");
                         }}
                         className="px-3.5 py-1.5 rounded-xl bg-[#6741D9] text-white font-extrabold border-b-3 border-[#5230B5] shrink-0 cursor-pointer"

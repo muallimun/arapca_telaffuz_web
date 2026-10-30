@@ -15,9 +15,6 @@ import {
   QrCode,
   PenTool,
   Eye,
-  UserCheck,
-  KeyRound,
-  Settings2,
 } from "lucide-react";
 import { Dialogue } from "@/types/data";
 import { DialogueVocabularyEntry, getWordCategory } from "@/lib/dict";

@@ -144,6 +144,7 @@ export default function DialogueDetailPage({
     isWordLearned,
     recordPronunciationScore,
     pronunciationScores,
+    totalPronunciationAttempts,
     mistakeIds,
   } = useUserStore();
 
@@ -167,15 +168,19 @@ export default function DialogueDetailPage({
   const [focusedLineIndex, setFocusedLineIndex] = useState<number>(0);
   const [isClassroomLoop, setIsClassroomLoop] = useState<boolean>(false);
   const isClassroomLoopRef = useRef<boolean>(false);
-  isClassroomLoopRef.current = isClassroomLoop;
   const isClassroomModeRef = useRef<boolean>(false);
-  isClassroomModeRef.current = isClassroomMode;
+  const togglePlayAllShortcutRef = useRef<() => void>(() => {});
+  const classroomKeyHandlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  useEffect(() => {
+    isClassroomLoopRef.current = isClassroomLoop;
+    isClassroomModeRef.current = isClassroomMode;
+  }, [isClassroomLoop, isClassroomMode]);
   const [selectedClassroomLine, setSelectedClassroomLine] = useState<
     number | null
   >(1);
   const [flowMode, setFlowMode] = useState<FlowMode>("single");
   const [isPlayingAll, setIsPlayingAll] = useState(false);
-  const [dialogueLoopTurn, setDialogueLoopTurn] = useState<number>(1);
+  const [, setDialogueLoopTurn] = useState<number>(1);
   const [loopingLineSira, setLoopingLineSira] = useState<number | null>(null);
   const [sentenceLoopRemaining, setSentenceLoopRemaining] = useState<
     number | "infinite" | null
@@ -358,7 +363,6 @@ export default function DialogueDetailPage({
     return () => {
       cleanupRoleplayMic();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studyMode, resolvedParams.id]);
 
   useEffect(() => {
@@ -447,23 +451,26 @@ export default function DialogueDetailPage({
 
   // Cümle içi ShadowingButton veya telaffuz puanı kaydedildiğinde ödev telaffuz sayacını otomatik artır
   useEffect(() => {
-    const scoreLen = pronunciationScores.length;
+    const attemptCount = Math.max(
+      totalPronunciationAttempts || 0,
+      pronunciationScores.length
+    );
     if (prevPronCountRef.current === null) {
-      prevPronCountRef.current = scoreLen;
+      prevPronCountRef.current = attemptCount;
       return;
     }
-    if (scoreLen > prevPronCountRef.current) {
-      prevPronCountRef.current = scoreLen;
+    if (attemptCount > prevPronCountRef.current) {
+      prevPronCountRef.current = attemptCount;
       if (hwConfig.active) {
         const lastScore =
           pronunciationScores[pronunciationScores.length - 1] ?? 75;
         setHwPronouncedCount((c) => c + 1);
-        if (lastScore > 0) {
+        if (lastScore >= 0) {
           setHwCollectedScores((prev) => [...prev, lastScore]);
         }
       }
     }
-  }, [pronunciationScores, hwConfig.active]);
+  }, [totalPronunciationAttempts, pronunciationScores, hwConfig.active]);
 
   // Diyalog dinlerken, rol yaparken veya gölgeleme çalışırken mobil ekranın kararmasını önle
   const isWakeLockNeeded =
@@ -582,6 +589,71 @@ export default function DialogueDetailPage({
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, [isShadowingPause, shadowingPauseMs]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+
+      const isClassroomNavKey =
+        isClassroomMode &&
+        (e.key === "ArrowDown" ||
+          e.key === "ArrowUp" ||
+          e.key === "ArrowLeft" ||
+          e.key === "ArrowRight" ||
+          e.key === "Escape" ||
+          e.key === "p" ||
+          e.key === "P" ||
+          e.key === "r" ||
+          e.key === "R");
+      if (e.code !== "Space" && !isClassroomNavKey) {
+        return;
+      }
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      if (
+        !isClassroomMode &&
+        (tag === "BUTTON" || tag === "A")
+      ) {
+        return;
+      }
+      if (
+        shadowingTarget ||
+        isPdfModalOpen ||
+        isShareModalOpen ||
+        isLightboxOpen ||
+        isTeacherHwModalOpen ||
+        isHwReportModalOpen ||
+        isHwQuizModalOpen ||
+        document.querySelector(".fixed.inset-0")
+      ) {
+        return;
+      }
+      if (isClassroomMode && document.activeElement?.tagName === "BUTTON") {
+        (document.activeElement as HTMLElement)?.blur();
+      }
+      classroomKeyHandlerRef.current(e);
+    };
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+  }, [
+    isClassroomMode,
+    shadowingTarget,
+    isPdfModalOpen,
+    isShareModalOpen,
+    isLightboxOpen,
+    isTeacherHwModalOpen,
+    isHwReportModalOpen,
+    isHwQuizModalOpen,
+  ]);
 
   if (!dialogue) return notFound();
 
@@ -1246,7 +1318,6 @@ export default function DialogueDetailPage({
     }
   };
 
-  const togglePlayAllShortcutRef = useRef<() => void>(() => {});
   togglePlayAllShortcutRef.current = () => {
     if (isRoleplayRunning) return;
     if (
@@ -1263,7 +1334,6 @@ export default function DialogueDetailPage({
     handleTogglePlayAll();
   };
 
-  const classroomKeyHandlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
   classroomKeyHandlerRef.current = (e: KeyboardEvent) => {
     if (!dialogue) return;
     const totalLines = dialogue.satirlar.length;
@@ -1351,70 +1421,6 @@ export default function DialogueDetailPage({
     }
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const tag = target?.tagName;
-      if (
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        tag === "SELECT" ||
-        target?.isContentEditable
-      ) {
-        return;
-      }
-
-      const isClassroomNavKey =
-        isClassroomMode &&
-        (e.key === "ArrowDown" ||
-          e.key === "ArrowUp" ||
-          e.key === "ArrowLeft" ||
-          e.key === "ArrowRight" ||
-          e.key === "Escape" ||
-          e.key === "p" ||
-          e.key === "P" ||
-          e.key === "r" ||
-          e.key === "R");
-      if (e.code !== "Space" && !isClassroomNavKey) {
-        return;
-      }
-      if (e.ctrlKey || e.altKey || e.metaKey) return;
-      if (
-        !isClassroomMode &&
-        (tag === "BUTTON" || tag === "A")
-      ) {
-        return;
-      }
-      if (
-        shadowingTarget ||
-        isPdfModalOpen ||
-        isShareModalOpen ||
-        isLightboxOpen ||
-        isTeacherHwModalOpen ||
-        isHwReportModalOpen ||
-        isHwQuizModalOpen ||
-        document.querySelector(".fixed.inset-0")
-      ) {
-        return;
-      }
-      if (isClassroomMode && document.activeElement?.tagName === "BUTTON") {
-        (document.activeElement as HTMLElement)?.blur();
-      }
-      classroomKeyHandlerRef.current(e);
-    };
-    window.addEventListener("keydown", handleKeyDown, { capture: true });
-    return () =>
-      window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [
-    isClassroomMode,
-    shadowingTarget,
-    isPdfModalOpen,
-    isShareModalOpen,
-    isLightboxOpen,
-    isTeacherHwModalOpen,
-    isHwReportModalOpen,
-    isHwQuizModalOpen,
-  ]);
 
   const cycleRoleplayHintLevel = (sira: number) => {
     playClick();

@@ -35,7 +35,22 @@ export interface WhisperWorkerResponse {
   error?: string;
 }
 
-let transcriber: any = null;
+type AsrOutputItem = { text?: string };
+type AsrOutput = AsrOutputItem | AsrOutputItem[];
+type AsrPipelineFn = (
+  audio: Float32Array,
+  options: Record<string, unknown>
+) => Promise<AsrOutput>;
+
+interface NavigatorWithGpu extends Navigator {
+  gpu?: {
+    requestAdapter: () => Promise<{
+      requestDevice?: () => Promise<unknown>;
+    } | null>;
+  };
+}
+
+let transcriber: AsrPipelineFn | null = null;
 let activeDevice: "webgpu" | "wasm" = "wasm";
 let activeModelId: string = "onnx-community/whisper-base";
 let currentActiveRequestId: string | undefined = undefined;
@@ -56,21 +71,21 @@ const MODEL_CANDIDATES = [
  */
 async function hasUsableWebGPU(): Promise<boolean> {
   try {
-    if (
-      typeof navigator === "undefined" ||
-      !("gpu" in navigator) ||
-      !(navigator as any).gpu
-    ) {
+    const nav =
+      typeof navigator !== "undefined"
+        ? (navigator as NavigatorWithGpu)
+        : undefined;
+    if (!nav || !("gpu" in nav) || !nav.gpu) {
       return false;
     }
     // Firefox'ta WebGPU ONNX shader derlemesi çökebildiği için doğrudan kararlı WASM q8 tercih edilir
     if (
-      typeof navigator.userAgent === "string" &&
-      /firefox/i.test(navigator.userAgent)
+      typeof nav.userAgent === "string" &&
+      /firefox/i.test(nav.userAgent)
     ) {
       return false;
     }
-    const adapter = await (navigator as any).gpu.requestAdapter();
+    const adapter = await nav.gpu.requestAdapter();
     if (!adapter) return false;
     if (typeof adapter.requestDevice === "function") {
       const device = await adapter.requestDevice();
@@ -204,14 +219,18 @@ function preprocessAudioForWhisper(
 
 async function createPipelineWithDevice(
   device: "webgpu" | "wasm"
-): Promise<any> {
+): Promise<AsrPipelineFn> {
   let lastErr: unknown = null;
   for (const modelId of MODEL_CANDIDATES) {
     try {
       const pipe = await pipeline("automatic-speech-recognition", modelId, {
         device,
         dtype: "q8",
-        progress_callback: (progress: any) => {
+        progress_callback: (progress: {
+          progress?: number;
+          file?: string;
+          status?: string;
+        }) => {
           self.postMessage({
             requestId: currentActiveRequestId,
             status: "progress",
@@ -222,7 +241,7 @@ async function createPipelineWithDevice(
       });
       activeDevice = device;
       activeModelId = modelId;
-      return pipe;
+      return pipe as unknown as AsrPipelineFn;
     } catch (err) {
       lastErr = err;
     }
@@ -293,11 +312,13 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
         status: "ready",
         device: activeDevice,
       } satisfies WhisperWorkerResponse);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMsg =
+        err instanceof Error ? err.message : "Model ön yüklemesi başarısız";
       self.postMessage({
         requestId,
         status: "error",
-        error: err?.message || "Model ön yüklemesi başarısız",
+        error: errMsg,
       } satisfies WhisperWorkerResponse);
     }
     return;
@@ -345,7 +366,7 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
         device: activeDevice,
       } satisfies WhisperWorkerResponse);
 
-      const runInference = async (asrPipe: any) => {
+      const runInference = async (asrPipe: AsrPipelineFn) => {
         return await asrPipe(processedAudio, {
           language: "arabic",
           task: "transcribe",
@@ -358,7 +379,7 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
         });
       };
 
-      let output: any;
+      let output: AsrOutput;
       try {
         output = await runInference(model);
       } catch (inferErr) {
@@ -385,7 +406,7 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
 
       let recognizedText = (
         Array.isArray(output)
-          ? output.map((o) => o.text).join(" ")
+          ? output.map((o) => o.text || "").join(" ")
           : output?.text || ""
       ).trim();
 
@@ -409,13 +430,16 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
         ignored,
         device: activeDevice,
       } satisfies WhisperWorkerResponse);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errMsg =
+        error instanceof Error
+          ? error.message
+          : `Whisper (${activeModelId}) ses çözümleme hatası`;
       self.postMessage({
         requestId,
         status: "error",
         ignored: isRequestStaleOrAborted(requestId),
-        error:
-          error?.message || `Whisper (${activeModelId}) ses çözümleme hatası`,
+        error: errMsg,
       } satisfies WhisperWorkerResponse);
     }
   }

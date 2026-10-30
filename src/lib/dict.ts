@@ -4939,3 +4939,162 @@ export function getExampleSentencesForWord(
   exampleSentencesCache.set(cacheKey, results);
   return results;
 }
+
+const CEFR_RANK: Record<string, number> = {
+  A1: 1,
+  A2: 2,
+  B1: 3,
+  B2: 4,
+};
+
+function inferFallbackWordCefr(item: DictionaryItem): "A1" | "A2" | "B1" | "B2" {
+  const cat = getWordCategory(item);
+  if (cat === "ozel-isim" || cat === "edat") return "A1";
+  const primaryClean = cleanArabicText(
+    (item.mufret || item.mazi || item.muzari || "").split("/")[0]
+  ).replace(/^ال/, "");
+  const trLower = (item.anlam_tr || "").toLocaleLowerCase("tr-TR");
+  if (
+    /merhaba|selam|evet|hayır|anne|baba|kardeş|ev|okul|su|ekmek|kitap|kalem|gün|sabah|akşam|bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz|on|ben|sen|o|biz|siz/.test(
+      trLower
+    )
+  ) {
+    return "A1";
+  }
+  if (primaryClean.startsWith("است") || primaryClean.length >= 6) {
+    return "B2";
+  }
+  if (primaryClean.length === 5) {
+    return "B1";
+  }
+  if (primaryClean.length <= 3) {
+    return "A1";
+  }
+  return "A2";
+}
+
+function populateDictionaryCefrLevels(): void {
+  const dialogues = diyaloglarRaw as Dialogue[];
+  const wordIdToLowestCefr = new Map<string, "A1" | "A2" | "B1" | "B2">();
+  const rootToLowestCefr = new Map<string, "A1" | "A2" | "B1" | "B2">();
+
+  // 1. Tüm diyalogları tarayarak her kelimenin geçtiği en düşük CEFR seviyesini belirle
+  for (const dlg of dialogues) {
+    const dlgLevel: "A1" | "A2" | "B1" | "B2" =
+      dlg.seviye === "A1" ||
+      dlg.seviye === "A2" ||
+      dlg.seviye === "B1" ||
+      dlg.seviye === "B2"
+        ? dlg.seviye
+        : "A1";
+    const dlgRank = CEFR_RANK[dlgLevel];
+
+    for (const line of dlg.satirlar) {
+      const tokens = line.arapca
+        .replace(/[.,!?؟،;؛:"'()\[\]{}\d]/g, " ")
+        .split(/\s+/)
+        .filter(Boolean);
+
+      for (let idx = 0; idx < tokens.length; idx++) {
+        const tok = tokens[idx];
+        const cleanTok = cleanArabicText(tok);
+        if (!cleanTok) continue;
+
+        const candidateKeys = [cleanTok];
+        for (const pref of [
+          "وال",
+          "بال",
+          "فال",
+          "كال",
+          "لل",
+          "ال",
+          "و",
+          "ف",
+          "ب",
+          "ل",
+          "س",
+        ]) {
+          if (cleanTok.startsWith(pref) && cleanTok.length - pref.length >= 2) {
+            candidateKeys.push(cleanTok.slice(pref.length));
+          }
+        }
+        for (const suff of [
+          "كما",
+          "هما",
+          "هم",
+          "هن",
+          "كم",
+          "نا",
+          "ها",
+          "ه",
+          "ك",
+          "ي",
+        ]) {
+          if (cleanTok.endsWith(suff) && cleanTok.length - suff.length >= 2) {
+            candidateKeys.push(cleanTok.slice(0, -suff.length));
+          }
+        }
+
+        for (const key of candidateKeys) {
+          const candidates = dictMultiIndex.get(key);
+          if (!candidates) continue;
+          for (const c of candidates) {
+            const existingLvl = wordIdToLowestCefr.get(c.item.id);
+            if (!existingLvl || dlgRank < CEFR_RANK[existingLvl]) {
+              wordIdToLowestCefr.set(c.item.id, dlgLevel);
+            }
+            if (c.item.kok && c.item.kok !== "-") {
+              const rKey = cleanArabicText(c.item.kok).replace(/\s+/g, "");
+              if (rKey) {
+                const exRootLvl = rootToLowestCefr.get(rKey);
+                if (!exRootLvl || dlgRank < CEFR_RANK[exRootLvl]) {
+                  rootToLowestCefr.set(rKey, dlgLevel);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 2. unifiedDictionary içindeki tüm 1.494 kelimeye gerçek CEFR seviyesini ata
+  for (const item of unifiedDictionary) {
+    if (
+      item.cefr === "A1" ||
+      item.cefr === "A2" ||
+      item.cefr === "B1" ||
+      item.cefr === "B2"
+    ) {
+      continue;
+    }
+    const direct = wordIdToLowestCefr.get(item.id);
+    if (direct) {
+      item.cefr = direct;
+      continue;
+    }
+    if (item.kok && item.kok !== "-") {
+      const rKey = cleanArabicText(item.kok).replace(/\s+/g, "");
+      const rootLvl = rKey ? rootToLowestCefr.get(rKey) : undefined;
+      if (rootLvl) {
+        item.cefr = rootLvl;
+        continue;
+      }
+    }
+    item.cefr = inferFallbackWordCefr(item);
+  }
+
+  // 3. dictMultiIndex ve dictIndex içindeki klonlanmış referanslara da cefr değerini senkronize et
+  const idToCefr = new Map<string, DictionaryItem["cefr"]>();
+  for (const item of unifiedDictionary) {
+    idToCefr.set(item.id, item.cefr);
+  }
+  for (const candList of dictMultiIndex.values()) {
+    for (const c of candList) {
+      const cefr = idToCefr.get(c.item.id);
+      if (cefr) c.item.cefr = cefr;
+    }
+  }
+}
+
+populateDictionaryCefrLevels();

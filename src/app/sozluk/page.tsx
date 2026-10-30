@@ -478,7 +478,6 @@ export default function DictionaryPage() {
   }, [
     basePool,
     dialogueContextMap,
-    selectedDialogueId,
     typeFilter,
     rootFilter,
     statusFilter,

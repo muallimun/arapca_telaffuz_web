@@ -98,6 +98,7 @@ export default function SettingsPage() {
     setDailyGoalMinutes,
     exportProgress,
     importProgress,
+    restoreLastAutoBackup,
     resetProgress,
   } = useUserStore();
   const { isInstallable, isInstalled, isIOS, installApp } = usePwaInstall();
@@ -106,6 +107,8 @@ export default function SettingsPage() {
   const [activeCategory, setActiveCategory] =
     useState<SettingsCategory>("all");
   const [confirmReset, setConfirmReset] = useState(false);
+  const [importMode, setImportMode] = useState<"merge" | "overwrite">("merge");
+  const [hasAutoBackup, setHasAutoBackup] = useState(false);
   const [dataMessage, setDataMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -122,7 +125,16 @@ export default function SettingsPage() {
   const [offlineAllProgressPct, setOfflineAllProgressPct] = useState<number>(0);
 
   useEffect(() => {
-    setMounted(true);
+    const raf = requestAnimationFrame(() => {
+      setMounted(true);
+      try {
+        setHasAutoBackup(
+          Boolean(localStorage.getItem("arabic_app_backup_before_import"))
+        );
+      } catch {
+        setHasAutoBackup(false);
+      }
+    });
     if (theme === "dark") document.documentElement.classList.add("dark");
     else document.documentElement.classList.remove("dark");
     void loadAudioManifest().then(() => {
@@ -130,6 +142,7 @@ export default function SettingsPage() {
         setOfflineDownloadedIds(ids)
       );
     });
+    return () => cancelAnimationFrame(raf);
   }, [theme]);
 
   useEffect(() => {
@@ -179,15 +192,27 @@ export default function SettingsPage() {
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setDataMessage({
+        type: "error",
+        text: "Dosya boyutu çok büyük (en fazla 2 MB .json yedek dosyası yüklenebilir).",
+      });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const content = typeof reader.result === "string" ? reader.result : "";
-      const ok = importProgress(content);
+      const ok = importProgress(content, importMode);
       if (ok) {
         playClick();
+        setHasAutoBackup(true);
         setDataMessage({
           type: "success",
-          text: "Yedek dosyası başarıyla yüklendi ve tüm ilerlemeniz geri getirildi!",
+          text:
+            importMode === "merge"
+              ? "Yedek dosyası mevcut ilerlemenizle güvenli biçimde birleştirildi!"
+              : "Yedek dosyası başarıyla yüklendi ve tüm ilerlemeniz geri getirildi!",
         });
       } else {
         setDataMessage({
@@ -198,6 +223,22 @@ export default function SettingsPage() {
       if (fileInputRef.current) fileInputRef.current.value = "";
     };
     reader.readAsText(file);
+  };
+
+  const handleRestoreAutoBackup = () => {
+    playClick();
+    const ok = restoreLastAutoBackup();
+    if (ok) {
+      setDataMessage({
+        type: "success",
+        text: "İçe aktarma öncesi alınan otomatik yedek başarıyla geri yüklendi!",
+      });
+    } else {
+      setDataMessage({
+        type: "error",
+        text: "Geri yüklenecek otomatik yedek kaydı bulunamadı.",
+      });
+    }
   };
 
   const handleResetConfirmed = () => {
@@ -1432,6 +1473,16 @@ export default function SettingsPage() {
                   <span>Yedek Yükle (.json)</span>
                 </button>
 
+                {hasAutoBackup && (
+                  <button
+                    type="button"
+                    onClick={handleRestoreAutoBackup}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9]/60 border-b-3 text-xs font-extrabold text-[#4C28B5] dark:text-[#d0bfff] hover:border-[#6741D9] active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
+                  >
+                    <span>⏪ İçe Aktarma Öncesi Son Yedeği Geri Yükle</span>
+                  </button>
+                )}
+
                 {!confirmReset ? (
                   <button
                     type="button"
@@ -1465,6 +1516,43 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Yedek İçe Aktarma Modu Seçici (Mevcut İlerlemeyle Birleştir / Tüm Verilerin Üzerine Yaz) */}
+            <div className="pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-[var(--muted)]">
+                Yedek (.json) Yükleme Yöntemi:
+              </span>
+              <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-1 sm:grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setImportMode("merge");
+                  }}
+                  className={`px-3 py-1.5 text-[11px] rounded-lg transition-all cursor-pointer ${
+                    importMode === "merge"
+                      ? "bg-[#0CA678] text-white font-bold"
+                      : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  Mevcut İlerlemeyle Birleştir (Önerilen)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setImportMode("overwrite");
+                  }}
+                  className={`px-3 py-1.5 text-[11px] rounded-lg transition-all cursor-pointer ${
+                    importMode === "overwrite"
+                      ? "bg-[#6741D9] text-white font-bold"
+                      : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  Tüm Verilerin Üzerine Yaz
+                </button>
               </div>
             </div>
 

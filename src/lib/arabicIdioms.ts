@@ -1,5 +1,5 @@
 import { Dialogue, DialogueLine } from "@/types/data";
-import { sozluk } from "@/lib/data";
+import { sozluk, diyaloglar } from "@/lib/data";
 import { SUPPLEMENT_DICTIONARY } from "@/lib/supplementDict";
 import { mergeTurkishMeanings } from "@/lib/dict";
 
@@ -1114,11 +1114,166 @@ export function normalizeForIdiomMatch(text: string): string {
     .trim();
 }
 
+const A1_A2_NORMALIZED_GREETINGS = new Set([
+  "اهلا وسهلا",
+  "اهلا بك",
+  "السلام عليكم",
+  "وعليكم السلام",
+  "صباح الخير",
+  "صباح النور",
+  "مساء الخير",
+  "مساء النور",
+  "تصبح علي خير",
+  "وانت من اهل الخير",
+  "مع السلامه",
+  "الي اللقاء",
+  "في امان الله",
+  "فرصه سعيده",
+  "تشرفنا",
+  "سررت لمعرفتك",
+  "سررت بمعرفتك",
+  "انرتم",
+  "انرت",
+  "كيف حالك",
+  "الحمد لله",
+  "شكرا",
+  "شكرا جزيلا",
+  "عفوا",
+  "من فضلك",
+  "لو سمحت",
+  "تفضل",
+  "تفضلي",
+  "نعم بالطبع",
+  "بكل سرور",
+  "علي الرحب والسعه",
+  "ان شاء الله",
+  "ما شاء الله",
+  "بارك الله فيك",
+  "حسنا",
+  "تماما",
+  "بالضبط",
+]);
+
+let normalizedDialogueLinesCache:
+  | { id: string; seviye: string; normText: string }[]
+  | null = null;
+
+function getNormalizedDialogueLines() {
+  if (normalizedDialogueLinesCache) return normalizedDialogueLinesCache;
+  const list: { id: string; seviye: string; normText: string }[] = [];
+  for (const dlg of diyaloglar) {
+    const joined = dlg.satirlar
+      .map((s) => normalizeForIdiomMatch(s.arapca))
+      .join("   ");
+    list.push({
+      id: dlg.id,
+      seviye: dlg.seviye,
+      normText: ` ${joined} `,
+    });
+  }
+  normalizedDialogueLinesCache = list;
+  return list;
+}
+
+function mapDialogueSeviyeToIdiomLevel(seviye?: string): "A1-A2" | "B1" | "B2" {
+  if (!seviye) return "A1-A2";
+  const upper = seviye.toUpperCase();
+  if (upper.includes("A1") || upper.includes("A2")) return "A1-A2";
+  if (upper.includes("B1")) return "B1";
+  if (upper.includes("B2") || upper.includes("C1")) return "B2";
+  return "A1-A2";
+}
+
+function inferPedagogicalIdiomLevel(
+  arabic: string,
+  meaningTr: string,
+  usageNote?: string,
+  variants?: string[],
+  explicitLevel?: string
+): "A1-A2" | "B1" | "B2" {
+  if (explicitLevel) {
+    return mapDialogueSeviyeToIdiomLevel(explicitLevel);
+  }
+
+  const candidatePhrases = [
+    ...arabic
+      .split("/")
+      .map((s) => s.replace(/\.\.\./g, "").trim())
+      .filter(Boolean),
+    ...(variants || []).map((v) => v.replace(/\.\.\./g, "").trim()).filter(Boolean),
+  ];
+
+  // 1. Temel tanışma, selamlaşma ve nezaket kalıpları her zaman A1-A2'dir (ör. سُرِرْتُ لِمَعْرِفَتِكَ)
+  for (const cand of candidatePhrases) {
+    const norm = normalizeForIdiomMatch(cand);
+    if (A1_A2_NORMALIZED_GREETINGS.has(norm)) {
+      return "A1-A2";
+    }
+  }
+
+  const trLower = `${meaningTr} ${usageNote || ""}`.toLocaleLowerCase("tr-TR");
+  if (
+    /hoş geldin|hoş bulduk|memnun oldum|tanıştığıma|merhaba|selam|günaydın|iyi akşamlar|iyi geceler|güle güle|teşekkür|rica ederim|lütfen|afiyet olsun|buyurun/.test(
+      trLower
+    )
+  ) {
+    return "A1-A2";
+  }
+
+  // 2. usageNote içinde açık diyalog referansı varsa (ör. dlg_03, dlg_22) o diyaloğun gerçek CEFR seviyesini kullan
+  if (usageNote) {
+    const dlgMatches = Array.from(usageNote.matchAll(/dlg_(\d+)/g));
+    if (dlgMatches.length > 0) {
+      const matchedDlgs = dlgMatches
+        .map((m) => diyaloglar.find((d) => d.id === `dlg_${m[1]}`))
+        .filter((d): d is Dialogue => Boolean(d));
+      if (matchedDlgs.length > 0) {
+        return mapDialogueSeviyeToIdiomLevel(matchedDlgs[0].seviye);
+      }
+    }
+  }
+
+  // 3. Diyalog metinlerinde doğrudan geçiyorsa geçtiği ilk diyaloğun CEFR seviyesini kullan
+  const dlgLines = getNormalizedDialogueLines();
+  for (const dlg of dlgLines) {
+    for (const cand of candidatePhrases) {
+      const normCand = normalizeForIdiomMatch(cand);
+      if (normCand.length >= 3 && dlg.normText.includes(` ${normCand} `)) {
+        return mapDialogueSeviyeToIdiomLevel(dlg.seviye);
+      }
+    }
+  }
+
+  // 4. Diyalog dışı kalıplar için pedagojik kategori ve yapısal karmaşıklık analizi
+  if (
+    /atasözü|deyim|mecaz|olmaz olsun|sitem|beddua|hikmet|ibret/.test(trLower)
+  ) {
+    return "B2";
+  }
+
+  const wordCount = normalizeForIdiomMatch(candidatePhrases[0] || arabic)
+    .split(/\s+/)
+    .filter(Boolean).length;
+  if (wordCount <= 2) {
+    return "A1-A2";
+  }
+  if (wordCount >= 5) {
+    return "B2";
+  }
+  return "B1";
+}
+
+let cachedCombinedIdiomsCatalog: ArabicIdiom[] | null = null;
+
 /**
  * sozluk.json ve supplementDict.ts içindeki 'ifade' türündeki kayıtları da
- * ana kütüphaneyle birleştirir (normalizeForIdiomMatch ile kesin tekilleştirilmiş).
+ * ana kütüphaneyle birleştirir (normalizeForIdiomMatch ile kesin tekilleştirilmiş
+ * ve pedagojik CEFR seviyeleri gerçek diyalog/kategori verisiyle eşleştirilmiş).
  */
 export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
+  if (cachedCombinedIdiomsCatalog) {
+    return cachedCombinedIdiomsCatalog;
+  }
   const catalog: ArabicIdiom[] = [];
   const seenNormalizedMap = new Map<string, ArabicIdiom>();
 
@@ -1137,9 +1292,13 @@ export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
 
     const catalogEntry: ArabicIdiom = {
       ...item,
-      level:
-        item.level ||
-        (idx < 28 ? "A1-A2" : idx < 52 ? "B1" : "B2"),
+      level: inferPedagogicalIdiomLevel(
+        item.arabic,
+        item.meaningTr,
+        item.usageNote,
+        item.variants,
+        item.level
+      ),
     };
     seenNormalizedMap.set(normTitle, catalogEntry);
     item.arabic
@@ -1162,7 +1321,6 @@ export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
   }
 
   const dictSources = [...sozluk, ...SUPPLEMENT_DICTIONARY];
-  let dictIdx = 0;
   for (const entry of dictSources) {
     if (entry.tur !== "ifade") continue;
     const allParts = (entry.mufret || entry.mazi || "")
@@ -1182,15 +1340,21 @@ export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
       continue;
     }
 
-    const assignedLevel =
-      dictIdx % 3 === 0 ? "A1-A2" : dictIdx % 3 === 1 ? "B1" : "B2";
-    dictIdx++;
+    const assignedLevel = inferPedagogicalIdiomLevel(
+      rawAr,
+      entry.anlam_tr,
+      undefined,
+      allParts,
+      entry.cefr
+    );
     const catalogEntry: ArabicIdiom = {
       id: `dict_idm_${entry.id}`,
       arabic: rawAr,
       meaningTr: entry.anlam_tr,
-      literalTr: entry.kok && entry.kok !== "-" ? `Kök: ${entry.kok}` : "Kalıp İfade",
-      usageNote: "Günlük konuşma ve diyaloglarda kalıplaşmış ifade olarak kullanılır.",
+      literalTr:
+        entry.kok && entry.kok !== "-" ? `Kök: ${entry.kok}` : "Kalıp İfade",
+      usageNote:
+        "Günlük konuşma ve diyaloglarda kalıplaşmış ifade olarak kullanılır.",
       variants: allParts,
       level: assignedLevel,
     };
@@ -1204,6 +1368,7 @@ export function getCombinedIdiomsCatalog(): ArabicIdiom[] {
     catalog.push(catalogEntry);
   }
 
+  cachedCombinedIdiomsCatalog = catalog;
   return catalog;
 }
 

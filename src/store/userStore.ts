@@ -2,21 +2,35 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DictionaryItem } from "@/types/data";
 
-function getTodayDateString(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+export function formatIstanbulDate(date: Date = new Date()): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Istanbul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
+  } catch {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
 }
 
-function getYesterdayDateString(): string {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const y = yesterday.getFullYear();
-  const m = String(yesterday.getMonth() + 1).padStart(2, "0");
-  const d = String(yesterday.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+export function getTodayDateString(): string {
+  return formatIstanbulDate(new Date());
+}
+
+export function getYesterdayDateString(): string {
+  return formatIstanbulDate(new Date(Date.now() - 86400000));
+}
+
+function isValidIsoOrDateString(val: unknown): val is string {
+  if (typeof val !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(val.trim())) {
+    return false;
+  }
+  return Number.isFinite(Date.parse(val.trim()));
 }
 
 function computeNextStreak(
@@ -50,7 +64,7 @@ function sanitizeStringArray(arr: unknown): string[] {
       arr
         .filter((x): x is string => typeof x === "string")
         .map((x) => x.trim())
-        .filter((x) => x.length > 0)
+        .filter((x) => x.length > 0 && x.length <= 200)
     )
   );
 }
@@ -94,7 +108,8 @@ export interface SrsItemRecord {
   wrongCount: number;
   hintUsedCount: number;
   lastScore?: number;
-  reasonTag?: string; // Örn: "Telaffuzda zorlanıldı", "2 kez yanlış yapıldı", "Tekrar zamanı geldi"
+  reasonTag?: string; // Örn: "Telaffuzda zorlanıldı", "2 kez yanlış yapıldı", "Tekrar Kademesi: 1/5"
+  lastStageUpDate?: string; // YYYY-MM-DD (Europe/Istanbul) - Aynı gün içinde birden fazla kademe atlamayı önler
 }
 
 const SRS_STAGE_DAYS: Record<number, number> = {
@@ -118,65 +133,95 @@ function computeNextReviewIso(stage: number, forceDays?: number): string {
   return target.toISOString();
 }
 
+const FORBIDDEN_OBJECT_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 function sanitizeSrsRecords(raw: unknown): Record<string, SrsItemRecord> {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
-  const result: Record<string, SrsItemRecord> = {};
+  const safeMap: Record<string, SrsItemRecord> = Object.create(null);
   for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (FORBIDDEN_OBJECT_KEYS.has(key.trim())) continue;
     if (typeof val !== "object" || val === null || Array.isArray(val)) continue;
     const rec = val as Record<string, unknown>;
-    const id = typeof rec.id === "string" && rec.id.trim() ? rec.id.trim() : key.trim();
-    if (!id) continue;
+    const id =
+      typeof rec.id === "string" && rec.id.trim()
+        ? rec.id.trim()
+        : key.trim();
+    if (!id || id.length > 200 || FORBIDDEN_OBJECT_KEYS.has(id)) continue;
     const rawType = rec.type;
     const type: "word" | "idiom" | "sentence" =
       rawType === "idiom" || rawType === "sentence" ? rawType : "word";
-    const stage = Math.max(0, Math.min(5, Math.floor(Number(rec.stage) || 0)));
+    const rawStage = Number(rec.stage);
+    const stage = Number.isFinite(rawStage)
+      ? Math.max(0, Math.min(5, Math.floor(rawStage)))
+      : 0;
     const rawStatus = rec.status;
     const status: "learning" | "reviewing" | "mastered" =
-      rawStatus === "mastered" || rawStatus === "reviewing"
+      rawStatus === "mastered" || rawStatus === "reviewing" || rawStatus === "learning"
         ? rawStatus
         : stage >= 3
         ? "mastered"
         : stage >= 1
         ? "reviewing"
         : "learning";
-    const lastReviewedAt =
-      typeof rec.lastReviewedAt === "string" && rec.lastReviewedAt
-        ? rec.lastReviewedAt
-        : new Date().toISOString();
-    const nextReviewAt =
-      typeof rec.nextReviewAt === "string" && rec.nextReviewAt
-        ? rec.nextReviewAt
-        : lastReviewedAt;
-    result[id] = {
+    const nowIso = new Date().toISOString();
+    const lastReviewedAt = isValidIsoOrDateString(rec.lastReviewedAt)
+      ? rec.lastReviewedAt.trim()
+      : nowIso;
+    const nextReviewAt = isValidIsoOrDateString(rec.nextReviewAt)
+      ? rec.nextReviewAt.trim()
+      : lastReviewedAt;
+    const rawCorrect = Number(rec.correctCount);
+    const rawWrong = Number(rec.wrongCount);
+    const rawHint = Number(rec.hintUsedCount);
+    const lastStageUpDate =
+      typeof rec.lastStageUpDate === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(rec.lastStageUpDate.trim()) &&
+      isValidIsoOrDateString(rec.lastStageUpDate.trim())
+        ? rec.lastStageUpDate.trim()
+        : undefined;
+
+    safeMap[id] = {
       id,
       type,
       stage,
       status,
       lastReviewedAt,
       nextReviewAt,
-      correctCount: Math.max(0, Math.floor(Number(rec.correctCount) || 0)),
-      wrongCount: Math.max(0, Math.floor(Number(rec.wrongCount) || 0)),
-      hintUsedCount: Math.max(0, Math.floor(Number(rec.hintUsedCount) || 0)),
+      correctCount: Number.isFinite(rawCorrect)
+        ? Math.max(0, Math.min(10000, Math.floor(rawCorrect)))
+        : 0,
+      wrongCount: Number.isFinite(rawWrong)
+        ? Math.max(0, Math.min(10000, Math.floor(rawWrong)))
+        : 0,
+      hintUsedCount: Number.isFinite(rawHint)
+        ? Math.max(0, Math.min(10000, Math.floor(rawHint)))
+        : 0,
       lastScore:
         typeof rec.lastScore === "number" && Number.isFinite(rec.lastScore)
-          ? Math.round(rec.lastScore)
+          ? Math.max(0, Math.min(100, Math.round(rec.lastScore)))
           : undefined,
-      reasonTag: typeof rec.reasonTag === "string" ? rec.reasonTag : undefined,
+      reasonTag:
+        typeof rec.reasonTag === "string"
+          ? rec.reasonTag.slice(0, 160)
+          : undefined,
+      ...(lastStageUpDate ? { lastStageUpDate } : {}),
     };
   }
-  return result;
+  return { ...safeMap };
 }
 
 interface UserState {
   favoriteDialogues: string[];
   completedDialogues: string[];
   rewardedDialogues: string[];
+  rewardedWords: string[];
   favoriteWords: DictionaryItem[];
   learnedWords: string[];
   weakWords: DictionaryItem[];
   mistakeIds: string[];
   srsRecords: Record<string, SrsItemRecord>;
   pronunciationScores: number[];
+  totalPronunciationAttempts: number;
   studyMinutes: number;
   streakDays: number;
   lastStudyDate: string;
@@ -200,6 +245,14 @@ interface UserState {
     score?: number,
     reason?: string
   ) => SrsItemRecord | null;
+  updateSrsRecord: (
+    id: string,
+    type: "word" | "idiom" | "sentence",
+    isCorrect: boolean,
+    usedHint?: boolean,
+    score?: number,
+    reason?: string
+  ) => SrsItemRecord | null;
   getSrsRecord: (id: string) => SrsItemRecord | undefined;
   recordPronunciationScore: (score: number) => void;
   addStudyMinutes: (minutes: number) => void;
@@ -207,7 +260,8 @@ interface UserState {
   syncDailyProgress: () => void;
 
   exportProgress: () => string;
-  importProgress: (jsonData: string) => boolean;
+  importProgress: (jsonData: string, mode?: "merge" | "overwrite") => boolean;
+  restoreLastAutoBackup: () => boolean;
   resetProgress: () => void;
 
   isDialogueFavorite: (id: string) => boolean;
@@ -222,12 +276,14 @@ export const useUserStore = create<UserState>()(
       favoriteDialogues: [],
       completedDialogues: [],
       rewardedDialogues: [],
+      rewardedWords: [],
       favoriteWords: [],
       learnedWords: [],
       weakWords: [],
       mistakeIds: [],
       srsRecords: {},
       pronunciationScores: [],
+      totalPronunciationAttempts: 0,
       studyMinutes: 0,
       streakDays: 0,
       lastStudyDate: "",
@@ -305,18 +361,24 @@ export const useUserStore = create<UserState>()(
           const isLearned = state.learnedWords.includes(cleanId);
           const today = getTodayDateString();
           const yesterday = getYesterdayDateString();
+          const rewardedWordsList = state.rewardedWords || [];
+          const alreadyRewardedWord = rewardedWordsList.includes(cleanId);
+
+          // Aynı kelimeyi tekrar tekrar "Öğrendim" işaretleyip kaldırarak yapay süre (+1 dk) üretilmesini engelle
+          const shouldRewardWordTime = !isLearned && !alreadyRewardedWord;
+
           const baseMinutes =
             state.lastStudyDate === today ? state.studyMinutes : 0;
           const currentEffectiveStreak =
             state.lastStudyDate === today || state.lastStudyDate === yesterday
               ? state.streakDays
               : 0;
-          const streakUpdate = isLearned
-            ? {
+          const streakUpdate = shouldRewardWordTime
+            ? computeNextStreak(currentEffectiveStreak, state.lastStudyDate)
+            : {
                 streakDays: currentEffectiveStreak,
                 lastStudyDate: state.lastStudyDate,
-              }
-            : computeNextStreak(currentEffectiveStreak, state.lastStudyDate);
+              };
 
           const existingSrs = state.srsRecords[cleanId];
           const inferredType: "word" | "idiom" | "sentence" = cleanId.startsWith(
@@ -342,6 +404,7 @@ export const useUserStore = create<UserState>()(
               hintUsedCount: existingSrs?.hintUsedCount ?? 0,
               lastScore: existingSrs?.lastScore,
               reasonTag: "Uzun süreli hafızaya alındı",
+              lastStageUpDate: today,
             };
           } else if (existingSrs) {
             nextSrsRecords[cleanId] = {
@@ -357,8 +420,12 @@ export const useUserStore = create<UserState>()(
             learnedWords: isLearned
               ? state.learnedWords.filter((wId) => wId !== cleanId)
               : [...state.learnedWords, cleanId],
+            rewardedWords:
+              !isLearned && !alreadyRewardedWord
+                ? [...rewardedWordsList, cleanId]
+                : rewardedWordsList,
             srsRecords: nextSrsRecords,
-            studyMinutes: isLearned ? baseMinutes : baseMinutes + 1,
+            studyMinutes: shouldRewardWordTime ? baseMinutes + 1 : baseMinutes,
             ...streakUpdate,
           };
         }),
@@ -422,7 +489,14 @@ export const useUserStore = create<UserState>()(
         );
       },
 
-      recordItemAttempt: (id, type, isCorrect, usedHint = false, score, reason) => {
+      recordItemAttempt: (
+        id,
+        type,
+        isCorrect,
+        usedHint = false,
+        score,
+        reason
+      ) => {
         const cleanId = (id || "").trim();
         if (!cleanId) return null;
         let updatedRecord: SrsItemRecord | null = null;
@@ -443,6 +517,13 @@ export const useUserStore = create<UserState>()(
           const prevWrong = existing?.wrongCount ?? 0;
           const prevHint = existing?.hintUsedCount ?? 0;
           const nowIso = new Date().toISOString();
+          const today = getTodayDateString();
+          const lastReviewedDate = existing?.lastReviewedAt
+            ? formatIstanbulDate(new Date(existing.lastReviewedAt))
+            : undefined;
+          const prevLastStageUpDate =
+            existing?.lastStageUpDate ||
+            (prevStage > 0 ? lastReviewedDate : undefined);
 
           let nextStage = prevStage;
           let nextStatus: "learning" | "reviewing" | "mastered" = "learning";
@@ -451,9 +532,17 @@ export const useUserStore = create<UserState>()(
           let nextWrong = prevWrong;
           let nextHint = prevHint;
           let nextReasonTag = reason || existing?.reasonTag;
+          let nextLastStageUpDate = prevLastStageUpDate;
 
           if (isCorrect && !usedHint) {
-            nextStage = Math.min(5, prevStage + 1);
+            // Aynı gün içinde (Europe/Istanbul) art arda 3 doğru cevapla gecikmeli tekrar olmadan "mastered" (stage >= 3) olunmasını engelle:
+            // Bir öğe aynı gün içinde en fazla 1 kademe ilerleyebilir.
+            if (existing && prevLastStageUpDate === today) {
+              nextStage = prevStage;
+            } else {
+              nextStage = Math.min(5, prevStage + 1);
+              nextLastStageUpDate = today;
+            }
             nextCorrect = prevCorrect + 1;
             nextStatus = nextStage >= 3 ? "mastered" : "reviewing";
             nextReviewAt = computeNextReviewIso(nextStage);
@@ -461,19 +550,26 @@ export const useUserStore = create<UserState>()(
               nextReasonTag =
                 nextStage >= 3
                   ? "Uzun süreli hafızaya alındı"
-                  : `Tekrar Kademesi: ${nextStage}/3`;
+                  : `Tekrar Kademesi: ${nextStage}/5`;
             }
           } else if (isCorrect && usedHint) {
             nextStage = prevStage;
             nextCorrect = prevCorrect + 1;
             nextHint = prevHint + 1;
-            nextStatus = "reviewing";
+            nextStatus =
+              existing?.status === "mastered" ? "mastered" : "reviewing";
             nextReviewAt = computeNextReviewIso(prevStage, 1);
             nextReasonTag = reason || "İpucu kullanılarak çözüldü";
           } else {
-            nextStage = 0;
+            // Yanlış cevap: Kademeyi doğrudan 0'a sıfırlamak yerine kademeli olarak 1 düşür (Math.max(0, prevStage - 1))
+            nextStage = Math.max(0, prevStage - 1);
             nextWrong = prevWrong + 1;
-            nextStatus = "learning";
+            nextStatus =
+              nextStage >= 3
+                ? "mastered"
+                : nextStage >= 1
+                ? "reviewing"
+                : "learning";
             nextReviewAt = nowIso;
             nextReasonTag =
               reason ||
@@ -497,6 +593,9 @@ export const useUserStore = create<UserState>()(
                 ? Math.round(score)
                 : existing?.lastScore,
             reasonTag: nextReasonTag,
+            ...(nextLastStageUpDate
+              ? { lastStageUpDate: nextLastStageUpDate }
+              : {}),
           };
           updatedRecord = record;
 
@@ -512,8 +611,19 @@ export const useUserStore = create<UserState>()(
             if (!nextMistakeIds.includes(canonicalKey)) {
               nextMistakeIds = [canonicalKey, ...nextMistakeIds];
             }
+            // Yanlış cevaplanan bir kelime stage < 3 durumuna düştüğünde learnedWords listesinden çıkarılarak senkronize tutulur
+            if (nextStage < 3) {
+              nextLearnedWords = nextLearnedWords.filter(
+                (lw) =>
+                  lw !== canonicalKey &&
+                  lw !== cleanId &&
+                  lw !== stripped &&
+                  lw !== `idiom_${stripped}` &&
+                  lw !== `word_${stripped}`
+              );
+            }
           } else if (isCorrect && !usedHint && nextStage >= 3) {
-            // Hata Defterinden Çıkarma Kuralı: Yalnızca stage >= 3 (en az 3 ipucusuz doğru deneme) olduğunda sil!
+            // Hata Defterinden Çıkarma Kuralı: Yalnızca stage >= 3 (farklı günlerde pekiştirilerek mezun olduğunda) sil!
             nextMistakeIds = nextMistakeIds.filter(
               (m) =>
                 m !== canonicalKey &&
@@ -541,6 +651,23 @@ export const useUserStore = create<UserState>()(
         return updatedRecord;
       },
 
+      updateSrsRecord: (
+        id,
+        type,
+        isCorrect,
+        usedHint = false,
+        score,
+        reason
+      ) =>
+        get().recordItemAttempt(
+          id,
+          type,
+          isCorrect,
+          usedHint,
+          score,
+          reason
+        ),
+
       getSrsRecord: (id) => {
         const cleanId = (id || "").trim();
         if (!cleanId) return undefined;
@@ -560,7 +687,8 @@ export const useUserStore = create<UserState>()(
 
       recordPronunciationScore: (score) =>
         set((state) => {
-          if (!Number.isFinite(score) || score <= 0) return state;
+          // Değerlendirilmiş tüm geçerli puanları (score >= 0) kaydet ve ödev sayacı (totalPronunciationAttempts) için 50 sınırına takılmadan artır
+          if (!Number.isFinite(score) || score < 0) return state;
           const clampedScore = Math.min(100, Math.max(0, Math.round(score)));
           const today = getTodayDateString();
           const baseMinutes =
@@ -574,6 +702,8 @@ export const useUserStore = create<UserState>()(
               ...state.pronunciationScores.slice(-49),
               clampedScore,
             ],
+            totalPronunciationAttempts:
+              (state.totalPronunciationAttempts || 0) + 1,
             studyMinutes: baseMinutes + 1,
             ...streakUpdate,
           };
@@ -587,7 +717,7 @@ export const useUserStore = create<UserState>()(
           const baseMinutes =
             state.lastStudyDate === today ? state.studyMinutes : 0;
           return {
-            studyMinutes: Math.max(0, baseMinutes + validMinutes),
+            studyMinutes: Math.min(1440, Math.max(0, baseMinutes + validMinutes)),
             ...computeNextStreak(state.streakDays, state.lastStudyDate),
           };
         }),
@@ -631,12 +761,14 @@ export const useUserStore = create<UserState>()(
           favoriteDialogues: state.favoriteDialogues,
           completedDialogues: state.completedDialogues,
           rewardedDialogues: state.rewardedDialogues || [],
+          rewardedWords: state.rewardedWords || [],
           favoriteWords: state.favoriteWords,
           learnedWords: state.learnedWords,
           weakWords: state.weakWords,
           mistakeIds: state.mistakeIds,
           srsRecords: state.srsRecords || {},
           pronunciationScores: state.pronunciationScores,
+          totalPronunciationAttempts: state.totalPronunciationAttempts || 0,
           studyMinutes: state.studyMinutes,
           streakDays: state.streakDays,
           lastStudyDate: state.lastStudyDate,
@@ -645,7 +777,7 @@ export const useUserStore = create<UserState>()(
         return JSON.stringify(payload, null, 2);
       },
 
-      importProgress: (jsonData: string) => {
+      importProgress: (jsonData: string, mode: "merge" | "overwrite" = "merge") => {
         try {
           // 1. Boyut sınırı: > 2 MB dosyaları reddet
           if (
@@ -667,75 +799,179 @@ export const useUserStore = create<UserState>()(
 
           const data = parsed as Record<string, unknown>;
 
+          // 2. Sürüm (version) doğrulaması: undefined veya 1..3 arası tam sayı olmalı (ör. version: 999 reddedilir)
+          if (data.version !== undefined) {
+            if (
+              typeof data.version !== "number" ||
+              !Number.isFinite(data.version) ||
+              !Number.isInteger(data.version) ||
+              data.version < 1 ||
+              data.version > 3
+            ) {
+              return false;
+            }
+          }
+
           // En az bir beklenen ilerleme alanının bulunduğunu doğrula
           const knownKeys = [
             "favoriteDialogues",
             "completedDialogues",
+            "rewardedDialogues",
+            "rewardedWords",
             "favoriteWords",
             "learnedWords",
             "weakWords",
             "mistakeIds",
             "srsRecords",
             "pronunciationScores",
+            "totalPronunciationAttempts",
             "studyMinutes",
             "streakDays",
+            "lastStudyDate",
             "dailyGoalMinutes",
           ];
           if (!knownKeys.some((k) => k in data)) {
             return false;
           }
 
-          // 2. Dizi ve nesne alanlarını sıkı şema doğrulamasından geçir
-          const favoriteDialogues = sanitizeStringArray(data.favoriteDialogues);
-          const completedDialogues = sanitizeStringArray(
+          // 3. Sayısal ve tarih alanlarının Number.isFinite ve sınır doğrulaması
+          if (data.studyMinutes !== undefined) {
+            if (
+              typeof data.studyMinutes !== "number" ||
+              !Number.isFinite(data.studyMinutes) ||
+              data.studyMinutes < 0 ||
+              data.studyMinutes > 1440
+            ) {
+              return false;
+            }
+          }
+          if (data.streakDays !== undefined) {
+            if (
+              typeof data.streakDays !== "number" ||
+              !Number.isFinite(data.streakDays) ||
+              data.streakDays < 0 ||
+              data.streakDays > 3650
+            ) {
+              return false;
+            }
+          }
+          if (data.dailyGoalMinutes !== undefined) {
+            if (
+              typeof data.dailyGoalMinutes !== "number" ||
+              !Number.isFinite(data.dailyGoalMinutes) ||
+              data.dailyGoalMinutes < 5 ||
+              data.dailyGoalMinutes > 180
+            ) {
+              return false;
+            }
+          }
+          if (
+            data.lastStudyDate !== undefined &&
+            data.lastStudyDate !== ""
+          ) {
+            if (
+              typeof data.lastStudyDate !== "string" ||
+              !/^\d{4}-\d{2}-\d{2}$/.test(data.lastStudyDate.trim()) ||
+              !isValidIsoOrDateString(data.lastStudyDate.trim())
+            ) {
+              return false;
+            }
+          }
+          if (data.pronunciationScores !== undefined) {
+            if (!Array.isArray(data.pronunciationScores)) {
+              return false;
+            }
+            for (const s of data.pronunciationScores) {
+              if (
+                typeof s !== "number" ||
+                !Number.isFinite(s) ||
+                s < 0 ||
+                s > 100
+              ) {
+                return false;
+              }
+            }
+          }
+
+          // 4. Dizi ve nesne alanlarını sıkı şema doğrulamasından geçir
+          const importedFavoriteDialogues = sanitizeStringArray(
+            data.favoriteDialogues
+          );
+          const importedCompletedDialogues = sanitizeStringArray(
             data.completedDialogues
           );
-          const rewardedDialogues = Array.isArray(data.rewardedDialogues)
+          const importedRewardedDialogues = Array.isArray(
+            data.rewardedDialogues
+          )
             ? sanitizeStringArray(data.rewardedDialogues)
-            : completedDialogues;
-          const learnedWords = sanitizeStringArray(data.learnedWords);
-          const mistakeIds = sanitizeStringArray(data.mistakeIds);
-          const srsRecords = sanitizeSrsRecords(data.srsRecords);
-          const favoriteWords = sanitizeDictionaryItems(data.favoriteWords);
-          const weakWords = sanitizeDictionaryItems(data.weakWords);
+            : importedCompletedDialogues;
+          const importedLearnedWords = sanitizeStringArray(data.learnedWords);
+          const importedRewardedWords = Array.isArray(data.rewardedWords)
+            ? sanitizeStringArray(data.rewardedWords)
+            : importedLearnedWords;
+          const importedMistakeIds = sanitizeStringArray(data.mistakeIds);
+          const importedSrsRecords = sanitizeSrsRecords(data.srsRecords);
+          const importedFavoriteWords = sanitizeDictionaryItems(
+            data.favoriteWords
+          );
+          const importedWeakWords = sanitizeDictionaryItems(data.weakWords);
 
-          // 3. Sayısal alanları güvenli aralıklara sınırla (clamp)
-          const rawStudyMinutes = Math.max(
-            0,
-            Math.floor(Number(data.studyMinutes) || 0)
-          );
-          const rawStreakDays = Math.max(
-            0,
-            Math.floor(Number(data.streakDays) || 0)
-          );
-          const dailyGoalMinutes = Math.max(
-            5,
-            Math.min(180, Math.floor(Number(data.dailyGoalMinutes) || 15))
-          );
+          const rawStudyMinutes =
+            typeof data.studyMinutes === "number" &&
+            Number.isFinite(data.studyMinutes)
+              ? Math.max(0, Math.min(1440, Math.floor(data.studyMinutes)))
+              : 0;
+          const rawStreakDays =
+            typeof data.streakDays === "number" &&
+            Number.isFinite(data.streakDays)
+              ? Math.max(0, Math.min(3650, Math.floor(data.streakDays)))
+              : 0;
+          const importedDailyGoalMinutes =
+            typeof data.dailyGoalMinutes === "number" &&
+            Number.isFinite(data.dailyGoalMinutes)
+              ? Math.max(5, Math.min(180, Math.floor(data.dailyGoalMinutes)))
+              : 15;
 
-          const lastStudyDate =
+          const importedLastStudyDate =
             typeof data.lastStudyDate === "string" &&
-            /^\d{4}-\d{2}-\d{2}$/.test(data.lastStudyDate.trim())
+            /^\d{4}-\d{2}-\d{2}$/.test(data.lastStudyDate.trim()) &&
+            isValidIsoOrDateString(data.lastStudyDate.trim())
               ? data.lastStudyDate.trim()
               : "";
 
           const today = getTodayDateString();
           const yesterday = getYesterdayDateString();
-          const studyMinutes = lastStudyDate === today ? rawStudyMinutes : 0;
-          const streakDays =
-            lastStudyDate === today || lastStudyDate === yesterday
+          const effectiveImportedStudyMinutes =
+            importedLastStudyDate === today ? rawStudyMinutes : 0;
+          const effectiveImportedStreakDays =
+            importedLastStudyDate === today ||
+            importedLastStudyDate === yesterday
               ? rawStreakDays
               : 0;
 
-          const pronunciationScores = Array.isArray(data.pronunciationScores)
+          const importedPronunciationScores = Array.isArray(
+            data.pronunciationScores
+          )
             ? data.pronunciationScores
-                .map((n) => Number(n))
-                .filter((n) => Number.isFinite(n) && n >= 0 && n <= 100)
+                .filter(
+                  (n): n is number =>
+                    typeof n === "number" &&
+                    Number.isFinite(n) &&
+                    n >= 0 &&
+                    n <= 100
+                )
                 .map((n) => Math.round(n))
                 .slice(-50)
             : [];
 
-          // 4. Mevcut durumu ezmeden önce otomatik yedek al
+          const importedTotalAttempts =
+            typeof data.totalPronunciationAttempts === "number" &&
+            Number.isFinite(data.totalPronunciationAttempts) &&
+            data.totalPronunciationAttempts >= 0
+              ? Math.min(100000, Math.floor(data.totalPronunciationAttempts))
+              : importedPronunciationScores.length;
+
+          // 5. Mevcut durumu değiştirmeden önce otomatik yedek al
           if (typeof window !== "undefined") {
             try {
               localStorage.setItem(
@@ -747,22 +983,116 @@ export const useUserStore = create<UserState>()(
             }
           }
 
+          if (mode === "overwrite") {
+            set({
+              favoriteDialogues: importedFavoriteDialogues,
+              completedDialogues: importedCompletedDialogues,
+              rewardedDialogues: importedRewardedDialogues,
+              rewardedWords: importedRewardedWords,
+              favoriteWords: importedFavoriteWords,
+              learnedWords: importedLearnedWords,
+              weakWords: importedWeakWords,
+              mistakeIds: importedMistakeIds,
+              srsRecords: importedSrsRecords,
+              pronunciationScores: importedPronunciationScores,
+              totalPronunciationAttempts: importedTotalAttempts,
+              studyMinutes: effectiveImportedStudyMinutes,
+              streakDays: effectiveImportedStreakDays,
+              lastStudyDate: importedLastStudyDate,
+              dailyGoalMinutes: importedDailyGoalMinutes,
+            });
+            return true;
+          }
+
+          // Varsayılan: "merge" (Mevcut İlerlemeyle Birleştir - Kısmi JSON yüklemelerinde mevcut verilerin silinmesini önler)
+          const current = get();
+          const mergedSrs: Record<string, SrsItemRecord> = {
+            ...current.srsRecords,
+          };
+          for (const [k, rec] of Object.entries(importedSrsRecords)) {
+            const existingRec = mergedSrs[k];
+            if (!existingRec || rec.stage >= existingRec.stage) {
+              mergedSrs[k] = rec;
+            }
+          }
+          const mergedScores =
+            data.pronunciationScores !== undefined
+              ? [
+                  ...current.pronunciationScores,
+                  ...importedPronunciationScores,
+                ].slice(-50)
+              : current.pronunciationScores;
+
           set({
-            favoriteDialogues,
-            completedDialogues,
-            rewardedDialogues,
-            favoriteWords,
-            learnedWords,
-            weakWords,
-            mistakeIds,
-            srsRecords,
-            pronunciationScores,
-            studyMinutes,
-            streakDays,
-            lastStudyDate,
-            dailyGoalMinutes,
+            favoriteDialogues: sanitizeStringArray([
+              ...current.favoriteDialogues,
+              ...importedFavoriteDialogues,
+            ]),
+            completedDialogues: sanitizeStringArray([
+              ...current.completedDialogues,
+              ...importedCompletedDialogues,
+            ]),
+            rewardedDialogues: sanitizeStringArray([
+              ...(current.rewardedDialogues || []),
+              ...importedRewardedDialogues,
+            ]),
+            rewardedWords: sanitizeStringArray([
+              ...(current.rewardedWords || []),
+              ...importedRewardedWords,
+            ]),
+            favoriteWords: sanitizeDictionaryItems([
+              ...current.favoriteWords,
+              ...importedFavoriteWords,
+            ]),
+            learnedWords: sanitizeStringArray([
+              ...current.learnedWords,
+              ...importedLearnedWords,
+            ]),
+            weakWords: sanitizeDictionaryItems([
+              ...current.weakWords,
+              ...importedWeakWords,
+            ]),
+            mistakeIds: sanitizeStringArray([
+              ...current.mistakeIds,
+              ...importedMistakeIds,
+            ]),
+            srsRecords: mergedSrs,
+            pronunciationScores: mergedScores,
+            totalPronunciationAttempts: Math.max(
+              current.totalPronunciationAttempts || 0,
+              importedTotalAttempts,
+              mergedScores.length
+            ),
+            studyMinutes:
+              data.studyMinutes !== undefined
+                ? Math.max(current.studyMinutes, effectiveImportedStudyMinutes)
+                : current.studyMinutes,
+            streakDays:
+              data.streakDays !== undefined
+                ? Math.max(current.streakDays, effectiveImportedStreakDays)
+                : current.streakDays,
+            lastStudyDate:
+              importedLastStudyDate &&
+              importedLastStudyDate > (current.lastStudyDate || "")
+                ? importedLastStudyDate
+                : current.lastStudyDate,
+            dailyGoalMinutes:
+              data.dailyGoalMinutes !== undefined
+                ? importedDailyGoalMinutes
+                : current.dailyGoalMinutes,
           });
           return true;
+        } catch {
+          return false;
+        }
+      },
+
+      restoreLastAutoBackup: () => {
+        if (typeof window === "undefined") return false;
+        try {
+          const raw = localStorage.getItem("arabic_app_backup_before_import");
+          if (!raw) return false;
+          return get().importProgress(raw, "overwrite");
         } catch {
           return false;
         }
@@ -773,12 +1103,14 @@ export const useUserStore = create<UserState>()(
           favoriteDialogues: [],
           completedDialogues: [],
           rewardedDialogues: [],
+          rewardedWords: [],
           favoriteWords: [],
           learnedWords: [],
           weakWords: [],
           mistakeIds: [],
           srsRecords: {},
           pronunciationScores: [],
+          totalPronunciationAttempts: 0,
           studyMinutes: 0,
           streakDays: 0,
           lastStudyDate: "",

@@ -19,9 +19,39 @@ export interface SttCallbacks {
   backupTranscript?: string;
 }
 
+interface SpeechRecognitionResultAlternativeLike {
+  transcript?: string;
+}
+
+interface SpeechRecognitionResultLike {
+  isFinal?: boolean;
+  0?: SpeechRecognitionResultAlternativeLike;
+}
+
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+}
+
+interface SpeechRecognitionInstanceLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event?: unknown) => void) | null;
+  onend: ((event?: unknown) => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type WindowWithSpeechRecognition = Window & {
+  SpeechRecognition?: new () => SpeechRecognitionInstanceLike;
+  webkitSpeechRecognition?: new () => SpeechRecognitionInstanceLike;
+};
+
 export class HybridSpeechManager {
   private worker: Worker | null = null;
-  private recognition: any = null;
+  private recognition: SpeechRecognitionInstanceLike | null = null;
   private webSpeechFinalTranscript = "";
   private webSpeechInterimTranscript = "";
   private isWebSpeechActive = false;
@@ -45,10 +75,8 @@ export class HybridSpeechManager {
 
   public isWebSpeechSupported(): boolean {
     if (typeof window === "undefined") return false;
-    return Boolean(
-      (window as any).SpeechRecognition ||
-        (window as any).webkitSpeechRecognition
-    );
+    const win = window as WindowWithSpeechRecognition;
+    return Boolean(win.SpeechRecognition || win.webkitSpeechRecognition);
   }
 
   /**
@@ -67,15 +95,15 @@ export class HybridSpeechManager {
     if (!this.isWebSpeechSupported()) return;
 
     try {
-      const SR =
-        (window as any).SpeechRecognition ||
-        (window as any).webkitSpeechRecognition;
+      const win = window as WindowWithSpeechRecognition;
+      const SR = win.SpeechRecognition || win.webkitSpeechRecognition;
+      if (!SR) return;
       const rec = new SR();
       rec.lang = "ar-SA";
       rec.continuous = true;
       rec.interimResults = true;
 
-      rec.onresult = (event: any) => {
+      rec.onresult = (event: SpeechRecognitionEventLike) => {
         let finalChunk = "";
         let interimChunk = "";
         for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -160,7 +188,7 @@ export class HybridSpeechManager {
       const timer = setTimeout(finish, timeoutMs);
 
       const prevOnEnd = rec.onend;
-      rec.onend = (ev: any) => {
+      rec.onend = (ev?: unknown) => {
         try {
           if (typeof prevOnEnd === "function") prevOnEnd(ev);
         } catch {
@@ -171,7 +199,7 @@ export class HybridSpeechManager {
       };
 
       const prevOnError = rec.onerror;
-      rec.onerror = (ev: any) => {
+      rec.onerror = (ev?: unknown) => {
         try {
           if (typeof prevOnError === "function") prevOnError(ev);
         } catch {

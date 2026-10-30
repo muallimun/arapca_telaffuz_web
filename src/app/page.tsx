@@ -20,7 +20,11 @@ import {
   Play,
 } from "lucide-react";
 import { diyaloglar, sozluk } from "@/lib/data";
-import { useUserStore } from "@/store/userStore";
+import {
+  useUserStore,
+  getTodayDateString,
+  getYesterdayDateString,
+} from "@/store/userStore";
 import { useSettings } from "@/store/settings";
 import { playClick } from "@/lib/sfxManager";
 import { playTTS, loadAudioManifest, hasMp3, getMp3Path } from "@/lib/audio";
@@ -68,9 +72,22 @@ export default function HomePage() {
   const { playAudio } = useAudioStore();
 
   useEffect(() => {
-    setMounted(true);
+    const raf = requestAnimationFrame(() => setMounted(true));
     syncDailyProgress();
     loadAudioManifest().then(() => setManifestLoaded(true));
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        syncDailyProgress();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleVisibilityChange);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleVisibilityChange);
+    };
   }, [syncDailyProgress]);
 
   const dailyPackage = useMemo(() => {
@@ -101,11 +118,8 @@ export default function HomePage() {
   const recommendedSentenceCount =
     (recommendedDialogue as unknown as { cumleler?: unknown[] }).cumleler
       ?.length ?? recommendedDialogue.satirlar.length;
-  const [recImgFailed, setRecImgFailed] = useState(false);
-
-  useEffect(() => {
-    setRecImgFailed(false);
-  }, [recommendedDialogueId]);
+  const [failedCoverId, setFailedCoverId] = useState<string | null>(null);
+  const recImgFailed = failedCoverId === recommendedDialogueId;
 
   const modules: ModuleItem[] = useMemo(
     () => [
@@ -217,20 +231,13 @@ export default function HomePage() {
     return null;
   }, [mounted, pronunciationScores]);
 
-  // Gün değişiminde bugünkü çalışma süresini ve seriyi doğrula
+  // Gün değişiminde bugünkü çalışma süresini ve seriyi Europe/Istanbul zaman dilimiyle doğrula
   const { todayStudyMinutes, activeStreakDays } = useMemo(() => {
     if (!mounted) {
       return { todayStudyMinutes: 0, activeStreakDays: 0 };
     }
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(
-      now.getMonth() + 1
-    ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = `${yesterday.getFullYear()}-${String(
-      yesterday.getMonth() + 1
-    ).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+    const todayStr = getTodayDateString();
+    const yesterdayStr = getYesterdayDateString();
 
     const isToday = lastStudyDate === todayStr;
     const isYesterday = lastStudyDate === yesterdayStr;
@@ -412,7 +419,7 @@ export default function HomePage() {
                   <img
                     src={recommendedCoverSrc}
                     alt={recommendedDialogue.baslik_tr}
-                    onError={() => setRecImgFailed(true)}
+                    onError={() => setFailedCoverId(recommendedDialogueId)}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (

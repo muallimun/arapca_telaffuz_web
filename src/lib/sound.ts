@@ -1,16 +1,22 @@
+type WindowWithWebkitAudio = Window & {
+  webkitAudioContext?: typeof AudioContext;
+};
+
 export const playTickSound = (isCritical: boolean = false) => {
   if (typeof window === "undefined") return;
-  
+
   try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    const ctx = new AudioContext();
+    const AC =
+      window.AudioContext || (window as WindowWithWebkitAudio).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
     osc.type = "sine";
     // Son saniyede daha tiz (heyecanlı), normalde daha tok bir ses
-    osc.frequency.setValueAtTime(isCritical ? 880 : 440, ctx.currentTime); 
-    
+    osc.frequency.setValueAtTime(isCritical ? 880 : 440, ctx.currentTime);
+
     gain.gain.setValueAtTime(0.1, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.1);
 
@@ -27,8 +33,10 @@ export const playTickSound = (isCritical: boolean = false) => {
 export const playSuccessSound = () => {
   if (typeof window === "undefined") return;
   try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    const ctx = new AudioContext();
+    const AC =
+      window.AudioContext || (window as WindowWithWebkitAudio).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "triangle";
@@ -41,5 +49,7 @@ export const playSuccessSound = () => {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.4);
-  } catch (e) {}
+  } catch {
+    // ignore
+  }
 };

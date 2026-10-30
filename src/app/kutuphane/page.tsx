@@ -12,7 +12,6 @@ import {
   Mic,
   AlertTriangle,
   SlidersHorizontal,
-  Filter,
   ArrowRight,
   X,
   Download,

@@ -283,7 +283,6 @@ export function TeacherHomeworkModal({
   onClose,
   dialogueId,
   dialogueTitleTr,
-  dialogueTitleAr,
   levelLabel,
   totalLines,
 }: TeacherHomeworkModalProps) {
