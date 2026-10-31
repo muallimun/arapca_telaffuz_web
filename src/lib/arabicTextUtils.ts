@@ -489,6 +489,95 @@ export function isWordFinalTanwinAlifMatch(
 }
 
 /**
+ * Arapça metindeki gerçek Med (uzatma) harflerini sayar.
+ * Cezimli/sükunlu (يْ / وْ - Harf-i Lîn, örn. كَيْفَ، يَوْم), harekeli veya şeddeli و ve ي harflerini KESİNLİKLE Med saymaz!
+ * Yalnızca:
+ * 1) Medli elif (آ) veya asâ/çeker elif (\u0670),
+ * 2) Kendinden önce fetha (\u064E) gelen harekesiz/sükunsuz elif (ا / ى),
+ * 3) Kendinden önce zamme (\u064F) gelen harekesiz/sükunsuz و,
+ * 4) Kendinden önce kesra (\u0650) gelen harekesiz/sükunsuz ي
+ * harflerini gerçek Med olarak sayar.
+ */
+export function countTrueArabicMaddLetters(text: string): number {
+  if (!text) return 0;
+  const canonical = canonicalizeArabicDiacritics(
+    stripParentheticalNotesForScoring(text)
+  )
+    .replace(COMMON_PUNCTUATION_AND_QUOTES_REGEX, " ")
+    .replace(/[\u0640\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, "");
+
+  const words = canonical
+    .split(/\s+/)
+    .filter((w) => w.length > 0 && /[\u0600-\u06FF]/.test(w));
+
+  let totalMadd = 0;
+
+  for (const rawWord of words) {
+    // Kelime sonundaki tenvin elifini (ـاً / ـًا) çıkar
+    const w = rawWord.replace(/(\u064B[اأإآٱ]|[اأإآٱ]\u064B)$/, "");
+    const hasDiacritics = /[\u064E\u064F\u0650\u0652]/.test(w);
+
+    // 1. Medli elif (آ) ve asâ/çeker elif (\u0670) her zaman Med'dir
+    const explicitMadds = w.match(/آ|\u0670/g);
+    if (explicitMadds) {
+      totalMadd += explicitMadds.length;
+    }
+
+    if (!hasDiacritics) {
+      // Harekesiz kelimede yalnızca kelime içi/sonu düz elifleri (ا) say
+      const bare = w.replace(/[^\u0621-\u063A\u0641-\u064A\u0671]/g, "");
+      const internalAlifs = bare.slice(1).match(/ا/g);
+      if (internalAlifs) {
+        totalMadd += internalAlifs.length;
+      }
+      continue;
+    }
+
+    // Harekeli kelimede harf + hareke birimlerini ayrıştır
+    const units: Array<{ letter: string; diacritics: string }> = [];
+    for (const ch of w) {
+      if (/[\u0621-\u063A\u0641-\u064A\u0671]/.test(ch)) {
+        units.push({ letter: ch, diacritics: "" });
+      } else if (units.length > 0) {
+        units[units.length - 1].diacritics += ch;
+      }
+    }
+
+    for (let i = 1; i < units.length; i++) {
+      const curr = units[i];
+      const prev = units[i - 1];
+
+      // Üzerinde sükun (\u0652), kısa ünlü (\u064E, \u064F, \u0650), tenvin (\u064B-\u064D) veya şedde (\u0651) varsa Med DEĞİLDİR (Harf-i Lîn veya hareketli harftir)
+      if (/[\u064B-\u0652]/.test(curr.diacritics)) {
+        continue;
+      }
+
+      if (curr.letter === "ا" || curr.letter === "ى") {
+        // Kendinden önce fetha (\u064E) gelen harekesiz/sükunsuz ا veya ى (eğer önceki harfte \u0670 zaten sayıldıysa çift sayma)
+        if (
+          prev.diacritics.includes("\u064E") &&
+          !prev.diacritics.includes("\u0670")
+        ) {
+          totalMadd += 1;
+        }
+      } else if (curr.letter === "و") {
+        // Kendinden önce zamme (\u064F) gelen harekesiz ve sükunsuz و
+        if (prev.diacritics.includes("\u064F")) {
+          totalMadd += 1;
+        }
+      } else if (curr.letter === "ي") {
+        // Kendinden önce kesra (\u0650) gelen harekesiz ve sükunsuz ي
+        if (prev.diacritics.includes("\u0650")) {
+          totalMadd += 1;
+        }
+      }
+    }
+  }
+
+  return totalMadd;
+}
+
+/**
  * Sözlük, Kütüphane ve Alıştırma Aramaları İçin Fonetik / Harekesiz Arapça Normalizasyonu:
  * Hareke (َ ُ ِ ّ ْ ً ٌ ٍ ٰ), tatweel (ـ), hemzeli elif (أ إ آ ٱ -> ا),
  * ؤ -> و, ئ -> ي, ة -> ه ve ى -> ي farklarını ortadan kaldırır.
@@ -507,6 +596,7 @@ export function normalizeArabicText(text: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
 
 
 

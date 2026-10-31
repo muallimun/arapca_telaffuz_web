@@ -54,6 +54,7 @@ import {
   start16kHzRecorder,
   resampleAudioBuffer,
   trimSilenceFromPcm,
+  getActiveSpeechDuration,
   countSyllablePeaks,
   RecordingSession16kHz,
 } from "@/lib/audioAnalysis";
@@ -102,6 +103,10 @@ export default function ShadowingModal({
   );
   const [isMicroDrill, setIsMicroDrill] = useState<boolean>(false);
   const [expandedTipId, setExpandedTipId] = useState<string | null>(null);
+  const [translationVisibleForText, setTranslationVisibleForText] = useState<
+    string | null
+  >(null);
+  const showTranslation = translationVisibleForText === activeText;
 
   const resolvedTurkishMeaning = useMemo(() => {
     if (turkishText && !isMicroDrill) return turkishText;
@@ -925,29 +930,37 @@ export default function ShadowingModal({
       let computedRhythm: number | null = null;
       let effectiveRefBars: number[] = [];
       let effectiveRefDur = 0;
+      const effectiveUserDur = getActiveSpeechDuration(
+        accurateDuration,
+        trimmedEnvelope
+      );
 
       if (refAudioBufferRef.current) {
         const refEnv = extractAudioEnvelope(refAudioBufferRef.current, 48);
         effectiveRefBars = refEnv.bars;
-        effectiveRefDur = refEnv.duration;
+        effectiveRefDur = getActiveSpeechDuration(refEnv.duration, refEnv.bars);
         const dtwMatch = calculateRhythmMatch(
           refEnv.bars,
           trimmedEnvelope
         );
         const computedTempo = calculateTempoScore(
           refEnv.duration,
-          accurateDuration
+          accurateDuration,
+          refEnv.bars,
+          trimmedEnvelope
         );
         computedRhythm = Math.round(dtwMatch * 0.7 + computedTempo * 0.3);
         setRhythmScore(computedRhythm);
         setTempoScore(computedTempo);
       } else if (hasRealRefAudio && refDuration > 0) {
         effectiveRefBars = refBars;
-        effectiveRefDur = refDuration;
+        effectiveRefDur = getActiveSpeechDuration(refDuration, refBars);
         const dtwMatch = calculateRhythmMatch(refBars, trimmedEnvelope);
         const computedTempo = calculateTempoScore(
           refDuration,
-          accurateDuration
+          accurateDuration,
+          refBars,
+          trimmedEnvelope
         );
         computedRhythm = Math.round(dtwMatch * 0.7 + computedTempo * 0.3);
         setRhythmScore(computedRhythm);
@@ -963,7 +976,7 @@ export default function ShadowingModal({
         computedRhythm,
         trimmedEnvelope,
         effectiveRefBars,
-        accurateDuration,
+        effectiveUserDur,
         effectiveRefDur,
         hasSpeechEnergy,
         usedEngine
@@ -1302,7 +1315,29 @@ export default function ShadowingModal({
           )}
 
           {/* HEDEF ARAPÇA METİN KARTI + PROAKTİF MAHREÇ VE HAREKE REHBERİ */}
-          <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3 sm:p-5 text-center space-y-2">
+          <div className="relative bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3 sm:p-5 text-center space-y-2">
+            {resolvedTurkishMeaning && (
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setTranslationVisibleForText((prev) =>
+                    prev === activeText ? null : activeText
+                  );
+                }}
+                title="Türkçe anlamı göster/gizle"
+                aria-label="Türkçe anlamı göster/gizle"
+                aria-pressed={showTranslation}
+                className={`absolute top-2.5 left-2.5 z-10 w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold transition-colors cursor-pointer ${
+                  showTranslation
+                    ? "bg-[#087F5B] text-white border border-[#065F46]"
+                    : "bg-white/90 dark:bg-[var(--background)] border border-[#E6D7BE] dark:border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[#087F5B]"
+                }`}
+              >
+                文A
+              </button>
+            )}
+
             {activeFormLabel && (
               <span className="text-[11px] uppercase font-extrabold text-[#065F46] dark:text-emerald-400 block">
                 {activeFormLabel}
@@ -1311,13 +1346,13 @@ export default function ShadowingModal({
             <p
               lang="ar"
               dir="rtl"
-              className="arabic font-arabic text-2xl sm:text-3xl font-bold text-[var(--foreground)] leading-relaxed"
+              className="arabic font-arabic text-2xl sm:text-3xl font-bold text-[var(--foreground)] leading-relaxed px-7"
             >
               {activeText}
             </p>
 
-            {resolvedTurkishMeaning && (
-              <p className="text-xs sm:text-sm font-semibold text-[var(--muted)] leading-snug">
+            {showTranslation && resolvedTurkishMeaning && (
+              <p className="pt-1.5 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] text-xs sm:text-sm font-semibold text-[var(--muted)] leading-snug animate-in fade-in duration-150">
                 “{resolvedTurkishMeaning}”
               </p>
             )}
@@ -1337,7 +1372,7 @@ export default function ShadowingModal({
                 proactiveGuide.medCount > 0 ||
                 proactiveGuide.tanvinCount > 0) && (
                 <div className="pt-2 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] space-y-1.5 text-left">
-                  <div className="flex flex-wrap items-center justify-center gap-1">
+                  <div className="flex flex-wrap items-center justify-center gap-1.5">
                     {proactiveGuide.details.map((det) => {
                       const isExpanded = expandedTipId === det.id;
                       return (

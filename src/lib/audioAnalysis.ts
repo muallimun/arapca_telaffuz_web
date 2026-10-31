@@ -248,15 +248,62 @@ export function calculateRhythmMatch(
 }
 
 /**
+ * 48 çubuklu ses zarfının (refBars veya userBars) başındaki ve sonundaki sessiz çubukları (bar < 0.08)
+ * düşerek gerçek aktif konuşma süresini (effectiveDuration = Math.max(0.6, duration * activeRatio)) hesaplar.
+ */
+export function getActiveSpeechDuration(
+  totalDuration: number,
+  bars?: number[]
+): number {
+  if (!Number.isFinite(totalDuration) || totalDuration <= 0) return 0;
+  if (!bars || bars.length === 0) return totalDuration;
+
+  let firstActive = -1;
+  let lastActive = -1;
+  for (let i = 0; i < bars.length; i++) {
+    if (bars[i] >= 0.08) {
+      firstActive = i;
+      break;
+    }
+  }
+  for (let i = bars.length - 1; i >= 0; i--) {
+    if (bars[i] >= 0.08) {
+      lastActive = i;
+      break;
+    }
+  }
+
+  if (firstActive === -1 || lastActive === -1 || lastActive < firstActive) {
+    return totalDuration;
+  }
+
+  const activeSpanBars = lastActive - firstActive + 1;
+  const activeRatio = activeSpanBars / bars.length;
+  return Math.max(0.6, totalDuration * activeRatio);
+}
+
+/**
  * Referans ve kullanıcı süreleri arasındaki tempo uyumu.
+ * Referans MP3 veya kullanıcı kaydının baş/son sessizlik çubuklarını (bar < 0.08) düşerek gerçek aktif konuşma süresini karşılaştırır.
  */
 export function calculateTempoScore(
   refDuration: number,
-  userDuration: number
+  userDuration: number,
+  refBars?: number[],
+  userBars?: number[]
 ): number {
   if (refDuration <= 0 || userDuration <= 0) return 0;
-  const diff = Math.abs(refDuration - userDuration);
-  const ratio = diff / Math.max(refDuration, 1);
+  const effectiveRefDuration =
+    refBars && refBars.length > 0
+      ? getActiveSpeechDuration(refDuration, refBars)
+      : refDuration;
+  const effectiveUserDuration =
+    userBars && userBars.length > 0
+      ? getActiveSpeechDuration(userDuration, userBars)
+      : userDuration;
+
+  const diff = Math.abs(effectiveRefDuration - effectiveUserDuration);
+  const ratio = diff / Math.max(effectiveRefDuration, 1);
   const score = Math.round(100 * Math.max(0, 1 - ratio));
   return Math.max(0, Math.min(100, score));
 }
@@ -532,8 +579,8 @@ export function trimSilenceFromPcm(
     return cleaned;
   }
 
-  // 3. Konuşma eşiğini Math.max(0.008, peakRms * 0.08) olarak belirle
-  const speechThreshold = Math.max(0.008, peakRms * 0.08);
+  // 3. Konuşma başlangıç eşiğini Math.max(0.012, peakRms * 0.12) olarak belirle (baştaki/sondaki boş noktaları kararlı kırp)
+  const speechThreshold = Math.max(0.012, peakRms * 0.12);
   let firstSpeechWin = -1;
   let lastSpeechWin = -1;
 
@@ -555,9 +602,9 @@ export function trimSilenceFromPcm(
     return cleaned;
   }
 
-  // 4. İlk konuşma penceresinden 150ms (2400 örnek) öncesi startIdx, son konuşma penceresinden 200ms (3200 örnek) sonrası endIdx
-  const prePadSamples = Math.floor(sampleRate * 0.15);
-  const postPadSamples = Math.floor(sampleRate * 0.2);
+  // 4. İlk konuşma penceresinden 100ms (1600 örnek) öncesi startIdx, son konuşma penceresinden 140ms (2240 örnek) sonrası endIdx
+  const prePadSamples = Math.floor(sampleRate * 0.1);
+  const postPadSamples = Math.floor(sampleRate * 0.14);
 
   const startIdx = Math.max(
     0,
@@ -716,10 +763,19 @@ export function evaluateAcousticDspSentence(
     refDuration > 0.3
       ? refDuration
       : Math.max(1.2, cleanWords.length * 0.65 + 0.4);
+  const effectiveRefDur = hasRealReference
+    ? getActiveSpeechDuration(safeRefDur, refBars)
+    : safeRefDur;
+  const effectiveUserDur = getActiveSpeechDuration(userDuration, userBars);
   const overallRhythm = hasRealReference
     ? calculateRhythmMatch(refBars, userBars)
     : 0;
-  const overallTempo = calculateTempoScore(safeRefDur, userDuration);
+  const overallTempo = calculateTempoScore(
+    safeRefDur,
+    userDuration,
+    refBars,
+    userBars
+  );
   const syllablePeaks = countSyllablePeaks(userBars);
   const expectedSyllables = estimateArabicSyllables(expectedSentence);
 
@@ -766,8 +822,8 @@ export function evaluateAcousticDspSentence(
   }
 
   const evalRes = evaluateSentenceWords(expectedSentence, recognizedText, {
-    userDurationSec: userDuration,
-    refDurationSec: safeRefDur,
+    userDurationSec: effectiveUserDur,
+    refDurationSec: effectiveRefDur,
   });
   return {
     ...evalRes,

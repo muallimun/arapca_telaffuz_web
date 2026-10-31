@@ -9,6 +9,7 @@ import {
   COMMON_PUNCTUATION_AND_QUOTES_REGEX,
   KNOWN_TANWIN_ALIF_WORDS,
   isWordFinalTanwinAlifMatch,
+  countTrueArabicMaddLetters,
 } from "./arabicTextUtils";
 
 // ==============================================================================
@@ -735,8 +736,7 @@ export function buildProactiveMakhrajGuide(text: string): ProactiveGuide {
   const tanvinMatches = text.match(/[\u064B-\u064D]/g);
   if (tanvinMatches) guide.tanvinCount = tanvinMatches.length;
 
-  const medMatches = text.match(/[آ]|[\u064B-\u0652][اووي]/g);
-  if (medMatches) guide.medCount = medMatches.length;
+  guide.medCount = countTrueArabicMaddLetters(text);
 
   return guide;
 }
@@ -1583,12 +1583,8 @@ export function calculateExpectedPhoneticDuration(
     const shaddas = w.match(/\u0651/g) || [];
     shaddaCount += shaddas.length;
 
-    // Med harfleri: آ veya kelime içi/sonu uzatma harfleri (ا، و، ي، ى، \u0670)
-    const bare = w.replace(/[^\u0621-\u063A\u0641-\u064A\u0670\u0671]/g, "");
-    const madds =
-      (w.match(/آ|\u0670/g) || []).length +
-      (bare.slice(1).match(/[اويى]/g) || []).length;
-    maddCount += madds;
+    // Gerçek Med harfleri (cezimli يْ ve وْ Harf-i Lîn harfleri hariç!)
+    maddCount += countTrueArabicMaddLetters(w);
   }
 
   // Her temel harf ~0.075 sn, her Med uzatması +0.20 sn, her Şedde tutması +0.18 sn
@@ -1614,7 +1610,7 @@ export function calculateExpectedPhoneticDuration(
 
 /**
  * STT harekesiz metin döndürdüğünde ve hedef metinde Med veya Şedde bulunduğunda,
- * kullanıcının aktif konuşma süresini expectedMinDuration * 0.72 eşiğiyle karşılaştırır.
+ * kullanıcının aktif konuşma süresini expectedMinDuration * 0.65 eşiğiyle karşılaştırır.
  */
 export function evaluateAcousticMaddAndShaddaDuration(
   targetText: string,
@@ -1646,12 +1642,12 @@ export function evaluateAcousticMaddAndShaddaDuration(
     };
   }
 
-  const minRequired = phoneticInfo.expectedMinDuration * 0.72;
+  const minRequired = phoneticInfo.expectedMinDuration * 0.65;
   if (userActiveDurationSec < minRequired) {
     return {
       checked: true,
       isShort: true,
-      penalty: 12,
+      penalty: 0,
       expectedMinDuration: phoneticInfo.expectedMinDuration,
       feedbackMessage:
         "Akustik Süre Uyarısı: Hedef kelimedeki Med (uzatma) veya Şedde (tutma) süresi referans sese göre kısa kaldı",
@@ -1753,6 +1749,7 @@ export function evaluateSentenceWords(
   const spokenHasAnyDiacritics = /[\u064B-\u0652\u0670]/.test(spokenSentence);
 
   // STT harekesiz metin döndürdüğünde Akustik Med/Şedde Süre Kontrolü
+  // (Kelime puanlarını ve Algılanan Metin & Harf Uyumu puanını ASLA düşürmez; yalnızca bilgi notu olarak eklenir!)
   const acousticCheck = !spokenHasAnyDiacritics
     ? evaluateAcousticMaddAndShaddaDuration(
         strippedTargetSentence,
@@ -1761,22 +1758,7 @@ export function evaluateSentenceWords(
       )
     : null;
 
-  if (acousticCheck?.checked && acousticCheck.isShort && acousticCheck.feedbackMessage) {
-    // Hedef cümlede Med veya Şedde içeren kelimelere akustik süre uyarısını işle
-    for (const w of wordResults) {
-      const wInfo = calculateExpectedPhoneticDuration(w.targetWord);
-      if ((wInfo.hasMadd || wInfo.hasShadda) && w.score > 0) {
-        w.score = Math.max(0, w.score - acousticCheck.penalty);
-        if (w.score < 80 && w.status === "correct") {
-          w.status = "warning";
-        }
-        w.medVezinTip = w.medVezinTip
-          ? `${w.medVezinTip} · ${acousticCheck.feedbackMessage}`
-          : acousticCheck.feedbackMessage;
-        w.diacriticNote = acousticCheck.feedbackMessage;
-      }
-    }
-  } else if (acousticCheck?.checked && !acousticCheck.isShort && acousticCheck.feedbackMessage) {
+  if (acousticCheck?.checked && acousticCheck.feedbackMessage) {
     for (const w of wordResults) {
       const wInfo = calculateExpectedPhoneticDuration(w.targetWord);
       if (wInfo.hasMadd || wInfo.hasShadda) {
@@ -1785,10 +1767,7 @@ export function evaluateSentenceWords(
     }
   }
 
-  const overallScore = Math.max(
-    0,
-    rawAverageScore - extraWordPenalty - (acousticCheck?.penalty || 0)
-  );
+  const overallScore = Math.max(0, rawAverageScore - extraWordPenalty);
 
   const firstRootGuardWord = wordResults.find((w) => w.isRootGuardTriggered);
   const allDiacriticsVerified =
