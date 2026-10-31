@@ -4,8 +4,24 @@
 
 import { pipeline, env } from "@huggingface/transformers";
 
+const isMobile = /Android|iPhone|iPad|iPod/i.test(
+  typeof self !== "undefined" ? self.navigator?.userAgent || "" : ""
+);
+
 env.allowLocalModels = false;
 env.useBrowserCache = true;
+if (env.backends?.onnx?.wasm) {
+  // Mobilde SharedArrayBuffer sub-worker kilitlenmesini önlemek için numThreads = 1 zorunlu!
+  env.backends.onnx.wasm.numThreads = isMobile
+    ? 1
+    : Math.min(
+        4,
+        typeof self !== "undefined"
+          ? self.navigator?.hardwareConcurrency || 2
+          : 2
+      );
+  env.backends.onnx.wasm.proxy = false;
+}
 
 export interface WhisperWorkerRequest {
   type: "transcribe" | "preload" | "abort";
@@ -52,24 +68,37 @@ interface NavigatorWithGpu extends Navigator {
 
 let transcriber: AsrPipelineFn | null = null;
 let activeDevice: "webgpu" | "wasm" = "wasm";
-let activeModelId: string = "onnx-community/whisper-base";
+let activeModelId: string = isMobile
+  ? "onnx-community/whisper-tiny"
+  : "onnx-community/whisper-base";
 let currentActiveRequestId: string | undefined = undefined;
 let latestTranscribeRequestId: string | undefined = undefined;
 const abortedRequestIds = new Set<string>();
 const requestQueue: WhisperWorkerRequest[] = [];
 let isProcessingQueue = false;
 
-const MODEL_CANDIDATES = [
-  "onnx-community/whisper-base",
-  "Xenova/whisper-base",
-  "Xenova/whisper-tiny",
-];
+const MODEL_CANDIDATES = isMobile
+  ? [
+      "onnx-community/whisper-tiny",
+      "Xenova/whisper-tiny",
+      "onnx-community/whisper-base",
+      "Xenova/whisper-base",
+    ]
+  : [
+      "onnx-community/whisper-base",
+      "Xenova/whisper-base",
+      "onnx-community/whisper-tiny",
+      "Xenova/whisper-tiny",
+    ];
 
 /**
  * Gerçekten kullanılabilir bir WebGPU adaptörü ve cihazı olup olmadığını kontrol eder.
- * Firefox gibi WebGPU'nun deneysel/kısmi olduğu veya adaptör döndürmediği ortamlarda güvenli şekilde false döner.
+ * Mobil cihazlarda ve Firefox gibi WebGPU'nun deneysel/kısmi olduğu ortamlarda güvenli şekilde false döner.
  */
 async function hasUsableWebGPU(): Promise<boolean> {
+  if (isMobile) {
+    return false;
+  }
   try {
     const nav =
       typeof navigator !== "undefined"

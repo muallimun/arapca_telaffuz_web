@@ -77,7 +77,7 @@ import { DialogueLine, DictionaryItem } from "@/types/data";
 import {
   start16kHzRecorder,
   resampleAudioBuffer,
-  normalizeAudioPeak,
+  trimSilenceFromPcm,
   RecordingSession16kHz,
 } from "@/lib/audioAnalysis";
 import { HybridSpeechManager } from "@/lib/speechManager";
@@ -1015,9 +1015,9 @@ export default function DialogueDetailPage({
             recordingSampleRateRef.current ||
             48000;
           let inputSamples =
-            recordedData.trimmedSamples.length > 0
-              ? recordedData.trimmedSamples
-              : recordedData.samples16kHz;
+            recordedData.samples16kHz.length > 0
+              ? recordedData.samples16kHz
+              : recordedData.trimmedSamples;
           if (
             actualSampleRate !== 16000 &&
             inputSamples.length > 0 &&
@@ -1030,7 +1030,7 @@ export default function DialogueDetailPage({
             );
           }
           if (inputSamples.length > 0) {
-            inputSamples = normalizeAudioPeak(inputSamples, 0.85);
+            inputSamples = trimSilenceFromPcm(inputSamples, 16000);
           }
           const hybridRes = await roleplaySpeechRef.current.transcribeHybrid(
             isLocalOnly ? "whisper" : currentEngine,

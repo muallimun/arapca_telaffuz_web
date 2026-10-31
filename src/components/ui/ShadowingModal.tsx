@@ -46,13 +46,14 @@ import {
 
 import {
   extractAudioEnvelope,
+  extractFloat32Envelope,
   calculateRhythmMatch,
   calculateTempoScore,
   calculateOverallFluency,
   evaluateAcousticDspSentence,
   start16kHzRecorder,
   resampleAudioBuffer,
-  normalizeAudioPeak,
+  trimSilenceFromPcm,
   countSyllablePeaks,
   RecordingSession16kHz,
 } from "@/lib/audioAnalysis";
@@ -303,6 +304,8 @@ export default function ShadowingModal({
   useEffect(() => {
     isMountedRef.current = true;
     speechManagerRef.current = new HybridSpeechManager();
+    // Modal açıldığı anda arka planda Whisper modelini (mobilde whisper-tiny) sessizce ön-yükle
+    speechManagerRef.current.preloadWhisperModel();
 
     const rafFocus = requestAnimationFrame(() => {
       const firstFocusable = modalRef.current?.querySelector<HTMLElement>(
@@ -799,16 +802,16 @@ export default function ShadowingModal({
       backupBrowserTranscriptRef.current = bestWebSpeechText;
 
       // Mobil AudioContext 44100 Hz veya 48000 Hz ile kayıt aldıysa Whisper'a göndermeden önce
-      // kesin olarak 16000 Hz'e yeniden örnekle ve tepe genliğini normalize et
+      // kesin olarak 16000 Hz'e yeniden örnekle, baş/son sessizliği kırp (trimSilenceFromPcm) ve tepe genliğini normalize et
       const actualSampleRate =
         recorded.actualSampleRate ||
         recordingSampleRateRef.current ||
         contextSampleRate ||
         48000;
       let pcm16k =
-        recorded.trimmedSamples.length > 0
-          ? recorded.trimmedSamples
-          : recorded.samples16kHz;
+        recorded.samples16kHz.length > 0
+          ? recorded.samples16kHz
+          : recorded.trimmedSamples;
 
       if (
         actualSampleRate !== 16000 &&
@@ -817,23 +820,30 @@ export default function ShadowingModal({
       ) {
         pcm16k = resampleAudioBuffer(pcm16k, actualSampleRate, 16000);
       }
-      if (pcm16k.length > 0) {
-        pcm16k = normalizeAudioPeak(pcm16k, 0.85);
-      }
+
+      const trimmedPcm16k =
+        pcm16k.length > 0
+          ? trimSilenceFromPcm(pcm16k, 16000)
+          : recorded.trimmedSamples;
 
       const accurateDuration =
-        recorded.duration > 0
+        trimmedPcm16k.length > 0
+          ? trimmedPcm16k.length / 16000
+          : recorded.duration > 0
           ? recorded.duration
-          : pcm16k.length > 0
-          ? pcm16k.length / 16000
           : 0;
+
+      const trimmedEnvelope =
+        trimmedPcm16k.length >= 1600
+          ? extractFloat32Envelope(trimmedPcm16k, 16000, 48).bars
+          : recorded.envelopeBars;
 
       setUserAudioUrl(recorded.playbackUrl || recorded.wavUrl);
       setUserWavBlob(recorded.wavBlob);
       setUserDuration(accurateDuration);
-      setUserBars(recorded.envelopeBars);
+      setUserBars(trimmedEnvelope);
 
-      const whisperInputBuffer = pcm16k;
+      const whisperInputBuffer = trimmedPcm16k;
 
       let recognizedText = "";
       let usedEngine: SttEngineType = localSttOnly ? "whisper" : sttEngine;
@@ -887,14 +897,14 @@ export default function ShadowingModal({
         normalizedSpoken.length > 0 && /[\u0600-\u06FF]/.test(normalizedSpoken);
 
       const detectedSyllablePeaks =
-        recorded.syllablePeaks ?? countSyllablePeaks(recorded.envelopeBars);
+        recorded.syllablePeaks ?? countSyllablePeaks(trimmedEnvelope);
 
       const hasSpeechEnergy =
         !recorded.isSilent &&
-        (recorded.voicedDuration >= 0.14 ||
+        (accurateDuration >= 0.14 ||
           recorded.peakRms >= 0.008 ||
           detectedSyllablePeaks >= 1 ||
-          recorded.envelopeBars.some((b) => b > 0.14));
+          trimmedEnvelope.some((b) => b > 0.14));
 
       if (!hasDetectedWords && !hasSpeechEnergy) {
         setIsAnalyzing(false);
@@ -922,11 +932,11 @@ export default function ShadowingModal({
         effectiveRefDur = refEnv.duration;
         const dtwMatch = calculateRhythmMatch(
           refEnv.bars,
-          recorded.envelopeBars
+          trimmedEnvelope
         );
         const computedTempo = calculateTempoScore(
           refEnv.duration,
-          recorded.duration
+          accurateDuration
         );
         computedRhythm = Math.round(dtwMatch * 0.7 + computedTempo * 0.3);
         setRhythmScore(computedRhythm);
@@ -934,10 +944,10 @@ export default function ShadowingModal({
       } else if (hasRealRefAudio && refDuration > 0) {
         effectiveRefBars = refBars;
         effectiveRefDur = refDuration;
-        const dtwMatch = calculateRhythmMatch(refBars, recorded.envelopeBars);
+        const dtwMatch = calculateRhythmMatch(refBars, trimmedEnvelope);
         const computedTempo = calculateTempoScore(
           refDuration,
-          recorded.duration
+          accurateDuration
         );
         computedRhythm = Math.round(dtwMatch * 0.7 + computedTempo * 0.3);
         setRhythmScore(computedRhythm);
@@ -951,9 +961,9 @@ export default function ShadowingModal({
       processTranscription(
         recognizedText,
         computedRhythm,
-        recorded.envelopeBars,
+        trimmedEnvelope,
         effectiveRefBars,
-        recorded.duration,
+        accurateDuration,
         effectiveRefDur,
         hasSpeechEnergy,
         usedEngine

@@ -296,6 +296,26 @@ export class HybridSpeechManager {
 
   private requestCounter = 0;
   private activeWhisperRequestId: string | null = null;
+  private hasTriggeredPreload = false;
+
+  /**
+   * Gölgeleme Koçu açıldığında arka planda Whisper modelini (mobilde whisper-tiny, masaüstünde whisper-base)
+   * sessizce ön-yükler; böylece kullanıcı kayda basana kadar model hazırlanmış olur.
+   */
+  public preloadWhisperModel() {
+    this.initWorker();
+    if (!this.worker || this.hasTriggeredPreload) return;
+    this.hasTriggeredPreload = true;
+    try {
+      const preloadReqId = `preload_${Date.now()}_${++this.requestCounter}`;
+      this.worker.postMessage({
+        type: "preload",
+        requestId: preloadReqId,
+      });
+    } catch {
+      // ignore preload error
+    }
+  }
 
   public abortActiveWhisperRequest() {
     if (this.worker && this.activeWhisperRequestId) {
@@ -308,6 +328,86 @@ export class HybridSpeechManager {
         // ignore
       }
       this.activeWhisperRequestId = null;
+    }
+  }
+
+  /**
+   * 16kHz Float32Array PCM ses verisini 44-byte RIFF/WAVE 16-bit PCM Blob'una dönüştürür.
+   */
+  private encodePcm16kToWavBlob(samples: Float32Array): Blob {
+    const sampleRate = 16000;
+    const length = samples.length;
+    const bufferSize = 44 + length * 2;
+    const arrayBuffer = new ArrayBuffer(bufferSize);
+    const view = new DataView(arrayBuffer);
+
+    const writeStr = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i));
+      }
+    };
+
+    writeStr(0, "RIFF");
+    view.setUint32(4, bufferSize - 8, true);
+    writeStr(8, "WAVE");
+    writeStr(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, "data");
+    view.setUint32(40, length * 2, true);
+
+    let offset = 44;
+    for (let i = 0; i < length; i++) {
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      offset += 2;
+    }
+    return new Blob([arrayBuffer], { type: "audio/wav" });
+  }
+
+  /**
+   * Mobilde getUserMedia açıkken Web Speech kilitlendiğinde ve cihaz içi WASM bellek sınırına takıldığında
+   * (yalnızca localSttOnly === false iken) 16kHz WAV ses verisini /api/stt sunucu rotasına göndererek çözümler.
+   */
+  public async transcribeViaServerApi(
+    audioData16kHz: Float32Array,
+    callbacks?: SttCallbacks
+  ): Promise<string> {
+    if (useSettings.getState().localSttOnly) {
+      return "";
+    }
+    if (!audioData16kHz || audioData16kHz.length < 2400) {
+      return "";
+    }
+    try {
+      callbacks?.onStatusChange?.(
+        "🧠 Bulut yedek STT servisi ile sesiniz çözümleniyor..."
+      );
+      const wavBlob = this.encodePcm16kToWavBlob(audioData16kHz);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 18000);
+      try {
+        const res = await fetch("/api/stt", {
+          method: "POST",
+          headers: { "Content-Type": "audio/wav" },
+          body: wavBlob,
+          signal: controller.signal,
+        });
+        if (!res.ok) return "";
+        const data = (await res.json()) as { text?: string };
+        return (data?.text || "").trim();
+      } finally {
+        clearTimeout(timeoutId);
+        callbacks?.onStatusChange?.("");
+      }
+    } catch {
+      callbacks?.onStatusChange?.("");
+      return "";
     }
   }
 
@@ -390,12 +490,16 @@ export class HybridSpeechManager {
           error,
         } = event.data;
 
-        // Eski bir kayıttan kalan geç yanıtları yoksay
-        if (msgReqId && msgReqId !== requestId) {
+        // Model ön-yükleme (preload) sırasında gelen progress/loading bildirimlerinin de zaman aşımını yenilemesine izin ver
+        const isPreloadProgress =
+          msgReqId?.startsWith("preload_") &&
+          (status === "progress" || status === "loading" || status === "ready");
+
+        if (msgReqId && msgReqId !== requestId && !isPreloadProgress) {
           return;
         }
 
-        if (ignored) {
+        if (ignored && msgReqId === requestId) {
           if (timeout !== null) clearTimeout(timeout);
           activeWorker.removeEventListener("message", handleMessage);
           resolve("");
@@ -408,18 +512,18 @@ export class HybridSpeechManager {
           callbacks?.onStatusChange?.(
             `Yapay zeka modeli ilk kullanım için hazırlanıyor (%${pct})`
           );
-        } else if (status === "loading") {
+        } else if (status === "loading" || status === "ready") {
           setPhaseTimeout(MODEL_LOAD_TIMEOUT_MS, "model hazırlama");
           callbacks?.onStatusChange?.(
             "Yapay zeka modeli ilk kullanım için hazırlanıyor (%0)..."
           );
-        } else if (status === "transcribing") {
+        } else if (status === "transcribing" && msgReqId === requestId) {
           // Yalnızca status === "transcribing" geldiğinde 15 saniyelik çıkarım sayacını başlat
           setPhaseTimeout(TRANSCRIBE_TIMEOUT_MS, "ses çözümleme");
           callbacks?.onStatusChange?.(
             `🧠 Sesiniz çözümleniyor (${device?.toUpperCase() || "WASM"})...`
           );
-        } else if (status === "completed") {
+        } else if (status === "completed" && msgReqId === requestId) {
           if (timeout !== null) clearTimeout(timeout);
           activeWorker.removeEventListener("message", handleMessage);
           if (this.activeWhisperRequestId === requestId) {
@@ -427,7 +531,7 @@ export class HybridSpeechManager {
           }
           callbacks?.onStatusChange?.("");
           resolve((text || "").trim());
-        } else if (status === "error") {
+        } else if (status === "error" && msgReqId === requestId) {
           if (timeout !== null) clearTimeout(timeout);
           activeWorker.removeEventListener("message", handleMessage);
           if (this.activeWhisperRequestId === requestId) {
@@ -450,7 +554,7 @@ export class HybridSpeechManager {
   }
 
   /**
-   * Çift Motorlu Hibrit Çözümleme (Seçili motor + Yedekleme)
+   * Çift Motorlu Hibrit Çözümleme (Seçili motor + Yedekleme + Sunucu /api/stt Fallback)
    */
   public async transcribeHybrid(
     preferredEngine: SttEngineType,
@@ -481,7 +585,7 @@ export class HybridSpeechManager {
         if (isLocalOnly) {
           return { text: whisperText || "", usedEngine: "whisper" };
         }
-        // Whisper boş döndüyse varsa yedek metni kontrol et
+        // Whisper boş döndüyse varsa Web Speech yedek metnini kontrol et
         const latestBackup = (
           this.getCapturedWebSpeechText() ||
           callbacks?.backupTranscript ||
@@ -490,7 +594,18 @@ export class HybridSpeechManager {
         if (latestBackup && /[\u0600-\u06FF]/.test(latestBackup)) {
           return { text: latestBackup, usedEngine: "webspeech" };
         }
-        return { text: whisperText || latestBackup, usedEngine: "whisper" };
+        // Her ikisi de boşsa ve localSttOnly kapalıysa /api/stt sunucu yedeğini dene
+        const serverText = await this.transcribeViaServerApi(
+          audioData16kHz,
+          callbacks
+        );
+        if (serverText && /[\u0600-\u06FF]/.test(serverText)) {
+          return { text: serverText, usedEngine: "whisper" };
+        }
+        return {
+          text: whisperText || latestBackup || serverText,
+          usedEngine: "whisper",
+        };
       } catch {
         if (isLocalOnly) {
           callbacks?.onStatusChange?.("");
@@ -502,14 +617,21 @@ export class HybridSpeechManager {
           callbacks?.backupTranscript ||
           capturedWebSpeech
         ).trim();
-        if (latestBackup) {
+        if (latestBackup && /[\u0600-\u06FF]/.test(latestBackup)) {
           callbacks?.onStatusChange?.(
             "Yapay zeka modeli yanıt veremedi, Hızlı Tarayıcı Motoru sonucu kullanılıyor..."
           );
           return { text: latestBackup, usedEngine: "webspeech" };
         }
+        const serverText = await this.transcribeViaServerApi(
+          audioData16kHz,
+          callbacks
+        );
+        if (serverText && /[\u0600-\u06FF]/.test(serverText)) {
+          return { text: serverText, usedEngine: "whisper" };
+        }
         callbacks?.onStatusChange?.("");
-        return { text: "", usedEngine: "whisper" };
+        return { text: latestBackup || serverText || "", usedEngine: "whisper" };
       }
     } else {
       // Tercih edilen motor: Hızlı Tarayıcı Motoru (Web Speech API)
@@ -535,10 +657,24 @@ export class HybridSpeechManager {
           audioData16kHz,
           callbacks
         );
-        return { text: whisperText, usedEngine: "whisper" };
+        if (whisperText && /[\u0600-\u06FF]/.test(whisperText)) {
+          return { text: whisperText, usedEngine: "whisper" };
+        }
       } catch {
-        return { text: retryWebSpeech, usedEngine: "webspeech" };
+        // Cihaz içi Whisper hata verirse sunucu /api/stt yedeğine geç
       }
+
+      if (!isLocalOnly) {
+        const serverText = await this.transcribeViaServerApi(
+          audioData16kHz,
+          callbacks
+        );
+        if (serverText && /[\u0600-\u06FF]/.test(serverText)) {
+          return { text: serverText, usedEngine: "whisper" };
+        }
+      }
+
+      return { text: retryWebSpeech, usedEngine: "webspeech" };
     }
   }
 

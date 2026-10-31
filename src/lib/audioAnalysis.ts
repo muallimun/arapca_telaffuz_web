@@ -477,12 +477,113 @@ export function normalizeAudioBuffer(
 }
 
 /**
+ * Kaydın ilk 0.10 saniyesindeki (1600 örnek) buton tıklama "tık" sesini sıfırlar,
+ * 20ms (320 örnek) pencerelerle RMS enerjisini hesaplar (konuşma eşiği: Math.max(0.008, peakRms * 0.08)),
+ * ilk konuşma penceresinden 150ms (2400 örnek) öncesini startIdx ve son konuşma penceresinden 200ms (3200 örnek)
+ * sonrasını endIdx olarak alıp pcm16k.slice(startIdx, endIdx) döndürür (kırpılmış uzunluk 0.4 sn'den kısaysa orijinali korur).
+ */
+export function trimSilenceFromPcm(
+  pcm16k: Float32Array,
+  sampleRate: number = 16000
+): Float32Array {
+  if (!pcm16k || pcm16k.length === 0) {
+    return new Float32Array(0);
+  }
+
+  const cleaned = new Float32Array(pcm16k.length);
+  cleaned.set(pcm16k);
+
+  // 1. Kaydın ilk 0.10 saniyesindeki (16kHz'de 1600 örnek) buton tıklama "tık" sesini sıfırla
+  const clickGuardSamples = Math.min(
+    cleaned.length,
+    Math.floor(sampleRate * 0.1)
+  );
+  for (let i = 0; i < clickGuardSamples; i++) {
+    cleaned[i] = 0;
+  }
+
+  // 2. 20ms (16kHz'de 320 örnek) pencerelerle RMS enerjisini hesapla
+  const windowSize = Math.max(64, Math.floor(sampleRate * 0.02));
+  const numWindows = Math.floor(cleaned.length / windowSize);
+  if (numWindows === 0) {
+    return cleaned;
+  }
+
+  const windowRms = new Float32Array(numWindows);
+  let peakRms = 0;
+
+  for (let w = 0; w < numWindows; w++) {
+    const start = w * windowSize;
+    const end = start + windowSize;
+    let sumSq = 0;
+    for (let i = start; i < end; i++) {
+      const v = cleaned[i];
+      sumSq += v * v;
+    }
+    const rms = Math.sqrt(sumSq / windowSize);
+    windowRms[w] = rms;
+    if (rms > peakRms) {
+      peakRms = rms;
+    }
+  }
+
+  // Tamamen sessiz kayıt
+  if (peakRms < 0.002) {
+    return cleaned;
+  }
+
+  // 3. Konuşma eşiğini Math.max(0.008, peakRms * 0.08) olarak belirle
+  const speechThreshold = Math.max(0.008, peakRms * 0.08);
+  let firstSpeechWin = -1;
+  let lastSpeechWin = -1;
+
+  for (let w = 0; w < numWindows; w++) {
+    if (windowRms[w] >= speechThreshold) {
+      firstSpeechWin = w;
+      break;
+    }
+  }
+
+  for (let w = numWindows - 1; w >= 0; w--) {
+    if (windowRms[w] >= speechThreshold) {
+      lastSpeechWin = w;
+      break;
+    }
+  }
+
+  if (firstSpeechWin === -1 || lastSpeechWin === -1 || lastSpeechWin < firstSpeechWin) {
+    return cleaned;
+  }
+
+  // 4. İlk konuşma penceresinden 150ms (2400 örnek) öncesi startIdx, son konuşma penceresinden 200ms (3200 örnek) sonrası endIdx
+  const prePadSamples = Math.floor(sampleRate * 0.15);
+  const postPadSamples = Math.floor(sampleRate * 0.2);
+
+  const startIdx = Math.max(
+    0,
+    firstSpeechWin * windowSize - prePadSamples
+  );
+  const endIdx = Math.min(
+    cleaned.length,
+    (lastSpeechWin + 1) * windowSize + postPadSamples
+  );
+
+  const minTrimmedSamples = Math.floor(sampleRate * 0.4);
+  if (endIdx <= startIdx || endIdx - startIdx < minTrimmedSamples) {
+    return normalizeAudioPeak(cleaned, 0.85);
+  }
+
+  const sliced = cleaned.slice(startIdx, endIdx);
+  return normalizeAudioPeak(sliced, 0.85);
+}
+
+/**
  * Sesteki baş ve sondaki sessizlik kısımlarını kırpar (VAD - Voice Activity Detection)
- * ve tepe genliğini 0.90 seviyesine normalize eder.
+ * ve tepe genliğini normalize eder.
  */
 export function trimSilence(
   float32Data: Float32Array,
-  threshold: number = 0.012
+  _threshold: number = 0.012
 ): Float32Array {
   if (!float32Data || float32Data.length === 0) {
     return new Float32Array(0);
@@ -494,36 +595,11 @@ export function trimSilence(
     if (v > maxAbs) maxAbs = v;
   }
 
-  // Tamamen sessiz kayıt
   if (maxAbs < 0.003) {
     return new Float32Array(0);
   }
 
-  // Düşük mikrofon kazançlarında bile konuşma başlangıcını yakalayan adaptif eşik
-  const effectiveThreshold = Math.min(threshold, Math.max(0.0035, maxAbs * 0.12));
-  let start = -1;
-  let end = -1;
-
-  for (let i = 0; i < float32Data.length; i++) {
-    if (Math.abs(float32Data[i]) > effectiveThreshold) {
-      start = Math.max(0, i - 1000); // ~62ms ön pay
-      break;
-    }
-  }
-  for (let i = float32Data.length - 1; i >= 0; i--) {
-    if (Math.abs(float32Data[i]) > effectiveThreshold) {
-      end = Math.min(float32Data.length - 1, i + 1400); // ~87ms arka pay
-      break;
-    }
-  }
-
-  // Eğer hiçbir örnek sessizlik eşiğini geçmediyse boş dizi döndür
-  if (start === -1 || end === -1 || end <= start) {
-    return new Float32Array(0);
-  }
-
-  const sliced = float32Data.slice(start, end + 1);
-  return normalizeAudioPeak(sliced, 0.9);
+  return trimSilenceFromPcm(float32Data, 16000);
 }
 
 /**

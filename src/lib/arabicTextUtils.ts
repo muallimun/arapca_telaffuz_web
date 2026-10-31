@@ -388,6 +388,107 @@ export function normalizeArabicForPronunciation(
 }
 
 /**
+ * Kelime sonunda tenvin elifi (ـاً / ـًا) taşıyan yaygın Arapça kelimeler (normalize edilmiş halleri).
+ * STT motorları bu kelimeleri vakıf/vasıl durumuna göre elifli (اخا / شكرا), elifsiz (اخ / شكر)
+ * veya fonetik nun ile (اخن / شكرن) döndürebilir.
+ */
+export const KNOWN_TANWIN_ALIF_WORDS = new Set<string>([
+  "اخا",
+  "مرحبا",
+  "شكرا",
+  "اهلا",
+  "سهلا",
+  "ايضا",
+  "جدا",
+  "عفوا",
+  "دائما",
+  "حقا",
+  "طبعا",
+  "فعلا",
+  "مثلا",
+  "كثيرا",
+  "قليلا",
+  "قريبا",
+  "بعيدا",
+  "سريعا",
+  "جيدا",
+  "معا",
+  "غدا",
+  "ابدا",
+  "احيانا",
+  "اخيرا",
+  "اولا",
+  "ثانيا",
+  "ثالثا",
+  "رابعا",
+  "خامسا",
+  "تقريبا",
+  "خصوصا",
+  "عموما",
+  "حتما",
+  "فورا",
+  "حالا",
+  "شمالا",
+  "جنوبا",
+  "شرقا",
+  "غربا",
+  "صباحا",
+]);
+
+/**
+ * Hedef kelimenin sonunda tenvin fetha + elif (ـاً / ـًا) olup olmadığını tespit eder.
+ */
+export function hasWordFinalTanwinAlif(
+  rawExpectedWord: string,
+  normalizedExpectedWord?: string
+): boolean {
+  if (!rawExpectedWord) return false;
+  const cleanedRaw = canonicalizeArabicDiacritics(rawExpectedWord)
+    .replace(COMMON_PUNCTUATION_AND_QUOTES_REGEX, "")
+    .replace(/[\u0640\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, "")
+    .trim();
+
+  // Doğrudan harekeli metinde ـاً (\u064B\u0627) veya ـًا (\u0627\u064B) ile bitiyorsa
+  if (/(\u064B[اأإآٱ]|[اأإآٱ]\u064B)$/.test(cleanedRaw)) {
+    return true;
+  }
+
+  const norm =
+    normalizedExpectedWord ?? normalizeArabicForPronunciation(rawExpectedWord);
+  if (norm && KNOWN_TANWIN_ALIF_WORDS.has(norm)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Hedef kelime tenvin elifi (ـاً) ile bitiyorsa (örn. أَخاً، شُكْراً، مَرْحَباً),
+ * STT çıktısının son elif olmadan (أخ / شكر), son elifle (اخا / شكرا) veya
+ * fonetik nun ile (اخن / شكرن) yazılmasını %100 tam eşleşme olarak doğrular.
+ */
+export function isWordFinalTanwinAlifMatch(
+  rawExpectedWord: string,
+  cleanExpected: string,
+  cleanSpoken: string
+): boolean {
+  if (!cleanExpected || !cleanSpoken) return false;
+  if (!hasWordFinalTanwinAlif(rawExpectedWord, cleanExpected)) {
+    return false;
+  }
+  const stem = cleanExpected.endsWith("ا")
+    ? cleanExpected.slice(0, -1)
+    : cleanExpected;
+  if (!stem) return false;
+
+  return (
+    cleanSpoken === cleanExpected ||
+    cleanSpoken === stem ||
+    cleanSpoken === `${stem}ن`
+  );
+}
+
+/**
  * Sözlük, Kütüphane ve Alıştırma Aramaları İçin Fonetik / Harekesiz Arapça Normalizasyonu:
  * Hareke (َ ُ ِ ّ ْ ً ٌ ٍ ٰ), tatweel (ـ), hemzeli elif (أ إ آ ٱ -> ا),
  * ؤ -> و, ئ -> ي, ة -> ه ve ى -> ي farklarını ortadan kaldırır.
@@ -406,5 +507,6 @@ export function normalizeArabicText(text: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
 
 

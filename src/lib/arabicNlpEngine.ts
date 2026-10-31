@@ -7,6 +7,8 @@ import {
   stripParentheticalNotesForScoring,
   normalizeArabicNumbersInText,
   COMMON_PUNCTUATION_AND_QUOTES_REGEX,
+  KNOWN_TANWIN_ALIF_WORDS,
+  isWordFinalTanwinAlifMatch,
 } from "./arabicTextUtils";
 
 // ==============================================================================
@@ -644,10 +646,16 @@ export function extractArabicRoot(word: string): string {
  * Misal fiil ism-i zaman/mekân (مَوْعِد -> وعد) ve İstif'âl (استمارة -> أمر) kalıplarını korur.
  */
 export function getConsonantSkeleton(word: string): string {
-  const normalized = normalizeForComparison(word).replace(
+  const rawNormalized = normalizeForComparison(word).replace(
     /[^\u0600-\u06FF]/g,
     ""
   );
+  // Tenvin elifi taşıyan kelimelerde (örn. أخاً -> اخا -> اخ) sondaki tenvin elifini kök ünsüzü sayma
+  const normalized =
+    KNOWN_TANWIN_ALIF_WORDS.has(rawNormalized) && rawNormalized.endsWith("ا")
+      ? rawNormalized.slice(0, -1)
+      : rawNormalized;
+
   if (normalized.length <= 2) return normalized;
 
   // مَوْعِد / مَوْقِف / مَوَاعِيد ve استمارة / استراحة gibi kalıplarda özel kök çıkarımını kullan:
@@ -658,7 +666,11 @@ export function getConsonantSkeleton(word: string): string {
     return extractArabicRoot(normalized);
   }
 
-  const skeleton = normalized.replace(/[اوىي]/g, "");
+  // Kelime başındaki kat' hemzesini (ا) koru, kelime içi/sonu uzatma harflerini ([اوىي]) çıkar
+  const skeleton =
+    normalized[0] === "ا"
+      ? "ا" + normalized.slice(1).replace(/[اوىي]/g, "")
+      : normalized.replace(/[اوىي]/g, "");
   return skeleton.length >= 2 ? skeleton : normalized;
 }
 
@@ -1167,6 +1179,117 @@ export function evaluateDiacriticsAndShadda(
   };
 }
 
+/**
+ * Diyaloglarda konuşmacı veya hitap olarak geçen özel isimlerin normalize edilmiş listesi.
+ * Whisper dil modeli nadir özel isimleri bazen yakın sesli yaygın kelimelere (örn. بَتُول -> بطل) yuvarlayabilir.
+ */
+export const ARABIC_PROPER_NOUNS = new Set<string>([
+  "بتول",
+  "احمد",
+  "سميه",
+  "حسن",
+  "فاطمه",
+  "عمر",
+  "زينب",
+  "خالد",
+  "مريم",
+  "علي",
+  "ساره",
+  "كريم",
+  "ليلي",
+  "يوسف",
+  "ابراهيم",
+  "محمد",
+  "سلمي",
+  "طارق",
+  "ياسر",
+  "نور",
+  "سعيد",
+  "راشد",
+  "هدي",
+  "امنه",
+  "بلال",
+  "حمزه",
+  "عثمان",
+  "خديجه",
+  "عائشه",
+  "عبد",
+  "ماجد",
+  "نبيل",
+  "فريد",
+  "سليم",
+  "وليد",
+  "عماد",
+  "زياد",
+  "رامي",
+  "سامي",
+  "عادل",
+  "جمال",
+  "كمال",
+  "محمود",
+  "مصطفي",
+  "سفيان",
+  "مروان",
+  "لبني",
+  "ندي",
+  "رنا",
+  "حنان",
+  "سعاد",
+  "ايمان",
+]);
+
+const PROPER_NOUN_NEAR_MAKHRAJ_GROUPS: string[][] = [
+  ["ت", "ط", "د"],
+  ["س", "ص", "ث"],
+  ["ذ", "ز", "ظ"],
+  ["د", "ض", "ظ"],
+  ["ه", "ح", "خ"],
+  ["ك", "ق"],
+  ["ا", "ع"],
+];
+
+function areNearMakhrajConsonants(c1: string, c2: string): boolean {
+  if (c1 === c2) return true;
+  return PROPER_NOUN_NEAR_MAKHRAJ_GROUPS.some(
+    (g) => g.includes(c1) && g.includes(c2)
+  );
+}
+
+/**
+ * Hedef kelime bir özel isimse (örn. بَتُولُ) ve STT çıktısı (örn. بطل) yalnızca
+ * tek bir yakın mahreç ünsüzü (ت/ط، س/ص، ذ/ز/ظ، د/ض، ه/ح) ve/veya düşen bir med harfi (و/ي/ا)
+ * farkı içeriyorsa fonetik tolerans uygular.
+ */
+export function isProperNounPhoneticMatch(
+  cleanExp: string,
+  cleanSpk: string
+): boolean {
+  if (!cleanExp || !cleanSpk) return false;
+  if (!ARABIC_PROPER_NOUNS.has(cleanExp)) return false;
+  if (cleanExp === cleanSpk) return true;
+
+  const stripInternalVowels = (w: string) =>
+    w.length <= 1 ? w : w[0] + w.slice(1).replace(/[اوىي]/g, "");
+
+  const expCons = stripInternalVowels(cleanExp);
+  const spkCons = stripInternalVowels(cleanSpk);
+
+  if (expCons.length < 2 || spkCons.length < 2) return false;
+  if (expCons.length !== spkCons.length) return false;
+
+  let nearMakhrajSubstitutions = 0;
+  for (let i = 0; i < expCons.length; i++) {
+    if (expCons[i] === spkCons[i]) continue;
+    if (areNearMakhrajConsonants(expCons[i], spkCons[i])) {
+      nearMakhrajSubstitutions += 1;
+    } else {
+      return false;
+    }
+  }
+
+  return nearMakhrajSubstitutions <= 1;
+}
+
 export function evaluateSingleWord(
   expected: string,
   spoken: string
@@ -1196,12 +1319,25 @@ export function evaluateSingleWord(
     };
   }
 
+  // 3. Tenvin Elifi (ـاً / ـًا: أَخاً، شُكْراً، مَرْحَباً، أَيْضاً، جِدّاً) %100 Tam Eşleşme Kontrolü
+  const isTanwinAlifEquivalent = isWordFinalTanwinAlifMatch(
+    expectedCleaned || expected,
+    cleanExp,
+    cleanSpk
+  );
+
+  // 4. Özel İsim (بَتُولُ -> بطل vb.) Fonetik Tolerans Kontrolü
+  const isProperNounTolerated =
+    !isTanwinAlifEquivalent && isProperNounPhoneticMatch(cleanExp, cleanSpk);
+
   const alignment = alignCharacters(cleanExp, cleanSpk);
   const rawAlignment = alignCharacters(rawExp, rawSpk);
   const matchCount = alignment.filter((a) => a.operation === "MATCH").length;
   const maxLen = Math.max(cleanExp.length, cleanSpk.length, 1);
   const baseScore =
-    cleanExp === cleanSpk ? 100 : Math.round((matchCount / maxLen) * 100);
+    cleanExp === cleanSpk || isTanwinAlifEquivalent
+      ? 100
+      : Math.round((matchCount / maxLen) * 100);
 
   // Kök ünsüz ve 38 kanonik mahreç çifti kontrolü her zaman (baseScore >= 85 olsa bile!) çalıştırılır
   const criticalAlignmentTip =
@@ -1214,16 +1350,28 @@ export function evaluateSingleWord(
     expectedCleaned || expected
   );
 
-  const detectedSubstitutionTip = criticalAlignmentTip || generalAlignmentTip;
+  const detectedSubstitutionTip = isTanwinAlifEquivalent
+    ? undefined
+    : criticalAlignmentTip || generalAlignmentTip;
   const makhrajTip = detectedSubstitutionTip || fallbackCriticalTip;
 
-  const medVezinTip = analyzeVezinAndMed(cleanExp, alignment) || undefined;
-  const rootGuard = applyRootConsonantGuard(
-    cleanExp,
-    cleanSpk,
-    baseScore,
-    Boolean(detectedSubstitutionTip)
-  );
+  const medVezinTip =
+    isTanwinAlifEquivalent || isProperNounTolerated
+      ? undefined
+      : analyzeVezinAndMed(cleanExp, alignment) || undefined;
+
+  const rootGuard =
+    isTanwinAlifEquivalent || isProperNounTolerated
+      ? {
+          finalScore: isTanwinAlifEquivalent ? 100 : Math.max(88, baseScore),
+          isTriggered: false,
+        }
+      : applyRootConsonantGuard(
+          cleanExp,
+          cleanSpk,
+          baseScore,
+          Boolean(detectedSubstitutionTip)
+        );
 
   // Şedde (\u0651) ve Hareke (\u064E, \u0650, \u064F) kontrolü
   const diacriticEval = evaluateDiacriticsAndShadda(
@@ -1245,7 +1393,7 @@ export function evaluateSingleWord(
   if (
     finalScore >= 80 &&
     !rootGuard.isTriggered &&
-    !detectedSubstitutionTip &&
+    (!detectedSubstitutionTip || isProperNounTolerated) &&
     !diacriticEval.hasMismatch
   ) {
     status = "correct";
@@ -1263,6 +1411,11 @@ export function evaluateSingleWord(
     [diacriticEval.warning, medVezinTip].filter(Boolean).join(" · ") ||
     undefined;
 
+  const properNounInfoNote =
+    isProperNounTolerated && detectedSubstitutionTip
+      ? `Özel isim telaffuzu kabul edildi (İpucu: ${detectedSubstitutionTip.pair} ayrımına dikkat edebilirsiniz)`
+      : undefined;
+
   return {
     targetWord: expectedCleaned || expected,
     spokenWord: spoken,
@@ -1278,7 +1431,7 @@ export function evaluateSingleWord(
     medVezinTip: status === "correct" ? undefined : combinedMedVezinTip,
     diacriticWarning: diacriticEval.warning,
     diacriticsVerified: diacriticEval.diacriticsVerified,
-    diacriticNote: diacriticEval.verificationNote,
+    diacriticNote: properNounInfoNote || diacriticEval.verificationNote,
     isRootGuardTriggered:
       status === "correct" ? false : rootGuard.isTriggered,
     rootGuardMessage:
@@ -1294,7 +1447,12 @@ function computeWordSimilarity(expWord: string, spkWord: string): number {
   const cExp = normalizeForComparison(expWord);
   const cSpk = normalizeForComparison(spkWord);
   if (!cExp || !cSpk) return 0;
-  if (cExp === cSpk) return 1;
+  if (cExp === cSpk || isWordFinalTanwinAlifMatch(expWord, cExp, cSpk)) {
+    return 1;
+  }
+  if (isProperNounPhoneticMatch(cExp, cSpk)) {
+    return 0.88;
+  }
 
   const alignment = alignCharacters(cExp, cSpk);
   const matches = alignment.filter((a) => a.operation === "MATCH").length;
