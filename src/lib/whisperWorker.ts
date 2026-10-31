@@ -264,6 +264,70 @@ function preprocessAudioForWhisper(
   return padded;
 }
 
+/**
+ * Uzun cümlelerde (> 2.8 saniye) sesin ortasındaki (%30 ile %70 zaman aralığındaki)
+ * en düşük enerjili 150ms nefes durağını (virgül/durak noktasını) bulur.
+ */
+function findSilenceValleyIndex(
+  samples: Float32Array,
+  sampleRate: number = 16000
+): number {
+  const n = samples.length;
+  const minIdx = Math.floor(n * 0.3);
+  const maxIdx = Math.floor(n * 0.7);
+  const windowSize = Math.max(240, Math.round(sampleRate * 0.15)); // 150ms @ 16kHz = 2400 örnek
+  const step = Math.max(80, Math.round(sampleRate * 0.025)); // 25ms adım
+
+  if (maxIdx - minIdx <= windowSize) {
+    return Math.floor(n / 2);
+  }
+
+  let bestStart = Math.floor(n / 2);
+  let lowestEnergy = Number.POSITIVE_INFINITY;
+
+  for (let start = minIdx; start + windowSize <= maxIdx; start += step) {
+    let sumSq = 0;
+    for (let i = 0; i < windowSize; i++) {
+      const v = samples[start + i];
+      sumSq += v * v;
+    }
+    const rms = Math.sqrt(sumSq / windowSize);
+    if (rms < lowestEnergy) {
+      lowestEnergy = rms;
+      bestStart = start + Math.floor(windowSize / 2);
+    }
+  }
+
+  return bestStart;
+}
+
+/**
+ * Bölünmüş ses parçasını 0.88 tepe genliğine normalize eder ve hafif sessizlik yastığı ekler.
+ */
+function normalizeChunkPeak088(
+  chunk: Float32Array,
+  targetPeak: number = 0.88
+): Float32Array {
+  if (!chunk || chunk.length === 0) return new Float32Array(0);
+  let peak = 0;
+  for (let i = 0; i < chunk.length; i++) {
+    const v = Math.abs(chunk[i]);
+    if (v > peak) peak = v;
+  }
+  if (peak < 0.002) return new Float32Array(0);
+
+  const scale = targetPeak / peak;
+  const prePad = 4000; // 0.25 sn @ 16kHz
+  const postPad = 4800; // 0.30 sn @ 16kHz
+  const minTotal = 25600; // >= 1.6 sn @ 16kHz
+  const totalLen = Math.max(minTotal, prePad + chunk.length + postPad);
+  const out = new Float32Array(totalLen);
+  for (let i = 0; i < chunk.length; i++) {
+    out[prePad + i] = Math.max(-0.98, Math.min(0.98, chunk[i] * scale));
+  }
+  return out;
+}
+
 function cleanWhisperHallucinations(rawText: string): string {
   let cleaned = (rawText || "").trim();
   const hallucinationPatterns = [
@@ -388,13 +452,13 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
 
   if (type === "transcribe" && audioData) {
     try {
+      const raw16k =
+        (sampleRate || 16000) !== 16000
+          ? resampleWorkerAudioTo16kHz(audioData, sampleRate || 16000)
+          : audioData;
+
       // 1. ÖN İŞLEME: 16kHz'e örnekle, 0.90 tepe normalizasyonu ve 0.30s/0.40s sessizlik yastığı (>= 1.6s) uygula
-      const processedAudio = preprocessAudioForWhisper(
-        audioData,
-        sampleRate || 16000,
-        1.0,
-        false
-      );
+      const processedAudio = preprocessAudioForWhisper(raw16k, 16000, 1.0, false);
 
       if (!processedAudio || processedAudio.length < 2400) {
         self.postMessage({
@@ -429,6 +493,13 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
         device: activeDevice,
       } satisfies WhisperWorkerResponse);
 
+      const extractAsrText = (out: AsrOutput): string =>
+        cleanWhisperHallucinations(
+          Array.isArray(out)
+            ? out.map((o) => o.text || "").join(" ")
+            : out?.text || ""
+        );
+
       const runInference = async (
         asrPipe: AsrPipelineFn,
         inputAudio: Float32Array
@@ -441,56 +512,79 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
         });
       };
 
-      let output: AsrOutput;
-      try {
-        output = await runInference(model, processedAudio);
-      } catch (inferErr) {
-        // Eğer WebGPU çalışma zamanında (inference aşamasında) çöktüyse kesintisiz WASM q8'e düş!
-        if (activeDevice === "webgpu") {
-          activeDevice = "wasm";
-          transcriber = null;
-          self.postMessage({
-            requestId,
-            status: "loading",
-            device: "wasm",
-          } satisfies WhisperWorkerResponse);
-          model = await getTranscriber(true);
-          self.postMessage({
-            requestId,
-            status: "transcribing",
-            device: "wasm",
-          } satisfies WhisperWorkerResponse);
-          output = await runInference(model, processedAudio);
-        } else {
+      const runSafeInference = async (inputAudio: Float32Array): Promise<string> => {
+        try {
+          const out = await runInference(model, inputAudio);
+          return extractAsrText(out);
+        } catch (inferErr) {
+          if (activeDevice === "webgpu") {
+            activeDevice = "wasm";
+            transcriber = null;
+            self.postMessage({
+              requestId,
+              status: "loading",
+              device: "wasm",
+            } satisfies WhisperWorkerResponse);
+            model = await getTranscriber(true);
+            self.postMessage({
+              requestId,
+              status: "transcribing",
+              device: "wasm",
+            } satisfies WhisperWorkerResponse);
+            const out = await runInference(model, inputAudio);
+            return extractAsrText(out);
+          }
           throw inferErr;
         }
-      }
+      };
 
-      let recognizedText = cleanWhisperHallucinations(
-        Array.isArray(output)
-          ? output.map((o) => o.text || "").join(" ")
-          : output?.text || ""
-      );
+      const runSplitValleyInference = async (): Promise<string> => {
+        const valleyIdx = findSilenceValleyIndex(raw16k, 16000);
+        const part1 = normalizeChunkPeak088(raw16k.slice(0, valleyIdx), 0.88);
+        const part2 = normalizeChunkPeak088(raw16k.slice(valleyIdx), 0.88);
+        const text1 =
+          part1.length >= 2400 && !isRequestStaleOrAborted(requestId)
+            ? await runSafeInference(part1)
+            : "";
+        const text2 =
+          part2.length >= 2400 && !isRequestStaleOrAborted(requestId)
+            ? await runSafeInference(part2)
+            : "";
+        return `${text1} ${text2}`.trim();
+      };
+
+      let recognizedText = "";
+      const isLongAudio = raw16k.length > Math.round(16000 * 2.8);
+
+      // Mobilde veya WASM modunda > 2.8 saniye olan uzun cümleleri nefes durağından (Silence-Valley) 2 parçaya bölerek çözümle
+      if ((isMobile || activeDevice === "wasm") && isLongAudio) {
+        recognizedText = await runSplitValleyInference();
+        if (
+          (!recognizedText || !/[\u0600-\u06FF]/.test(recognizedText)) &&
+          !isRequestStaleOrAborted(requestId)
+        ) {
+          recognizedText = await runSafeInference(processedAudio);
+        }
+      } else {
+        recognizedText = await runSafeInference(processedAudio);
+        if (
+          isLongAudio &&
+          (!recognizedText || !/[\u0600-\u06FF]/.test(recognizedText)) &&
+          !isRequestStaleOrAborted(requestId)
+        ) {
+          recognizedText = await runSplitValleyInference();
+        }
+      }
 
       // Eğer ilk çözümleme denemesi boş metin döndürdüyse, kırpılmamış ham ses verisini x1.8 kazançla (gain boost) ikinci kez çözümle!
       if (
         (!recognizedText || !/[\u0600-\u06FF]/.test(recognizedText)) &&
         !isRequestStaleOrAborted(requestId)
       ) {
-        const boostedAudio = preprocessAudioForWhisper(
-          audioData,
-          sampleRate || 16000,
-          1.8,
-          true
-        );
+        const boostedAudio = preprocessAudioForWhisper(raw16k, 16000, 1.8, true);
         if (boostedAudio.length >= 2400) {
           try {
-            const retryOutput = await runInference(model, boostedAudio);
-            const retryText = cleanWhisperHallucinations(
-              Array.isArray(retryOutput)
-                ? retryOutput.map((o) => o.text || "").join(" ")
-                : retryOutput?.text || ""
-            );
+            const retryText = await runSafeInference(boostedAudio);
             if (retryText && /[\u0600-\u06FF]/.test(retryText)) {
               recognizedText = retryText;
             }

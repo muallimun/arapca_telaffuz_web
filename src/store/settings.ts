@@ -80,6 +80,16 @@ function resolveSizeFromInput(size: number | ArabicFontSizePreset): {
   return { px: size, preset };
 }
 
+export function detectIsMobileOrLowMem(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return false;
+  }
+  const isMobileUa = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const devMem = (navigator as { deviceMemory?: number }).deviceMemory;
+  const isLowMem = devMem !== undefined && devMem <= 4;
+  return isMobileUa || isLowMem;
+}
+
 export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
@@ -94,7 +104,7 @@ export const useSettings = create<SettingsState>()(
       turkishFontSize: 16,
       speechRate: 1,
       preferredLevel: "Başlangıç",
-      sttEngine: "webspeech",
+      sttEngine: detectIsMobileOrLowMem() ? "webspeech" : "whisper",
       localSttOnly: false,
       micNoiseSuppression: false,
       wordTrackingStyle: "both",
@@ -181,16 +191,18 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: "app-settings",
-      version: 2,
+      version: 3,
       migrate: (persistedState: unknown, version: number) => {
         const state =
           persistedState && typeof persistedState === "object"
             ? (persistedState as Partial<SettingsState>)
             : {};
-        if (version < 2) {
+        if (version < 3) {
           return {
             ...state,
-            sttEngine: "webspeech" as SttEngine,
+            sttEngine: (detectIsMobileOrLowMem()
+              ? "webspeech"
+              : "whisper") as SttEngine,
             micNoiseSuppression: false,
             localSttOnly: false,
           } as SettingsState;

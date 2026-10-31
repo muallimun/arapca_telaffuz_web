@@ -519,7 +519,7 @@ export class HybridSpeechManager {
     const requestId = `req_${Date.now()}_${++this.requestCounter}`;
     this.activeWhisperRequestId = requestId;
     const MODEL_LOAD_TIMEOUT_MS = 90000;
-    const TRANSCRIBE_TIMEOUT_MS = 15000;
+    const TRANSCRIBE_TIMEOUT_MS = 35000;
 
     callbacks?.onStatusChange?.(
       "Yapay zeka modeli ilk kullanım için hazırlanıyor (%0)..."

@@ -207,6 +207,7 @@ export default function ShadowingModal({
   const [dspFallbackNotice, setDspFallbackNotice] = useState<string | null>(
     null
   );
+  const [showModeInfo, setShowModeInfo] = useState(false);
 
   const audioStore = useAudioStore();
 
@@ -1460,58 +1461,113 @@ export default function ShadowingModal({
           </button>
         </div>
 
-        {/* 2. SATIR: KOMPAKT MOTOR SEÇİCİ + GÜRÜLTÜ FİLTRESİ */}
-        <div className="flex items-center justify-between gap-1.5 py-1.5 px-3 bg-[#FFF8EC] dark:bg-[var(--surface-hover)] border-b-2 border-[#E6D7BE] dark:border-[var(--border)] shrink-0">
-          <div className="bg-white dark:bg-[var(--background)] p-0.5 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] flex items-center text-[11px] font-extrabold shrink-0">
+        {/* 2. SATIR: KOMPAKT MOTOR SEÇİCİ + ⓘ REHBER + GÜRÜLTÜ FİLTRESİ */}
+        <div className="flex flex-col bg-[#FFF8EC] dark:bg-[var(--surface-hover)] border-b-2 border-[#E6D7BE] dark:border-[var(--border)] shrink-0">
+          <div className="flex items-center justify-between gap-1.5 py-1.5 px-3">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className="bg-white dark:bg-[var(--background)] p-0.5 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] flex items-center text-[11px] font-extrabold shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setSttEngine("whisper");
+                    speechManagerRef.current?.preloadWhisperModel();
+                  }}
+                  title="🤖 Yapay Zeka (Whisper Modu): Masaüstü (WebGPU) için önerilir. Sesi harf harf akustik olarak inceler; yanlış okunan mahreçleri otomatik düzeltmeden gerçekçi biçimde yakalar."
+                  data-tooltip="🤖 Yapay Zeka (Whisper Modu): Masaüstü (WebGPU) için önerilir. Sesi harf harf akustik olarak inceler; yanlış okunan mahreçleri otomatik düzeltmeden gerçekçi biçimde yakalar."
+                  data-tooltip-pos="bottom"
+                  className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                    sttEngine === "whisper" || localSttOnly
+                      ? "bg-[#087F5B] text-white"
+                      : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  🤖 Whisper
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setLocalSttOnly(false);
+                    setSttEngine("webspeech");
+                  }}
+                  title="⚡ Hızlı Tarayıcı Motoru: Mobil cihazlar, düşük bellekli telefonlar ve uzun diyalog cümleleri için önerilir. Bekleme süresi olmadan anında çözümleme yapar."
+                  data-tooltip="⚡ Hızlı Tarayıcı Motoru: Mobil cihazlar, düşük bellekli telefonlar ve uzun diyalog cümleleri için önerilir. Bekleme süresi olmadan anında çözümleme yapar."
+                  data-tooltip-pos="bottom"
+                  className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                    !localSttOnly && sttEngine === "webspeech"
+                      ? "bg-[#087F5B] text-white"
+                      : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  ⚡ Tarayıcı
+                </button>
+              </div>
+
+              <button
+                type="button"
+                aria-label="Hangi Modu Seçmeliyim?"
+                title="Hangi Modu Seçmeliyim? (Masaüstünde üzerine gelin, mobilde dokunun)"
+                onMouseEnter={() => setShowModeInfo(true)}
+                onMouseLeave={() => setShowModeInfo(false)}
+                onClick={() => {
+                  playClick();
+                  setShowModeInfo((v) => !v);
+                }}
+                className={`w-6 h-6 rounded-full border text-[11px] font-black flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                  showModeInfo
+                    ? "bg-[#087F5B] text-white border-[#087F5B]"
+                    : "bg-white dark:bg-[var(--background)] text-[#087F5B] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#087F5B]"
+                }`}
+              >
+                ⓘ
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => {
                 playClick();
-                setSttEngine("whisper");
+                toggleMicNoiseSuppression();
               }}
-              className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                sttEngine === "whisper" || localSttOnly
-                  ? "bg-[#087F5B] text-white"
-                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
+              title="🎙️ Mikrofon Gürültü Filtresi: Sessiz ortamlarda KAPALI (Hassas Mahreç) tutulması önerilir. Açık olduğunda tarayıcı Arapça boğaz ve sızıcı harfleri (ح، خ، ش، ث) arka plan gürültüsü sanarak kırpabilir. Yalnızca çok gürültülü ortamlarda AÇIK konuma getirin."
+              data-tooltip="🎙️ Mikrofon Gürültü Filtresi: Sessiz ortamlarda KAPALI (Hassas Mahreç) tutulması önerilir. Açık olduğunda tarayıcı Arapça boğaz ve sızıcı harfleri (ح، خ، ش، ث) arka plan gürültüsü sanarak kırpabilir. Yalnızca çok gürültülü ortamlarda AÇIK konuma getirin."
+              data-tooltip-pos="bottom"
+              className={`px-2 py-1 rounded-lg border text-[11px] font-extrabold transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                micNoiseSuppression
+                  ? "bg-[#FFF4E6] dark:bg-amber-950/50 border-[#D97706] text-[#9A3412] dark:text-amber-300"
+                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
               }`}
             >
-              🤖 Whisper
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                setLocalSttOnly(false);
-                setSttEngine("webspeech");
-              }}
-              className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                !localSttOnly && sttEngine === "webspeech"
-                  ? "bg-[#087F5B] text-white"
-                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              ⚡ Tarayıcı
+              <span>
+                🎙️ Gürültü Filtresi: {micNoiseSuppression ? "AÇIK" : "KAPALI"}
+              </span>
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              playClick();
-              toggleMicNoiseSuppression();
-            }}
-            data-tooltip="Sessiz ortamda kapalı tutun (boğaz harfleri ع، ح، خ، غ korunur). Gürültülü ortamdaysanız açabilirsiniz."
-            data-tooltip-pos="bottom"
-            className={`px-2 py-1 rounded-lg border text-[11px] font-extrabold transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
-              micNoiseSuppression
-                ? "bg-[#FFF4E6] dark:bg-amber-950/50 border-[#D97706] text-[#9A3412] dark:text-amber-300"
-                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
-            }`}
-          >
-            <span>
-              🎙️ Gürültü Filtresi: {micNoiseSuppression ? "AÇIK" : "KAPALI"}
-            </span>
-          </button>
+          {showModeInfo && (
+            <div className="px-3 pb-2 pt-0.5 text-[11px] leading-snug text-[var(--foreground)] bg-[#FDFBF7] dark:bg-[var(--background)] border-t border-[#E6D7BE]/60 dark:border-[var(--border)] space-y-1">
+              <div className="font-extrabold text-[#087F5B] flex items-center justify-between">
+                <span>💡 Hangi Modu Seçmeliyim?</span>
+                <button
+                  type="button"
+                  onClick={() => setShowModeInfo(false)}
+                  className="text-[10px] font-bold text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+                >
+                  Kapat ✕
+                </button>
+              </div>
+              <p>
+                <strong>🤖 Whisper:</strong> Masaüstü (WebGPU) için önerilir. Sesi harf harf akustik inceler; yanlış mahreçleri otomatik düzeltmeden gerçekçi biçimde yakalar.
+              </p>
+              <p>
+                <strong>⚡ Tarayıcı:</strong> Mobil cihazlar, düşük bellekli telefonlar ve uzun diyalog cümleleri için önerilir. Bekleme olmadan anında çözümler.
+              </p>
+              <p>
+                <strong>🎙️ Gürültü Filtresi (KAPALI):</strong> Boğaz ve sızıcı harflerin (<span dir="rtl" className="font-arabic">ح، خ، ش، ث</span>) tarayıcı tarafından kırpılmaması için sessiz ortamda <strong>KAPALI</strong> tutulmalıdır.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* İÇERİK GÖVDESİ */}
@@ -2328,6 +2384,13 @@ export default function ShadowingModal({
                 type="button"
                 onClick={playUserWav}
                 disabled={!userAudioUrl || isRecording}
+                title={
+                  userAudioUrl
+                    ? "Kaydettiğiniz kendi sesinizi (.wav) dinleyin"
+                    : evaluation
+                    ? "Mobil hızlı tarayıcı modunda mikrofon çakışmasını önlemek için doğrudan canlı tanıma kullanıldı"
+                    : "Önce mikrofonla ses kaydı yapın"
+                }
                 className="col-span-4 h-9 px-2 py-2 rounded-xl bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] hover:bg-[#e5dbff] disabled:opacity-45 border-2 border-[#6741D9] border-b-3 text-[#4C28B5] dark:text-[#d0bfff] text-xs font-semibold whitespace-nowrap flex items-center justify-center gap-1 cursor-pointer"
               >
                 {isPlayingUser ? (
@@ -2335,6 +2398,8 @@ export default function ShadowingModal({
                     <Square size={13} fill="currentColor" className="shrink-0" />
                     <span>Çalıyor...</span>
                   </>
+                ) : !userAudioUrl && evaluation ? (
+                  <span>⚡ Canlı Tanıma</span>
                 ) : (
                   <>
                     <span className="sm:hidden">▶ Sesim</span>
