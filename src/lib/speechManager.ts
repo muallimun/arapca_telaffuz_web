@@ -56,6 +56,7 @@ export class HybridSpeechManager {
   private webSpeechFinalTranscript = "";
   private webSpeechInterimTranscript = "";
   private isWebSpeechActive = false;
+  private shouldKeepListening = false;
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -92,7 +93,8 @@ export class HybridSpeechManager {
 
   /**
    * Kayıt başlarken Web Speech API'yi başlatır.
-   * "Yalnızca Cihazda İşle" (localSttOnly) açıksa veya motor "whisper" ise kesinlikle çevrimiçi SpeechRecognition başlatılmaz.
+   * Android Chrome'da cümle ortasında onend tetiklenirse kullanıcı "Kaydı Durdur" butonuna basana kadar
+   * oturumu otomatik devam ettirir ve interim + final kelimeleri kesintisiz birleştirir.
    */
   public startLiveWebSpeech(callbacks?: SttCallbacks) {
     this.stopLiveWebSpeech(true);
@@ -102,82 +104,122 @@ export class HybridSpeechManager {
     const { localSttOnly } = useSettings.getState();
     if (localSttOnly) {
       this.isWebSpeechActive = false;
+      this.shouldKeepListening = false;
       return;
     }
 
     if (!this.isWebSpeechSupported()) return;
 
-    try {
-      const win = window as WindowWithSpeechRecognition;
-      const SR = win.SpeechRecognition || win.webkitSpeechRecognition;
-      if (!SR) return;
-      const rec = new SR();
-      rec.lang = "ar-SA";
-      rec.continuous = true;
-      rec.interimResults = true;
+    this.shouldKeepListening = true;
 
-      rec.onresult = (event: SpeechRecognitionEventLike) => {
-        const currentSettings = useSettings.getState();
-        if (currentSettings.localSttOnly) {
-          this.stopLiveWebSpeech(true);
-          callbacks?.onInterimTranscript?.("", "", "");
-          return;
-        }
-        let finalChunk = "";
-        let interimChunk = "";
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const transcript = event.results[i][0]?.transcript || "";
-          if (event.results[i].isFinal) {
-            finalChunk += transcript + " ";
-          } else {
-            interimChunk += transcript;
+    const launchRecognitionInstance = () => {
+      if (!this.shouldKeepListening || useSettings.getState().localSttOnly) {
+        this.isWebSpeechActive = false;
+        return;
+      }
+      try {
+        const win = window as WindowWithSpeechRecognition;
+        const SR = win.SpeechRecognition || win.webkitSpeechRecognition;
+        if (!SR) return;
+        const rec = new SR();
+        rec.lang = "ar-SA";
+        rec.continuous = true;
+        rec.interimResults = true;
+
+        rec.onresult = (event: SpeechRecognitionEventLike) => {
+          const currentSettings = useSettings.getState();
+          if (currentSettings.localSttOnly) {
+            this.stopLiveWebSpeech(true);
+            callbacks?.onInterimTranscript?.("", "", "");
+            return;
           }
-        }
-        if (finalChunk.trim()) {
-          this.webSpeechFinalTranscript = (
+          let finalChunk = "";
+          let interimChunk = "";
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const transcript = event.results[i][0]?.transcript || "";
+            if (event.results[i].isFinal) {
+              finalChunk += transcript + " ";
+            } else {
+              interimChunk += transcript;
+            }
+          }
+          if (finalChunk.trim()) {
+            this.webSpeechFinalTranscript = (
+              this.webSpeechFinalTranscript +
+              " " +
+              finalChunk
+            ).trim();
+            this.webSpeechInterimTranscript = interimChunk.trim();
+          } else if (interimChunk.trim()) {
+            this.webSpeechInterimTranscript = interimChunk.trim();
+          }
+          const combined = (
             this.webSpeechFinalTranscript +
             " " +
-            finalChunk
-          ).trim();
-          this.webSpeechInterimTranscript = interimChunk.trim();
-        } else if (interimChunk.trim()) {
-          this.webSpeechInterimTranscript = interimChunk.trim();
-        }
-        const combined = (
-          this.webSpeechFinalTranscript +
-          " " +
-          this.webSpeechInterimTranscript
-        ).trim();
-        if (combined && callbacks?.onInterimTranscript) {
-          callbacks.onInterimTranscript(
-            combined,
-            this.webSpeechFinalTranscript,
             this.webSpeechInterimTranscript
-          );
-        }
-      };
+          ).trim();
+          if (combined && callbacks?.onInterimTranscript) {
+            callbacks.onInterimTranscript(
+              combined,
+              this.webSpeechFinalTranscript,
+              this.webSpeechInterimTranscript
+            );
+          }
+        };
 
-      rec.onerror = () => {
+        rec.onerror = () => {
+          this.isWebSpeechActive = false;
+        };
+
+        rec.onend = () => {
+          // Oturum kapanmadan önce henüz isFinal olmamış geçici (interim) kelimeler varsa kaybetmemek için ana metne ekle
+          if (this.webSpeechInterimTranscript.trim()) {
+            this.webSpeechFinalTranscript = (
+              this.webSpeechFinalTranscript +
+              " " +
+              this.webSpeechInterimTranscript.trim()
+            ).trim();
+            this.webSpeechInterimTranscript = "";
+            const combined = this.webSpeechFinalTranscript;
+            if (combined && callbacks?.onInterimTranscript) {
+              callbacks.onInterimTranscript(combined, combined, "");
+            }
+          }
+
+          if (
+            this.shouldKeepListening &&
+            !useSettings.getState().localSttOnly
+          ) {
+            setTimeout(() => {
+              if (
+                this.shouldKeepListening &&
+                !useSettings.getState().localSttOnly
+              ) {
+                launchRecognitionInstance();
+              }
+            }, 60);
+          } else {
+            this.isWebSpeechActive = false;
+          }
+        };
+
+        rec.start();
+        this.recognition = rec;
+        this.isWebSpeechActive = true;
+      } catch {
         this.isWebSpeechActive = false;
-      };
+      }
+    };
 
-      rec.onend = () => {
-        this.isWebSpeechActive = false;
-      };
-
-      rec.start();
-      this.recognition = rec;
-      this.isWebSpeechActive = true;
-    } catch {
-      this.isWebSpeechActive = false;
-    }
+    launchRecognitionInstance();
   }
 
   /**
-   * Mobil tarayıcılarda recognition.stop() çağrıldıktan sonra 200-600ms içinde gelen
-   * son onresult olayını kaybetmemek için onend tetiklenene veya timeoutMs dolana kadar bekler.
+   * Kullanıcı "Kaydı Durdur" butonuna bastığında son hecenin işlenmesi için 400ms bekler,
+   * ardından SpeechRecognition oturumunu kapatıp yakalanan metni döndürür.
    */
-  public stopAndWaitForFinalResult(timeoutMs: number = 1200): Promise<string> {
+  public stopAndWaitForFinalResult(timeoutMs: number = 400): Promise<string> {
+    this.shouldKeepListening = false;
     const { localSttOnly } = useSettings.getState();
     if (localSttOnly) {
       this.stopLiveWebSpeech(true);
@@ -199,6 +241,7 @@ export class HybridSpeechManager {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
+        clearTimeout(graceStopTimer);
         try {
           rec.onresult = null;
           rec.onerror = null;
@@ -210,7 +253,8 @@ export class HybridSpeechManager {
         resolve(this.getCapturedWebSpeechText());
       };
 
-      const timer = setTimeout(finish, timeoutMs);
+      const waitMs = Math.max(400, timeoutMs);
+      const timer = setTimeout(finish, waitMs + 250);
 
       const prevOnEnd = rec.onend;
       rec.onend = (ev?: unknown) => {
@@ -219,8 +263,7 @@ export class HybridSpeechManager {
         } catch {
           // ignore
         }
-        // onend öncesinde kuyrukta bekleyen son onresult'ın işlenmesi için 60ms mikro bekleme
-        setTimeout(finish, 60);
+        setTimeout(finish, 50);
       };
 
       const prevOnError = rec.onerror;
@@ -230,26 +273,30 @@ export class HybridSpeechManager {
         } catch {
           // ignore
         }
-        setTimeout(finish, 60);
+        setTimeout(finish, 50);
       };
 
-      try {
-        if (typeof rec.stop === "function") {
-          rec.stop();
-        } else {
+      // Son hecenin onresult ile gelmesi için 400ms bekle, ardından rec.stop() çağır
+      const graceStopTimer = setTimeout(() => {
+        try {
+          if (typeof rec.stop === "function") {
+            rec.stop();
+          } else {
+            finish();
+          }
+        } catch {
           finish();
         }
-      } catch {
-        finish();
-      }
+      }, 400);
     });
   }
 
-  public stopListeningAsync(timeoutMs: number = 1200): Promise<string> {
+  public stopListeningAsync(timeoutMs: number = 400): Promise<string> {
     return this.stopAndWaitForFinalResult(timeoutMs);
   }
 
   public stopLiveWebSpeech(clearBuffers: boolean = false): string {
+    this.shouldKeepListening = false;
     if (this.recognition) {
       const rec = this.recognition;
       this.recognition = null;
@@ -657,11 +704,11 @@ export class HybridSpeechManager {
       }
     } else {
       // Tercih edilen motor: Hızlı Tarayıcı Motoru (Web Speech API)
+      // ⚡ Tarayıcı seçiliyken kesinlikle WASM yüklemesine düşme ve ekranda "Sesiniz çözümleniyor (WASM)..." gösterme!
       if (capturedWebSpeech && /[\u0600-\u06FF]/.test(capturedWebSpeech)) {
         return { text: capturedWebSpeech, usedEngine: "webspeech" };
       }
-      // Web Speech boş döndüyse kısa bir bekleme sonrası tekrar kontrol et, yine boşsa Whisper'a düş!
-      await new Promise((r) => setTimeout(r, 450));
+      await new Promise((r) => setTimeout(r, 400));
       const retryWebSpeech = (
         this.getCapturedWebSpeechText() ||
         callbacks?.backupTranscript ||
@@ -671,28 +718,10 @@ export class HybridSpeechManager {
         return { text: retryWebSpeech, usedEngine: "webspeech" };
       }
 
-      callbacks?.onStatusChange?.(
-        "🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor..."
-      );
-      try {
-        const whisperText = await this.transcribeWithWhisper(
-          audioData16kHz,
-          callbacks
-        );
-        if (whisperText && /[\u0600-\u06FF]/.test(whisperText)) {
-          return { text: whisperText, usedEngine: "whisper" };
-        }
-      } catch {
-        // Cihaz içi Whisper hata verirse sunucu /api/stt yedeğine geç
-      }
-
-      if (!isLocalOnly) {
-        const serverText = await this.transcribeViaServerApi(
-          audioData16kHz,
-          callbacks
-        );
+      if (!isLocalOnly && audioData16kHz && audioData16kHz.length >= 2400) {
+        const serverText = await this.transcribeViaServerApi(audioData16kHz);
         if (serverText && /[\u0600-\u06FF]/.test(serverText)) {
-          return { text: serverText, usedEngine: "whisper" };
+          return { text: serverText, usedEngine: "webspeech" };
         }
       }
 

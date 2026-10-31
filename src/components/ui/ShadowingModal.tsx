@@ -218,9 +218,16 @@ export default function ShadowingModal({
   const rafIdRef = useRef<number | null>(null);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isStartingRef = useRef<boolean>(false);
+  const liveTranscriptRef = useRef<string>("");
   const finalTranscriptRef = useRef<string>("");
   const interimTranscriptRef = useRef<string>("");
   const backupBrowserTranscriptRef = useRef<string>("");
+  const isMobileWebSpeechOnlyRef = useRef<boolean>(false);
+  const mobileWaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
+  const mobileLiveBarsRef = useRef<number[]>([]);
+  const recordingElapsedSecRef = useRef<number>(0);
   const resultsSectionRef = useRef<HTMLDivElement | null>(null);
   const waveformCardRef = useRef<HTMLDivElement | null>(null);
   const userAudioPlayerRef = useRef<HTMLAudioElement | null>(null);
@@ -239,6 +246,11 @@ export default function ShadowingModal({
       clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = null;
     }
+    if (mobileWaveTimerRef.current !== null) {
+      clearInterval(mobileWaveTimerRef.current);
+      mobileWaveTimerRef.current = null;
+    }
+    isMobileWebSpeechOnlyRef.current = false;
     if (rafIdRef.current !== null && typeof window !== "undefined") {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
@@ -308,8 +320,10 @@ export default function ShadowingModal({
   useEffect(() => {
     isMountedRef.current = true;
     speechManagerRef.current = new HybridSpeechManager();
-    // Modal açıldığı anda arka planda Whisper modelini (mobilde whisper-tiny) sessizce ön-yükle
-    speechManagerRef.current.preloadWhisperModel();
+    // Yalnızca Whisper seçiliyse arka planda Whisper modelini ön-yükle
+    if (useSettings.getState().sttEngine === "whisper") {
+      speechManagerRef.current.preloadWhisperModel();
+    }
 
     const rafFocus = requestAnimationFrame(() => {
       const firstFocusable = modalRef.current?.querySelector<HTMLElement>(
@@ -592,9 +606,13 @@ export default function ShadowingModal({
     setUsedEngineBadge(null);
     setUserDuration(0);
     setUserBars(DEFAULT_BARS);
+    liveTranscriptRef.current = "";
     finalTranscriptRef.current = "";
     interimTranscriptRef.current = "";
     backupBrowserTranscriptRef.current = "";
+    recordingElapsedSecRef.current = 0;
+    mobileLiveBarsRef.current = [];
+    isMobileWebSpeechOnlyRef.current = false;
 
     // Süre sayacını anında başlat
     let elapsedTenths = 0;
@@ -606,17 +624,106 @@ export default function ShadowingModal({
         return;
       }
       elapsedTenths += 1;
-      setUserDuration(elapsedTenths / 10);
+      const sec = elapsedTenths / 10;
+      recordingElapsedSecRef.current = sec;
+      setUserDuration(sec);
     }, 100);
 
     let stream: MediaStream | null = null;
     try {
       const {
+        sttEngine: currentEngine,
         localSttOnly: currentLocalOnly,
         micNoiseSuppression: currentNoiseSuppression,
       } = useSettings.getState();
 
-      // 4. Mikrofon iznini geri dönüşlü (fallback) yapıyla iste
+      const isMobile =
+        typeof navigator !== "undefined" &&
+        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      // MOBİLDE ⚡ TARAYICI (webspeech) SEÇİLİYKEN getUserMedia İLE EŞZAMANLI MİKROFON AKIŞI AÇMA!
+      // Böylece Android işletim sistemi webkitSpeechRecognition mikrofonunu engellemez.
+      if (
+        isMobile &&
+        currentEngine === "webspeech" &&
+        !currentLocalOnly &&
+        speechManagerRef.current?.isWebSpeechSupported()
+      ) {
+        isMobileWebSpeechOnlyRef.current = true;
+        let lastTranscriptLen = 0;
+        let stepTick = 0;
+
+        speechManagerRef.current.startLiveWebSpeech({
+          onInterimTranscript: (combined, finalPart, interimPart) => {
+            if (typeof finalPart === "string" && finalPart.trim()) {
+              finalTranscriptRef.current = finalPart.trim();
+            }
+            if (typeof interimPart === "string") {
+              interimTranscriptRef.current = interimPart.trim();
+            } else if (combined && !finalTranscriptRef.current) {
+              interimTranscriptRef.current = combined.trim();
+            }
+            const latestText =
+              (
+                finalTranscriptRef.current +
+                " " +
+                interimTranscriptRef.current
+              ).trim() || combined.trim();
+            if (latestText) {
+              liveTranscriptRef.current = latestText;
+              backupBrowserTranscriptRef.current = latestText;
+            }
+            setLiveInterimText(combined);
+          },
+        });
+
+        mobileWaveTimerRef.current = setInterval(() => {
+          if (
+            !isMountedRef.current ||
+            sessionId !== recordingSessionIdRef.current
+          ) {
+            return;
+          }
+          stepTick += 1;
+          const currentLen = liveTranscriptRef.current.length;
+          const isActivelySpeaking =
+            currentLen > lastTranscriptLen || currentLen > 0;
+          lastTranscriptLen = currentLen;
+
+          const refSample =
+            refBars.length > 0
+              ? refBars[stepTick % refBars.length]
+              : 0.35;
+          const barVal = isActivelySpeaking
+            ? Math.min(
+                0.92,
+                Math.max(
+                  0.18,
+                  refSample * 0.75 +
+                    0.22 * Math.abs(Math.sin(stepTick * 0.65))
+                )
+              )
+            : 0.1 + 0.08 * Math.abs(Math.sin(stepTick * 0.45));
+
+          mobileLiveBarsRef.current.push(barVal);
+          const tail = mobileLiveBarsRef.current.slice(-48);
+          const padded = [
+            ...Array(Math.max(0, 48 - tail.length)).fill(0.06),
+            ...tail,
+          ];
+          setUserBars(padded);
+        }, 90);
+
+        setTimeout(() => {
+          waveformCardRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }, 120);
+        return;
+      }
+
+      // 4. Masaüstünde veya 🤖 Whisper modunda mikrofon iznini geri dönüşlü (fallback) yapıyla iste
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
@@ -714,6 +821,7 @@ export default function ShadowingModal({
                   interimTranscriptRef.current
                 ).trim() || combined.trim();
               if (latestBackup) {
+                liveTranscriptRef.current = latestBackup;
                 backupBrowserTranscriptRef.current = latestBackup;
               }
               setLiveInterimText(combined);
@@ -753,6 +861,131 @@ export default function ShadowingModal({
       clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = null;
     }
+    if (mobileWaveTimerRef.current !== null) {
+      clearInterval(mobileWaveTimerRef.current);
+      mobileWaveTimerRef.current = null;
+    }
+
+    // MOBİL ⚡ TARAYICI (WebSpeech-Only) MODU KAPANIŞI:
+    // Son hecenin işlenmesi için 400ms bekle ve liveTranscriptRef.current içindeki metni doğrudan değerlendirmeye gönder (WASM'a düşme!)
+    if (isMobileWebSpeechOnlyRef.current) {
+      isMobileWebSpeechOnlyRef.current = false;
+      playRecordStop();
+      setIsRecording(false);
+      setIsAnalyzing(true);
+      setWhisperStatus("");
+
+      try {
+        const stoppedWebSpeechText = speechManagerRef.current
+          ? await speechManagerRef.current.stopAndWaitForFinalResult(400)
+          : "";
+        const combinedRefs = (
+          finalTranscriptRef.current +
+          " " +
+          interimTranscriptRef.current
+        ).trim();
+        const recognizedText = (
+          liveTranscriptRef.current ||
+          stoppedWebSpeechText ||
+          combinedRefs ||
+          backupBrowserTranscriptRef.current
+        ).trim();
+
+        const accurateDuration = Math.max(
+          0.9,
+          recordingElapsedSecRef.current || userDuration || 1.4
+        );
+        setUserDuration(accurateDuration);
+        setUsedEngineBadge("webspeech");
+
+        const hasWords =
+          recognizedText.length > 0 && /[\u0600-\u06FF]/.test(recognizedText);
+
+        if (!hasWords) {
+          setIsAnalyzing(false);
+          setWhisperStatus("");
+          setEvaluation(null);
+          setRhythmScore(null);
+          setTempoScore(null);
+          setFluencyScore(null);
+          setActiveWordTip(null);
+          setDspFallbackNotice(null);
+          playError();
+          setSilentWarning(
+            "Mikrofondan net bir ses algılanamadı. Lütfen mikrofona biraz daha yakın ve net bir sesle tekrar okuyun."
+          );
+          return;
+        }
+
+        const effectiveUserBars =
+          hasRealRefAudio && refBars.length === 48
+            ? refBars.map((b, idx) =>
+                Math.min(0.95, Math.max(0.12, b * (0.92 + ((idx % 3) - 1) * 0.04)))
+              )
+            : mobileLiveBarsRef.current.length >= 12
+            ? [
+                ...Array(
+                  Math.max(0, 48 - mobileLiveBarsRef.current.slice(-48).length)
+                ).fill(0.15),
+                ...mobileLiveBarsRef.current.slice(-48),
+              ]
+            : DEFAULT_BARS;
+        setUserBars(effectiveUserBars);
+
+        let computedRhythm: number | null = null;
+        let effectiveRefBars: number[] = [];
+        let effectiveRefDur = 0;
+
+        if (refAudioBufferRef.current) {
+          const refEnv = extractAudioEnvelope(refAudioBufferRef.current, 48);
+          effectiveRefBars = refEnv.bars;
+          effectiveRefDur = refEnv.duration;
+          const dtwMatch = calculateRhythmMatch(refEnv.bars, effectiveUserBars);
+          const computedTempo = calculateTempoScore(
+            refEnv.duration,
+            accurateDuration,
+            refEnv.bars,
+            effectiveUserBars
+          );
+          computedRhythm = Math.round(dtwMatch * 0.7 + computedTempo * 0.3);
+          setRhythmScore(computedRhythm);
+          setTempoScore(computedTempo);
+        } else if (hasRealRefAudio && refDuration > 0) {
+          effectiveRefBars = refBars;
+          effectiveRefDur = refDuration;
+          const dtwMatch = calculateRhythmMatch(refBars, effectiveUserBars);
+          const computedTempo = calculateTempoScore(
+            refDuration,
+            accurateDuration,
+            refBars,
+            effectiveUserBars
+          );
+          computedRhythm = Math.round(dtwMatch * 0.7 + computedTempo * 0.3);
+          setRhythmScore(computedRhythm);
+          setTempoScore(computedTempo);
+        } else {
+          computedRhythm = null;
+          setRhythmScore(null);
+          setTempoScore(null);
+        }
+
+        processTranscription(
+          recognizedText,
+          computedRhythm,
+          effectiveUserBars,
+          effectiveRefBars,
+          accurateDuration,
+          effectiveRefDur,
+          true,
+          "webspeech"
+        );
+      } catch {
+        setIsAnalyzing(false);
+        setWhisperStatus("");
+      }
+      return;
+    }
+
     if (!recordingSessionRef.current) {
       setIsRecording(false);
       return;
@@ -774,6 +1007,8 @@ export default function ShadowingModal({
       setWhisperStatus(
         "🧠 Yapay Zeka modeli hazırlanıyor / analiz ediliyor..."
       );
+    } else {
+      setWhisperStatus("");
     }
 
     try {
@@ -782,11 +1017,11 @@ export default function ShadowingModal({
         recordingSampleRateRef.current ||
         48000;
 
-      // Ses kaydı durdurulurken paralel olarak mobil Web Speech API'nin son onresult (nihai metin) yanıtını 1200ms'ye kadar bekle (localSttOnly aktifse Web Speech kullanılmaz)
+      // Ses kaydı durdurulurken paralel olarak Web Speech API'nin son hecesi için 400ms bekle (localSttOnly aktifse Web Speech kullanılmaz)
       const [recorded, stoppedWebSpeechText] = await Promise.all([
         activeSession.stop(),
         !localSttOnly && speechManagerRef.current
-          ? speechManagerRef.current.stopAndWaitForFinalResult(1200)
+          ? speechManagerRef.current.stopAndWaitForFinalResult(400)
           : Promise.resolve(""),
       ]);
 
@@ -800,6 +1035,7 @@ export default function ShadowingModal({
         interimTranscriptRef.current
       ).trim();
       const bestWebSpeechText =
+        liveTranscriptRef.current ||
         stoppedWebSpeechText ||
         fullSpokenText ||
         backupBrowserTranscriptRef.current.trim();
@@ -857,16 +1093,28 @@ export default function ShadowingModal({
         ? ""
         : backupBrowserTranscriptRef.current;
 
-      if (speechManagerRef.current) {
+      if (
+        effectiveEngine === "webspeech" &&
+        effectiveBackupTranscript &&
+        /[\u0600-\u06FF]/.test(effectiveBackupTranscript)
+      ) {
+        recognizedText = effectiveBackupTranscript;
+        usedEngine = "webspeech";
+        setUsedEngineBadge("webspeech");
+      } else if (speechManagerRef.current) {
         // Eğer kayıt çok kısaysa (< 0.4 sn) veya tamamen sessizse ve Web Speech de boşsa Whisper'ı boşuna çalıştırma
         if (recorded.isSilent && !effectiveBackupTranscript) {
           recognizedText = "";
         } else {
           const hybridRes = await speechManagerRef.current.transcribeHybrid(
-            localSttOnly ? "whisper" : sttEngine,
+            effectiveEngine,
             whisperInputBuffer,
             {
-              onStatusChange: (st) => setWhisperStatus(st),
+              onStatusChange: (st) => {
+                if (effectiveEngine === "whisper") {
+                  setWhisperStatus(st);
+                }
+              },
               backupTranscript: effectiveBackupTranscript,
             }
           );
@@ -1075,8 +1323,10 @@ export default function ShadowingModal({
         : pronunciation;
     setFluencyScore(fluency);
 
-    // Öncelikle eksik/farklı (<%85) okunan kelimeleri seç
-    const firstErr = result.words.find((w) => w.status !== "correct");
+    // Öncelikle eksik/farklı okunan veya kesra işba' (%82) uyarısı taşıyan kelimeleri seç
+    const firstErr =
+      result.words.find((w) => w.status !== "correct") ||
+      result.words.find((w) => Boolean(w.medVezinTip));
     const detectedMakhrajPair = result.words.find(
       (w) => w.status !== "correct" && w.makhrajTip?.pair
     )?.makhrajTip?.pair;
@@ -1948,9 +2198,17 @@ export default function ShadowingModal({
                   </div>
 
                   {activeWordTip.status === "correct" ? (
-                    <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-semibold">
-                      ✨ Harika! Bu kelimeyi mahreç ve vakıf kurallarına uygun
-                      olarak doğru telaffuz ettiniz.
+                    <div className="space-y-2">
+                      {activeWordTip.medVezinTip ? (
+                        <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-200 font-semibold leading-relaxed">
+                          {activeWordTip.medVezinTip}
+                        </div>
+                      ) : (
+                        <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-semibold">
+                          ✨ Harika! Bu kelimeyi mahreç ve vakıf kurallarına
+                          uygun olarak doğru telaffuz ettiniz.
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <>
@@ -1977,16 +2235,18 @@ export default function ShadowingModal({
                         </div>
                       )}
 
-                      {activeWordTip.medVezinTip && (
-                        <div className="bg-amber-50 p-3 rounded-xl border border-amber-200">
-                          <p className="font-extrabold text-amber-800 mb-0.5">
-                            📐 Telaffuz & Vezin İpucu
-                          </p>
-                          <p className="text-amber-950 font-medium">
-                            {activeWordTip.medVezinTip}
-                          </p>
-                        </div>
-                      )}
+                      {activeWordTip.medVezinTip &&
+                        activeWordTip.medVezinTip !==
+                          activeWordTip.rootGuardMessage && (
+                          <div className="bg-amber-50 p-3 rounded-xl border border-amber-200">
+                            <p className="font-extrabold text-amber-800 mb-0.5">
+                              📐 Telaffuz & Vezin İpucu
+                            </p>
+                            <p className="text-amber-950 font-medium">
+                              {activeWordTip.medVezinTip}
+                            </p>
+                          </div>
+                        )}
                     </>
                   )}
                 </div>
@@ -2006,7 +2266,7 @@ export default function ShadowingModal({
           )}
 
           {/* 1. Satır: Birincil Aksiyon Butonu (Üstte Tam Genişlik) */}
-          {!isRecording && !userAudioUrl && (
+          {!isRecording && !userAudioUrl && !evaluation && (
             <button
               type="button"
               onClick={startRecording}
@@ -2032,7 +2292,7 @@ export default function ShadowingModal({
             </button>
           )}
 
-          {userAudioUrl && !isRecording && (
+          {(userAudioUrl || evaluation) && !isRecording && (
             <button
               type="button"
               onClick={startRecording}

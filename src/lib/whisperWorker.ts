@@ -436,12 +436,8 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
         return await asrPipe(inputAudio, {
           language: "arabic",
           task: "transcribe",
-          temperature: 0,
           chunk_length_s: 30,
           stride_length_s: 5,
-          no_repeat_ngram_size: 3,
-          repetition_penalty: 1.2,
-          max_new_tokens: 100,
         });
       };
 

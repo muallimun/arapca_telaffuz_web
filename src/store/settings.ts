@@ -94,7 +94,7 @@ export const useSettings = create<SettingsState>()(
       turkishFontSize: 16,
       speechRate: 1,
       preferredLevel: "Başlangıç",
-      sttEngine: "whisper",
+      sttEngine: "webspeech",
       localSttOnly: false,
       micNoiseSuppression: false,
       wordTrackingStyle: "both",
@@ -179,6 +179,24 @@ export const useSettings = create<SettingsState>()(
       setSentenceLoopCount: (count) => set({ sentenceLoopCount: count }),
       setPauseBetweenLines: (pause) => set({ pauseBetweenLines: pause }),
     }),
-    { name: "app-settings" }
+    {
+      name: "app-settings",
+      version: 2,
+      migrate: (persistedState: unknown, version: number) => {
+        const state =
+          persistedState && typeof persistedState === "object"
+            ? (persistedState as Partial<SettingsState>)
+            : {};
+        if (version < 2) {
+          return {
+            ...state,
+            sttEngine: "webspeech" as SttEngine,
+            micNoiseSuppression: false,
+            localSttOnly: false,
+          } as SettingsState;
+        }
+        return state as SettingsState;
+      },
+    }
   )
 );

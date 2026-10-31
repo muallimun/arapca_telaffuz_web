@@ -1290,6 +1290,40 @@ export function isProperNounPhoneticMatch(
   return nearMakhrajSubstitutions <= 1;
 }
 
+/**
+ * Hedef kelimenin son harfinin kesralı (ـِ) veya müennes muhataba zamiri (ـكِ / أَنْتِ) olup olmadığını
+ * ve STT çıktısının bu kesrayı 'ي' uzatması (işbâ': لَكِ -> لكي، حَالُكِ -> حالكي، أَنْتِ -> انتي) olarak döndürüp döndürmediğini kontrol eder.
+ */
+function isFeminineKasraProlongationMatch(
+  rawExpectedWord: string,
+  cleanExp: string,
+  cleanSpk: string
+): boolean {
+  if (!cleanExp || !cleanSpk || cleanExp.length < 2) return false;
+  if (cleanExp.endsWith("ي")) return false;
+  if (cleanSpk !== cleanExp + "ي") return false;
+
+  const trimmedRaw = canonicalizeArabicDiacritics(rawExpectedWord)
+    .replace(COMMON_PUNCTUATION_AND_QUOTES_REGEX, "")
+    .trim();
+
+  // Doğrudan harekeli metinde son harfte kesra (\u0650) varsa
+  if (/\u0650$/.test(trimmedRaw)) {
+    return true;
+  }
+
+  // Harekesiz/yarı harekeli metinde bilinen müennes kesralı zamir/kelimeler (انت، لك، بك، منك، عنك، اليك، عليك، فيك، معك، حالك، اسمك)
+  if (
+    cleanExp === "انت" ||
+    cleanExp.endsWith("ك") ||
+    cleanExp === "هذه"
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export function evaluateSingleWord(
   expected: string,
   spoken: string
@@ -1326,9 +1360,29 @@ export function evaluateSingleWord(
     cleanSpk
   );
 
-  // 4. Özel İsim (بَتُولُ -> بطل vb.) Fonetik Tolerans Kontrolü
-  const isProperNounTolerated =
-    !isTanwinAlifEquivalent && isProperNounPhoneticMatch(cleanExp, cleanSpk);
+  // 4. Müennes Kesra Uzatma (İşbâ') Teşhisi (لَكِ -> لكي، حَالُكِ -> حالكي، أَنْتِ -> انتي)
+  if (
+    !isTanwinAlifEquivalent &&
+    isFeminineKasraProlongationMatch(
+      expectedCleaned || expected,
+      cleanExp,
+      cleanSpk
+    )
+  ) {
+    const targetLabel = (expectedCleaned || expected).trim();
+    const spokenLabel = spoken.trim() || cleanSpk;
+    const ishbaMessage = `🔍 Kesra Uzatma (İşbâ') Kontrolü (${targetLabel} → ${spokenLabel}): Kelime sonundaki kesra 'ي' uzatması gibi algılandı. Eğer 'leki' şeklinde kısa okuduysanız doğrudur; ancak 'lekî' diye çekerek okuduysanız son harekeyi med harfine dönüştürmeden kısa kesmeye dikkat edin.`;
+    return {
+      targetWord: targetLabel,
+      spokenWord: spoken,
+      score: 82,
+      status: "correct",
+      medVezinTip: ishbaMessage,
+      diacriticsVerified: true,
+      diacriticNote: ishbaMessage,
+      isRootGuardTriggered: false,
+    };
+  }
 
   const alignment = alignCharacters(cleanExp, cleanSpk);
   const rawAlignment = alignCharacters(rawExp, rawSpk);
@@ -1339,7 +1393,7 @@ export function evaluateSingleWord(
       ? 100
       : Math.round((matchCount / maxLen) * 100);
 
-  // Kök ünsüz ve 38 kanonik mahreç çifti kontrolü her zaman (baseScore >= 85 olsa bile!) çalıştırılır
+  // Kök ünsüz ve 38 kanonik mahreç çifti kontrolü her zaman (özel isimler dahil!) tavizsiz çalıştırılır
   const criticalAlignmentTip =
     findMakhrajPairFromAlignment(rawAlignment, true) ||
     findMakhrajPairFromAlignment(alignment, true);
@@ -1355,23 +1409,21 @@ export function evaluateSingleWord(
     : criticalAlignmentTip || generalAlignmentTip;
   const makhrajTip = detectedSubstitutionTip || fallbackCriticalTip;
 
-  const medVezinTip =
-    isTanwinAlifEquivalent || isProperNounTolerated
-      ? undefined
-      : analyzeVezinAndMed(cleanExp, alignment) || undefined;
+  const medVezinTip = isTanwinAlifEquivalent
+    ? undefined
+    : analyzeVezinAndMed(cleanExp, alignment) || undefined;
 
-  const rootGuard =
-    isTanwinAlifEquivalent || isProperNounTolerated
-      ? {
-          finalScore: isTanwinAlifEquivalent ? 100 : Math.max(88, baseScore),
-          isTriggered: false,
-        }
-      : applyRootConsonantGuard(
-          cleanExp,
-          cleanSpk,
-          baseScore,
-          Boolean(detectedSubstitutionTip)
-        );
+  const rootGuard = isTanwinAlifEquivalent
+    ? {
+        finalScore: 100,
+        isTriggered: false,
+      }
+    : applyRootConsonantGuard(
+        cleanExp,
+        cleanSpk,
+        baseScore,
+        Boolean(detectedSubstitutionTip)
+      );
 
   // Şedde (\u0651) ve Hareke (\u064E, \u0650, \u064F) kontrolü
   const diacriticEval = evaluateDiacriticsAndShadda(
@@ -1393,7 +1445,7 @@ export function evaluateSingleWord(
   if (
     finalScore >= 80 &&
     !rootGuard.isTriggered &&
-    (!detectedSubstitutionTip || isProperNounTolerated) &&
+    !detectedSubstitutionTip &&
     !diacriticEval.hasMismatch
   ) {
     status = "correct";
@@ -1411,11 +1463,6 @@ export function evaluateSingleWord(
     [diacriticEval.warning, medVezinTip].filter(Boolean).join(" · ") ||
     undefined;
 
-  const properNounInfoNote =
-    isProperNounTolerated && detectedSubstitutionTip
-      ? `Özel isim telaffuzu kabul edildi (İpucu: ${detectedSubstitutionTip.pair} ayrımına dikkat edebilirsiniz)`
-      : undefined;
-
   return {
     targetWord: expectedCleaned || expected,
     spokenWord: spoken,
@@ -1431,7 +1478,7 @@ export function evaluateSingleWord(
     medVezinTip: status === "correct" ? undefined : combinedMedVezinTip,
     diacriticWarning: diacriticEval.warning,
     diacriticsVerified: diacriticEval.diacriticsVerified,
-    diacriticNote: properNounInfoNote || diacriticEval.verificationNote,
+    diacriticNote: diacriticEval.verificationNote,
     isRootGuardTriggered:
       status === "correct" ? false : rootGuard.isTriggered,
     rootGuardMessage:
@@ -1450,8 +1497,8 @@ function computeWordSimilarity(expWord: string, spkWord: string): number {
   if (cExp === cSpk || isWordFinalTanwinAlifMatch(expWord, cExp, cSpk)) {
     return 1;
   }
-  if (isProperNounPhoneticMatch(cExp, cSpk)) {
-    return 0.88;
+  if (isFeminineKasraProlongationMatch(expWord, cExp, cSpk)) {
+    return 0.85;
   }
 
   const alignment = alignCharacters(cExp, cSpk);
@@ -1525,7 +1572,7 @@ function alignWordSequences(
   }
 
   const aligned: Array<{ expWord: string; spkWord: string }> = [];
-  const insertedWords: string[] = [];
+  const rawInserted: string[] = [];
   let i = m;
   let j = n;
 
@@ -1540,7 +1587,7 @@ function alignWordSequences(
     } else {
       // Fazladan söylenen kelime (Insertions)
       if (j > 0) {
-        insertedWords.push(spkWords[j - 1]);
+        rawInserted.push(spkWords[j - 1]);
       }
       j--;
     }
@@ -1548,8 +1595,67 @@ function alignWordSequences(
 
   return {
     aligned: aligned.reverse(),
-    insertedWords: insertedWords.reverse(),
+    insertedWords: rawInserted.reverse(),
   };
+}
+
+/**
+ * İki ardışık hedef kelimenin (örn. 'أَنَا' ve 'بِخَيْرٍ') hızlı geçişte ulanarak/yutularak
+ * tek bir kelime ('نبخر' veya 'نبخه') olarak algılanıp algılanmadığını tespit eder.
+ */
+function detectWordLiaisonMerge(
+  expWord1: string,
+  expWord2: string,
+  mergedSpokenWord: string
+): boolean {
+  const cExp1 = normalizeForComparison(expWord1);
+  const cExp2 = normalizeForComparison(expWord2);
+  const cSpk = normalizeForComparison(mergedSpokenWord);
+
+  if (!cExp1 || !cExp2 || !cSpk || cSpk.length < 3) return false;
+
+  // 1. kelimenin sonundaki med harflerini (ا/و/ي) soyarak son ünsüzünü bul (örn. انا -> ان -> ن)
+  const exp1WithoutTrailingVowels = cExp1.replace(/[اوي]+$/g, "");
+  const lastConsonant1 =
+    exp1WithoutTrailingVowels.length > 0
+      ? exp1WithoutTrailingVowels[exp1WithoutTrailingVowels.length - 1]
+      : cExp1[cExp1.length - 1];
+
+  if (!lastConsonant1) return false;
+
+  // Algılanan birleşik kelimenin başında 1. kelimenin son ünsüzü (örn. ن veya ان) var mı?
+  let remainderSpk = "";
+  if (
+    exp1WithoutTrailingVowels.length >= 2 &&
+    cSpk.startsWith(exp1WithoutTrailingVowels)
+  ) {
+    remainderSpk = cSpk.slice(exp1WithoutTrailingVowels.length);
+  } else if (cSpk.startsWith(lastConsonant1)) {
+    remainderSpk = cSpk.slice(lastConsonant1.length);
+  } else {
+    return false;
+  }
+
+  if (remainderSpk.length < 2) return false;
+
+  // Geriye kalan kısım (örn. بخر veya بخه) 2. kelimenin (بخير -> بخر) ünsüz iskeletiyle uyuşuyor mu?
+  const stripInternalVowels = (w: string) =>
+    w.length <= 1 ? w : w[0] + w.slice(1).replace(/[اوي]/g, "");
+  const cExp2Cons = stripInternalVowels(cExp2);
+  const remSpkCons = stripInternalVowels(remainderSpk);
+
+  if (
+    cExp2Cons.length >= 2 &&
+    remSpkCons.length >= 2 &&
+    remSpkCons.slice(0, 2) === cExp2Cons.slice(0, 2)
+  ) {
+    return true;
+  }
+
+  const alignment = alignCharacters(cExp2, remainderSpk);
+  const matches = alignment.filter((a) => a.operation === "MATCH").length;
+  const sim = matches / Math.max(cExp2.length, remainderSpk.length, 1);
+  return sim >= 0.5;
 }
 
 /**
@@ -1721,7 +1827,6 @@ export function evaluateSentenceWords(
     spkWords
   );
   const wordResults: WordEvaluationResult[] = [];
-  let totalScore = 0;
   let omittedCount = 0;
   let substitutedCount = 0;
 
@@ -1746,9 +1851,50 @@ export function evaluateSentenceWords(
       substitutedCount += 1;
     }
     wordResults.push(res);
-    totalScore += res.score;
   }
 
+  // Kelime Birleşmesi / Ulama Teşhisi (Örn: 'أَنَا بِخَيْرٍ' -> 'نبخر' / 'نبخه')
+  for (let i = 0; i < wordResults.length - 1; i++) {
+    const w1 = wordResults[i];
+    const w2 = wordResults[i + 1];
+    const isW1EmptyAndW2Spoken = !w1.spokenWord && Boolean(w2.spokenWord);
+    const isW2EmptyAndW1Spoken = Boolean(w1.spokenWord) && !w2.spokenWord;
+
+    if (isW1EmptyAndW2Spoken || isW2EmptyAndW1Spoken) {
+      const mergedSpk = (w1.spokenWord || w2.spokenWord || "").trim();
+      if (detectWordLiaisonMerge(w1.targetWord, w2.targetWord, mergedSpk)) {
+        omittedCount = Math.max(0, omittedCount - 1);
+        substitutedCount += 1;
+        const liaisonWarning = `⚠️ Kelime Ulaması / Yutma Tespiti: '${w1.targetWord}' ve '${w2.targetWord}' kelimeleri hızlı geçiş nedeniyle birleşerek ('${mergedSpk}' gibi) tek kelime olarak duyuldu. Kelime sınırlarını yutmadan, iki kelimeyi net ayırarak okuyun.`;
+
+        wordResults[i] = {
+          ...w1,
+          spokenWord: `${mergedSpk} (Eksik/Birleşik)`,
+          score: 45,
+          status: "wrong",
+          makhrajWarning: "Eksik / Birleşik Okuma (Ulama)",
+          medVezinTip: liaisonWarning,
+          diacriticNote: liaisonWarning,
+          isRootGuardTriggered: true,
+          rootGuardMessage: liaisonWarning,
+        };
+
+        wordResults[i + 1] = {
+          ...w2,
+          spokenWord: mergedSpk,
+          score: 68,
+          status: "warning",
+          makhrajWarning: "Kelime Sınırı Birleşmesi",
+          medVezinTip: liaisonWarning,
+          diacriticNote: liaisonWarning,
+          isRootGuardTriggered: false,
+          rootGuardMessage: liaisonWarning,
+        };
+      }
+    }
+  }
+
+  const totalScore = wordResults.reduce((acc, w) => acc + w.score, 0);
   const rawAverageScore =
     wordResults.length > 0 ? Math.round(totalScore / wordResults.length) : 0;
 
@@ -1773,7 +1919,6 @@ export function evaluateSentenceWords(
   const spokenHasAnyDiacritics = /[\u064B-\u0652\u0670]/.test(spokenSentence);
 
   // STT harekesiz metin döndürdüğünde Akustik Med/Şedde Süre Kontrolü
-  // (Kelime puanlarını ve Algılanan Metin & Harf Uyumu puanını ASLA düşürmez; ayrıca Algılanan Metin & Harf Uyumu >= %80 ise sahte uyarı üretmez!)
   const rawAcousticCheck = !spokenHasAnyDiacritics
     ? evaluateAcousticMaddAndShaddaDuration(
         strippedTargetSentence,
@@ -1798,7 +1943,7 @@ export function evaluateSentenceWords(
   if (acousticCheck?.checked && acousticCheck.feedbackMessage) {
     for (const w of wordResults) {
       const wInfo = calculateExpectedPhoneticDuration(w.targetWord);
-      if (wInfo.hasMadd || wInfo.hasShadda) {
+      if ((wInfo.hasMadd || wInfo.hasShadda) && !w.diacriticNote?.includes("Kesra Uzatma") && !w.diacriticNote?.includes("Kelime Ulaması")) {
         w.diacriticNote = acousticCheck.feedbackMessage;
       }
     }
