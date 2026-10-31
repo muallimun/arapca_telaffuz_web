@@ -11,12 +11,139 @@ export type SttEngineType = "whisper" | "webspeech";
 
 export interface SttCallbacks {
   onStatusChange?: (statusText: string) => void;
+  onStarted?: () => void;
+  onSpeechActivity?: (level: number) => void;
+  onAutoStop?: (finalText: string) => void;
   onInterimTranscript?: (
     interimText: string,
     finalTranscript?: string,
     rawInterim?: string
   ) => void;
   backupTranscript?: string;
+}
+
+function normalizeTranscriptComparison(s: string): string {
+  return (s || "")
+    .replace(/[\u064B-\u065F\u0670\u0640.,!?؟،؛:"'«»()[\]-]/g, "")
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Ardışık tekrarlanan kelimeleri ("انا انا انا طالبه" -> "انا طالبه") ve
+ * ardışık tekrarlanan kelime bloklarını ("انا طالبه انا طالبه في جامعه" -> "انا طالبه في جامعه") temizler.
+ */
+export function collapseRepeatedArabicPhrases(rawText: string): string {
+  const words = (rawText || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length <= 1) return words.join(" ");
+
+  // 1. Ardışık birebir aynı kelimeleri tekilleştir
+  const step1: string[] = [];
+  for (const w of words) {
+    const prev = step1[step1.length - 1];
+    if (
+      prev &&
+      normalizeTranscriptComparison(prev) === normalizeTranscriptComparison(w)
+    ) {
+      continue;
+    }
+    step1.push(w);
+  }
+
+  // 2. Ardışık tekrarlanan 2..4 kelimelik blokları ("انا طالبه انا طالبه") tekilleştir
+  let current = step1;
+  for (let n = 4; n >= 2; n--) {
+    if (current.length < n * 2) continue;
+    const next: string[] = [];
+    let i = 0;
+    while (i < current.length) {
+      if (i + n * 2 <= current.length) {
+        const blockA = current
+          .slice(i, i + n)
+          .map(normalizeTranscriptComparison)
+          .join(" ");
+        const blockB = current
+          .slice(i + n, i + n * 2)
+          .map(normalizeTranscriptComparison)
+          .join(" ");
+        if (blockA && blockA === blockB) {
+          next.push(...current.slice(i, i + n));
+          i += n * 2;
+          continue;
+        }
+      }
+      next.push(current[i]);
+      i += 1;
+    }
+    current = next;
+  }
+
+  return current.join(" ");
+}
+
+/**
+ * Android Chrome webkitSpeechRecognition'ın kümülatif sonuç dizisini
+ * (["انا", "انا طالبه", "انا طالبه في جامعه"]) tekilleştirerek birleştirir.
+ */
+export function deduplicateCumulativeTranscript(chunks: string[]): string {
+  const deduped: string[] = [];
+
+  for (const rawChunk of chunks) {
+    const curr = (rawChunk || "").trim();
+    if (!curr) continue;
+    const normCurr = normalizeTranscriptComparison(curr);
+    if (!normCurr) continue;
+
+    if (deduped.length === 0) {
+      deduped.push(curr);
+      continue;
+    }
+
+    const prev = deduped[deduped.length - 1];
+    const normPrev = normalizeTranscriptComparison(prev);
+
+    if (normCurr === normPrev || normPrev.startsWith(normCurr)) {
+      // curr zaten prev içinde mevcut
+      continue;
+    }
+
+    if (normCurr.startsWith(normPrev)) {
+      // curr, prev'in genişletilmiş kümülatif halidir; prev'i curr ile değiştir
+      deduped[deduped.length - 1] = curr;
+      continue;
+    }
+
+    // Kısmi örtüşme kontrolü: prev'in son k kelimesi curr'un ilk k kelimesiyle aynı mı?
+    const prevWords = prev.split(/\s+/);
+    const currWords = curr.split(/\s+/);
+    const normPrevWords = prevWords.map(normalizeTranscriptComparison);
+    const normCurrWords = currWords.map(normalizeTranscriptComparison);
+    let overlap = 0;
+    const maxK = Math.min(normPrevWords.length, normCurrWords.length);
+    for (let k = maxK; k >= 1; k--) {
+      const suffix = normPrevWords.slice(normPrevWords.length - k).join(" ");
+      const prefix = normCurrWords.slice(0, k).join(" ");
+      if (suffix && suffix === prefix) {
+        overlap = k;
+        break;
+      }
+    }
+
+    if (overlap > 0) {
+      const merged = [
+        ...prevWords,
+        ...currWords.slice(overlap),
+      ].join(" ");
+      deduped[deduped.length - 1] = merged;
+    } else {
+      deduped.push(curr);
+    }
+  }
+
+  return collapseRepeatedArabicPhrases(deduped.join(" "));
 }
 
 interface SpeechRecognitionResultAlternativeLike {
@@ -37,6 +164,9 @@ interface SpeechRecognitionInstanceLike {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
+  onstart?: (() => void) | null;
+  onsoundstart?: (() => void) | null;
+  onspeechstart?: (() => void) | null;
   onresult: ((event: SpeechRecognitionEventLike) => void) | null;
   onerror: ((event?: unknown) => void) | null;
   onend: ((event?: unknown) => void) | null;
@@ -57,6 +187,7 @@ export class HybridSpeechManager {
   private webSpeechInterimTranscript = "";
   private isWebSpeechActive = false;
   private shouldKeepListening = false;
+  private startedTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -93,8 +224,9 @@ export class HybridSpeechManager {
 
   /**
    * Kayıt başlarken Web Speech API'yi başlatır.
-   * Android Chrome'da cümle ortasında onend tetiklenirse kullanıcı "Kaydı Durdur" butonuna basana kadar
-   * oturumu otomatik devam ettirir ve interim + final kelimeleri kesintisiz birleştirir.
+   * - onstart tetiklendikten 200ms sonra onStarted çağırır (soğuk başlangıç kelime yutmasını önler).
+   * - Android Chrome'un kümülatif onresult tekrarlarını deduplicateCumulativeTranscript ile temizler.
+   * - Kullanıcı en az 2 Arapça kelime söyleyip sustuğunda onend tetiklenirse yeniden başlatmak yerine onAutoStop çağırır.
    */
   public startLiveWebSpeech(callbacks?: SttCallbacks) {
     this.stopLiveWebSpeech(true);
@@ -111,6 +243,22 @@ export class HybridSpeechManager {
     if (!this.isWebSpeechSupported()) return;
 
     this.shouldKeepListening = true;
+    let hasFiredStarted = false;
+    let priorSessionsTranscript = "";
+
+    const notifyStartedAfterWarmup = () => {
+      if (hasFiredStarted) return;
+      hasFiredStarted = true;
+      if (this.startedTimer !== null) {
+        clearTimeout(this.startedTimer);
+      }
+      this.startedTimer = setTimeout(() => {
+        this.startedTimer = null;
+        if (this.shouldKeepListening) {
+          callbacks?.onStarted?.();
+        }
+      }, 200);
+    };
 
     const launchRecognitionInstance = () => {
       if (!this.shouldKeepListening || useSettings.getState().localSttOnly) {
@@ -126,6 +274,18 @@ export class HybridSpeechManager {
         rec.continuous = true;
         rec.interimResults = true;
 
+        rec.onstart = () => {
+          notifyStartedAfterWarmup();
+        };
+
+        rec.onsoundstart = () => {
+          callbacks?.onSpeechActivity?.(0.55);
+        };
+
+        rec.onspeechstart = () => {
+          callbacks?.onSpeechActivity?.(0.7);
+        };
+
         rec.onresult = (event: SpeechRecognitionEventLike) => {
           const currentSettings = useSettings.getState();
           if (currentSettings.localSttOnly) {
@@ -133,35 +293,65 @@ export class HybridSpeechManager {
             callbacks?.onInterimTranscript?.("", "", "");
             return;
           }
-          let finalChunk = "";
-          let interimChunk = "";
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            const transcript = event.results[i][0]?.transcript || "";
+
+          notifyStartedAfterWarmup();
+
+          const rawFinalSegments: string[] = [];
+          const rawInterimSegments: string[] = [];
+          const allSegments: string[] = [];
+
+          if (priorSessionsTranscript) {
+            rawFinalSegments.push(priorSessionsTranscript);
+            allSegments.push(priorSessionsTranscript);
+          }
+
+          for (let i = 0; i < event.results.length; ++i) {
+            const transcript = (event.results[i][0]?.transcript || "").trim();
+            if (!transcript) continue;
+            allSegments.push(transcript);
             if (event.results[i].isFinal) {
-              finalChunk += transcript + " ";
+              rawFinalSegments.push(transcript);
             } else {
-              interimChunk += transcript;
+              rawInterimSegments.push(transcript);
             }
           }
-          if (finalChunk.trim()) {
-            this.webSpeechFinalTranscript = (
-              this.webSpeechFinalTranscript +
-              " " +
-              finalChunk
-            ).trim();
-            this.webSpeechInterimTranscript = interimChunk.trim();
-          } else if (interimChunk.trim()) {
-            this.webSpeechInterimTranscript = interimChunk.trim();
+
+          const dedupedAll = deduplicateCumulativeTranscript(allSegments);
+          const dedupedFinal = deduplicateCumulativeTranscript(rawFinalSegments);
+          const dedupedInterim =
+            deduplicateCumulativeTranscript(rawInterimSegments);
+
+          this.webSpeechFinalTranscript = dedupedFinal;
+          // Eğer dedupedAll, dedupedFinal'dan uzunsa kalan kısmı interim olarak tut
+          if (
+            dedupedAll.length > dedupedFinal.length &&
+            normalizeTranscriptComparison(dedupedAll).startsWith(
+              normalizeTranscriptComparison(dedupedFinal)
+            )
+          ) {
+            this.webSpeechInterimTranscript = dedupedInterim;
+          } else {
+            this.webSpeechInterimTranscript = dedupedFinal ? "" : dedupedInterim;
           }
-          const combined = (
-            this.webSpeechFinalTranscript +
-            " " +
-            this.webSpeechInterimTranscript
-          ).trim();
+
+          const combined =
+            dedupedAll ||
+            deduplicateCumulativeTranscript([
+              this.webSpeechFinalTranscript,
+              this.webSpeechInterimTranscript,
+            ]);
+
+          // Canlı ses aktivitesi darbesi (mobil dalga boyunun kullanıcının sesiyle ritmik hareket etmesi için)
+          const level = Math.min(
+            0.92,
+            0.38 + ((combined.length * 7) % 45) / 100
+          );
+          callbacks?.onSpeechActivity?.(level);
+
           if (combined && callbacks?.onInterimTranscript) {
             callbacks.onInterimTranscript(
               combined,
-              this.webSpeechFinalTranscript,
+              this.webSpeechFinalTranscript || combined,
               this.webSpeechInterimTranscript
             );
           }
@@ -172,18 +362,36 @@ export class HybridSpeechManager {
         };
 
         rec.onend = () => {
-          // Oturum kapanmadan önce henüz isFinal olmamış geçici (interim) kelimeler varsa kaybetmemek için ana metne ekle
-          if (this.webSpeechInterimTranscript.trim()) {
-            this.webSpeechFinalTranscript = (
-              this.webSpeechFinalTranscript +
-              " " +
-              this.webSpeechInterimTranscript.trim()
-            ).trim();
+          const merged = deduplicateCumulativeTranscript([
+            priorSessionsTranscript,
+            this.webSpeechFinalTranscript,
+            this.webSpeechInterimTranscript,
+          ]);
+          if (merged) {
+            this.webSpeechFinalTranscript = merged;
+            priorSessionsTranscript = merged;
             this.webSpeechInterimTranscript = "";
-            const combined = this.webSpeechFinalTranscript;
-            if (combined && callbacks?.onInterimTranscript) {
-              callbacks.onInterimTranscript(combined, combined, "");
+            if (callbacks?.onInterimTranscript) {
+              callbacks.onInterimTranscript(merged, merged, "");
             }
+          }
+
+          const arabicWordCount = (this.webSpeechFinalTranscript || "")
+            .trim()
+            .split(/\s+/)
+            .filter((w) => /[\u0600-\u06FF]/.test(w)).length;
+
+          // Eğer kullanıcı en az 2 Arapça kelime söyledikten sonra konuşmayı bitirip sustuysa
+          // ve onAutoStop tanımlıysa, mikrofonu tekrar açmak yerine kaydı otomatik tamamla!
+          if (
+            this.shouldKeepListening &&
+            arabicWordCount >= 2 &&
+            callbacks?.onAutoStop
+          ) {
+            this.shouldKeepListening = false;
+            this.isWebSpeechActive = false;
+            callbacks.onAutoStop(this.getCapturedWebSpeechText());
+            return;
           }
 
           if (
@@ -206,8 +414,15 @@ export class HybridSpeechManager {
         rec.start();
         this.recognition = rec;
         this.isWebSpeechActive = true;
+        // Bazı tarayıcılarda onstart gecikirse 350ms sonra yedek olarak tetikle
+        setTimeout(() => {
+          if (this.shouldKeepListening) {
+            notifyStartedAfterWarmup();
+          }
+        }, 350);
       } catch {
         this.isWebSpeechActive = false;
+        notifyStartedAfterWarmup();
       }
     };
 
@@ -220,6 +435,10 @@ export class HybridSpeechManager {
    */
   public stopAndWaitForFinalResult(timeoutMs: number = 400): Promise<string> {
     this.shouldKeepListening = false;
+    if (this.startedTimer !== null) {
+      clearTimeout(this.startedTimer);
+      this.startedTimer = null;
+    }
     const { localSttOnly } = useSettings.getState();
     if (localSttOnly) {
       this.stopLiveWebSpeech(true);
@@ -297,6 +516,10 @@ export class HybridSpeechManager {
 
   public stopLiveWebSpeech(clearBuffers: boolean = false): string {
     this.shouldKeepListening = false;
+    if (this.startedTimer !== null) {
+      clearTimeout(this.startedTimer);
+      this.startedTimer = null;
+    }
     if (this.recognition) {
       const rec = this.recognition;
       this.recognition = null;
@@ -320,11 +543,7 @@ export class HybridSpeechManager {
       this.webSpeechInterimTranscript = "";
       return "";
     }
-    return (
-      this.webSpeechFinalTranscript +
-      " " +
-      this.webSpeechInterimTranscript
-    ).trim();
+    return this.getCapturedWebSpeechText();
   }
 
   public getCapturedWebSpeechText(): string {
@@ -334,11 +553,10 @@ export class HybridSpeechManager {
       this.webSpeechInterimTranscript = "";
       return "";
     }
-    return (
-      this.webSpeechFinalTranscript +
-      " " +
-      this.webSpeechInterimTranscript
-    ).trim();
+    return deduplicateCumulativeTranscript([
+      this.webSpeechFinalTranscript,
+      this.webSpeechInterimTranscript,
+    ]);
   }
 
   private requestCounter = 0;
@@ -704,7 +922,6 @@ export class HybridSpeechManager {
       }
     } else {
       // Tercih edilen motor: Hızlı Tarayıcı Motoru (Web Speech API)
-      // ⚡ Tarayıcı seçiliyken kesinlikle WASM yüklemesine düşme ve ekranda "Sesiniz çözümleniyor (WASM)..." gösterme!
       if (capturedWebSpeech && /[\u0600-\u06FF]/.test(capturedWebSpeech)) {
         return { text: capturedWebSpeech, usedEngine: "webspeech" };
       }
@@ -716,6 +933,31 @@ export class HybridSpeechManager {
       ).trim();
       if (retryWebSpeech && /[\u0600-\u06FF]/.test(retryWebSpeech)) {
         return { text: retryWebSpeech, usedEngine: "webspeech" };
+      }
+
+      // Masaüstünde (Brave vb.) ⚡ Tarayıcı seçili olduğu halde Google Web Speech boş döndüyse
+      // ve elimizde gerçek pcm16k ses verisi varsa otomatik olarak cihaz içi Whisper motoruna düş!
+      const isIPadOS =
+        typeof navigator !== "undefined" &&
+        navigator.platform === "MacIntel" &&
+        navigator.maxTouchPoints > 1;
+      const isMobileUa =
+        typeof navigator !== "undefined" &&
+        (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "") ||
+          isIPadOS);
+
+      if (!isMobileUa && audioData16kHz && audioData16kHz.length >= 2400) {
+        try {
+          const whisperFallback = await this.transcribeWithWhisper(
+            audioData16kHz,
+            callbacks
+          );
+          if (whisperFallback && /[\u0600-\u06FF]/.test(whisperFallback)) {
+            return { text: whisperFallback, usedEngine: "whisper" };
+          }
+        } catch {
+          // ignore and try server fallback
+        }
       }
 
       if (!isLocalOnly && audioData16kHz && audioData16kHz.length >= 2400) {

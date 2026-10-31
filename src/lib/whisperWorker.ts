@@ -108,10 +108,11 @@ const MODEL_CANDIDATES = isMobile
 
 /**
  * Gerçekten kullanılabilir bir WebGPU adaptörü ve cihazı olup olmadığını kontrol eder.
- * Mobil cihazlarda ve Firefox gibi WebGPU'nun deneysel/kısmi olduğu ortamlarda güvenli şekilde false döner.
+ * Yalnızca gerçek mobil cihazlarda (Android/iOS/iPadOS) ve Firefox'ta false döner;
+ * masaüstü Chrome/Brave/Edge tarayıcılarında WebGPU hızlandırmasını aktif olarak kullanır.
  */
 async function hasUsableWebGPU(): Promise<boolean> {
-  if (isMobile) {
+  if (isMobileUa) {
     return false;
   }
   try {
@@ -191,9 +192,10 @@ function resampleWorkerAudioTo16kHz(
 }
 
 /**
- * 16kHz Float32Array PCM ses dizisinin tepe genliğini 0.90 seviyesine normalize eder,
- * başına 0.30 saniye (4800 sıfır örneği) ve sonuna 0.40 saniye (6400 sıfır örneği) sessizlik yastığı (zero-padding) ekler
- * ve toplam ses uzunluğunun her zaman >= 1.6 saniye (25600 örnek) olmasını garanti eder.
+ * 16kHz Float32Array PCM ses dizisinin başındaki ve sonundaki ölü sessizliği
+ * (rms < Math.max(0.008, peakRms * 0.06)) kırpar, tepe genliğini 0.88 seviyesine normalize eder
+ * ve başına/sonuna yalnızca 0.20 saniye (3200 sıfır örneği) sessizlik yastığı ekler.
+ * Böylece baştaki sessizlikten "نعم" halüsinasyonu üretilmesi tamamen engellenir.
  */
 function preprocessAudioForWhisper(
   rawSamples: Float32Array,
@@ -222,33 +224,51 @@ function preprocessAudioForWhisper(
   }
 
   let coreSamples = samples;
-  // Yalnızca 3.5 saniyeyi (56000 örnek) aşan kayıtlarda ve skipTrim === false iken hafif uç sessizlik kırpması yap
-  if (!skipTrim && samples.length > 56000) {
-    const threshold = Math.max(0.003, maxAbs * 0.03);
-    let start = 0;
-    let end = samples.length - 1;
-
-    for (let i = 0; i < samples.length; i++) {
-      if (Math.abs(samples[i]) >= threshold) {
-        start = Math.max(0, i - 6400); // 0.40 sn ön pay
-        break;
+  if (!skipTrim && samples.length > 640) {
+    const winSize = 320; // 20ms @ 16kHz
+    const numWins = Math.floor(samples.length / winSize);
+    if (numWins > 0) {
+      const winRms = new Float32Array(numWins);
+      let peakRms = 0;
+      for (let w = 0; w < numWins; w++) {
+        let sumSq = 0;
+        const base = w * winSize;
+        for (let i = 0; i < winSize; i++) {
+          const v = samples[base + i];
+          sumSq += v * v;
+        }
+        const r = Math.sqrt(sumSq / winSize);
+        winRms[w] = r;
+        if (r > peakRms) peakRms = r;
       }
-    }
 
-    for (let i = samples.length - 1; i >= 0; i--) {
-      if (Math.abs(samples[i]) >= threshold) {
-        end = Math.min(samples.length - 1, i + 7200); // 0.45 sn arka pay
-        break;
+      const rmsThreshold = Math.max(0.008, peakRms * 0.06);
+      let firstWin = -1;
+      let lastWin = -1;
+      for (let w = 0; w < numWins; w++) {
+        if (winRms[w] >= rmsThreshold) {
+          firstWin = w;
+          break;
+        }
       }
-    }
+      for (let w = numWins - 1; w >= 0; w--) {
+        if (winRms[w] >= rmsThreshold) {
+          lastWin = w;
+          break;
+        }
+      }
 
-    const minAllowed = Math.min(samples.length, 28800); // en az 1.8 sn
-    if (end > start && end - start + 1 >= minAllowed) {
-      coreSamples = samples.slice(start, end + 1);
+      if (firstWin !== -1 && lastWin !== -1 && lastWin >= firstWin) {
+        const start = Math.max(0, firstWin * winSize);
+        const end = Math.min(samples.length, (lastWin + 1) * winSize);
+        if (end - start >= 1600) {
+          coreSamples = samples.slice(start, end);
+        }
+      }
     }
   }
 
-  // Tepe genliğini (Peak Normalization) 0.90 seviyesine normalize et (ve varsa gainBoost uygula)
+  // Tepe genliğini (Peak Normalization) 0.88 seviyesine normalize et (ve varsa gainBoost uygula)
   let peak = 0;
   for (let i = 0; i < coreSamples.length; i++) {
     const v = Math.abs(coreSamples[i]);
@@ -257,7 +277,7 @@ function preprocessAudioForWhisper(
 
   const normalized = new Float32Array(coreSamples.length);
   if (peak > 0.002) {
-    const gain = (0.9 / peak) * gainBoost;
+    const gain = (0.88 / peak) * gainBoost;
     for (let i = 0; i < coreSamples.length; i++) {
       normalized[i] = Math.max(-0.98, Math.min(0.98, coreSamples[i] * gain));
     }
@@ -265,10 +285,10 @@ function preprocessAudioForWhisper(
     normalized.set(coreSamples);
   }
 
-  // Başına 0.30 sn (4800 örnek) ve sonuna 0.40 sn (6400 örnek) sessizlik yastığı ekle; toplam uzunluk >= 1.6 sn (25600 örnek) olsun
-  const prePad = 4800;
-  const postPad = 6400;
-  const minTotalSamples = 25600; // 1.6 saniye @ 16kHz
+  // Başına 0.20 sn (3200 örnek) ve sonuna 0.20 sn (3200 örnek) sessizlik yastığı ekle
+  const prePad = 3200;
+  const postPad = 3200;
+  const minTotalSamples = 16000; // 1.0 saniye @ 16kHz
   const totalLen = Math.max(
     minTotalSamples,
     prePad + normalized.length + postPad
@@ -277,88 +297,6 @@ function preprocessAudioForWhisper(
   padded.set(normalized, prePad);
 
   return padded;
-}
-
-/**
- * Uzun cümlelerde (> 2.8 saniye) sesin ortasındaki (%30 ile %70 zaman aralığındaki)
- * en düşük enerjili 150ms nefes durağını (virgül/durak noktasını) bulur.
- */
-function findSilenceValleyIndex(
-  samples: Float32Array,
-  sampleRate: number = 16000
-): number {
-  const n = samples.length;
-  const minIdx = Math.floor(n * 0.3);
-  const maxIdx = Math.floor(n * 0.7);
-  const windowSize = Math.max(240, Math.round(sampleRate * 0.15)); // 150ms @ 16kHz = 2400 örnek
-  const step = Math.max(80, Math.round(sampleRate * 0.025)); // 25ms adım
-
-  if (maxIdx - minIdx <= windowSize) {
-    return -1;
-  }
-
-  const windowRmsList: number[] = [];
-  let bestStart = -1;
-  let lowestEnergy = Number.POSITIVE_INFINITY;
-
-  for (let start = minIdx; start + windowSize <= maxIdx; start += step) {
-    let sumSq = 0;
-    for (let i = 0; i < windowSize; i++) {
-      const v = samples[start + i];
-      sumSq += v * v;
-    }
-    const rms = Math.sqrt(sumSq / windowSize);
-    windowRmsList.push(rms);
-    if (rms < lowestEnergy) {
-      lowestEnergy = rms;
-      bestStart = start + Math.floor(windowSize / 2);
-    }
-  }
-
-  if (windowRmsList.length === 0 || bestStart < 0) {
-    return -1;
-  }
-
-  const sortedRms = [...windowRmsList].sort((a, b) => a - b);
-  const mid = Math.floor(sortedRms.length / 2);
-  const medianRms =
-    sortedRms.length % 2 === 0
-      ? (sortedRms[mid - 1] + sortedRms[mid]) / 2
-      : sortedRms[mid];
-
-  // Eğer en düşük enerjili pencere gerçekten sessiz bir nefes durağı değilse (medyan enerjinin %25'inden yüksekse) kelimenin ortasından BÖLME!
-  if (medianRms <= 0 || lowestEnergy > medianRms * 0.25) {
-    return -1;
-  }
-
-  return bestStart;
-}
-
-/**
- * Bölünmüş ses parçasını 0.88 tepe genliğine normalize eder ve hafif sessizlik yastığı ekler.
- */
-function normalizeChunkPeak088(
-  chunk: Float32Array,
-  targetPeak: number = 0.88
-): Float32Array {
-  if (!chunk || chunk.length === 0) return new Float32Array(0);
-  let peak = 0;
-  for (let i = 0; i < chunk.length; i++) {
-    const v = Math.abs(chunk[i]);
-    if (v > peak) peak = v;
-  }
-  if (peak < 0.002) return new Float32Array(0);
-
-  const scale = targetPeak / peak;
-  const prePad = 4000; // 0.25 sn @ 16kHz
-  const postPad = 4800; // 0.30 sn @ 16kHz
-  const minTotal = 25600; // >= 1.6 sn @ 16kHz
-  const totalLen = Math.max(minTotal, prePad + chunk.length + postPad);
-  const out = new Float32Array(totalLen);
-  for (let i = 0; i < chunk.length; i++) {
-    out[prePad + i] = Math.max(-0.98, Math.min(0.98, chunk[i] * scale));
-  }
-  return out;
 }
 
 function cleanWhisperHallucinations(rawText: string): string {
@@ -490,7 +428,7 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
           ? resampleWorkerAudioTo16kHz(audioData, sampleRate || 16000)
           : audioData;
 
-      // 1. ÖN İŞLEME: 16kHz'e örnekle, 0.90 tepe normalizasyonu ve 0.30s/0.40s sessizlik yastığı (>= 1.6s) uygula
+      // 1. ÖN İŞLEME: 16kHz'e örnekle, baştaki/sondaki ölü sessizliği kes, 0.88 tepe normalizasyonu ve 0.20s/0.20s sessizlik yastığı uygula
       const processedAudio = preprocessAudioForWhisper(raw16k, 16000, 1.0, false);
 
       if (!processedAudio || processedAudio.length < 2400) {
@@ -542,6 +480,7 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
           task: "transcribe",
           chunk_length_s: 30,
           stride_length_s: 5,
+          return_timestamps: false,
         });
       };
 
@@ -571,71 +510,16 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
         }
       };
 
-      const runSplitValleyInference = async (): Promise<string> => {
-        const valleyIdx = findSilenceValleyIndex(raw16k, 16000);
-        if (valleyIdx < 0) {
-          return "";
-        }
-        const part1 = normalizeChunkPeak088(raw16k.slice(0, valleyIdx), 0.88);
-        const part2 = normalizeChunkPeak088(raw16k.slice(valleyIdx), 0.88);
-        if (part1.length < 2400 || part2.length < 2400) {
-          return "";
-        }
-        const text1 = !isRequestStaleOrAborted(requestId)
-          ? (await runSafeInference(part1)).trim()
-          : "";
-        const text2 = !isRequestStaleOrAborted(requestId)
-          ? (await runSafeInference(part2)).trim()
-          : "";
+      // Sesi ortadan 2'ye bölen runSplitValleyInference tamamen devre dışı!
+      // Doğrudan tek parça (single-pass) olarak çözümle.
+      let recognizedText = await runSafeInference(processedAudio);
 
-        // Parçalardan biri boş dönerse veya toplam kelime sayısı çok azsa tam ses üzerinde tek parça çözümlemeye düşmesi için boş döndür
-        if (
-          !text1 ||
-          !text2 ||
-          !/[\u0600-\u06FF]/.test(text1) ||
-          !/[\u0600-\u06FF]/.test(text2)
-        ) {
-          return "";
-        }
-        const joined = `${text1} ${text2}`.trim();
-        const wordCount = joined
-          .split(/\s+/)
-          .filter((w) => /[\u0600-\u06FF]/.test(w)).length;
-        if (wordCount < 2) {
-          return "";
-        }
-        return joined;
-      };
-
-      let recognizedText = "";
-      const isLongAudio = raw16k.length > Math.round(16000 * 2.8);
-
-      // Mobilde veya WASM modunda > 2.8 saniye olan uzun cümleleri gerçek nefes durağı varsa 2 parçaya bölerek çözümle
-      if ((isMobile || activeDevice === "wasm") && isLongAudio) {
-        recognizedText = await runSplitValleyInference();
-        if (
-          (!recognizedText || !/[\u0600-\u06FF]/.test(recognizedText)) &&
-          !isRequestStaleOrAborted(requestId)
-        ) {
-          recognizedText = await runSafeInference(processedAudio);
-        }
-      } else {
-        recognizedText = await runSafeInference(processedAudio);
-        if (
-          isLongAudio &&
-          (!recognizedText || !/[\u0600-\u06FF]/.test(recognizedText)) &&
-          !isRequestStaleOrAborted(requestId)
-        ) {
-          recognizedText = await runSplitValleyInference();
-        }
-      }
-
-      // Eğer ilk çözümleme denemesi boş metin döndürdüyse, kırpılmamış ham ses verisini x1.8 kazançla (gain boost) ikinci kez çözümle!
+      // Eğer ilk çözümleme denemesi boş metin döndürdüyse, x1.8 kazançla (gain boost) ikinci kez çözümle!
       if (
         (!recognizedText || !/[\u0600-\u06FF]/.test(recognizedText)) &&
         !isRequestStaleOrAborted(requestId)
       ) {
-        const boostedAudio = preprocessAudioForWhisper(raw16k, 16000, 1.8, true);
+        const boostedAudio = preprocessAudioForWhisper(raw16k, 16000, 1.8, false);
         if (boostedAudio.length >= 2400) {
           try {
             const retryText = await runSafeInference(boostedAudio);

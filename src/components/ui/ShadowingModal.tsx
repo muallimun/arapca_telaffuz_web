@@ -172,6 +172,7 @@ export default function ShadowingModal({
   } = useSettings();
 
   const [isRecording, setIsRecording] = useState(false);
+  const [isMicPreparing, setIsMicPreparing] = useState(false);
   const [userAudioUrl, setUserAudioUrl] = useState<string | null>(null);
   const [userWavBlob, setUserWavBlob] = useState<Blob | null>(null);
   const [isPlayingRef, setIsPlayingRef] = useState(false);
@@ -228,6 +229,9 @@ export default function ShadowingModal({
     null
   );
   const mobileLiveBarsRef = useRef<number[]>([]);
+  const mobileSpeechEnergyRef = useRef<number>(0);
+  const lastMobileVoiceTimeRef = useRef<number>(0);
+  const recordingStartTimeRef = useRef<number>(0);
   const recordingElapsedSecRef = useRef<number>(0);
   const resultsSectionRef = useRef<HTMLDivElement | null>(null);
   const waveformCardRef = useRef<HTMLDivElement | null>(null);
@@ -252,6 +256,7 @@ export default function ShadowingModal({
       mobileWaveTimerRef.current = null;
     }
     isMobileWebSpeechOnlyRef.current = false;
+    setIsMicPreparing(false);
     if (rafIdRef.current !== null && typeof window !== "undefined") {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
@@ -565,11 +570,13 @@ export default function ShadowingModal({
   };
 
   const startRecording = async () => {
-    // 1. İLK SATIRDA kayıt durumunu derhal true yap ki buton anında kırmızı "⏹ Kaydı Durdur ve Analiz Et" butonuna dönüşsün
+    // 1. Önce "⏳ Mikrofon Hazırlanıyor..." durumunu aç; bip sesini ve yeşil "ŞİMDİ OKUYUN" bandını
+    // YALNIZCA ilk ses çerçevesi (onaudioprocess) veya SpeechRecognition.onstart (+200ms) geldiğinde başlat!
     isStartingRef.current = false;
     setMicError(null);
     setIsAnalyzing(false);
     setIsRecording(true);
+    setIsMicPreparing(true);
 
     // Arka planda çalan diyalog veya TTS sesinin mikrofona karışmaması için anında sustur
     audioStore.stop();
@@ -586,10 +593,10 @@ export default function ShadowingModal({
 
     // 2. Önce eski mediaStreamRef / audioContextRef kaynaklarını kapat (sessionId artırmadan!)
     stopPreviousMediaOnly();
+    setIsMicPreparing(true);
 
     // 3. Sonra yeni oturum numarasını artır (bu satırdan sonra kesinlikle cleanup() çağırma!)
     const sessionId = ++recordingSessionIdRef.current;
-    playRecordStart();
 
     if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
     setUserAudioUrl(null);
@@ -612,23 +619,47 @@ export default function ShadowingModal({
     interimTranscriptRef.current = "";
     backupBrowserTranscriptRef.current = "";
     recordingElapsedSecRef.current = 0;
+    recordingStartTimeRef.current = 0;
     mobileLiveBarsRef.current = [];
+    mobileSpeechEnergyRef.current = 0;
+    lastMobileVoiceTimeRef.current = 0;
     isMobileWebSpeechOnlyRef.current = false;
 
-    // Süre sayacını anında başlat
-    let elapsedTenths = 0;
-    recordingTimerRef.current = setInterval(() => {
+    let micActivated = false;
+    const activateMicListeningState = () => {
       if (
+        micActivated ||
         !isMountedRef.current ||
         sessionId !== recordingSessionIdRef.current
       ) {
         return;
       }
-      elapsedTenths += 1;
-      const sec = elapsedTenths / 10;
-      recordingElapsedSecRef.current = sec;
-      setUserDuration(sec);
-    }, 100);
+      micActivated = true;
+      setIsMicPreparing(false);
+      playRecordStart();
+      recordingStartTimeRef.current = Date.now();
+      lastMobileVoiceTimeRef.current = Date.now();
+      recordingElapsedSecRef.current = 0;
+      setUserDuration(0);
+
+      if (recordingTimerRef.current !== null) {
+        clearInterval(recordingTimerRef.current);
+      }
+      recordingTimerRef.current = setInterval(() => {
+        if (
+          !isMountedRef.current ||
+          sessionId !== recordingSessionIdRef.current
+        ) {
+          return;
+        }
+        const sec = Math.max(
+          0,
+          Math.round((Date.now() - recordingStartTimeRef.current) / 100) / 10
+        );
+        recordingElapsedSecRef.current = sec;
+        setUserDuration(sec);
+      }, 100);
+    };
 
     let stream: MediaStream | null = null;
     try {
@@ -655,11 +686,31 @@ export default function ShadowingModal({
         speechManagerRef.current?.isWebSpeechSupported()
       ) {
         isMobileWebSpeechOnlyRef.current = true;
-        let lastTranscriptLen = 0;
+        let lastTranscriptText = "";
         let stepTick = 0;
 
         speechManagerRef.current.startLiveWebSpeech({
+          onStarted: () => {
+            activateMicListeningState();
+          },
+          onSpeechActivity: (level) => {
+            activateMicListeningState();
+            mobileSpeechEnergyRef.current = Math.max(
+              mobileSpeechEnergyRef.current,
+              level
+            );
+            lastMobileVoiceTimeRef.current = Date.now();
+          },
+          onAutoStop: () => {
+            if (
+              isMountedRef.current &&
+              sessionId === recordingSessionIdRef.current
+            ) {
+              void stopRecording();
+            }
+          },
           onInterimTranscript: (combined, finalPart, interimPart) => {
+            activateMicListeningState();
             if (typeof finalPart === "string" && finalPart.trim()) {
               finalTranscriptRef.current = finalPart.trim();
             }
@@ -675,6 +726,14 @@ export default function ShadowingModal({
                 interimTranscriptRef.current
               ).trim() || combined.trim();
             if (latestText) {
+              if (latestText !== lastTranscriptText) {
+                lastTranscriptText = latestText;
+                lastMobileVoiceTimeRef.current = Date.now();
+                mobileSpeechEnergyRef.current = Math.min(
+                  0.92,
+                  0.45 + ((latestText.length * 11) % 45) / 100
+                );
+              }
               liveTranscriptRef.current = latestText;
               backupBrowserTranscriptRef.current = latestText;
             }
@@ -690,15 +749,37 @@ export default function ShadowingModal({
             return;
           }
           stepTick += 1;
-          const currentLen = liveTranscriptRef.current.length;
-          const isActivelySpeaking =
-            currentLen > lastTranscriptLen || currentLen > 0;
-          lastTranscriptLen = currentLen;
+          const now = Date.now();
+          const spokenWordsCount = liveTranscriptRef.current
+            .trim()
+            .split(/\s+/)
+            .filter((w) => /[\u0600-\u06FF]/.test(w)).length;
 
-          // Yalnızca mikrofonun aktif olduğunu gösteren nötr, yumuşak nabız animasyonu (referans sesten kopyalamaz!)
-          const barVal = isActivelySpeaking
-            ? 0.22 + 0.14 * Math.abs(Math.sin(stepTick * 0.5))
-            : 0.1 + 0.05 * Math.abs(Math.sin(stepTick * 0.35));
+          // Akıllı VAD Otomatik Durdurma (Mobil Web Speech):
+          // En az 2 Arapça kelime algılandıysa, toplam kayıt >= 1.3s ise ve son kelimeden bu yana
+          // 1450ms (1.45s) sessizlik geçtiyse kaydı otomatik tamamla!
+          if (
+            micActivated &&
+            spokenWordsCount >= 2 &&
+            recordingElapsedSecRef.current >= 1.3 &&
+            now - lastMobileVoiceTimeRef.current >= 1450
+          ) {
+            void stopRecording();
+            return;
+          }
+
+          // Canlı konuşma enerjisine göre dinamik çubuk hareketi (kullanıcı konuşurken belirgin yükselir, susunca yumuşak iner)
+          const activeEnergy = mobileSpeechEnergyRef.current;
+          mobileSpeechEnergyRef.current = Math.max(0, activeEnergy * 0.72);
+
+          const barVal = !micActivated
+            ? 0.08
+            : activeEnergy > 0.14
+            ? Math.min(
+                0.9,
+                activeEnergy * (0.78 + 0.22 * Math.abs(Math.sin(stepTick * 1.1)))
+              )
+            : 0.11 + 0.05 * Math.abs(Math.sin(stepTick * 0.4));
 
           mobileLiveBarsRef.current.push(barVal);
           const tail = mobileLiveBarsRef.current.slice(-48);
@@ -741,7 +822,7 @@ export default function ShadowingModal({
 
       mediaStreamRef.current = stream;
 
-      // Kelime sayısına göre dinamik maksimum kayıt süresi (15 sn - 45 sn arası) ve 2.5 sn sessizlik toleransı
+      // Kelime sayısına göre dinamik maksimum kayıt süresi (15 sn - 45 sn arası) ve 1450ms akıllı sessizlik toleransı
       const targetWords = activeText.trim().split(/\s+/).filter(Boolean);
       const maxRecordingDurationMs = Math.max(
         15000,
@@ -750,10 +831,14 @@ export default function ShadowingModal({
 
       const session = await start16kHzRecorder({
         stream,
-        silenceDurationMs: 2500,
+        silenceDurationMs: 1450,
         maxDurationMs: maxRecordingDurationMs,
         micNoiseSuppression: currentNoiseSuppression,
+        onFirstAudioFrame: () => {
+          activateMicListeningState();
+        },
         onLiveRms: (_rms, liveHistory) => {
+          activateMicListeningState();
           if (rafIdRef.current !== null) {
             cancelAnimationFrame(rafIdRef.current);
           }
@@ -793,6 +878,10 @@ export default function ShadowingModal({
       audioContextRef.current = audioCtx;
       const actualSampleRate = audioCtx.sampleRate || 48000;
       recordingSampleRateRef.current = actualSampleRate;
+      // Eğer ScriptProcessor ilk çerçeveyi 250ms içinde tetiklemezse yedek olarak mikrofonu hazır işaretle
+      setTimeout(() => {
+        activateMicListeningState();
+      }, 250);
 
       // Kullanıcı "Yalnızca Cihazda İşle" kilidini açmadıysa (localSttOnly === false) veya "Hızlı Tarayıcı Motoru" seçiliyse
       // canlı Web Speech tanımayı arka planda yedek/aktif olarak başlat
@@ -843,6 +932,7 @@ export default function ShadowingModal({
       }
       stopPreviousMediaOnly();
       setIsRecording(false);
+      setIsMicPreparing(false);
       const errMsg =
         err instanceof Error && err.message
           ? err.message
@@ -852,6 +942,7 @@ export default function ShadowingModal({
   };
 
   const stopRecording = async () => {
+    setIsMicPreparing(false);
     if (recordingTimerRef.current !== null) {
       clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = null;
@@ -1279,6 +1370,11 @@ export default function ShadowingModal({
       (w) => w.status !== "correct" && w.makhrajTip?.pair
     )?.makhrajTip?.pair;
 
+    const hasWordErrorOrRootGuard =
+      Boolean(result.isRootGuardTriggered) ||
+      result.overallScore < 80 ||
+      result.words.some((w) => w.score < 60 || w.status === "wrong");
+
     const updatedScores = [
       ...pronunciationScores.filter((s) => s > 0),
       ...(result.overallScore > 0 ? [result.overallScore] : []),
@@ -1287,7 +1383,8 @@ export default function ShadowingModal({
       updatedScores,
       level,
       detectedMakhrajPair,
-      fluency
+      fluency,
+      hasWordErrorOrRootGuard
     );
     setAdaptiveResult(coaching);
 
@@ -1608,13 +1705,19 @@ export default function ShadowingModal({
               </p>
             )}
 
-            {/* KAYIT AKTİFKEN DİKKAT ÇEKİCİ "ŞİMDİ YÜKSEK SESLE OKUYUN" UYARI BANDI */}
-            {isRecording && (
-              <div className="rounded-xl bg-gradient-to-r from-[#087F5B] via-emerald-600 to-rose-600 text-white px-3.5 py-2 shadow-lg border-2 border-white/40 animate-pulse flex items-center justify-center gap-2 text-xs sm:text-sm font-black tracking-wide">
-                <Mic size={16} className="shrink-0 animate-bounce" />
-                <span>MİKROFON AÇIK — ŞİMDİ YÜKSEK SESLE OKUYUN!</span>
-              </div>
-            )}
+            {/* KAYIT HAZIRLANIYOR / AKTİF UYARI BANDI */}
+            {isRecording &&
+              (isMicPreparing ? (
+                <div className="rounded-xl bg-amber-500 text-white px-3.5 py-2 shadow-lg border-2 border-white/40 animate-pulse flex items-center justify-center gap-2 text-xs sm:text-sm font-black tracking-wide">
+                  <Mic size={16} className="shrink-0" />
+                  <span>⏳ Mikrofon Hazırlanıyor... Lütfen bekleyin</span>
+                </div>
+              ) : (
+                <div className="rounded-xl bg-gradient-to-r from-[#087F5B] via-emerald-600 to-rose-600 text-white px-3.5 py-2 shadow-lg border-2 border-white/40 animate-pulse flex items-center justify-center gap-2 text-xs sm:text-sm font-black tracking-wide">
+                  <Mic size={16} className="shrink-0 animate-bounce" />
+                  <span>🟢 MİKROFON AÇIK — ŞİMDİ YÜKSEK SESLE OKUYUN!</span>
+                </div>
+              ))}
 
             {/* Proaktif Mahreç ve Hareke Rehberi (Kompakt Rozetler) */}
             {proactiveGuide &&
@@ -1999,10 +2102,11 @@ export default function ShadowingModal({
                   className={`border-2 border-b-4 rounded-2xl p-3.5 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
                     adaptiveResult.action === "level_up"
                       ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9] text-[#4C28B5] dark:text-[#d0bfff]"
-                      : (fluencyScore ?? evaluation.overallScore) >= 75 ||
-                        evaluation.overallScore >= 85
+                      : !evaluation.isRootGuardTriggered &&
+                        evaluation.overallScore >= 80 &&
+                        !evaluation.words.some((w) => w.score < 60)
                       ? "bg-emerald-50 dark:bg-emerald-950/40 border-[#087F5B] text-[#065F46] dark:text-emerald-200"
-                      : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--foreground)]"
+                      : "bg-amber-50/80 dark:bg-[var(--background)] border-[#E6D7BE] text-[var(--foreground)]"
                   }`}
                 >
                   <div className="flex items-start gap-2">
@@ -2011,8 +2115,9 @@ export default function ShadowingModal({
                         size={18}
                         className="text-[#6741D9] shrink-0 mt-0.5"
                       />
-                    ) : (fluencyScore ?? evaluation.overallScore) >= 75 ||
-                      evaluation.overallScore >= 85 ? (
+                    ) : !evaluation.isRootGuardTriggered &&
+                      evaluation.overallScore >= 80 &&
+                      !evaluation.words.some((w) => w.score < 60) ? (
                       <CheckCircle2
                         size={16}
                         className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5"
@@ -2020,7 +2125,7 @@ export default function ShadowingModal({
                     ) : (
                       <Info
                         size={16}
-                        className="text-[#065F46] dark:text-emerald-400 shrink-0 mt-0.5"
+                        className="text-amber-700 dark:text-amber-400 shrink-0 mt-0.5"
                       />
                     )}
                     <div>
@@ -2028,7 +2133,11 @@ export default function ShadowingModal({
                         className={`font-extrabold block mb-0.5 ${
                           adaptiveResult.action === "level_up"
                             ? "text-[#6741D9] dark:text-[#d0bfff]"
-                            : "text-[#065F46] dark:text-emerald-400"
+                            : !evaluation.isRootGuardTriggered &&
+                              evaluation.overallScore >= 80 &&
+                              !evaluation.words.some((w) => w.score < 60)
+                            ? "text-[#065F46] dark:text-emerald-400"
+                            : "text-amber-900 dark:text-amber-300"
                         }`}
                       >
                         {adaptiveResult.action === "level_up"

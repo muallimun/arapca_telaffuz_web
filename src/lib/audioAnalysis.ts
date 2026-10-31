@@ -532,10 +532,9 @@ export function normalizeAudioBuffer(
 }
 
 /**
- * Toplam kayıt süresi 3.5 saniyenin altındaysa (rawDuration <= 3.5) kaydı kesinlikle kırpmaz (orijinal pcm16k verisini korur).
- * Yalnızca 3.5 saniyeyi aşan kayıtlarda hassas eşikle (Math.max(0.003, peakRms * 0.03)) konuşmanın başından en az 0.40s (6400 örnek)
- * ve sonundan en az 0.45s (7200 örnek) doğal pay bırakarak sondaki uzun boşlukları kırpar; kırpılmış sürenin asla
- * Math.min(rawDuration, 1.8) saniyenin altına düşmesine izin vermez.
+ * Toplam kayıt süresi 3.5 saniyenin altındaysa (rawDuration <= 3.5) kaydı kırpmadan orijinal pcm16k uzunluğunu korur.
+ * Yalnızca rawDuration > 3.5 olan kayıtlarda parmak/buton tıklaması darbesi (spike) filtresini ve
+ * baştaki/sondaki uzun boşluk kırpmasını çalıştırır.
  */
 export function trimSilenceFromPcm(
   pcm16k: Float32Array,
@@ -546,7 +545,6 @@ export function trimSilenceFromPcm(
   }
 
   const rawDuration = pcm16k.length / sampleRate;
-  // Toplam kayıt süresi 3.5 saniyenin altındaysa kesinlikle kırpma; orijinal pcm16k verisini olduğu gibi koru!
   if (rawDuration <= 3.5) {
     return normalizeAudioPeak(pcm16k, 0.9);
   }
@@ -555,7 +553,8 @@ export function trimSilenceFromPcm(
   cleaned.set(pcm16k);
 
   // 20ms (16kHz'de 320 örnek) pencerelerle RMS enerjisini hesapla
-  const windowSize = Math.max(64, Math.floor(sampleRate * 0.02));
+  const windowMs = 20;
+  const windowSize = Math.max(64, Math.floor((sampleRate * windowMs) / 1000));
   const numWindows = Math.floor(cleaned.length / windowSize);
   if (numWindows === 0) {
     return normalizeAudioPeak(cleaned, 0.9);
@@ -583,36 +582,97 @@ export function trimSilenceFromPcm(
     return cleaned;
   }
 
-  // Çok hassas konuşma algılama eşiği: Math.max(0.003, peakRms * 0.03)
-  const speechThreshold = Math.max(0.003, peakRms * 0.03);
-  let firstSpeechWin = -1;
-  let lastSpeechWin = -1;
+  const speechThreshold = Math.max(0.006, peakRms * 0.05);
+
+  // Aktif konuşma kümelerini (clusters) çıkar (1 pencerelik mikro boşlukları birleştir)
+  interface SpeechCluster {
+    startWin: number;
+    endWin: number;
+  }
+  const clusters: SpeechCluster[] = [];
+  let curStart = -1;
+  let curEnd = -1;
 
   for (let w = 0; w < numWindows; w++) {
     if (windowRms[w] >= speechThreshold) {
-      firstSpeechWin = w;
-      break;
+      if (curStart === -1) {
+        curStart = w;
+        curEnd = w;
+      } else if (w - curEnd <= 2) {
+        curEnd = w;
+      } else {
+        clusters.push({ startWin: curStart, endWin: curEnd });
+        curStart = w;
+        curEnd = w;
+      }
     }
   }
-
-  for (let w = numWindows - 1; w >= 0; w--) {
-    if (windowRms[w] >= speechThreshold) {
-      lastSpeechWin = w;
-      break;
-    }
+  if (curStart !== -1) {
+    clusters.push({ startWin: curStart, endWin: curEnd });
   }
 
-  if (
-    firstSpeechWin === -1 ||
-    lastSpeechWin === -1 ||
-    lastSpeechWin < firstSpeechWin
-  ) {
+  if (clusters.length === 0) {
     return normalizeAudioPeak(cleaned, 0.9);
   }
 
-  // Konuşmanın başından en az 0.40 sn (6400 örnek) ve sonundan en az 0.45 sn (7200 örnek) doğal pay bırak
-  const prePadSamples = Math.floor(sampleRate * 0.4);
-  const postPadSamples = Math.floor(sampleRate * 0.45);
+  // Parmak Tıklaması / Buton Darbesi Filtresi:
+  // İlk 0.25s (12 pencere) veya son 0.60s (30 pencere) içinde yer alan,
+  // süresi <= 160ms (8 pencere) olan ve ana konuşma gövdesinden en az 350ms (17 pencere)
+  // sessizlikle ayrılmış izole darbeleri konuşma olarak kabul etme!
+  const maxSpikeWindows = Math.ceil(160 / windowMs); // 8 pencere (160ms)
+  const minSeparationWindows = Math.floor(350 / windowMs); // 17 pencere (340-350ms)
+  const leadingZoneWindows = Math.ceil(250 / windowMs); // 13 pencere (0.25s)
+  const trailingZoneStartWin = Math.max(
+    0,
+    numWindows - Math.ceil(600 / windowMs)
+  ); // son 0.60s
+
+  let validClusters = [...clusters];
+
+  // Baştaki izole tıklama darbesini filtrele
+  while (validClusters.length > 1) {
+    const first = validClusters[0];
+    const second = validClusters[1];
+    const firstDurWin = first.endWin - first.startWin + 1;
+    const gapToSecond = second.startWin - first.endWin - 1;
+    if (
+      first.startWin <= leadingZoneWindows &&
+      firstDurWin <= maxSpikeWindows &&
+      gapToSecond >= minSeparationWindows
+    ) {
+      validClusters.shift();
+    } else {
+      break;
+    }
+  }
+
+  // Sondaki izole "Kaydı Durdur" parmak tıklaması darbesini filtrele
+  while (validClusters.length > 1) {
+    const last = validClusters[validClusters.length - 1];
+    const prev = validClusters[validClusters.length - 2];
+    const lastDurWin = last.endWin - last.startWin + 1;
+    const gapFromPrev = last.startWin - prev.endWin - 1;
+    if (
+      last.startWin >= trailingZoneStartWin &&
+      lastDurWin <= maxSpikeWindows &&
+      gapFromPrev >= minSeparationWindows
+    ) {
+      validClusters.pop();
+    } else {
+      break;
+    }
+  }
+
+  if (validClusters.length === 0) {
+    validClusters = clusters;
+  }
+
+  const firstSpeechWin = validClusters[0].startWin;
+  const lastSpeechWin = validClusters[validClusters.length - 1].endWin;
+
+  // Gerçek konuşma bloğunun başında 0.20s ve sonunda 0.25s doğal pay bırak
+  const prePadSamples = Math.floor(sampleRate * 0.2);
+  const postPadSamples = Math.floor(sampleRate * 0.25);
 
   let startIdx = Math.max(0, firstSpeechWin * windowSize - prePadSamples);
   let endIdx = Math.min(
@@ -620,9 +680,8 @@ export function trimSilenceFromPcm(
     (lastSpeechWin + 1) * windowSize + postPadSamples
   );
 
-  // Kırpılmış sürenin asla Math.min(rawDuration, 1.8) saniyenin altına düşmesine izin verme
   const minAllowedSamples = Math.floor(
-    Math.min(cleaned.length, sampleRate * 1.8)
+    Math.min(cleaned.length, sampleRate * 0.45)
   );
   if (endIdx - startIdx < minAllowedSamples) {
     const needed = minAllowedSamples - (endIdx - startIdx);
@@ -851,11 +910,13 @@ export function evaluateAcousticDspSentence(
 }
 
 /**
- * Doğrudan AudioContext({ sampleRate: 16000 }) üzerinden 16kHz Mono Float32Array ses kaydı,
- * mobil uyumlu MediaRecorder (webm/mp4/ogg) kaydı, canlı RMS zarfı ve otomatik sessizlik algılama başlatır.
+ * Doğrudan AudioContext üzerinden 16kHz Mono Float32Array ses kaydı,
+ * mobil uyumlu MediaRecorder (webm/mp4/ogg) kaydı, canlı RMS zarfı, ilk ses çerçevesi
+ * bildirimi (onFirstAudioFrame) ve konuşma sonrası 1450ms akıllı sessizlik algılama başlatır.
  */
 export async function start16kHzRecorder(options?: {
   stream?: MediaStream;
+  onFirstAudioFrame?: () => void;
   onLiveRms?: (rms: number, rmsHistory: number[]) => void;
   onAutoSilenceStop?: () => void;
   silenceDurationMs?: number;
@@ -943,12 +1004,14 @@ export async function start16kHzRecorder(options?: {
   let currentRms = 0;
   let peakRawRms = 0;
   let hasSpoken = false;
-  let firstSpeechAt = 0;
-  let lastSpeechAt = Date.now();
+  let activeSpeechMs = 0;
+  let firstFrameFired = false;
+  let startedAt = Date.now();
+  let lastFrameAt = startedAt;
+  let lastSpeechAt = startedAt;
   let stopped = false;
   let autoStopTriggered = false;
-  const startedAt = Date.now();
-  const silenceLimitMs = options?.silenceDurationMs ?? 2500;
+  const silenceLimitMs = options?.silenceDurationMs ?? 1450;
   const maxDurationLimitMs = options?.maxDurationMs ?? 15000;
 
   let maxDurationTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
@@ -999,6 +1062,18 @@ export async function start16kHzRecorder(options?: {
     }
 
     if (stopped) return;
+    const now = Date.now();
+    if (!firstFrameFired) {
+      firstFrameFired = true;
+      startedAt = now;
+      lastFrameAt = now;
+      lastSpeechAt = now;
+      options?.onFirstAudioFrame?.();
+    }
+
+    const frameDeltaMs = Math.max(20, Math.min(150, now - lastFrameAt));
+    lastFrameAt = now;
+
     const input = event.inputBuffer.getChannelData(0);
     const copy = new Float32Array(input.length);
     copy.set(input);
@@ -1017,17 +1092,18 @@ export async function start16kHzRecorder(options?: {
 
     options?.onLiveRms?.(currentRms, rmsHistory.slice(-48));
 
-    const now = Date.now();
-    // 1. VAD: Konuşma başladıktan sonra silenceLimitMs (varsayılan 2500ms) sessizlik olursa otomatik durdur
-    if (rms > 0.015) {
-      if (!hasSpoken) {
+    // 1. Akıllı VAD (Voice Activity Detection):
+    // Kullanıcının gerçekten konuşmaya başladığını (0.018 RMS eşiğini en az 350ms geçtiğini) doğrula.
+    // Konuşma başladıktan ve toplam kayıt süresi en az 1.3s olduktan sonra 1450ms (1.45s) kesintisiz sessizlik olursa otomatik durdur.
+    if (rms >= 0.018) {
+      activeSpeechMs += frameDeltaMs;
+      if (activeSpeechMs >= 350) {
         hasSpoken = true;
-        firstSpeechAt = now;
       }
       lastSpeechAt = now;
     } else if (
       hasSpoken &&
-      now - firstSpeechAt >= 350 &&
+      now - startedAt >= 1300 &&
       now - lastSpeechAt >= silenceLimitMs
     ) {
       if (!autoStopTriggered) {

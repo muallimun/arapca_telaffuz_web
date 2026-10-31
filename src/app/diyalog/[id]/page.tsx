@@ -804,9 +804,21 @@ export default function DialogueDetailPage({
     setRoleplaySpeakingLine(null);
     setRoleplayActiveLine(line.sira);
     setIsPlayingAll(false);
-    playRecordStart();
 
-    // Kelime sayısına göre dinamik maksimum kayıt süresi (15 sn - 45 sn arası) ve 2.5 sn sessizlik toleransı
+    let roleplayBeepPlayed = false;
+    const triggerRoleplayMicReadyBeep = () => {
+      if (
+        roleplayBeepPlayed ||
+        roleplayFinishingRef.current ||
+        sessionId !== roleplaySessionTokenRef.current
+      ) {
+        return;
+      }
+      roleplayBeepPlayed = true;
+      playRecordStart();
+    };
+
+    // Kelime sayısına göre dinamik maksimum kayıt süresi (15 sn - 45 sn arası) ve 1450ms akıllı sessizlik toleransı
     const wordCount = line.arapca.trim().split(/\s+/).filter(Boolean).length;
     const waitDurationMs = Math.max(
       15000,
@@ -842,7 +854,27 @@ export default function DialogueDetailPage({
       // Mobilde ⚡ Tarayıcı (webspeech) seçiliyken getUserMedia ile eşzamanlı mikrofon açma!
       try {
         roleplaySpeechRef.current.startLiveWebSpeech({
+          onStarted: () => {
+            triggerRoleplayMicReadyBeep();
+          },
+          onSpeechActivity: (level) => {
+            triggerRoleplayMicReadyBeep();
+            setRoleplayMicLevel(level);
+            setRoleplayLiveBars((prev) => [
+              ...prev.slice(1),
+              Math.min(0.9, Math.max(0.18, level)),
+            ]);
+          },
+          onAutoStop: () => {
+            if (
+              !roleplayFinishingRef.current &&
+              sessionId === roleplaySessionTokenRef.current
+            ) {
+              void finishUserRoleplayTurn(line, false);
+            }
+          },
           onInterimTranscript: (combined, finalPart, interimPart) => {
+            triggerRoleplayMicReadyBeep();
             if (typeof finalPart === "string" && finalPart.trim()) {
               roleplayFinalTranscriptRef.current = finalPart.trim();
             }
@@ -890,10 +922,14 @@ export default function DialogueDetailPage({
         // 4. stream alındığı anda 16kHz kaydediciyi ve canlı çubukları başlat
         const recSession = await start16kHzRecorder({
           stream,
-          silenceDurationMs: 2500,
+          silenceDurationMs: 1450,
           maxDurationMs: waitDurationMs,
           micNoiseSuppression: currentNoiseSuppression,
+          onFirstAudioFrame: () => {
+            triggerRoleplayMicReadyBeep();
+          },
           onLiveRms: (rms, history) => {
+            triggerRoleplayMicReadyBeep();
             setRoleplayMicLevel(rms);
             const tail = history.slice(-24);
             const padded = [
@@ -914,6 +950,9 @@ export default function DialogueDetailPage({
           const actualSampleRate =
             recSession.getAudioContext().sampleRate || 48000;
           recordingSampleRateRef.current = actualSampleRate;
+          setTimeout(() => {
+            triggerRoleplayMicReadyBeep();
+          }, 250);
           if (shouldUseRoleplayWebSpeech) {
             try {
               roleplaySpeechRef.current?.startLiveWebSpeech({

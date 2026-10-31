@@ -1328,6 +1328,62 @@ function isFeminineKasraProlongationMatch(
   return false;
 }
 
+/**
+ * Hedef kelime yuvarlak Tâ (ة - Tâ-i Merbûta) ile bittiğinde (örn. طَالِبَةٌ, جَامِعَةِ),
+ * konuşmacının geçiş (vasıl) veya hafif uzatma nedeniyle kelime sonunu açık Tâ (ت veya ات)
+ * olarak okuması durumunu (örn. طالبات / طالبت / جامعت) tespit eder.
+ * Bu durumda kök harf değişimi (isRootGuardTriggered) tetiklenmez; %78 (Sarı / Yakın) verilir.
+ */
+function isTaMarbutaOpenTaMatch(
+  rawExpectedWord: string,
+  rawSpokenWord: string,
+  cleanExp: string,
+  cleanSpk: string
+): boolean {
+  const expStripped = stripDiacriticsOnly(rawExpectedWord).trim();
+  const spkStripped = stripDiacriticsOnly(rawSpokenWord).trim();
+  if (!expStripped || !spkStripped) return false;
+
+  // Hedef kelimenin sonunda gerçekten ة (\u0629) bulunmalı
+  if (!expStripped.endsWith("ة")) return false;
+  // Okunan kelimenin sonunda açık ت bulunmalı ve birebir aynı olmamalı
+  if (!spkStripped.endsWith("ت") || cleanExp === cleanSpk) return false;
+
+  // Normalize edilmiş gövdeleri karşılaştır (cleanExp sonunda ة -> ه dönüşmüş durumdadır)
+  const expStem = cleanExp.endsWith("ه")
+    ? cleanExp.slice(0, -1)
+    : expStripped.slice(0, -1);
+  const spkStemWithoutAt = cleanSpk.endsWith("ات")
+    ? cleanSpk.slice(0, -2)
+    : cleanSpk.endsWith("ت")
+    ? cleanSpk.slice(0, -1)
+    : "";
+  const spkStemWithoutT = cleanSpk.endsWith("ت")
+    ? cleanSpk.slice(0, -1)
+    : "";
+
+  if (!expStem || (!spkStemWithoutAt && !spkStemWithoutT)) return false;
+
+  if (expStem === spkStemWithoutT || expStem === spkStemWithoutAt) {
+    return true;
+  }
+
+  // Ünsüz iskeleti (Med harfleri ا/و/ي hariç) gövdesi birebir aynı mı? (Örn: طالبة -> طلب vs طالبات -> طلب)
+  const expSkel = extractConsonantSkeleton(cleanExp);
+  const spkSkel = extractConsonantSkeleton(cleanSpk);
+  if (
+    expSkel.length >= 3 &&
+    expSkel.length === spkSkel.length &&
+    expSkel.endsWith("ه") &&
+    spkSkel.endsWith("ت") &&
+    expSkel.slice(0, -1) === spkSkel.slice(0, -1)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export function evaluateSingleWord(
   expected: string,
   spoken: string
@@ -1384,6 +1440,38 @@ export function evaluateSingleWord(
       medVezinTip: ishbaMessage,
       diacriticsVerified: true,
       diacriticNote: ishbaMessage,
+      isRootGuardTriggered: false,
+    };
+  }
+
+  // 5. Yuvarlak Tâ-i Merbûta (ة) <-> Açık Tâ (ت / ات) Vakıf & Geçiş Toleransı (Örn: طَالِبَةٌ -> طالبات / طالبت)
+  if (
+    !isTanwinAlifEquivalent &&
+    isTaMarbutaOpenTaMatch(
+      expectedCleaned || expected,
+      spokenWithNums,
+      cleanExp,
+      cleanSpk
+    )
+  ) {
+    const targetLabel = (expectedCleaned || expected).trim();
+    const spokenLabel = spoken.trim() || cleanSpk;
+    const taMarbutaMessage = `🎯 Açık Tâ (ت) / Yuvarlak Tâ-i Merbûta (ة) Vakıf & Geçiş Farkı (${targetLabel} → ${spokenLabel}): Kelime sonundaki yuvarlak Tâ (ة) durulduğunda (vakıf) yumuşak 'h' (ه) sesiyle, geçişte (vasıl) ise kısa 't' sesiyle okunur; 'ـات' (çoğul) gibi uzatılmadan kısa kesilmelidir.`;
+    return {
+      targetWord: targetLabel,
+      spokenWord: spoken,
+      score: 78,
+      status: "close",
+      makhrajTip: {
+        pair: "ة / ت",
+        title: "Açık Tâ (ت) / Yuvarlak Tâ-i Merbûta (ة) Vakıf & Geçiş Farkı",
+        tip: "Kelime sonundaki yuvarlak Tâ (ة) durulduğunda yumuşak 'h' (ه) sesiyle, cümle içi geçişte ise uzatılmadan kısa 't' sesiyle okunur.",
+      },
+      makhrajWarning:
+        "Açık Tâ (ت) / Yuvarlak Tâ-i Merbûta (ة) Vakıf & Geçiş Farkı (ة / ت)",
+      medVezinTip: taMarbutaMessage,
+      diacriticsVerified: true,
+      diacriticNote: taMarbutaMessage,
       isRootGuardTriggered: false,
     };
   }
@@ -1508,7 +1596,7 @@ export function evaluateSingleWord(
 }
 
 /**
- * İki Arapça kelime arasındaki normalize karakter benzerliğini (0.0 - 1.0) hesaplar
+ * İki Arapça kelime arasındaki normalize karakter ve ünsüz iskeleti benzerliğini (0.0 - 1.0) hesaplar
  * (Kelime bazlı Needleman-Wunsch / Levenshtein cümle hizalaması için kullanılır).
  */
 function computeWordSimilarity(expWord: string, spkWord: string): number {
@@ -1518,14 +1606,29 @@ function computeWordSimilarity(expWord: string, spkWord: string): number {
   if (cExp === cSpk || isWordFinalTanwinAlifMatch(expWord, cExp, cSpk)) {
     return 1;
   }
-  if (isFeminineKasraProlongationMatch(expWord, cExp, cSpk)) {
-    return 0.85;
+  if (
+    isFeminineKasraProlongationMatch(expWord, cExp, cSpk) ||
+    isTaMarbutaOpenTaMatch(expWord, spkWord, cExp, cSpk)
+  ) {
+    return 0.88;
   }
 
   const alignment = alignCharacters(cExp, cSpk);
   const matches = alignment.filter((a) => a.operation === "MATCH").length;
   const maxLen = Math.max(cExp.length, cSpk.length, 1);
-  return matches / maxLen;
+  const charSim = matches / maxLen;
+
+  // Ünsüz iskeleti benzerliğini de hesaba kat ki med harfi farkları hizalamayı kaydırmasın
+  const expSkel = extractConsonantSkeleton(cExp);
+  const spkSkel = extractConsonantSkeleton(cSpk);
+  if (expSkel && spkSkel) {
+    const skelAlign = alignCharacters(expSkel, spkSkel);
+    const skelMatches = skelAlign.filter((a) => a.operation === "MATCH").length;
+    const skelSim = skelMatches / Math.max(expSkel.length, spkSkel.length, 1);
+    return Math.max(charSim, skelSim * 0.92);
+  }
+
+  return charSim;
 }
 
 /**
@@ -1813,6 +1916,20 @@ export function evaluateAcousticMaddAndShaddaDuration(
   };
 }
 
+const WHISPER_LEADING_SILENCE_HALLUCINATIONS = new Set([
+  "نعم",
+  "اه",
+  "آه",
+  "ايه",
+  "إيه",
+  "ام",
+  "أم",
+  "هم",
+  "يا",
+  "و",
+  "ها",
+]);
+
 export function evaluateSentenceWords(
   expectedSentence: string,
   spokenSentence: string,
@@ -1849,6 +1966,32 @@ export function evaluateSentenceWords(
       isRootGuardTriggered: false,
       message: "Değerlendirilemedi: Metin Çözümlenemedi",
     };
+  }
+
+  // Başlangıç Halüsinasyonu Filtresi (Leading Hallucination Filter):
+  // Whisper kayıt başındaki nefes/sessizlikten "نعم", "اه", "إيه", "ام", "هم" gibi bir dolgu kelimesi
+  // uydurduysa ve hemen arkasındaki 2. kelime (spkWords[1]) ilk hedef kelimeyle (expWords[0]) >= 0.70
+  // benzerlikle eşleşiyorsa, baştaki halüsinasyon kelimesini hizalama öncesinde düşür!
+  while (
+    spkWords.length > expWords.length &&
+    spkWords.length >= 2 &&
+    expWords.length >= 1
+  ) {
+    const firstSpkBare = stripDiacriticsOnly(spkWords[0])
+      .replace(/[أإآٱ]/g, "ا")
+      .trim();
+    const firstSpkNorm = normalizeForComparison(spkWords[0]);
+    const isKnownFiller =
+      WHISPER_LEADING_SILENCE_HALLUCINATIONS.has(firstSpkBare) ||
+      WHISPER_LEADING_SILENCE_HALLUCINATIONS.has(firstSpkNorm);
+    const simFirst = computeWordSimilarity(expWords[0], spkWords[0]);
+    const simSecond = computeWordSimilarity(expWords[0], spkWords[1]);
+
+    if (isKnownFiller && simFirst < 0.65 && simSecond >= 0.7) {
+      spkWords = spkWords.slice(1);
+    } else {
+      break;
+    }
   }
 
   // Halüsinasyon koruması
@@ -2035,12 +2178,15 @@ export function evaluateSentenceWords(
  * Adaptif Hız ve Seviye Koçluğu (evaluateAdaptiveCoaching)
  * - Son 3 denemede üst üste <%60 (veya ortalama <%60) alınırsa: hızı 0.75x'e düşürmeyi ve mahreç çiftine odaklanmayı önerir.
  * - Son 6 denemede üst üste >=%85 (veya ortalama >=%85) alınırsa: bir üst CEFR seviyesine (A1 -> A2 -> B1 -> B2 -> C1) geçmeyi önerir.
+ * - Eğer isRootGuardTriggered === true ise, herhangi bir kelimede <%60 hata varsa veya overallScore < 80 ise
+ *   asla "Harika gelişim!..." mesajı göstermez; doğrudan ilgili kelime/mahreç odak mesajı üretir.
  */
 export function evaluateAdaptiveCoaching(
   recentScores: number[],
   currentLevel: string = "A1",
   lastMakhrajPair?: string,
-  currentFluencyScore?: number
+  currentFluencyScore?: number,
+  hasWordErrorOrRootGuard?: boolean
 ): AdaptiveCoachingResult {
   const levelOrder = ["A1", "A2", "B1", "B2"];
   const normalizedLevel =
@@ -2057,9 +2203,12 @@ export function evaluateAdaptiveCoaching(
       ? validScores[validScores.length - 1]
       : recentScores[recentScores.length - 1] ?? 0;
   const effectiveFluency = currentFluencyScore ?? latest;
-  const isCurrentHigh = effectiveFluency >= 75 || latest >= 85;
+  const isCurrentHigh =
+    !hasWordErrorOrRootGuard &&
+    latest >= 80 &&
+    (effectiveFluency >= 75 || latest >= 85);
 
-  if (validScores.length >= 6) {
+  if (!hasWordErrorOrRootGuard && latest >= 80 && validScores.length >= 6) {
     const last6 = validScores.slice(-6);
     const avg6 = last6.reduce((a, b) => a + b, 0) / 6;
     const allAbove85 = last6.every((s) => s >= 85);
@@ -2083,7 +2232,7 @@ export function evaluateAdaptiveCoaching(
     }
   }
 
-  // Son deneme yüksekse (Genel Akıcılık >= %75 veya Telaffuz Doğruluğu >= %85) asla "Hızı 0.75x yap" uyarısı gösterme
+  // Son deneme yüksekse ve hiçbir kök/kelime hatası yoksa tebrik göster
   if (isCurrentHigh) {
     return {
       action: "keep_going",
@@ -2130,10 +2279,10 @@ export function evaluateAdaptiveCoaching(
 
   return {
     action: "keep_going",
-    message:
-      latest >= 80
-        ? "Harika gelişim! Bu denemede kelime mahreçlerini ve cümle akıcılığını çok başarılı telaffuz ettiniz."
-        : "Zorlandığınız sarı veya kırmızı kelimenin üzerine tıklayarak doğal telaffuzunu dinleyin ve mahreç ipucunu inceleyip tekrar deneyin.",
+    focusMakhrajPair: lastMakhrajPair,
+    message: lastMakhrajPair
+      ? `Cümlenin genel akışı iyi, ancak (${lastMakhrajPair}) mahreç ayrımına dikkat edin. İşaretli kelimenin üzerine tıklayarak doğal okunuşunu dinleyip tekrar deneyebilirsiniz.`
+      : "Zorlandığınız sarı veya kırmızı kelimenin üzerine tıklayarak doğal telaffuzunu dinleyin ve mahreç ipucunu inceleyip tekrar deneyin.",
   };
 }
 

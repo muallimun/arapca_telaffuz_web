@@ -356,8 +356,13 @@ test("8. evaluateSentenceWords Boş STT Koruması, بَتُولُ -> بطل Mahr
   assert.equal(emptySentenceRes.isEvaluated, false);
   assert.equal(emptySentenceRes.isTextRecognized, false);
   assert.equal(emptySentenceRes.words.length, 0);
+  assert.equal(
+    emptySentenceRes.message,
+    "Değerlendirilemedi: Metin Çözümlenemedi"
+  );
 
   const batulRes = arabicNlp.evaluateSingleWord("بَتُولُ", "بطل");
+  assert.equal(batulRes.score, 50);
   assert.ok(
     batulRes.makhrajTip?.pair?.includes("ت") &&
       batulRes.makhrajTip?.pair?.includes("ط"),
@@ -368,13 +373,82 @@ test("8. evaluateSentenceWords Boş STT Koruması, بَتُولُ -> بطل Mahr
     "أَنَا بِخَيْرٍ وَالْحَمْدُ لِلَّهِ",
     "نبخر والحمد لله"
   );
+  assert.equal(liaisonRes.words[0].score, 45);
+  assert.equal(liaisonRes.words[1].score, 68);
   assert.ok(
     liaisonRes.overallScore <= 78,
     `Kelime ulaması tespit edildiğinde cümle puanı <= 78 olmalı (Alınan: ${liaisonRes.overallScore})`
+  );
+  assert.ok(
+    liaisonRes.rootGuardMessage?.includes("Kelime Ulaması / Yutma Tespiti"),
+    "Kelime ulaması uyarısı üretilmeli"
   );
 
   const ishbaRes = arabicNlp.evaluateSingleWord("لَكِ", "لكي");
   assert.equal(ishbaRes.score, 79);
   assert.equal(ishbaRes.status, "close");
+  assert.ok(ishbaRes.medVezinTip?.includes("Kesra Uzatma (İşbâ') Kontrolü"));
+
+  // rawDuration <= 3.5 sn kayıtlarda trimSilenceFromPcm uzunluğu korumalı
+  const shortPcm = new Float32Array(16000 * 2.2);
+  shortPcm[8000] = 0.4;
+  const trimmedShort = audioAnalysis.trimSilenceFromPcm(shortPcm, 16000);
+  assert.equal(trimmedShort.length, shortPcm.length);
 });
+
+// ============================================================================
+// 9. Başlangıç Halüsinasyonu ("نعم") Filtresi, DP Hizalama, Tâ-i Merbûta (ة -> طالبات) ve Tutarlı Koç Mesajı Testi
+// ============================================================================
+test("9. Başlangıç Halüsinasyonu ('نعم') Filtresi, Tâ-i Merbûta (طَالِبَةٌ -> طالبات %78 close) ve Tutarlı Koç Mesajı", () => {
+  const targetCairo = "أَنَا طَالِبَةٌ فِي جَامِعَةِ الْقَاهِرَةِ.";
+  const spokenWithNaamExact = "نعم أنا طالبة في جامعة القاهرة";
+  const resExact = arabicNlp.evaluateSentenceWords(
+    targetCairo,
+    spokenWithNaamExact
+  );
+  assert.equal(
+    resExact.overallScore,
+    100,
+    `'نعم' başlangıç halüsinasyonu filtrelenmeli ve tüm kelimeler %100 eşleşmeli (Alınan: ${resExact.overallScore})`
+  );
+  assert.equal(resExact.extraWordsCount, 0);
+  assert.equal(resExact.words.length, 5);
+  assert.ok(resExact.words.every((w) => w.score === 100));
+
+  // Tâ-i Merbûta (طَالِبَةٌ -> طالبات) tekil kelime ve cümle içi hizalama testi
+  const taMarbutaSingle = arabicNlp.evaluateSingleWord("طَالِبَةٌ", "طالبات");
+  assert.equal(taMarbutaSingle.score, 78);
+  assert.equal(taMarbutaSingle.status, "close");
+  assert.equal(taMarbutaSingle.isRootGuardTriggered, false);
+  assert.ok(
+    taMarbutaSingle.medVezinTip?.includes("Tâ-i Merbûta"),
+    "Tâ-i Merbûta vakıf/geçiş ipucu üretilmeli"
+  );
+
+  const resWithNaamAndTalibat = arabicNlp.evaluateSentenceWords(
+    targetCairo,
+    "نعم انا طالبات في جامعة القاهرة"
+  );
+  assert.equal(resWithNaamAndTalibat.words[0].score, 100); // أَنَا
+  assert.equal(resWithNaamAndTalibat.words[1].score, 78); // طَالِبَةٌ -> طالبات
+  assert.equal(resWithNaamAndTalibat.words[1].status, "close");
+  assert.equal(resWithNaamAndTalibat.words[2].score, 100); // فِي
+  assert.equal(resWithNaamAndTalibat.words[3].score, 100); // جَامِعَةِ
+  assert.equal(resWithNaamAndTalibat.words[4].score, 100); // الْقَاهِرَةِ
+  assert.equal(resWithNaamAndTalibat.isRootGuardTriggered, false);
+
+  // Kök harf hatası varken veya puan < 80 iken asla "Harika gelişim!" mesajı üretilmemeli
+  const coachWithRootError = arabicNlp.evaluateAdaptiveCoaching(
+    [82],
+    "A1",
+    "ت / ط",
+    84,
+    true
+  );
+  assert.ok(
+    !coachWithRootError.message.includes("Harika gelişim!"),
+    "Kök harf veya kelime hatası varken 'Harika gelişim!' tebrik mesajı gösterilmemeli"
+  );
+});
+
 
