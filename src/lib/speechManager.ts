@@ -371,6 +371,45 @@ export class HybridSpeechManager {
   }
 
   /**
+   * Whisper'a gönderilen 16kHz sesin tepe genliğini 0.90 seviyesine normalize eder,
+   * başına 0.30 saniye (4800 sıfır örneği) ve sonuna 0.40 saniye (6400 sıfır örneği) sessizlik yastığı (zero-padding) ekler
+   * ve ses uzunluğunun her zaman >= 1.6 saniye (25600 örnek) olmasını garanti eder.
+   */
+  private preparePadded16kHzAudio(
+    audioData16kHz: Float32Array,
+    gainBoost: number = 1.0
+  ): Float32Array {
+    if (!audioData16kHz || audioData16kHz.length === 0) {
+      return new Float32Array(0);
+    }
+    let maxAbs = 0;
+    for (let i = 0; i < audioData16kHz.length; i++) {
+      const abs = Math.abs(audioData16kHz[i]);
+      if (abs > maxAbs) maxAbs = abs;
+    }
+    if (maxAbs < 0.002) {
+      return audioData16kHz;
+    }
+
+    const scale = (0.9 / maxAbs) * gainBoost;
+    const prePad = 4800; // 0.30 sn @ 16kHz
+    const postPad = 6400; // 0.40 sn @ 16kHz
+    const minTotalLen = 25600; // 1.60 sn @ 16kHz
+    const totalLen = Math.max(
+      minTotalLen,
+      prePad + audioData16kHz.length + postPad
+    );
+    const padded = new Float32Array(totalLen);
+    for (let i = 0; i < audioData16kHz.length; i++) {
+      padded[prePad + i] = Math.max(
+        -0.98,
+        Math.min(0.98, audioData16kHz[i] * scale)
+      );
+    }
+    return padded;
+  }
+
+  /**
    * Mobilde getUserMedia açıkken Web Speech kilitlendiğinde ve cihaz içi WASM bellek sınırına takıldığında
    * (yalnızca localSttOnly === false iken) 16kHz WAV ses verisini /api/stt sunucu rotasına göndererek çözümler.
    */
@@ -388,7 +427,8 @@ export class HybridSpeechManager {
       callbacks?.onStatusChange?.(
         "🧠 Bulut yedek STT servisi ile sesiniz çözümleniyor..."
       );
-      const wavBlob = this.encodePcm16kToWavBlob(audioData16kHz);
+      const paddedPcm16k = this.preparePadded16kHzAudio(audioData16kHz, 1.0);
+      const wavBlob = this.encodePcm16kToWavBlob(paddedPcm16k);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 18000);
       try {
@@ -426,25 +466,7 @@ export class HybridSpeechManager {
       return Promise.reject(new Error("Whisper Worker başlatılamadı."));
     }
 
-    // Tepe Genliği Normalizasyonu (Peak Normalization): Mobil mikrofonlarda kısık sesleri güçlendir
-    let normalizedPcm16k = audioData16kHz;
-    if (audioData16kHz && audioData16kHz.length > 0) {
-      let maxAbs = 0;
-      for (let i = 0; i < audioData16kHz.length; i++) {
-        const abs = Math.abs(audioData16kHz[i]);
-        if (abs > maxAbs) maxAbs = abs;
-      }
-      if (maxAbs > 0.005 && maxAbs < 0.75) {
-        const scale = 0.85 / maxAbs;
-        normalizedPcm16k = new Float32Array(audioData16kHz.length);
-        for (let i = 0; i < audioData16kHz.length; i++) {
-          normalizedPcm16k[i] = Math.max(
-            -1,
-            Math.min(1, audioData16kHz[i] * scale)
-          );
-        }
-      }
-    }
+    const normalizedPcm16k = this.preparePadded16kHzAudio(audioData16kHz, 1.0);
 
     const activeWorker = this.worker;
     const requestId = `req_${Date.now()}_${++this.requestCounter}`;

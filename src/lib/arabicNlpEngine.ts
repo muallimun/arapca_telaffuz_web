@@ -1642,6 +1642,29 @@ export function evaluateAcousticMaddAndShaddaDuration(
     };
   }
 
+  const wordCount = cleanDisplayText(targetText)
+    .split(/\s+/)
+    .filter((w) => w.length > 0 && /[\u0600-\u06FF]/.test(w)).length;
+  const isShortSentence =
+    wordCount <= 4 ||
+    (referenceDurationSec !== undefined &&
+      referenceDurationSec > 0 &&
+      referenceDurationSec <= 3.0);
+
+  if (
+    isShortSentence &&
+    userActiveDurationSec >= 0.8 &&
+    userActiveDurationSec <= 3.5
+  ) {
+    return {
+      checked: true,
+      isShort: false,
+      penalty: 0,
+      expectedMinDuration: phoneticInfo.expectedMinDuration,
+      feedbackMessage: "Akustik Med/Şedde Süresi: Uyumlu",
+    };
+  }
+
   const minRequired = phoneticInfo.expectedMinDuration * 0.65;
   if (userActiveDurationSec < minRequired) {
     return {
@@ -1746,17 +1769,31 @@ export function evaluateSentenceWords(
         )
       : 0;
 
+  const overallScore = Math.max(0, rawAverageScore - extraWordPenalty);
   const spokenHasAnyDiacritics = /[\u064B-\u0652\u0670]/.test(spokenSentence);
 
   // STT harekesiz metin döndürdüğünde Akustik Med/Şedde Süre Kontrolü
-  // (Kelime puanlarını ve Algılanan Metin & Harf Uyumu puanını ASLA düşürmez; yalnızca bilgi notu olarak eklenir!)
-  const acousticCheck = !spokenHasAnyDiacritics
+  // (Kelime puanlarını ve Algılanan Metin & Harf Uyumu puanını ASLA düşürmez; ayrıca Algılanan Metin & Harf Uyumu >= %80 ise sahte uyarı üretmez!)
+  const rawAcousticCheck = !spokenHasAnyDiacritics
     ? evaluateAcousticMaddAndShaddaDuration(
         strippedTargetSentence,
         acousticOptions?.userDurationSec,
         acousticOptions?.refDurationSec
       )
     : null;
+
+  const acousticCheck =
+    rawAcousticCheck &&
+    overallScore >= 80 &&
+    (acousticOptions?.userDurationSec ?? 1.0) >= 0.8 &&
+    rawAcousticCheck.checked
+      ? {
+          ...rawAcousticCheck,
+          isShort: false,
+          penalty: 0,
+          feedbackMessage: "Akustik Med/Şedde Süresi: Uyumlu",
+        }
+      : rawAcousticCheck;
 
   if (acousticCheck?.checked && acousticCheck.feedbackMessage) {
     for (const w of wordResults) {
@@ -1766,8 +1803,6 @@ export function evaluateSentenceWords(
       }
     }
   }
-
-  const overallScore = Math.max(0, rawAverageScore - extraWordPenalty);
 
   const firstRootGuardWord = wordResults.find((w) => w.isRootGuardTriggered);
   const allDiacriticsVerified =

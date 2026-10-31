@@ -54,7 +54,6 @@ import {
   start16kHzRecorder,
   resampleAudioBuffer,
   trimSilenceFromPcm,
-  getActiveSpeechDuration,
   countSyllablePeaks,
   RecordingSession16kHz,
 } from "@/lib/audioAnalysis";
@@ -827,9 +826,11 @@ export default function ShadowingModal({
       }
 
       const trimmedPcm16k =
-        pcm16k.length > 0
+        recorded.trimmedSamples.length > 0
+          ? recorded.trimmedSamples
+          : pcm16k.length > 0
           ? trimSilenceFromPcm(pcm16k, 16000)
-          : recorded.trimmedSamples;
+          : pcm16k;
 
       const accurateDuration =
         trimmedPcm16k.length > 0
@@ -930,15 +931,12 @@ export default function ShadowingModal({
       let computedRhythm: number | null = null;
       let effectiveRefBars: number[] = [];
       let effectiveRefDur = 0;
-      const effectiveUserDur = getActiveSpeechDuration(
-        accurateDuration,
-        trimmedEnvelope
-      );
+      const effectiveUserDur = accurateDuration;
 
       if (refAudioBufferRef.current) {
         const refEnv = extractAudioEnvelope(refAudioBufferRef.current, 48);
         effectiveRefBars = refEnv.bars;
-        effectiveRefDur = getActiveSpeechDuration(refEnv.duration, refEnv.bars);
+        effectiveRefDur = refEnv.duration;
         const dtwMatch = calculateRhythmMatch(
           refEnv.bars,
           trimmedEnvelope
@@ -954,7 +952,7 @@ export default function ShadowingModal({
         setTempoScore(computedTempo);
       } else if (hasRealRefAudio && refDuration > 0) {
         effectiveRefBars = refBars;
-        effectiveRefDur = getActiveSpeechDuration(refDuration, refBars);
+        effectiveRefDur = refDuration;
         const dtwMatch = calculateRhythmMatch(refBars, trimmedEnvelope);
         const computedTempo = calculateTempoScore(
           refDuration,

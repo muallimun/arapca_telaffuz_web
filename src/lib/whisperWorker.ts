@@ -176,12 +176,15 @@ function resampleWorkerAudioTo16kHz(
 }
 
 /**
- * 16kHz Float32Array PCM ses dizisinin başındaki ve sonundaki sessizlikleri kırpar (trim silence)
- * ve tepe genliğini (peak normalization) 0.90 seviyesine normalize eder.
+ * 16kHz Float32Array PCM ses dizisinin tepe genliğini 0.90 seviyesine normalize eder,
+ * başına 0.30 saniye (4800 sıfır örneği) ve sonuna 0.40 saniye (6400 sıfır örneği) sessizlik yastığı (zero-padding) ekler
+ * ve toplam ses uzunluğunun her zaman >= 1.6 saniye (25600 örnek) olmasını garanti eder.
  */
 function preprocessAudioForWhisper(
   rawSamples: Float32Array,
-  inputSampleRate: number = 16000
+  inputSampleRate: number = 16000,
+  gainBoost: number = 1.0,
+  skipTrim: boolean = false
 ): Float32Array {
   if (!rawSamples || rawSamples.length === 0) {
     return new Float32Array(0);
@@ -203,47 +206,77 @@ function preprocessAudioForWhisper(
     return new Float32Array(0);
   }
 
-  // Adaptif sessizlik eşiği: düşük mikrofon kazançlarında bile konuşma başlangıcını yakalar
-  const threshold = Math.min(0.015, Math.max(0.003, maxAbs * 0.1));
-  let start = -1;
-  let end = -1;
+  let coreSamples = samples;
+  // Yalnızca 3.5 saniyeyi (56000 örnek) aşan kayıtlarda ve skipTrim === false iken hafif uç sessizlik kırpması yap
+  if (!skipTrim && samples.length > 56000) {
+    const threshold = Math.max(0.003, maxAbs * 0.03);
+    let start = 0;
+    let end = samples.length - 1;
 
-  for (let i = 0; i < samples.length; i++) {
-    if (Math.abs(samples[i]) > threshold) {
-      start = Math.max(0, i - 1200); // ~75ms ön pay
-      break;
+    for (let i = 0; i < samples.length; i++) {
+      if (Math.abs(samples[i]) >= threshold) {
+        start = Math.max(0, i - 6400); // 0.40 sn ön pay
+        break;
+      }
+    }
+
+    for (let i = samples.length - 1; i >= 0; i--) {
+      if (Math.abs(samples[i]) >= threshold) {
+        end = Math.min(samples.length - 1, i + 7200); // 0.45 sn arka pay
+        break;
+      }
+    }
+
+    const minAllowed = Math.min(samples.length, 28800); // en az 1.8 sn
+    if (end > start && end - start + 1 >= minAllowed) {
+      coreSamples = samples.slice(start, end + 1);
     }
   }
 
-  for (let i = samples.length - 1; i >= 0; i--) {
-    if (Math.abs(samples[i]) > threshold) {
-      end = Math.min(samples.length - 1, i + 1600); // ~100ms arka pay
-      break;
+  // Tepe genliğini (Peak Normalization) 0.90 seviyesine normalize et (ve varsa gainBoost uygula)
+  let peak = 0;
+  for (let i = 0; i < coreSamples.length; i++) {
+    const v = Math.abs(coreSamples[i]);
+    if (v > peak) peak = v;
+  }
+
+  const normalized = new Float32Array(coreSamples.length);
+  if (peak > 0.002) {
+    const gain = (0.9 / peak) * gainBoost;
+    for (let i = 0; i < coreSamples.length; i++) {
+      normalized[i] = Math.max(-0.98, Math.min(0.98, coreSamples[i] * gain));
     }
+  } else {
+    normalized.set(coreSamples);
   }
 
-  const trimmed =
-    start !== -1 && end !== -1 && end > start
-      ? samples.slice(start, end + 1)
-      : samples.slice();
+  // Başına 0.30 sn (4800 örnek) ve sonuna 0.40 sn (6400 örnek) sessizlik yastığı ekle; toplam uzunluk >= 1.6 sn (25600 örnek) olsun
+  const prePad = 4800;
+  const postPad = 6400;
+  const minTotalSamples = 25600; // 1.6 saniye @ 16kHz
+  const totalLen = Math.max(
+    minTotalSamples,
+    prePad + normalized.length + postPad
+  );
+  const padded = new Float32Array(totalLen);
+  padded.set(normalized, prePad);
 
-  // Tepe genliğini (Peak Normalization) 0.90 seviyesine normalize et
-  let trimmedPeak = 0;
-  for (let i = 0; i < trimmed.length; i++) {
-    const v = Math.abs(trimmed[i]);
-    if (v > trimmedPeak) trimmedPeak = v;
+  return padded;
+}
+
+function cleanWhisperHallucinations(rawText: string): string {
+  let cleaned = (rawText || "").trim();
+  const hallucinationPatterns = [
+    /اشتركوا في القناة/gi,
+    /لا تنسوا الاشتراك/gi,
+    /ترجمة نانسي قنقر/gi,
+    /شكراً? للمشاهدة/gi,
+    /ترجمة وتحرير/gi,
+  ];
+  for (const pat of hallucinationPatterns) {
+    cleaned = cleaned.replace(pat, "").trim();
   }
-
-  if (trimmedPeak > 0.002) {
-    const gain = 0.9 / trimmedPeak;
-    const normalized = new Float32Array(trimmed.length);
-    for (let i = 0; i < trimmed.length; i++) {
-      normalized[i] = Math.max(-1, Math.min(1, trimmed[i] * gain));
-    }
-    return normalized;
-  }
-
-  return trimmed;
+  return cleaned;
 }
 
 async function createPipelineWithDevice(
@@ -355,13 +388,14 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
 
   if (type === "transcribe" && audioData) {
     try {
-      // 1. ÖN İŞLEME: Varsa 44.1kHz/48kHz veriyi 16kHz'e yeniden örnekle, sessizlikleri kırp ve tepe genliğini 0.90'a normalize et
+      // 1. ÖN İŞLEME: 16kHz'e örnekle, 0.90 tepe normalizasyonu ve 0.30s/0.40s sessizlik yastığı (>= 1.6s) uygula
       const processedAudio = preprocessAudioForWhisper(
         audioData,
-        sampleRate || 16000
+        sampleRate || 16000,
+        1.0,
+        false
       );
 
-      // Çok kısa (< 0.15 sn / 2400 örnek) veya tamamen sessiz ses verisinde Whisper halüsinasyonunu önle
       if (!processedAudio || processedAudio.length < 2400) {
         self.postMessage({
           requestId,
@@ -395,8 +429,11 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
         device: activeDevice,
       } satisfies WhisperWorkerResponse);
 
-      const runInference = async (asrPipe: AsrPipelineFn) => {
-        return await asrPipe(processedAudio, {
+      const runInference = async (
+        asrPipe: AsrPipelineFn,
+        inputAudio: Float32Array
+      ) => {
+        return await asrPipe(inputAudio, {
           language: "arabic",
           task: "transcribe",
           temperature: 0,
@@ -410,7 +447,7 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
 
       let output: AsrOutput;
       try {
-        output = await runInference(model);
+        output = await runInference(model, processedAudio);
       } catch (inferErr) {
         // Eğer WebGPU çalışma zamanında (inference aşamasında) çöktüyse kesintisiz WASM q8'e düş!
         if (activeDevice === "webgpu") {
@@ -427,28 +464,44 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
             status: "transcribing",
             device: "wasm",
           } satisfies WhisperWorkerResponse);
-          output = await runInference(model);
+          output = await runInference(model, processedAudio);
         } else {
           throw inferErr;
         }
       }
 
-      let recognizedText = (
+      let recognizedText = cleanWhisperHallucinations(
         Array.isArray(output)
           ? output.map((o) => o.text || "").join(" ")
           : output?.text || ""
-      ).trim();
+      );
 
-      // Whisper sessizlik halüsinasyonlarını temizle
-      const hallucinationPatterns = [
-        /اشتركوا في القناة/gi,
-        /لا تنسوا الاشتراك/gi,
-        /ترجمة نانسي قنقر/gi,
-        /شكراً? للمشاهدة/gi,
-        /ترجمة وتحرير/gi,
-      ];
-      for (const pat of hallucinationPatterns) {
-        recognizedText = recognizedText.replace(pat, "").trim();
+      // Eğer ilk çözümleme denemesi boş metin döndürdüyse, kırpılmamış ham ses verisini x1.8 kazançla (gain boost) ikinci kez çözümle!
+      if (
+        (!recognizedText || !/[\u0600-\u06FF]/.test(recognizedText)) &&
+        !isRequestStaleOrAborted(requestId)
+      ) {
+        const boostedAudio = preprocessAudioForWhisper(
+          audioData,
+          sampleRate || 16000,
+          1.8,
+          true
+        );
+        if (boostedAudio.length >= 2400) {
+          try {
+            const retryOutput = await runInference(model, boostedAudio);
+            const retryText = cleanWhisperHallucinations(
+              Array.isArray(retryOutput)
+                ? retryOutput.map((o) => o.text || "").join(" ")
+                : retryOutput?.text || ""
+            );
+            if (retryText && /[\u0600-\u06FF]/.test(retryText)) {
+              recognizedText = retryText;
+            }
+          } catch {
+            // ignore second pass error
+          }
+        }
       }
 
       const ignored = isRequestStaleOrAborted(requestId);

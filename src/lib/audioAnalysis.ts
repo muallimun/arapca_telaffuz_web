@@ -284,7 +284,7 @@ export function getActiveSpeechDuration(
 
 /**
  * Referans ve kullanıcı süreleri arasındaki tempo uyumu.
- * Referans MP3 veya kullanıcı kaydının baş/son sessizlik çubuklarını (bar < 0.08) düşerek gerçek aktif konuşma süresini karşılaştırır.
+ * Kısa cümlelerde (refDuration <= 3.0s) kullanıcının kaydı 0.8s ile 3.5s arasındaysa Süre Uyumu >= 85 olarak hesaplanır.
  */
 export function calculateTempoScore(
   refDuration: number,
@@ -304,8 +304,16 @@ export function calculateTempoScore(
 
   const diff = Math.abs(effectiveRefDuration - effectiveUserDuration);
   const ratio = diff / Math.max(effectiveRefDuration, 1);
-  const score = Math.round(100 * Math.max(0, 1 - ratio));
-  return Math.max(0, Math.min(100, score));
+  const rawScore = Math.round(100 * Math.max(0, 1 - ratio));
+
+  if (refDuration <= 3.0 && userDuration >= 0.8 && userDuration <= 3.5) {
+    const gentleScore = Math.round(
+      100 - Math.abs(effectiveRefDuration - effectiveUserDuration) * 8
+    );
+    return Math.max(85, Math.min(100, Math.max(rawScore, gentleScore)));
+  }
+
+  return Math.max(0, Math.min(100, rawScore));
 }
 
 /**
@@ -524,10 +532,10 @@ export function normalizeAudioBuffer(
 }
 
 /**
- * Kaydın ilk 0.10 saniyesindeki (1600 örnek) buton tıklama "tık" sesini sıfırlar,
- * 20ms (320 örnek) pencerelerle RMS enerjisini hesaplar (konuşma eşiği: Math.max(0.008, peakRms * 0.08)),
- * ilk konuşma penceresinden 150ms (2400 örnek) öncesini startIdx ve son konuşma penceresinden 200ms (3200 örnek)
- * sonrasını endIdx olarak alıp pcm16k.slice(startIdx, endIdx) döndürür (kırpılmış uzunluk 0.4 sn'den kısaysa orijinali korur).
+ * Toplam kayıt süresi 3.5 saniyenin altındaysa (rawDuration <= 3.5) kaydı kesinlikle kırpmaz (orijinal pcm16k verisini korur).
+ * Yalnızca 3.5 saniyeyi aşan kayıtlarda hassas eşikle (Math.max(0.003, peakRms * 0.03)) konuşmanın başından en az 0.40s (6400 örnek)
+ * ve sonundan en az 0.45s (7200 örnek) doğal pay bırakarak sondaki uzun boşlukları kırpar; kırpılmış sürenin asla
+ * Math.min(rawDuration, 1.8) saniyenin altına düşmesine izin vermez.
  */
 export function trimSilenceFromPcm(
   pcm16k: Float32Array,
@@ -537,23 +545,20 @@ export function trimSilenceFromPcm(
     return new Float32Array(0);
   }
 
+  const rawDuration = pcm16k.length / sampleRate;
+  // Toplam kayıt süresi 3.5 saniyenin altındaysa kesinlikle kırpma; orijinal pcm16k verisini olduğu gibi koru!
+  if (rawDuration <= 3.5) {
+    return normalizeAudioPeak(pcm16k, 0.9);
+  }
+
   const cleaned = new Float32Array(pcm16k.length);
   cleaned.set(pcm16k);
 
-  // 1. Kaydın ilk 0.10 saniyesindeki (16kHz'de 1600 örnek) buton tıklama "tık" sesini sıfırla
-  const clickGuardSamples = Math.min(
-    cleaned.length,
-    Math.floor(sampleRate * 0.1)
-  );
-  for (let i = 0; i < clickGuardSamples; i++) {
-    cleaned[i] = 0;
-  }
-
-  // 2. 20ms (16kHz'de 320 örnek) pencerelerle RMS enerjisini hesapla
+  // 20ms (16kHz'de 320 örnek) pencerelerle RMS enerjisini hesapla
   const windowSize = Math.max(64, Math.floor(sampleRate * 0.02));
   const numWindows = Math.floor(cleaned.length / windowSize);
   if (numWindows === 0) {
-    return cleaned;
+    return normalizeAudioPeak(cleaned, 0.9);
   }
 
   const windowRms = new Float32Array(numWindows);
@@ -574,13 +579,12 @@ export function trimSilenceFromPcm(
     }
   }
 
-  // Tamamen sessiz kayıt
   if (peakRms < 0.002) {
     return cleaned;
   }
 
-  // 3. Konuşma başlangıç eşiğini Math.max(0.012, peakRms * 0.12) olarak belirle (baştaki/sondaki boş noktaları kararlı kırp)
-  const speechThreshold = Math.max(0.012, peakRms * 0.12);
+  // Çok hassas konuşma algılama eşiği: Math.max(0.003, peakRms * 0.03)
+  const speechThreshold = Math.max(0.003, peakRms * 0.03);
   let firstSpeechWin = -1;
   let lastSpeechWin = -1;
 
@@ -598,30 +602,38 @@ export function trimSilenceFromPcm(
     }
   }
 
-  if (firstSpeechWin === -1 || lastSpeechWin === -1 || lastSpeechWin < firstSpeechWin) {
-    return cleaned;
+  if (
+    firstSpeechWin === -1 ||
+    lastSpeechWin === -1 ||
+    lastSpeechWin < firstSpeechWin
+  ) {
+    return normalizeAudioPeak(cleaned, 0.9);
   }
 
-  // 4. İlk konuşma penceresinden 100ms (1600 örnek) öncesi startIdx, son konuşma penceresinden 140ms (2240 örnek) sonrası endIdx
-  const prePadSamples = Math.floor(sampleRate * 0.1);
-  const postPadSamples = Math.floor(sampleRate * 0.14);
+  // Konuşmanın başından en az 0.40 sn (6400 örnek) ve sonundan en az 0.45 sn (7200 örnek) doğal pay bırak
+  const prePadSamples = Math.floor(sampleRate * 0.4);
+  const postPadSamples = Math.floor(sampleRate * 0.45);
 
-  const startIdx = Math.max(
-    0,
-    firstSpeechWin * windowSize - prePadSamples
-  );
-  const endIdx = Math.min(
+  let startIdx = Math.max(0, firstSpeechWin * windowSize - prePadSamples);
+  let endIdx = Math.min(
     cleaned.length,
     (lastSpeechWin + 1) * windowSize + postPadSamples
   );
 
-  const minTrimmedSamples = Math.floor(sampleRate * 0.4);
-  if (endIdx <= startIdx || endIdx - startIdx < minTrimmedSamples) {
-    return normalizeAudioPeak(cleaned, 0.85);
+  // Kırpılmış sürenin asla Math.min(rawDuration, 1.8) saniyenin altına düşmesine izin verme
+  const minAllowedSamples = Math.floor(
+    Math.min(cleaned.length, sampleRate * 1.8)
+  );
+  if (endIdx - startIdx < minAllowedSamples) {
+    const needed = minAllowedSamples - (endIdx - startIdx);
+    const addRight = Math.min(cleaned.length - endIdx, Math.ceil(needed / 2));
+    endIdx += addRight;
+    const rem = minAllowedSamples - (endIdx - startIdx);
+    startIdx = Math.max(0, startIdx - rem);
   }
 
   const sliced = cleaned.slice(startIdx, endIdx);
-  return normalizeAudioPeak(sliced, 0.85);
+  return normalizeAudioPeak(sliced, 0.9);
 }
 
 /**
