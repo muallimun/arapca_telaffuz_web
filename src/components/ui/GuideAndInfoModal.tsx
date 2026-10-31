@@ -38,7 +38,9 @@ import { playClick } from "@/lib/sfxManager";
 import { triggerOnboardingTour } from "./OnboardingTourModal";
 import { triggerShareAppModal } from "@/lib/shareApp";
 import { triggerFeedbackModal } from "./FeedbackModal";
-import VisitorCounterBadge from "./VisitorCounterBadge";
+import VisitorCounterBadge, {
+  refreshVisitorStatsLive,
+} from "./VisitorCounterBadge";
 
 type GuideTab = "quickstart" | "icons" | "pedagogy" | "about" | "apps";
 
@@ -66,6 +68,11 @@ export default function GuideAndInfoModal() {
     window.addEventListener("open-guide-modal", handleOpen);
     return () => window.removeEventListener("open-guide-modal", handleOpen);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    void refreshVisitorStatsLive();
+  }, [isOpen, activeTab]);
 
   useEffect(() => {
     if (!isOpen) return;

@@ -5,45 +5,192 @@ import { Users, Calendar, Activity } from "lucide-react";
 
 export interface VisitorStatsData {
   ok: boolean;
+  totalUsers: number;
+  todayUsers: number;
+  totalSessions: number;
   totalUnique: number;
   todayVisits: number;
   totalViews: number;
 }
 
-const STORAGE_KEY_UNIQUE = "muallimun_visitor_registered";
-const STORAGE_KEY_LAST_DATE = "muallimun_last_visit_date";
-const STORAGE_KEY_SESSION = "muallimun_session_counted";
+const STORAGE_KEY_VISITOR_ID = "muallimun_visitor_id";
+const STORAGE_KEY_SESSION_ID = "muallimun_session_id";
+const STORAGE_KEY_LAST_SEEN_TS = "muallimun_last_seen_ts";
+const STORAGE_KEY_KNOWN_TOTAL_USERS = "knownTotalUsers";
+const STORAGE_KEY_KNOWN_TOTAL_SESSIONS = "knownTotalSessions";
 const STORAGE_KEY_CACHE = "muallimun_cached_visitor_stats";
 const STATS_EVENT_NAME = "muallimun-visitor-stats-updated";
 
+const SESSION_IDLE_MS = 15 * 60 * 1000; // 15 dakika
+
 const DEFAULT_FALLBACK_STATS: VisitorStatsData = {
   ok: true,
+  totalUsers: 1,
+  todayUsers: 1,
+  totalSessions: 1,
   totalUnique: 1,
   todayVisits: 1,
   totalViews: 1,
 };
 
-let inFlightPromise: Promise<VisitorStatsData> | null = null;
+let inFlightPostPromise: Promise<VisitorStatsData> | null = null;
 let latestMemoryStats: VisitorStatsData | null = null;
+let hasRegisteredThisPageLoad = false;
 
-function getTodayDateString(): string {
+function generateUuid(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+  return `v_${Date.now().toString(36)}_${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+}
+
+function getOrCreateVisitorId(): string {
   try {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Europe/Istanbul",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(new Date());
-    const year = parts.find((p) => p.type === "year")?.value ?? "2026";
-    const month = parts.find((p) => p.type === "month")?.value ?? "01";
-    const day = parts.find((p) => p.type === "day")?.value ?? "01";
-    return `${year}-${month}-${day}`;
+    let vid = localStorage.getItem(STORAGE_KEY_VISITOR_ID);
+    if (!vid || vid.trim().length < 6) {
+      vid = generateUuid();
+      localStorage.setItem(STORAGE_KEY_VISITOR_ID, vid);
+    }
+    return vid;
   } catch {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    return "anon_visitor";
+  }
+}
+
+function getOrCreateSessionId(): string {
+  const now = Date.now();
+  try {
+    const lastTsRaw = localStorage.getItem(STORAGE_KEY_LAST_SEEN_TS);
+    const lastTs = lastTsRaw ? Number(lastTsRaw) : 0;
+    const isIdleExpired =
+      Number.isFinite(lastTs) && lastTs > 0 && now - lastTs >= SESSION_IDLE_MS;
+
+    let sid = sessionStorage.getItem(STORAGE_KEY_SESSION_ID);
+    if (!sid || sid.trim().length < 6 || isIdleExpired) {
+      sid = `s_${now.toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      sessionStorage.setItem(STORAGE_KEY_SESSION_ID, sid);
+    }
+    localStorage.setItem(STORAGE_KEY_LAST_SEEN_TS, String(now));
+    return sid;
+  } catch {
+    return `s_${now.toString(36)}`;
+  }
+}
+
+function readKnownClientTotals(): {
+  knownTotalUsers: number;
+  knownTotalSessions: number;
+} {
+  let knownTotalUsers = 0;
+  let knownTotalSessions = 0;
+  if (typeof window === "undefined") {
+    return { knownTotalUsers, knownTotalSessions };
+  }
+  try {
+    const rawUsers = Number(
+      localStorage.getItem(STORAGE_KEY_KNOWN_TOTAL_USERS) || 0
+    );
+    const rawSessions = Number(
+      localStorage.getItem(STORAGE_KEY_KNOWN_TOTAL_SESSIONS) || 0
+    );
+    if (Number.isFinite(rawUsers) && rawUsers > 0) {
+      knownTotalUsers = Math.floor(rawUsers);
+    }
+    if (Number.isFinite(rawSessions) && rawSessions > 0) {
+      knownTotalSessions = Math.floor(rawSessions);
+    }
+
+    const rawCache = localStorage.getItem(STORAGE_KEY_CACHE);
+    if (rawCache) {
+      const parsed = JSON.parse(rawCache);
+      const cachedUsers = Number(
+        parsed?.totalUsers ?? parsed?.totalUnique ?? 0
+      );
+      const cachedSessions = Number(
+        parsed?.totalSessions ?? parsed?.totalViews ?? 0
+      );
+      if (Number.isFinite(cachedUsers) && cachedUsers > knownTotalUsers) {
+        knownTotalUsers = Math.floor(cachedUsers);
+      }
+      if (
+        Number.isFinite(cachedSessions) &&
+        cachedSessions > knownTotalSessions
+      ) {
+        knownTotalSessions = Math.floor(cachedSessions);
+      }
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return { knownTotalUsers, knownTotalSessions };
+}
+
+function normalizeStatsPayload(
+  raw: Record<string, unknown> | null | undefined
+): VisitorStatsData | null {
+  if (!raw || typeof raw !== "object") return null;
+  const rawTotalUsers = Number(
+    raw.totalUsers ?? raw.totalUnique ?? raw.uniqueTotal ?? 0
+  );
+  const rawTodayUsers = Number(
+    raw.todayUsers ?? raw.todayVisits ?? raw.todayCount ?? 0
+  );
+  const rawTotalSessions = Number(
+    raw.totalSessions ?? raw.totalViews ?? raw.totalVisits ?? 0
+  );
+
+  if (!Number.isFinite(rawTotalUsers) || rawTotalUsers <= 0) {
+    return null;
+  }
+
+  const todayUsers = Math.max(1, Math.floor(rawTodayUsers || 1));
+  const totalUsers = Math.max(todayUsers, Math.floor(rawTotalUsers || 1));
+  const totalSessions = Math.max(
+    totalUsers,
+    todayUsers,
+    Math.floor(rawTotalSessions || 1)
+  );
+
+  return {
+    ok: true,
+    totalUsers,
+    todayUsers,
+    totalSessions,
+    totalUnique: totalUsers,
+    todayVisits: todayUsers,
+    totalViews: totalSessions,
+  };
+}
+
+function persistStatsToLocalStorage(stats: VisitorStatsData): void {
+  if (typeof window === "undefined") return;
+  try {
+    const prev = readKnownClientTotals();
+    const bestUsers = Math.max(stats.totalUsers, prev.knownTotalUsers);
+    const bestSessions = Math.max(stats.totalSessions, prev.knownTotalSessions);
+
+    localStorage.setItem(STORAGE_KEY_KNOWN_TOTAL_USERS, String(bestUsers));
+    localStorage.setItem(
+      STORAGE_KEY_KNOWN_TOTAL_SESSIONS,
+      String(bestSessions)
+    );
+    localStorage.setItem(
+      STORAGE_KEY_CACHE,
+      JSON.stringify({
+        ...stats,
+        totalUsers: bestUsers,
+        totalUnique: bestUsers,
+        totalSessions: bestSessions,
+        totalViews: bestSessions,
+      })
+    );
+  } catch {
+    // ignore storage errors
   }
 }
 
@@ -52,21 +199,23 @@ function readCachedStats(): VisitorStatsData {
   if (typeof window === "undefined") return DEFAULT_FALLBACK_STATS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CACHE);
-    if (!raw) return DEFAULT_FALLBACK_STATS;
-    const parsed = JSON.parse(raw);
-    if (
-      parsed &&
-      typeof parsed.totalUnique === "number" &&
-      parsed.totalUnique > 0
-    ) {
-      const todayVisits = Math.max(1, Number(parsed.todayVisits) || 1);
-      const totalUnique = Math.max(todayVisits, Number(parsed.totalUnique) || 1);
-      const totalViews = Math.max(totalUnique, Number(parsed.totalViews) || 1);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const normalized = normalizeStatsPayload(parsed);
+      if (normalized) return normalized;
+    }
+    const { knownTotalUsers, knownTotalSessions } = readKnownClientTotals();
+    if (knownTotalUsers > 0) {
+      const totalUsers = Math.max(1, knownTotalUsers);
+      const totalSessions = Math.max(totalUsers, knownTotalSessions);
       return {
         ok: true,
-        totalUnique,
-        todayVisits,
-        totalViews,
+        totalUsers,
+        todayUsers: 1,
+        totalSessions,
+        totalUnique: totalUsers,
+        todayVisits: 1,
+        totalViews: totalSessions,
       };
     }
   } catch {
@@ -75,96 +224,55 @@ function readCachedStats(): VisitorStatsData {
   return DEFAULT_FALLBACK_STATS;
 }
 
-async function fetchAndRegisterVisitorStats(): Promise<VisitorStatsData> {
+function broadcastStats(stats: VisitorStatsData): void {
+  latestMemoryStats = stats;
+  persistStatsToLocalStorage(stats);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent<VisitorStatsData>(STATS_EVENT_NAME, { detail: stats })
+    );
+  }
+}
+
+/**
+ * Her uygulama açılışında (tarayıcı kilidi olmadan!) POST /api/stats göndererek
+ * visitorId, sessionId ve bilinen son toplam sayaçları sunucuyla senkronize eder.
+ */
+export async function registerVisitorSessionOnLoad(): Promise<VisitorStatsData> {
   if (typeof window === "undefined") return DEFAULT_FALLBACK_STATS;
-  if (inFlightPromise) return inFlightPromise;
+  if (inFlightPostPromise) return inFlightPostPromise;
 
-  inFlightPromise = (async () => {
-    const todayStr = getTodayDateString();
-    let isNewUnique = false;
-    let isNewToday = false;
-    let isNewSession = false;
-
-    try {
-      isNewUnique = !localStorage.getItem(STORAGE_KEY_UNIQUE);
-      isNewToday = localStorage.getItem(STORAGE_KEY_LAST_DATE) !== todayStr;
-    } catch {
-      // ignore localStorage restrictions
-    }
+  inFlightPostPromise = (async () => {
+    const visitorId = getOrCreateVisitorId();
+    const sessionId = getOrCreateSessionId();
+    const { knownTotalUsers, knownTotalSessions } = readKnownClientTotals();
 
     try {
-      isNewSession = !sessionStorage.getItem(STORAGE_KEY_SESSION);
-    } catch {
-      // ignore sessionStorage restrictions
-    }
-
-    const uniqueParam = isNewUnique ? "1" : "0";
-    const todayParam = isNewToday ? "1" : "0";
-    const sessionParam = isNewSession ? "1" : "0";
-    const shouldIncrement = isNewUnique || isNewToday || isNewSession;
-
-    let result: VisitorStatsData | null = null;
-
-    try {
-      const res = shouldIncrement
-        ? await fetch("/api/stats", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              unique: uniqueParam,
-              today: todayParam,
-              session: sessionParam,
-            }),
-            cache: "no-store",
-          })
-        : await fetch("/api/stats", {
-            method: "GET",
-            cache: "no-store",
-          });
+      const res = await fetch("/api/stats", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+        },
+        body: JSON.stringify({
+          visitorId,
+          sessionId,
+          knownTotalUsers,
+          knownTotalSessions,
+        }),
+        cache: "no-store",
+      });
       if (res.ok) {
-        const json = await res.json();
-        if (json && typeof json.totalUnique === "number" && json.totalUnique > 0) {
-          const todayVisits = Math.max(1, Number(json.todayVisits) || 1);
-          const totalUnique = Math.max(todayVisits, Number(json.totalUnique) || 1);
-          const totalViews = Math.max(totalUnique, Number(json.totalViews) || 1);
-          result = {
-            ok: true,
-            totalUnique,
-            todayVisits,
-            totalViews,
-          };
+        const json = (await res.json()) as Record<string, unknown>;
+        const normalized = normalizeStatsPayload(json);
+        if (normalized) {
+          hasRegisteredThisPageLoad = true;
+          broadcastStats(normalized);
+          return normalized;
         }
       }
     } catch {
-      // ignore network error and fall back to cached stats
-    }
-
-    if (result && result.ok) {
-      try {
-        if (isNewUnique) {
-          localStorage.setItem(STORAGE_KEY_UNIQUE, "true");
-        }
-        if (isNewToday) {
-          localStorage.setItem(STORAGE_KEY_LAST_DATE, todayStr);
-        }
-        localStorage.setItem(STORAGE_KEY_CACHE, JSON.stringify(result));
-      } catch {
-        // ignore storage errors
-      }
-
-      try {
-        if (isNewSession) {
-          sessionStorage.setItem(STORAGE_KEY_SESSION, "true");
-        }
-      } catch {
-        // ignore sessionStorage errors
-      }
-
-      latestMemoryStats = result;
-      window.dispatchEvent(
-        new CustomEvent<VisitorStatsData>(STATS_EVENT_NAME, { detail: result })
-      );
-      return result;
+      // Ağ hatasında önbellekteki son bilinen değere düş
     }
 
     const fallback = readCachedStats();
@@ -173,10 +281,47 @@ async function fetchAndRegisterVisitorStats(): Promise<VisitorStatsData> {
   })();
 
   try {
-    return await inFlightPromise;
+    return await inFlightPostPromise;
   } finally {
-    inFlightPromise = null;
+    inFlightPostPromise = null;
   }
+}
+
+/**
+ * Kullanım Kılavuzu modalı veya "Hakkında" sekmesi açıldığında sayacı canlı yeniler.
+ */
+export async function refreshVisitorStatsLive(): Promise<VisitorStatsData> {
+  if (typeof window === "undefined") return DEFAULT_FALLBACK_STATS;
+  try {
+    const { knownTotalUsers, knownTotalSessions } = readKnownClientTotals();
+    if (!hasRegisteredThisPageLoad || knownTotalUsers > 0) {
+      return await registerVisitorSessionOnLoad();
+    }
+    const res = await fetch("/api/stats", {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    });
+    if (res.ok) {
+      const json = (await res.json()) as Record<string, unknown>;
+      const normalized = normalizeStatsPayload(json);
+      if (normalized) {
+        if (
+          knownTotalUsers > normalized.totalUsers ||
+          knownTotalSessions > normalized.totalSessions
+        ) {
+          return await registerVisitorSessionOnLoad();
+        }
+        broadcastStats(normalized);
+        return normalized;
+      }
+    }
+  } catch {
+    // ignore network error
+  }
+  return readCachedStats();
 }
 
 interface VisitorCounterBadgeProps {
@@ -202,7 +347,12 @@ export default function VisitorCounterBadge({
 
     window.addEventListener(STATS_EVENT_NAME, handleStatsUpdate);
 
-    fetchAndRegisterVisitorStats().then((fresh) => {
+    const syncFn =
+      variant === "modal"
+        ? refreshVisitorStatsLive
+        : registerVisitorSessionOnLoad;
+
+    syncFn().then((fresh) => {
       if (fresh) {
         setStats(fresh);
       }
@@ -212,11 +362,11 @@ export default function VisitorCounterBadge({
       cancelAnimationFrame(raf);
       window.removeEventListener(STATS_EVENT_NAME, handleStatsUpdate);
     };
-  }, []);
+  }, [variant]);
 
-  const formattedUnique = stats.totalUnique.toLocaleString("tr-TR");
-  const formattedToday = stats.todayVisits.toLocaleString("tr-TR");
-  const formattedViews = stats.totalViews.toLocaleString("tr-TR");
+  const formattedUnique = stats.totalUsers.toLocaleString("tr-TR");
+  const formattedToday = stats.todayUsers.toLocaleString("tr-TR");
+  const formattedViews = stats.totalSessions.toLocaleString("tr-TR");
 
   if (variant === "modal") {
     return (
@@ -276,7 +426,7 @@ export default function VisitorCounterBadge({
 
   return (
     <div
-      data-tooltip={`📊 Gerçek Ziyaretçi İstatistiği — Tekil Kişi: ${formattedUnique} | Bugün: ${formattedToday} | Toplam Çalışma Oturumu: ${formattedViews}`}
+      data-tooltip={`📊 Gerçek Ziyaretçi İstatistiği — Toplam Kişi: ${formattedUnique} | Bugün: ${formattedToday} | Toplam Oturum: ${formattedViews}`}
       data-tooltip-pos="top"
       className="inline-flex items-center divide-x divide-emerald-500/20 rounded-full bg-white dark:bg-slate-800 border border-[#E6D7BE] dark:border-slate-700 text-[11px] font-semibold text-[var(--foreground)] shadow-xs select-none whitespace-nowrap"
     >
