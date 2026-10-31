@@ -389,6 +389,22 @@ export function resampleFloat32Audio(
 }
 
 /**
+ * Kaydedilen ham Float32Array PCM ses verisini kaynak örnekleme hızından (örn. 48000 Hz veya 44100 Hz)
+ * hedef örnekleme hızına (16000 Hz) anti-alias filtreli lineer interpolasyon ile dönüştürür.
+ */
+export function resampleAudioBuffer(
+  rawPcm: Float32Array,
+  fromSampleRate: number,
+  toSampleRate: number = 16000
+): Float32Array {
+  if (!rawPcm || rawPcm.length === 0) return new Float32Array(0);
+  if (!fromSampleRate || fromSampleRate <= 0 || fromSampleRate === toSampleRate) {
+    return rawPcm;
+  }
+  return resampleFloat32Audio(rawPcm, fromSampleRate, toSampleRate);
+}
+
+/**
  * Herhangi bir AudioBuffer'ı Whisper'ın beklediği 16.000 Hz Mono Float32'ye çevirir.
  */
 export async function resampleTo16kHz(
@@ -423,11 +439,12 @@ export async function resampleTo16kHz(
 }
 
 /**
- * Ses dizisinin tepe genliğini (peak amplitude) hedef seviyeye (varsayılan 0.90) normalize eder.
+ * Mobil mikrofonlarda düşük kazançlı (kısık) kayıtların Whisper tarafından net anlaşılması için
+ * tepe genliğini (peak amplitude) kontrol eder; maxAbs > 0.005 ve maxAbs < 0.75 ise (0.85 / maxAbs) ile güçlendirir.
  */
 export function normalizeAudioPeak(
   samples: Float32Array,
-  targetPeak: number = 0.9
+  targetPeak: number = 0.85
 ): Float32Array {
   if (!samples || samples.length === 0) return new Float32Array(0);
   let maxAbs = 0;
@@ -436,6 +453,14 @@ export function normalizeAudioPeak(
     if (v > maxAbs) maxAbs = v;
   }
   if (maxAbs < 0.002) return samples;
+  if (maxAbs > 0.005 && maxAbs < 0.75) {
+    const scale = 0.85 / maxAbs;
+    const out = new Float32Array(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+      out[i] = Math.max(-1, Math.min(1, samples[i] * scale));
+    }
+    return out;
+  }
   const gain = targetPeak / maxAbs;
   const out = new Float32Array(samples.length);
   for (let i = 0; i < samples.length; i++) {
@@ -446,7 +471,7 @@ export function normalizeAudioPeak(
 
 export function normalizeAudioBuffer(
   buffer: Float32Array,
-  targetPeak: number = 0.9
+  targetPeak: number = 0.85
 ): Float32Array {
   return normalizeAudioPeak(buffer, targetPeak);
 }
@@ -925,12 +950,34 @@ export async function start16kHzRecorder(options?: {
           ? new Blob(mediaChunks, { type: actualMimeType })
           : null;
 
-      // Mobil tarayıcılar AudioContext({ sampleRate: 16000 }) parametresini yok sayıp
-      // 44100 Hz veya 48000 Hz ile kayıt aldıysa lineer interpolasyon ile kesin olarak 16000 Hz'e yeniden örnekle
-      const actualSampleRate = audioCtx.sampleRate || 16000;
+      // Mobil ve masaüstü donanımda doğal örnekleme hızını (48000 Hz veya 44100 Hz) tespit et
+      const elapsedWallClockSec = Math.max(
+        0.25,
+        (Date.now() - startedAt) / 1000
+      );
+      const reportedSampleRate = audioCtx.sampleRate || 48000;
+      const empiricalSampleRate =
+        elapsedWallClockSec > 0.35 && merged.length > 0
+          ? merged.length / elapsedWallClockSec
+          : reportedSampleRate;
+
+      const actualSampleRate =
+        reportedSampleRate !== 16000 &&
+        Math.abs(empiricalSampleRate - reportedSampleRate) /
+          reportedSampleRate <
+          0.3
+          ? reportedSampleRate
+          : empiricalSampleRate > 46000
+          ? 48000
+          : empiricalSampleRate > 42000
+          ? 44100
+          : empiricalSampleRate > 22000
+          ? Math.round(empiricalSampleRate)
+          : reportedSampleRate;
+
       let samples16kHz: Float32Array =
         actualSampleRate !== 16000 && merged.length > 0
-          ? resampleFloat32Audio(merged, actualSampleRate, 16000)
+          ? resampleAudioBuffer(merged, actualSampleRate, 16000)
           : merged;
 
       // iOS Safari / Android'de ScriptProcessor bazen sessiz kalabilir; nativeMediaBlob varsa oradan decode et
@@ -942,11 +989,20 @@ export async function start16kHzRecorder(options?: {
         try {
           const ab = await nativeMediaBlob.arrayBuffer();
           const decoded = await audioCtx.decodeAudioData(ab);
-          samples16kHz = resampleFloat32Audio(
-            decoded.getChannelData(0),
-            decoded.sampleRate,
-            16000
-          );
+          const decodedCh0 = decoded.getChannelData(0);
+          let decodedRate = decoded.sampleRate || actualSampleRate || 48000;
+          if (
+            decodedRate === 16000 &&
+            elapsedWallClockSec > 0.35 &&
+            decodedCh0.length / elapsedWallClockSec > 22000
+          ) {
+            decodedRate =
+              decodedCh0.length / elapsedWallClockSec > 46000 ? 48000 : 44100;
+          }
+          samples16kHz =
+            decodedRate !== 16000
+              ? resampleAudioBuffer(decodedCh0, decodedRate, 16000)
+              : new Float32Array(decodedCh0);
           let sumSq = 0;
           let maxAbs = 0;
           for (let i = 0; i < samples16kHz.length; i++) {
@@ -954,7 +1010,9 @@ export async function start16kHzRecorder(options?: {
             sumSq += v * v;
             if (Math.abs(v) > maxAbs) maxAbs = Math.abs(v);
           }
-          const decodedRms = Math.sqrt(sumSq / Math.max(1, samples16kHz.length));
+          const decodedRms = Math.sqrt(
+            sumSq / Math.max(1, samples16kHz.length)
+          );
           if (decodedRms > peakRawRms) peakRawRms = decodedRms;
           if (maxAbs > 0.02) hasSpoken = true;
         } catch {
@@ -962,20 +1020,25 @@ export async function start16kHzRecorder(options?: {
         }
       }
 
-      // Telefondaki kısık seslerin de net algılanması için tepe noktasını 0.9'a normalize et
+      // Telefondaki kısık seslerin Whisper tarafından net anlaşılması için Tepe Genliği Normalizasyonu (Peak Normalization)
       if (samples16kHz.length > 0) {
-        samples16kHz = normalizeAudioBuffer(samples16kHz, 0.9);
+        samples16kHz = normalizeAudioPeak(samples16kHz, 0.85);
       }
 
       await audioCtx.close().catch(() => {});
 
       const rawDuration =
-        samples16kHz.length > 0
+        merged.length > 0 && actualSampleRate > 0
+          ? merged.length / actualSampleRate
+          : samples16kHz.length > 0
           ? samples16kHz.length / 16000
-          : (Date.now() - startedAt) / 1000;
+          : elapsedWallClockSec;
 
       const trimmedSamples = trimSilence(samples16kHz, 0.01);
-      const voicedDuration = trimmedSamples.length / 16000;
+      const voicedDuration =
+        trimmedSamples.length > 0
+          ? Math.min(rawDuration, trimmedSamples.length / 16000)
+          : rawDuration;
       const avgRms =
         rawRmsValues.length > 0
           ? rawRmsValues.reduce((a, b) => a + b, 0) / rawRmsValues.length

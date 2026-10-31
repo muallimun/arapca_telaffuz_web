@@ -783,7 +783,7 @@ export default function SentenceBuilder({
     <div className="bg-[#F7EFE1] dark:bg-[var(--surface)] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 p-3.5 sm:p-5 space-y-3.5 max-w-3xl mx-auto">
       {/* ÜST BAR: Soru Gezgini (1..N) ve Zamanlayıcı */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pb-2.5">
-        <div className="flex items-center gap-1.5 overflow-x-auto max-w-full py-0.5 no-scrollbar">
+        <div className="grid grid-cols-10 gap-1 sm:flex sm:flex-wrap sm:gap-1.5 w-full sm:w-auto py-0.5">
           {questions.map((q, idx) => {
             const ans = userAnswers[idx];
             const isCurrent = idx === currentIndex;
@@ -805,7 +805,7 @@ export default function SentenceBuilder({
                   playClick();
                   setCurrentIndex(idx);
                 }}
-                className={`w-7 h-7 rounded-lg border text-xs font-extrabold tabular-nums flex items-center justify-center shrink-0 transition-all cursor-pointer ${btnStyle}`}
+                className={`h-7 w-full sm:w-8 sm:h-8 rounded-lg border text-xs font-bold tabular-nums flex items-center justify-center shrink-0 transition-all cursor-pointer ${btnStyle}`}
               >
                 {idx + 1}
               </button>

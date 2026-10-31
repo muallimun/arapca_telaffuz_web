@@ -51,8 +51,8 @@ import {
   calculateOverallFluency,
   evaluateAcousticDspSentence,
   start16kHzRecorder,
-  resampleFloat32Audio,
-  normalizeAudioBuffer,
+  resampleAudioBuffer,
+  normalizeAudioPeak,
   countSyllablePeaks,
   RecordingSession16kHz,
 } from "@/lib/audioAnalysis";
@@ -222,6 +222,7 @@ export default function ShadowingModal({
   const refAudioBufferRef = useRef<AudioBuffer | null>(null);
   const isMountedRef = useRef<boolean>(true);
   const recordingSessionIdRef = useRef<number>(0);
+  const recordingSampleRateRef = useRef<number>(48000);
   const modalRef = useRef<HTMLDivElement | null>(null);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -605,7 +606,6 @@ export default function ShadowingModal({
     try {
       const {
         localSttOnly: currentLocalOnly,
-        sttEngine: currentEngine,
         micNoiseSuppression: currentNoiseSuppression,
       } = useSettings.getState();
 
@@ -680,11 +680,14 @@ export default function ShadowingModal({
 
       recordingSessionRef.current = session;
       mediaStreamRef.current = session.getStream();
-      audioContextRef.current = session.getAudioContext();
+      const audioCtx = session.getAudioContext();
+      audioContextRef.current = audioCtx;
+      const actualSampleRate = audioCtx.sampleRate || 48000;
+      recordingSampleRateRef.current = actualSampleRate;
 
-      // Eğer "Hızlı Tarayıcı Motoru" (webspeech) seçiliyse mikrofon açıldıktan sonra try/catch içinde başlat
-      const shouldUseWebSpeech =
-        !currentLocalOnly && currentEngine === "webspeech";
+      // Kullanıcı "Yalnızca Cihazda İşle" kilidini açmadıysa (localSttOnly === false) veya "Hızlı Tarayıcı Motoru" seçiliyse
+      // canlı Web Speech tanımayı arka planda yedek/aktif olarak başlat
+      const shouldUseWebSpeech = !currentLocalOnly;
       if (shouldUseWebSpeech) {
         try {
           speechManagerRef.current?.startLiveWebSpeech({
@@ -768,7 +771,9 @@ export default function ShadowingModal({
 
     try {
       const contextSampleRate =
-        audioContextRef.current?.sampleRate || 16000;
+        audioContextRef.current?.sampleRate ||
+        recordingSampleRateRef.current ||
+        48000;
 
       // Ses kaydı durdurulurken paralel olarak mobil Web Speech API'nin son onresult (nihai metin) yanıtını 1200ms'ye kadar bekle (localSttOnly aktifse Web Speech kullanılmaz)
       const [recorded, stoppedWebSpeechText] = await Promise.all([
@@ -793,33 +798,42 @@ export default function ShadowingModal({
         backupBrowserTranscriptRef.current.trim();
       backupBrowserTranscriptRef.current = bestWebSpeechText;
 
-      setUserAudioUrl(recorded.playbackUrl || recorded.wavUrl);
-      setUserWavBlob(recorded.wavBlob);
-      setUserDuration(recorded.duration);
-      setUserBars(recorded.envelopeBars);
-
       // Mobil AudioContext 44100 Hz veya 48000 Hz ile kayıt aldıysa Whisper'a göndermeden önce
-      // kesin olarak 16000 Hz'e yeniden örnekle ve tepe genliğini 0.9'a normalize et
-      const actualRate = recorded.actualSampleRate || contextSampleRate || 16000;
-      let whisperInputBuffer =
+      // kesin olarak 16000 Hz'e yeniden örnekle ve tepe genliğini normalize et
+      const actualSampleRate =
+        recorded.actualSampleRate ||
+        recordingSampleRateRef.current ||
+        contextSampleRate ||
+        48000;
+      let pcm16k =
         recorded.trimmedSamples.length > 0
           ? recorded.trimmedSamples
           : recorded.samples16kHz;
 
       if (
-        actualRate !== 16000 &&
-        whisperInputBuffer.length > 0 &&
+        actualSampleRate !== 16000 &&
+        pcm16k.length > 0 &&
         recorded.samples16kHz.length === 0
       ) {
-        whisperInputBuffer = resampleFloat32Audio(
-          whisperInputBuffer,
-          actualRate,
-          16000
-        );
+        pcm16k = resampleAudioBuffer(pcm16k, actualSampleRate, 16000);
       }
-      if (whisperInputBuffer.length > 0) {
-        whisperInputBuffer = normalizeAudioBuffer(whisperInputBuffer, 0.9);
+      if (pcm16k.length > 0) {
+        pcm16k = normalizeAudioPeak(pcm16k, 0.85);
       }
+
+      const accurateDuration =
+        recorded.duration > 0
+          ? recorded.duration
+          : pcm16k.length > 0
+          ? pcm16k.length / 16000
+          : 0;
+
+      setUserAudioUrl(recorded.playbackUrl || recorded.wavUrl);
+      setUserWavBlob(recorded.wavBlob);
+      setUserDuration(accurateDuration);
+      setUserBars(recorded.envelopeBars);
+
+      const whisperInputBuffer = pcm16k;
 
       let recognizedText = "";
       let usedEngine: SttEngineType = localSttOnly ? "whisper" : sttEngine;
@@ -1148,146 +1162,89 @@ export default function ShadowingModal({
         ref={modalRef}
         className="bg-[#FDFBF7] dark:bg-[var(--background)] w-full max-w-3xl max-h-[92vh] rounded-2xl border-2 border-[#E6D7BE] dark:border-[var(--border)] border-b-4 shadow-2xl flex flex-col overflow-hidden"
       >
-        {/* ÜST BAŞLIK + ÇİFT MOTORLU STT SEÇİCİ */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3.5 border-b-2 border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] dark:bg-[var(--surface)] shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#087F5B] border-b-3 border-[#066649] text-white flex items-center justify-center shrink-0">
-              <Activity size={18} />
+        {/* 1. SATIR: BAŞLIK + KAPATMA BUTONU */}
+        <div className="flex items-center justify-between gap-2 py-2 px-3 border-b border-[#E6D7BE] dark:border-[var(--border)] bg-[#F7EFE1] dark:bg-[var(--surface)] shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-[#087F5B] border-b-2 border-[#066649] text-white flex items-center justify-center shrink-0">
+              <Activity size={15} />
             </div>
-            <div>
-              <h2
-                id="shadowing-modal-title"
-                className="text-sm sm:text-base font-extrabold text-[var(--foreground)]"
-              >
-                Gölgeleme & 38 Çiftlik Mahreç Koçu
-              </h2>
-              <p className="text-[11px] font-medium text-[var(--muted)]">
-                16kHz DSP Dalga Formu · Kök Harf Kalkanı · Dinamik Kelime Hizalama
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Motor Seçici Yeşil Haplar */}
-            <div className="bg-white dark:bg-[var(--background)] p-1 rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] flex text-[11px] font-bold">
-              <button
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setSttEngine("whisper");
-                }}
-                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                  sttEngine === "whisper" || localSttOnly
-                    ? "bg-[#087F5B] text-white font-semibold"
-                    : "text-[var(--muted)]"
-                }`}
-              >
-                Yapay Zeka (Whisper)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setSttEngine("webspeech");
-                  setLocalSttOnly(false);
-                }}
-                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                  !localSttOnly && sttEngine === "webspeech"
-                    ? "bg-[#087F5B] text-white font-semibold"
-                    : "text-[var(--muted)]"
-                }`}
-              >
-                Hızlı Tarayıcı Motoru
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                handleClose();
-              }}
-              className="w-9 h-9 rounded-xl bg-white dark:bg-[var(--background)] border-2 border-[#E6D7BE] border-b-3 flex items-center justify-center text-[var(--muted)] hover:text-red-600 transition-colors cursor-pointer"
-              aria-label="Kapat"
+            <h2
+              id="shadowing-modal-title"
+              className="text-sm sm:text-base font-extrabold text-[var(--foreground)] truncate"
             >
-              <X size={18} />
-            </button>
+              Gölgeleme & Mahreç Koçu
+            </h2>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              handleClose();
+            }}
+            className="w-8 h-8 rounded-xl bg-white dark:bg-[var(--background)] border border-[#E6D7BE] flex items-center justify-center text-[var(--muted)] hover:text-red-600 transition-colors cursor-pointer shrink-0"
+            aria-label="Kapat"
+          >
+            <X size={16} />
+          </button>
         </div>
 
-        {/* GİZLİLİK & MOTOR DURUM ŞERİDİ */}
-        <div className="px-4 sm:px-5 py-2 bg-[#FFF8EC] dark:bg-[var(--surface-hover)] border-b border-[#E6D7BE] dark:border-[var(--border)] flex flex-wrap items-center justify-between gap-2 text-[11px]">
-          <div className="flex items-center gap-2 text-[var(--muted)] font-semibold">
-            <span
-              className={`inline-block w-2 h-2 rounded-full shrink-0 ${
-                localSttOnly || sttEngine === "whisper"
-                  ? "bg-emerald-600"
-                  : "bg-sky-500"
-              }`}
-            />
-            <span>
-              {localSttOnly || sttEngine === "whisper"
-                ? "🔒 Cihaz İçi Mod: Sesiniz tarayıcı dışına çıkmaz, tamamen cihazınızda işlenir."
-                : "🌐 Tarayıcı Servisi Modu: Ses tanıma işlemi tarayıcınızın konuşma servisi üzerinden yapılır (Uygulamamız ses kaydı tutmaz)."}
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
+        {/* 2. SATIR: KOMPAKT MOTOR SEÇİCİ + GÜRÜLTÜ FİLTRESİ */}
+        <div className="flex items-center justify-between gap-1.5 py-1.5 px-3 bg-[#FFF8EC] dark:bg-[var(--surface-hover)] border-b-2 border-[#E6D7BE] dark:border-[var(--border)] shrink-0">
+          <div className="bg-white dark:bg-[var(--background)] p-0.5 rounded-lg border border-[#E6D7BE] dark:border-[var(--border)] flex items-center text-[11px] font-extrabold shrink-0">
             <button
               type="button"
               onClick={() => {
                 playClick();
-                toggleMicNoiseSuppression();
+                setSttEngine("whisper");
               }}
-              data-tooltip="Sessiz ortamda kapalı tutun (boğaz harfleri ع، ح، خ، غ korunur). Gürültülü ortamdaysanız açabilirsiniz."
-              data-tooltip-pos="bottom"
-              className={`px-2.5 py-1 rounded-lg border font-extrabold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                micNoiseSuppression
-                  ? "bg-[#FFF4E6] dark:bg-amber-950/50 border-[#D97706] text-[#9A3412] dark:text-amber-300"
-                  : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
-              }`}
-            >
-              <span>🎙️ Gürültülü Ortam Filtresi</span>
-              <span
-                className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
-                  micNoiseSuppression
-                    ? "bg-[#D97706] text-white"
-                    : "bg-emerald-700 text-white"
-                }`}
-              >
-                {micNoiseSuppression ? "AÇIK" : "HASSAS MAHREÇ"}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                playClick();
-                if (sttEngine === "whisper" || localSttOnly) {
-                  setLocalSttOnly(false);
-                  setSttEngine("webspeech");
-                } else {
-                  setLocalSttOnly(true);
-                  setSttEngine("whisper");
-                }
-              }}
-              data-tooltip="Tıklayarak Cihaz İçi Whisper Motoru ile Hızlı Tarayıcı Motoru arasında geçiş yapabilirsiniz"
-              data-tooltip-pos="bottom"
-              className={`px-2.5 py-1 rounded-lg border font-extrabold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+              className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
                 sttEngine === "whisper" || localSttOnly
-                  ? "bg-[#E6FCF5] dark:bg-emerald-950/50 border-[#087F5B] text-[#065F46] dark:text-emerald-300"
-                  : "bg-sky-50 dark:bg-sky-950/50 border-sky-600 text-sky-900 dark:text-sky-200"
+                  ? "bg-[#087F5B] text-white"
+                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
               }`}
             >
-              <span>
-                {sttEngine === "whisper" || localSttOnly
-                  ? "🔒 Cihaz İçi Whisper Motoru: AKTİF"
-                  : "⚡ Hızlı Tarayıcı Motoru: AKTİF"}
-              </span>
+              🤖 Whisper
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setLocalSttOnly(false);
+                setSttEngine("webspeech");
+              }}
+              className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                !localSttOnly && sttEngine === "webspeech"
+                  ? "bg-[#087F5B] text-white"
+                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              ⚡ Tarayıcı
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              toggleMicNoiseSuppression();
+            }}
+            data-tooltip="Sessiz ortamda kapalı tutun (boğaz harfleri ع، ح، خ، غ korunur). Gürültülü ortamdaysanız açabilirsiniz."
+            data-tooltip-pos="bottom"
+            className={`px-2 py-1 rounded-lg border text-[11px] font-extrabold transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+              micNoiseSuppression
+                ? "bg-[#FFF4E6] dark:bg-amber-950/50 border-[#D97706] text-[#9A3412] dark:text-amber-300"
+                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)] hover:border-[#087F5B]"
+            }`}
+          >
+            <span>
+              🎙️ Gürültü Filtresi: {micNoiseSuppression ? "AÇIK" : "KAPALI"}
+            </span>
+          </button>
         </div>
 
         {/* İÇERİK GÖVDESİ */}
-        <div className="p-4 sm:p-5 pb-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="p-2.5 sm:p-4 pb-4 space-y-2.5 sm:space-y-3.5 overflow-y-auto flex-1 custom-scrollbar">
           {/* MİKRO-DRILL (ODAKLI KELİME ANTRENMANI) GERİ DÖNÜŞ ŞERİDİ */}
           {isMicroDrill && (
             <div className="bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-2 border-[#6741D9] border-b-4 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-2">
@@ -1441,26 +1398,26 @@ export default function ShadowingModal({
           {/* BİRLEŞTİRİLMİŞ RİTİM & DALGA FORMU KARTI (REFERANS + SİZİN SESİNİZ TEK KARTTA) */}
           <div
             ref={waveformCardRef}
-            className={`rounded-2xl border-2 border-b-4 p-2.5 sm:p-3.5 transition-all ${
+            className={`rounded-2xl border-2 border-b-4 p-2 sm:p-3 transition-all ${
               isRecording
                 ? "bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] border-[#6741D9]"
                 : "bg-[#F7EFE1] dark:bg-[var(--surface)] border-[#E6D7BE] dark:border-[var(--border)]"
             }`}
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3.5">
-              {/* Üst / Sol Bölüm: Referans Ses + Süre + Küçük Hız Seçici (Taşmasız Mobil Satır) */}
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
-                  <div className="flex items-center gap-1.5 shrink-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              {/* Üst / Sol Bölüm: Referans Ses + Süre + Küçük Hız Seçici (Tek Satır) */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1 shrink-0 min-w-0">
                     <span className="text-xs font-extrabold text-[#065F46] dark:text-emerald-400 flex items-center gap-1 whitespace-nowrap">
-                      <Volume2 size={14} className="shrink-0" />
+                      <Volume2 size={13} className="shrink-0" />
                       <span>Referans Ses</span>
                     </span>
-                    <span className="text-xs font-semibold text-[var(--muted)] tabular-nums whitespace-nowrap shrink-0">
-                      {refDuration > 0 ? `${refDuration.toFixed(1)} sn` : "Hazır"}
+                    <span className="text-[11px] font-semibold text-[var(--muted)] tabular-nums whitespace-nowrap shrink-0">
+                      {refDuration > 0 ? `${refDuration.toFixed(1)}s` : "Hazır"}
                     </span>
                   </div>
-                  <div className="bg-white dark:bg-[var(--background)] rounded-lg p-0.5 border border-[#E6D7BE] flex items-center gap-0.5 shrink-0 ml-auto">
+                  <div className="bg-white dark:bg-[var(--background)] rounded-lg p-0.5 border border-[#E6D7BE] flex items-center gap-0.5 shrink-0">
                     {([0.5, 0.75, 1, 1.25] as SpeechRate[]).map((r) => (
                       <button
                         key={r}
@@ -1469,7 +1426,7 @@ export default function ShadowingModal({
                           playClick();
                           setSpeechRate(r);
                         }}
-                        className={`px-2 py-0.5 rounded-md text-xs tabular-nums transition-all cursor-pointer ${
+                        className={`px-1.5 py-0.5 rounded text-[11px] tabular-nums transition-all cursor-pointer ${
                           speechRate === r
                             ? "bg-[#087F5B] text-white font-bold"
                             : "text-[var(--muted)] font-semibold hover:text-[var(--foreground)]"
@@ -1482,7 +1439,7 @@ export default function ShadowingModal({
                 </div>
 
                 {/* 48 Bar Referans Zarfı */}
-                <div className="w-full h-10 sm:h-11 bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border border-[#E6D7BE] flex items-end justify-between gap-0.5">
+                <div className="w-full h-11 sm:h-14 bg-white dark:bg-[var(--background)] rounded-xl p-2 border border-[#E6D7BE] flex items-end justify-between gap-0.5">
                   {refBars.map((val, i) => (
                     <div
                       key={i}
@@ -1497,15 +1454,15 @@ export default function ShadowingModal({
                 </div>
               </div>
 
-              {/* Alt / Sağ Bölüm (İnce Kesikli Çizgiyle Ayrılmış): Sizin Ses Ritminiz (16kHz) */}
-              <div className="space-y-1.5 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pt-2 sm:border-t-0 sm:border-l sm:pl-3.5 sm:pt-0">
-                <div className="flex items-center justify-between gap-1 flex-wrap">
-                  <span className="text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center gap-1">
-                    <Mic size={14} className="shrink-0" />
-                    <span>
+              {/* Alt / Sağ Bölüm: Sizin Ses Ritminiz (16kHz) */}
+              <div className="space-y-1 border-t border-dashed border-[#E2D3B8] dark:border-[var(--border-dashed)] pt-1.5 sm:border-t-0 sm:border-l sm:pl-3 sm:pt-0">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs font-extrabold text-[#6741D9] dark:text-[#d0bfff] flex items-center gap-1 truncate">
+                    <Mic size={13} className="shrink-0" />
+                    <span className="truncate">
                       {isRecording
                         ? "16kHz Kaydediliyor..."
-                        : "Sizin Ses Ritminiz (16kHz)"}
+                        : "Sizin Kaydınız"}
                     </span>
                   </span>
                   <div className="flex items-center gap-1.5 ml-auto shrink-0">
@@ -1514,22 +1471,22 @@ export default function ShadowingModal({
                         evaluation.isAcousticFallback) &&
                       !isRecording &&
                       !isAnalyzing && (
-                        <span className="px-2 py-0.5 rounded-lg bg-[#087F5B] text-white text-[10px] font-extrabold tabular-nums whitespace-nowrap shadow-2xs">
-                          🎯 Genel Puan: %
+                        <span className="px-1.5 py-0.5 rounded-md bg-[#087F5B] text-white text-[10px] font-extrabold tabular-nums whitespace-nowrap shadow-2xs">
+                          🎯 %
                           {fluencyScore ??
                             evaluation.fluencyScore ??
                             evaluation.overallScore}
                         </span>
                       )}
                     <span className="text-[11px] font-bold text-[var(--muted)] tabular-nums whitespace-nowrap shrink-0">
-                      {userDuration > 0 ? `${userDuration.toFixed(1)} sn` : "0.0 sn"}
+                      {userDuration > 0 ? `${userDuration.toFixed(1)}s` : "0.0s"}
                     </span>
                   </div>
                 </div>
 
                 {/* 48 Bar Canlı RMS / Kullanıcı Zarfı */}
                 <div
-                  className={`w-full h-10 sm:h-11 bg-white dark:bg-[var(--background)] rounded-xl px-2.5 py-1.5 border flex items-end justify-between gap-0.5 transition-all ${
+                  className={`w-full h-11 sm:h-14 bg-white dark:bg-[var(--background)] rounded-xl p-2 border flex items-end justify-between gap-0.5 transition-all ${
                     isRecording
                       ? "border-[#087F5B] ring-2 ring-[#087F5B]/30"
                       : "border-[#E6D7BE]"

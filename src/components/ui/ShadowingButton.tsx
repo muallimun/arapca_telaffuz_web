@@ -29,6 +29,7 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const isMountedRef = useRef<boolean>(true);
   const sessionTokenRef = useRef<number>(0);
+  const recordingSampleRateRef = useRef<number>(48000);
 
   const closePreviousSessionOnly = useCallback(() => {
     if (sessionRef.current) {
@@ -147,6 +148,8 @@ export default function ShadowingButton({ text, onOpenCoach }: Props) {
         return;
       }
       sessionRef.current = session;
+      const actualSampleRate = session.getAudioContext().sampleRate || 48000;
+      recordingSampleRateRef.current = actualSampleRate;
     } catch (err) {
       if (stream) {
         try {

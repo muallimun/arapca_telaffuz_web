@@ -595,7 +595,7 @@ export default function MultipleChoice({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-1.5 pt-0.5">
+          <div className="grid grid-cols-10 gap-1 sm:flex sm:flex-wrap items-center justify-center sm:gap-1.5 pt-0.5">
             {questions.map((_, idx) => {
               const ans = userAnswers[idx];
               const isSelectedReview =
@@ -615,7 +615,7 @@ export default function MultipleChoice({
                     setReviewIndex(idx);
                     setResultViewMode("review");
                   }}
-                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border text-xs font-extrabold tabular-nums transition-all cursor-pointer flex items-center justify-center ${statusCls} ${
+                  className={`h-7 w-full sm:w-8 sm:h-8 rounded-lg border text-xs font-bold tabular-nums transition-all cursor-pointer flex items-center justify-center ${statusCls} ${
                     isSelectedReview
                       ? "ring-2 ring-offset-1 ring-[#6741D9] scale-110"
                       : "hover:opacity-90"
@@ -946,7 +946,7 @@ export default function MultipleChoice({
         </div>
 
         {/* Numaralı Soru Gezgini (1..N) */}
-        <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 border-t border-dashed border-[#E2D3B8]">
+        <div className="grid grid-cols-10 gap-1 sm:flex sm:flex-wrap items-center justify-center sm:gap-1.5 pt-1 border-t border-dashed border-[#E2D3B8]">
           {questions.map((_, idx) => {
             const isActive = idx === currentIndex;
             const isAnswered = Boolean(userAnswers[idx]);
@@ -958,7 +958,7 @@ export default function MultipleChoice({
                   playClick();
                   setCurrentIndex(idx);
                 }}
-                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border text-xs tabular-nums transition-all cursor-pointer flex items-center justify-center ${
+                className={`h-7 w-full sm:w-8 sm:h-8 rounded-lg border text-xs font-bold tabular-nums transition-all cursor-pointer flex items-center justify-center ${
                   isActive
                     ? "ring-2 ring-emerald-600 bg-emerald-600 text-white font-bold scale-105 border-emerald-700"
                     : isAnswered

@@ -858,7 +858,7 @@ function ExercisesPageContent() {
 
               {/* Boşluk Doldurma Alt Mod Seçicisi */}
               {selectedType === "fill-in-blanks" && (
-                <div className="col-span-2 sm:col-span-1 bg-white dark:bg-[var(--background)] rounded-xl p-1.5 h-auto border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between sm:justify-start gap-1.5">
+                <div className="col-span-2 sm:col-span-1 mt-1 py-1.5 px-1.5 bg-white dark:bg-[var(--background)] rounded-xl h-auto border border-[#E6D7BE] dark:border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between sm:justify-start gap-1.5">
                   <span className="text-[11px] font-bold text-[var(--muted)] px-1 whitespace-nowrap">
                     Mod:
                   </span>

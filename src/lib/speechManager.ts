@@ -99,8 +99,8 @@ export class HybridSpeechManager {
     this.webSpeechFinalTranscript = "";
     this.webSpeechInterimTranscript = "";
 
-    const { localSttOnly, sttEngine } = useSettings.getState();
-    if (localSttOnly || sttEngine === "whisper") {
+    const { localSttOnly } = useSettings.getState();
+    if (localSttOnly) {
       this.isWebSpeechActive = false;
       return;
     }
@@ -118,10 +118,7 @@ export class HybridSpeechManager {
 
       rec.onresult = (event: SpeechRecognitionEventLike) => {
         const currentSettings = useSettings.getState();
-        if (
-          currentSettings.localSttOnly ||
-          currentSettings.sttEngine === "whisper"
-        ) {
+        if (currentSettings.localSttOnly) {
           this.stopLiveWebSpeech(true);
           callbacks?.onInterimTranscript?.("", "", "");
           return;
@@ -181,8 +178,8 @@ export class HybridSpeechManager {
    * son onresult olayını kaybetmemek için onend tetiklenene veya timeoutMs dolana kadar bekler.
    */
   public stopAndWaitForFinalResult(timeoutMs: number = 1200): Promise<string> {
-    const { localSttOnly, sttEngine } = useSettings.getState();
-    if (localSttOnly || sttEngine === "whisper") {
+    const { localSttOnly } = useSettings.getState();
+    if (localSttOnly) {
       this.stopLiveWebSpeech(true);
       return Promise.resolve("");
     }
@@ -270,8 +267,8 @@ export class HybridSpeechManager {
       }
     }
     this.isWebSpeechActive = false;
-    const { localSttOnly, sttEngine } = useSettings.getState();
-    if (clearBuffers || localSttOnly || sttEngine === "whisper") {
+    const { localSttOnly } = useSettings.getState();
+    if (clearBuffers || localSttOnly) {
       this.webSpeechFinalTranscript = "";
       this.webSpeechInterimTranscript = "";
       return "";
@@ -284,8 +281,8 @@ export class HybridSpeechManager {
   }
 
   public getCapturedWebSpeechText(): string {
-    const { localSttOnly, sttEngine } = useSettings.getState();
-    if (localSttOnly || sttEngine === "whisper") {
+    const { localSttOnly } = useSettings.getState();
+    if (localSttOnly) {
       this.webSpeechFinalTranscript = "";
       this.webSpeechInterimTranscript = "";
       return "";
@@ -327,6 +324,26 @@ export class HybridSpeechManager {
     this.initWorker();
     if (!this.worker) {
       return Promise.reject(new Error("Whisper Worker başlatılamadı."));
+    }
+
+    // Tepe Genliği Normalizasyonu (Peak Normalization): Mobil mikrofonlarda kısık sesleri güçlendir
+    let normalizedPcm16k = audioData16kHz;
+    if (audioData16kHz && audioData16kHz.length > 0) {
+      let maxAbs = 0;
+      for (let i = 0; i < audioData16kHz.length; i++) {
+        const abs = Math.abs(audioData16kHz[i]);
+        if (abs > maxAbs) maxAbs = abs;
+      }
+      if (maxAbs > 0.005 && maxAbs < 0.75) {
+        const scale = 0.85 / maxAbs;
+        normalizedPcm16k = new Float32Array(audioData16kHz.length);
+        for (let i = 0; i < audioData16kHz.length; i++) {
+          normalizedPcm16k[i] = Math.max(
+            -1,
+            Math.min(1, audioData16kHz[i] * scale)
+          );
+        }
+      }
     }
 
     const activeWorker = this.worker;
@@ -425,7 +442,8 @@ export class HybridSpeechManager {
       activeWorker.postMessage({
         type: "transcribe",
         requestId,
-        audioData: audioData16kHz,
+        audioData: normalizedPcm16k,
+        sampleRate: 16000,
         language: "arabic",
       });
     });

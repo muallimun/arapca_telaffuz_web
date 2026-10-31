@@ -76,6 +76,8 @@ import {
 import { DialogueLine, DictionaryItem } from "@/types/data";
 import {
   start16kHzRecorder,
+  resampleAudioBuffer,
+  normalizeAudioPeak,
   RecordingSession16kHz,
 } from "@/lib/audioAnalysis";
 import { HybridSpeechManager } from "@/lib/speechManager";
@@ -292,6 +294,19 @@ export default function DialogueDetailPage({
   );
   const roleplayTurnRafRef = useRef<number | null>(null);
   const roleplaySessionTokenRef = useRef<number>(0);
+  const recordingSampleRateRef = useRef<number>(48000);
+
+  // Mobil ekranlarda (< 768px) Sınıf / Tahta Modu (isClassroomMode) açık kaldıysa otomatik kapat
+  useEffect(() => {
+    const checkViewportForClassroom = () => {
+      if (typeof window !== "undefined" && window.innerWidth < 768) {
+        setIsClassroomMode(false);
+      }
+    };
+    checkViewportForClassroom();
+    window.addEventListener("resize", checkViewportForClassroom);
+    return () => window.removeEventListener("resize", checkViewportForClassroom);
+  }, []);
 
   useEffect(() => {
     if (!roleplayCompletedBanner) return;
@@ -804,11 +819,9 @@ export default function DialogueDetailPage({
     roleplayInterimTranscriptRef.current = "";
     const {
       localSttOnly: currentLocalOnly,
-      sttEngine: currentEngine,
       micNoiseSuppression: currentNoiseSuppression,
     } = useSettings.getState();
-    const shouldUseRoleplayWebSpeech =
-      !currentLocalOnly && currentEngine === "webspeech";
+    const shouldUseRoleplayWebSpeech = !currentLocalOnly;
 
     let stream: MediaStream | null = null;
     try {
@@ -857,6 +870,9 @@ export default function DialogueDetailPage({
         sessionId === roleplaySessionTokenRef.current
       ) {
         roleplayRecorderRef.current = recSession;
+        const actualSampleRate =
+          recSession.getAudioContext().sampleRate || 48000;
+        recordingSampleRateRef.current = actualSampleRate;
         if (shouldUseRoleplayWebSpeech) {
           try {
             roleplaySpeechRef.current?.startLiveWebSpeech({
@@ -994,10 +1010,28 @@ export default function DialogueDetailPage({
         roleplaySpeechRef.current
       ) {
         try {
-          const inputSamples =
+          const actualSampleRate =
+            recordedData.actualSampleRate ||
+            recordingSampleRateRef.current ||
+            48000;
+          let inputSamples =
             recordedData.trimmedSamples.length > 0
               ? recordedData.trimmedSamples
               : recordedData.samples16kHz;
+          if (
+            actualSampleRate !== 16000 &&
+            inputSamples.length > 0 &&
+            recordedData.samples16kHz.length === 0
+          ) {
+            inputSamples = resampleAudioBuffer(
+              inputSamples,
+              actualSampleRate,
+              16000
+            );
+          }
+          if (inputSamples.length > 0) {
+            inputSamples = normalizeAudioPeak(inputSamples, 0.85);
+          }
           const hybridRes = await roleplaySpeechRef.current.transcribeHybrid(
             isLocalOnly ? "whisper" : currentEngine,
             inputSamples,
@@ -2508,7 +2542,7 @@ export default function DialogueDetailPage({
                 }}
                 data-tooltip="Sınıf / Tahta Modu: Metinleri büyütür ve alt sunum kumandasını açar"
                 aria-label="Sınıf / Tahta Modu"
-                className={`hidden sm:inline-flex px-2.5 py-1.5 rounded-xl border text-xs font-extrabold items-center gap-1 transition-all cursor-pointer shrink-0 ${
+                className={`hidden md:inline-flex px-2.5 py-1.5 rounded-xl border text-xs font-extrabold items-center gap-1 transition-all cursor-pointer shrink-0 ${
                   isClassroomMode
                     ? "bg-[#087F5B] border-[#087F5B] text-white shadow-2xs"
                     : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] hover:border-[#087F5B] text-[var(--foreground)]"
@@ -2684,7 +2718,7 @@ export default function DialogueDetailPage({
                           setBlurArabic((v) => !v);
                           setRevealedArabicLines({});
                         }}
-                        className={`py-2 px-2.5 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer ${
+                        className={`col-span-2 py-2 px-2.5 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer ${
                           blurArabic
                             ? "bg-amber-600 border-amber-800 text-white"
                             : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"
@@ -2699,31 +2733,6 @@ export default function DialogueDetailPage({
                           }
                         />
                         <span>Kör Dinleme</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playClick();
-                          setIsMoreMenuOpen(false);
-                          setIsClassroomMode((v) => {
-                            const next = !v;
-                            if (next && selectedClassroomLine === null) {
-                              setSelectedClassroomLine(
-                                dialogue.satirlar[0]?.sira ?? 1
-                              );
-                              setFocusedLineIndex(0);
-                            }
-                            return next;
-                          });
-                        }}
-                        className={`py-2 px-2.5 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer ${
-                          isClassroomMode
-                            ? "bg-[#087F5B] border-[#087F5B] text-white"
-                            : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] dark:border-[var(--border)] text-[var(--foreground)]"
-                        }`}
-                      >
-                        <span>🖥️ Akıllı Tahta</span>
                       </button>
                     </div>
                   </div>
@@ -4280,7 +4289,7 @@ export default function DialogueDetailPage({
       {isClassroomMode && studyMode !== "vocabulary" && activeClassroomLineObj && (
         <div
           aria-label="Sınıf Modu Alt Sunum Kumandası"
-          className="sticky bottom-4 z-40 mx-auto w-fit max-w-full overflow-x-auto rounded-2xl bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md text-white border-2 border-emerald-500/70 border-b-4 px-4 py-2.5 shadow-2xl flex items-center justify-center gap-2 md:gap-3 flex-nowrap whitespace-nowrap"
+          className="sticky bottom-20 lg:bottom-4 z-50 mx-auto w-fit max-w-full overflow-x-auto rounded-2xl bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md text-white border-2 border-emerald-500/70 border-b-4 px-4 py-2.5 shadow-2xl flex items-center justify-center gap-2 md:gap-3 flex-nowrap whitespace-nowrap"
         >
           {/* 1. Önceki */}
           <button

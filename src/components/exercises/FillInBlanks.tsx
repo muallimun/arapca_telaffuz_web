@@ -947,7 +947,7 @@ export default function FillInBlanks({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-1.5 pt-0.5">
+          <div className="grid grid-cols-10 gap-1 sm:flex sm:flex-wrap items-center justify-center sm:gap-1.5 pt-0.5">
             {questions.map((_, idx) => {
               const ans = userAnswers[idx];
               const isSelectedReview =
@@ -967,7 +967,7 @@ export default function FillInBlanks({
                     setReviewIndex(idx);
                     setResultViewMode("review");
                   }}
-                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border text-xs font-extrabold tabular-nums transition-all cursor-pointer flex items-center justify-center ${statusCls} ${
+                  className={`h-7 w-full sm:w-8 sm:h-8 rounded-lg border text-xs font-bold tabular-nums transition-all cursor-pointer flex items-center justify-center ${statusCls} ${
                     isSelectedReview
                       ? "ring-2 ring-offset-1 ring-[#6741D9] scale-110"
                       : "hover:opacity-90"
@@ -1262,7 +1262,7 @@ export default function FillInBlanks({
           </div>
 
           {/* Alt Yöntem Anahtarı: Seçmeli / Sürükle-Bırak vs Dinle & Boşluğu Yaz (İmla) */}
-          <div className="bg-white dark:bg-[var(--background)] rounded-xl p-1 border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 gap-1.5 w-full sm:w-auto">
+          <div className="mt-1 py-1 px-1 bg-white dark:bg-[var(--background)] rounded-xl border border-[#E6D7BE] dark:border-[var(--border)] grid grid-cols-2 gap-1.5 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => {
@@ -1318,7 +1318,7 @@ export default function FillInBlanks({
         </div>
 
         {/* Numaralı Soru Gezgini (1..N) */}
-        <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 border-t border-dashed border-[#E2D3B8]">
+        <div className="grid grid-cols-10 gap-1 sm:flex sm:flex-wrap items-center justify-center sm:gap-1.5 pt-1 border-t border-dashed border-[#E2D3B8]">
           {questions.map((_, idx) => {
             const isActive = idx === currentIndex;
             const isAnswered = Boolean(userAnswers[idx]);
@@ -1330,7 +1330,7 @@ export default function FillInBlanks({
                   playClick();
                   setCurrentIndex(idx);
                 }}
-                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border text-xs tabular-nums transition-all cursor-pointer flex items-center justify-center ${
+                className={`h-7 w-full sm:w-8 sm:h-8 rounded-lg border text-xs font-bold tabular-nums transition-all cursor-pointer flex items-center justify-center ${
                   isActive
                     ? "ring-2 ring-emerald-600 bg-emerald-600 text-white font-bold scale-105 border-emerald-700"
                     : isAnswered
@@ -1450,6 +1450,27 @@ export default function FillInBlanks({
                 >
                   <span>🔄 Oto Ses: {autoAudio ? "Açık" : "Kapalı"}</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClick();
+                    setShowKeyboard((v) => {
+                      const next = !v;
+                      if (next) setUseDeviceKeyboard(false);
+                      return next;
+                    });
+                  }}
+                  title="Arapça Sanal Klavyeyi Aç/Kapat"
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-xl border font-extrabold transition-all cursor-pointer ${
+                    showKeyboard && !useDeviceKeyboard
+                      ? "bg-[#6741D9] border-[#5230B5] text-white"
+                      : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#6741D9]"
+                  }`}
+                >
+                  <Keyboard size={13} />
+                  <span>Klavye</span>
+                </button>
               </>
             )}
           </div>
@@ -1458,105 +1479,85 @@ export default function FillInBlanks({
         {/* ARAPÇA CÜMLE VE BOŞLUK ALANI */}
         <div
           dir="rtl"
-          className="arabic text-2xl sm:text-4xl leading-[1.9] sm:leading-[2.1] font-bold text-[var(--foreground)] flex flex-wrap justify-center items-center gap-2 py-1"
+          className="arabic text-2xl sm:text-4xl leading-[2.4] font-bold text-[var(--foreground)] text-center py-1"
         >
-          {currentQ.sentenceWithBlank.split("[ ? ]").map((part, i, arr) => (
-            <span key={i} className="inline-flex items-center flex-wrap gap-2">
-              <span>{formatAr(part)}</span>
-              {i < arr.length - 1 && (
-                <>
-                  {subMode === "choices" ? (
-                    <span
-                      ref={dropZoneRef}
-                      onDragOver={handleDragOver}
-                      onDragEnter={handleDragEnter}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      className={`inline-flex items-center justify-center min-w-[130px] px-4 py-1 rounded-xl border-2 border-dashed mx-1.5 transition-all select-none ${
-                        feedback === "correct"
-                          ? "border-[#087F5B] bg-[#087F5B] text-white scale-105"
-                          : feedback === "wrong" && selectedWord
-                          ? "border-rose-500 bg-rose-100 text-rose-800"
-                          : feedbackMode === "end" && selectedWord
-                          ? "border-[#6741D9] bg-[#6741D9] text-white"
-                          : isDragOver
-                          ? "ring-4 ring-emerald-500/30 border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/60 text-[#065F46] dark:text-emerald-400 scale-105"
-                          : "border-[#6741D9] bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] text-[#6741D9] dark:text-[#d0bfff]"
-                      }`}
-                    >
-                      {feedback === "correct"
-                        ? formatAr(currentQ.correctWord)
-                        : selectedWord
-                        ? formatAr(selectedWord)
-                        : isDragOver && draggingWord
-                        ? formatAr(draggingWord)
-                        : "____"}
-                    </span>
-                  ) : (
-                    /* İMLA MODU: KLAVYELİ METİN KUTUSU + [⌨️] SANAL KLAVYE BUTONU */
-                    <span
-                      dir="rtl"
-                      className="inline-flex items-center gap-1.5 mx-1.5"
-                    >
-                      {feedback === "correct" ? (
-                        <span className="inline-flex items-center gap-1.5 px-4 py-1 rounded-xl bg-[#087F5B] text-white border-2 border-[#087F5B] scale-105">
-                          <CheckCircle2 size={18} />
-                          <span>{formatAr(currentQ.correctWord)}</span>
-                        </span>
-                      ) : (
-                        <>
-                          <input
-                            ref={inputRef}
-                            type="text"
-                            inputMode={
-                              showKeyboard && !useDeviceKeyboard
-                                ? "none"
-                                : "text"
-                            }
-                            dir="rtl"
-                            value={typedText}
-                            onChange={(e) => setTypedText(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleCheckDictation();
-                              }
-                            }}
-                            placeholder="....."
-                            aria-label="Eksik Arapça kelimeyi yazın"
-                            className={`w-28 sm:w-40 inline-flex h-10 sm:h-11 px-2.5 rounded-xl border-2 text-center arabic text-xl sm:text-3xl font-bold focus:outline-none transition-all ${
-                              feedback === "wrong"
-                                ? "bg-rose-50 border-rose-500 text-rose-800"
-                                : "bg-white dark:bg-[var(--background)] border-[#6741D9] text-[#065F46] dark:text-emerald-400 focus:ring-4 focus:ring-[#6741D9]/20"
-                            }`}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              playClick();
-                              setShowKeyboard((v) => {
-                                const next = !v;
-                                if (next) setUseDeviceKeyboard(false);
-                                return next;
-                              });
-                            }}
-                            title="Arapça Sanal Klavyeyi Aç/Kapat"
-                            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl border-2 border-b-3 flex items-center justify-center transition-all cursor-pointer ${
-                              showKeyboard && !useDeviceKeyboard
-                                ? "bg-[#6741D9] border-[#5230B5] text-white"
-                                : "bg-white dark:bg-[var(--background)] border-[#E6D7BE] text-[#6741D9]"
-                            }`}
-                          >
-                            <Keyboard size={16} />
-                          </button>
-                        </>
-                      )}
-                    </span>
-                  )}
-                </>
-              )}
-            </span>
-          ))}
+          {currentQ.sentenceWithBlank.split("[ ? ]").map((part, i, arr) => {
+            const targetWordClean =
+              currentQ.correctWord
+                .replace(/[\u064B-\u065F\u0670]/g, "")
+                .trim() || currentQ.correctWord;
+            const inputWidthRem = Math.max(
+              4.5,
+              Math.min(8.5, targetWordClean.length * 0.85)
+            );
+            return (
+              <span key={i}>
+                <span>{formatAr(part)}</span>
+                {i < arr.length - 1 && (
+                  <>
+                    {subMode === "choices" ? (
+                      <span
+                        ref={dropZoneRef}
+                        onDragOver={handleDragOver}
+                        onDragEnter={handleDragEnter}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        className={`inline-flex items-center justify-center align-middle min-w-[110px] px-3.5 py-0.5 rounded-xl border-2 border-dashed mx-1.5 transition-all select-none ${
+                          feedback === "correct"
+                            ? "border-[#087F5B] bg-[#087F5B] text-white scale-105"
+                            : feedback === "wrong" && selectedWord
+                            ? "border-rose-500 bg-rose-100 text-rose-800"
+                            : feedbackMode === "end" && selectedWord
+                            ? "border-[#6741D9] bg-[#6741D9] text-white"
+                            : isDragOver
+                            ? "ring-4 ring-emerald-500/30 border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/60 text-[#065F46] dark:text-emerald-400 scale-105"
+                            : "border-[#6741D9] bg-[#F3F0FF] dark:bg-[var(--lavender-bg)] text-[#6741D9] dark:text-[#d0bfff]"
+                        }`}
+                      >
+                        {feedback === "correct"
+                          ? formatAr(currentQ.correctWord)
+                          : selectedWord
+                          ? formatAr(selectedWord)
+                          : isDragOver && draggingWord
+                          ? formatAr(draggingWord)
+                          : "____"}
+                      </span>
+                    ) : feedback === "correct" ? (
+                      <span className="inline-flex items-center align-middle gap-1.5 px-3.5 py-0.5 mx-1.5 rounded-xl bg-[#087F5B] text-white border-2 border-[#087F5B] scale-105">
+                        <CheckCircle2 size={18} />
+                        <span>{formatAr(currentQ.correctWord)}</span>
+                      </span>
+                    ) : (
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        inputMode={
+                          showKeyboard && !useDeviceKeyboard ? "none" : "text"
+                        }
+                        dir="rtl"
+                        value={typedText}
+                        onChange={(e) => setTypedText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleCheckDictation();
+                          }
+                        }}
+                        placeholder="....."
+                        aria-label="Eksik Arapça kelimeyi yazın"
+                        style={{ width: `${inputWidthRem}rem` }}
+                        className={`inline-block align-middle mx-1.5 px-2 py-0.5 h-9 sm:h-10 text-center font-arabic arabic text-xl rounded-xl border-2 font-bold focus:outline-none transition-all ${
+                          feedback === "wrong"
+                            ? "bg-rose-50 border-rose-500 text-rose-800"
+                            : "bg-white dark:bg-[var(--background)] border-[#6741D9] text-[#065F46] dark:text-emerald-400 focus:ring-4 focus:ring-[#6741D9]/20"
+                        }`}
+                      />
+                    )}
+                  </>
+                )}
+              </span>
+            );
+          })}
         </div>
 
         {/* PEDAGOJİK İMLA VE HEMZE/HAREKE NOTU */}
