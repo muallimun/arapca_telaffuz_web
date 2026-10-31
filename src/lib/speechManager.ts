@@ -721,7 +721,7 @@ export class HybridSpeechManager {
       if (!isLocalOnly && audioData16kHz && audioData16kHz.length >= 2400) {
         const serverText = await this.transcribeViaServerApi(audioData16kHz);
         if (serverText && /[\u0600-\u06FF]/.test(serverText)) {
-          return { text: serverText, usedEngine: "webspeech" };
+          return { text: serverText, usedEngine: "whisper" };
         }
       }
 

@@ -49,7 +49,7 @@ export interface WordEvaluationResult {
   targetWord: string;
   spokenWord: string;
   score: number;
-  status: "correct" | "warning" | "wrong";
+  status: "correct" | "warning" | "close" | "wrong";
   makhrajTip?: MakhrajTip;
   makhrajWarning?: string;
   medVezinTip?: string;
@@ -646,6 +646,10 @@ export function extractArabicRoot(word: string): string {
  * Kelimenin kök ünsüz iskeletini (Consonant Skeleton) çıkarır.
  * Misal fiil ism-i zaman/mekân (مَوْعِد -> وعد) ve İstif'âl (استمارة -> أمر) kalıplarını korur.
  */
+export function extractConsonantSkeleton(word: string): string {
+  return getConsonantSkeleton(word);
+}
+
 export function getConsonantSkeleton(word: string): string {
   const rawNormalized = normalizeForComparison(word).replace(
     /[^\u0600-\u06FF]/g,
@@ -1375,8 +1379,8 @@ export function evaluateSingleWord(
     return {
       targetWord: targetLabel,
       spokenWord: spoken,
-      score: 82,
-      status: "correct",
+      score: 79,
+      status: "close",
       medVezinTip: ishbaMessage,
       diacriticsVerified: true,
       diacriticNote: ishbaMessage,
@@ -1386,6 +1390,21 @@ export function evaluateSingleWord(
 
   const alignment = alignCharacters(cleanExp, cleanSpk);
   const rawAlignment = alignCharacters(rawExp, rawSpk);
+  const expectedSkeleton = extractConsonantSkeleton(cleanExp);
+  const spokenSkeleton = extractConsonantSkeleton(cleanSpk);
+  const skeletonAlignment: AlignmentResult[] =
+    expectedSkeleton.length > 0 &&
+    expectedSkeleton.length === spokenSkeleton.length
+      ? Array.from({ length: expectedSkeleton.length }, (_, idx) => ({
+          expectedChar: expectedSkeleton[idx],
+          spokenChar: spokenSkeleton[idx],
+          operation:
+            expectedSkeleton[idx] === spokenSkeleton[idx]
+              ? "MATCH"
+              : "SUBSTITUTE",
+        }))
+      : [];
+
   const matchCount = alignment.filter((a) => a.operation === "MATCH").length;
   const maxLen = Math.max(cleanExp.length, cleanSpk.length, 1);
   const baseScore =
@@ -1396,10 +1415,12 @@ export function evaluateSingleWord(
   // Kök ünsüz ve 38 kanonik mahreç çifti kontrolü her zaman (özel isimler dahil!) tavizsiz çalıştırılır
   const criticalAlignmentTip =
     findMakhrajPairFromAlignment(rawAlignment, true) ||
-    findMakhrajPairFromAlignment(alignment, true);
+    findMakhrajPairFromAlignment(alignment, true) ||
+    findMakhrajPairFromAlignment(skeletonAlignment, true);
   const generalAlignmentTip =
     findMakhrajPairFromAlignment(rawAlignment, false) ||
-    findMakhrajPairFromAlignment(alignment, false);
+    findMakhrajPairFromAlignment(alignment, false) ||
+    findMakhrajPairFromAlignment(skeletonAlignment, false);
   const fallbackCriticalTip = findCriticalLetterMakhrajTip(
     expectedCleaned || expected
   );
@@ -1803,7 +1824,7 @@ export function evaluateSentenceWords(
   const strippedTargetSentence =
     stripParentheticalNotesForScoring(expectedSentence);
   const normalizedSpokenWithNums = normalizeArabicNumbersInText(
-    spokenSentence,
+    spokenSentence || "",
     strippedTargetSentence
   );
 
@@ -1813,6 +1834,22 @@ export function evaluateSentenceWords(
   let spkWords = cleanDisplayText(normalizedSpokenWithNums)
     .split(/\s+/)
     .filter((w) => /[\u0600-\u06FF]/.test(w));
+
+  if (
+    !/[\u0600-\u06FF]/.test(normalizedSpokenWithNums) ||
+    spkWords.length === 0
+  ) {
+    return {
+      words: [],
+      overallScore: 0,
+      score: null,
+      isTextRecognized: false,
+      isEvaluated: false,
+      confidence: "unverified",
+      isRootGuardTriggered: false,
+      message: "Değerlendirilemedi: Metin Çözümlenemedi",
+    };
+  }
 
   // Halüsinasyon koruması
   if (
@@ -1829,6 +1866,7 @@ export function evaluateSentenceWords(
   const wordResults: WordEvaluationResult[] = [];
   let omittedCount = 0;
   let substitutedCount = 0;
+  let liaisonDetected = false;
 
   for (const { expWord, spkWord } of alignedPairs) {
     if (expWord && !spkWord) {
@@ -1863,6 +1901,7 @@ export function evaluateSentenceWords(
     if (isW1EmptyAndW2Spoken || isW2EmptyAndW1Spoken) {
       const mergedSpk = (w1.spokenWord || w2.spokenWord || "").trim();
       if (detectWordLiaisonMerge(w1.targetWord, w2.targetWord, mergedSpk)) {
+        liaisonDetected = true;
         omittedCount = Math.max(0, omittedCount - 1);
         substitutedCount += 1;
         const liaisonWarning = `⚠️ Kelime Ulaması / Yutma Tespiti: '${w1.targetWord}' ve '${w2.targetWord}' kelimeleri hızlı geçiş nedeniyle birleşerek ('${mergedSpk}' gibi) tek kelime olarak duyuldu. Kelime sınırlarını yutmadan, iki kelimeyi net ayırarak okuyun.`;
@@ -1915,7 +1954,10 @@ export function evaluateSentenceWords(
         )
       : 0;
 
-  const overallScore = Math.max(0, rawAverageScore - extraWordPenalty);
+  const unclampedOverallScore = Math.max(0, rawAverageScore - extraWordPenalty);
+  const overallScore = liaisonDetected
+    ? Math.min(unclampedOverallScore, 78)
+    : unclampedOverallScore;
   const spokenHasAnyDiacritics = /[\u064B-\u0652\u0670]/.test(spokenSentence);
 
   // STT harekesiz metin döndürdüğünde Akustik Med/Şedde Süre Kontrolü

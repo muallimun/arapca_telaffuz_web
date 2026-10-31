@@ -638,14 +638,18 @@ export default function ShadowingModal({
         micNoiseSuppression: currentNoiseSuppression,
       } = useSettings.getState();
 
-      const isMobile =
+      const isIPadOS =
         typeof navigator !== "undefined" &&
-        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        navigator.platform === "MacIntel" &&
+        navigator.maxTouchPoints > 1;
+      const isMobileUa =
+        typeof navigator !== "undefined" &&
+        (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || isIPadOS);
 
       // MOBİLDE ⚡ TARAYICI (webspeech) SEÇİLİYKEN getUserMedia İLE EŞZAMANLI MİKROFON AKIŞI AÇMA!
       // Böylece Android işletim sistemi webkitSpeechRecognition mikrofonunu engellemez.
       if (
-        isMobile &&
+        isMobileUa &&
         currentEngine === "webspeech" &&
         !currentLocalOnly &&
         speechManagerRef.current?.isWebSpeechSupported()
@@ -691,20 +695,10 @@ export default function ShadowingModal({
             currentLen > lastTranscriptLen || currentLen > 0;
           lastTranscriptLen = currentLen;
 
-          const refSample =
-            refBars.length > 0
-              ? refBars[stepTick % refBars.length]
-              : 0.35;
+          // Yalnızca mikrofonun aktif olduğunu gösteren nötr, yumuşak nabız animasyonu (referans sesten kopyalamaz!)
           const barVal = isActivelySpeaking
-            ? Math.min(
-                0.92,
-                Math.max(
-                  0.18,
-                  refSample * 0.75 +
-                    0.22 * Math.abs(Math.sin(stepTick * 0.65))
-                )
-              )
-            : 0.1 + 0.08 * Math.abs(Math.sin(stepTick * 0.45));
+            ? 0.22 + 0.14 * Math.abs(Math.sin(stepTick * 0.5))
+            : 0.1 + 0.05 * Math.abs(Math.sin(stepTick * 0.35));
 
           mobileLiveBarsRef.current.push(barVal);
           const tail = mobileLiveBarsRef.current.slice(-48);
@@ -918,65 +912,18 @@ export default function ShadowingModal({
           return;
         }
 
-        const effectiveUserBars =
-          hasRealRefAudio && refBars.length === 48
-            ? refBars.map((b, idx) =>
-                Math.min(0.95, Math.max(0.12, b * (0.92 + ((idx % 3) - 1) * 0.04)))
-              )
-            : mobileLiveBarsRef.current.length >= 12
-            ? [
-                ...Array(
-                  Math.max(0, 48 - mobileLiveBarsRef.current.slice(-48).length)
-                ).fill(0.15),
-                ...mobileLiveBarsRef.current.slice(-48),
-              ]
-            : DEFAULT_BARS;
-        setUserBars(effectiveUserBars);
-
-        let computedRhythm: number | null = null;
-        let effectiveRefBars: number[] = [];
-        let effectiveRefDur = 0;
-
-        if (refAudioBufferRef.current) {
-          const refEnv = extractAudioEnvelope(refAudioBufferRef.current, 48);
-          effectiveRefBars = refEnv.bars;
-          effectiveRefDur = refEnv.duration;
-          const dtwMatch = calculateRhythmMatch(refEnv.bars, effectiveUserBars);
-          const computedTempo = calculateTempoScore(
-            refEnv.duration,
-            accurateDuration,
-            refEnv.bars,
-            effectiveUserBars
-          );
-          computedRhythm = Math.round(dtwMatch * 0.7 + computedTempo * 0.3);
-          setRhythmScore(computedRhythm);
-          setTempoScore(computedTempo);
-        } else if (hasRealRefAudio && refDuration > 0) {
-          effectiveRefBars = refBars;
-          effectiveRefDur = refDuration;
-          const dtwMatch = calculateRhythmMatch(refBars, effectiveUserBars);
-          const computedTempo = calculateTempoScore(
-            refDuration,
-            accurateDuration,
-            refBars,
-            effectiveUserBars
-          );
-          computedRhythm = Math.round(dtwMatch * 0.7 + computedTempo * 0.3);
-          setRhythmScore(computedRhythm);
-          setTempoScore(computedTempo);
-        } else {
-          computedRhythm = null;
-          setRhythmScore(null);
-          setTempoScore(null);
-        }
+        // Gerçek PCM ses örneği alınmayan mobil salt Web Speech modunda sahte DTW ritim puanı ÜRETME!
+        setUserBars(DEFAULT_BARS);
+        setRhythmScore(null);
+        setTempoScore(null);
 
         processTranscription(
           recognizedText,
-          computedRhythm,
-          effectiveUserBars,
-          effectiveRefBars,
+          null,
+          DEFAULT_BARS,
+          [],
           accurateDuration,
-          effectiveRefDur,
+          refDuration,
           true,
           "webspeech"
         );
@@ -1418,7 +1365,7 @@ export default function ShadowingModal({
   const getWordColor = (status: string) => {
     if (status === "correct")
       return "bg-[#087F5B] text-white border-[#065F46]";
-    if (status === "warning")
+    if (status === "warning" || status === "close")
       return "bg-amber-100 text-amber-900 border-amber-400";
     return "bg-rose-100 text-rose-900 border-rose-400";
   };
@@ -1999,6 +1946,15 @@ export default function ShadowingModal({
                           Süre Uyumu: %{tempoScore}
                         </span>
                       )}
+                    </>
+                  ) : usedEngineBadge === "webspeech" && !userAudioUrl ? (
+                    <>
+                      <span className="text-sm sm:text-base font-black text-[var(--foreground)] mt-0.5">
+                        Ölçülmedi
+                      </span>
+                      <span className="text-[10px] font-semibold leading-tight text-center text-[var(--muted)] mt-0.5 block">
+                        Tarayıcı modunda yalnızca metin/mahreç ölçülür (Akustik ritim için Whisper seçin)
+                      </span>
                     </>
                   ) : (
                     <span className="text-[11px] font-bold leading-tight text-center text-[var(--muted)] mt-1 block">

@@ -824,9 +824,13 @@ export default function DialogueDetailPage({
     } = useSettings.getState();
     const shouldUseRoleplayWebSpeech = !currentLocalOnly;
 
+    const isIPadOS =
+      typeof navigator !== "undefined" &&
+      navigator.platform === "MacIntel" &&
+      navigator.maxTouchPoints > 1;
     const isMobile =
       typeof navigator !== "undefined" &&
-      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || isIPadOS);
 
     let stream: MediaStream | null = null;
     if (

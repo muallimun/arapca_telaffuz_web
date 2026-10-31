@@ -1318,7 +1318,7 @@ export default function FillInBlanks({
         </div>
 
         {/* Numaralı Soru Gezgini (1..N) */}
-        <div className="grid grid-cols-10 gap-1 sm:flex sm:flex-wrap items-center justify-center sm:gap-1.5 pt-1 border-t border-dashed border-[#E2D3B8]">
+        <div className="grid grid-cols-10 gap-1 md:flex md:flex-wrap items-center justify-center md:gap-1.5 pt-1 border-t border-dashed border-[#E2D3B8]">
           {questions.map((_, idx) => {
             const isActive = idx === currentIndex;
             const isAnswered = Boolean(userAnswers[idx]);
@@ -1330,7 +1330,7 @@ export default function FillInBlanks({
                   playClick();
                   setCurrentIndex(idx);
                 }}
-                className={`h-7 w-full sm:w-8 sm:h-8 rounded-lg border text-xs font-bold tabular-nums transition-all cursor-pointer flex items-center justify-center ${
+                className={`h-7 w-full md:w-8 md:h-8 rounded-lg border text-xs font-bold tabular-nums transition-all cursor-pointer flex items-center justify-center ${
                   isActive
                     ? "ring-2 ring-emerald-600 bg-emerald-600 text-white font-bold scale-105 border-emerald-700"
                     : isAnswered
@@ -1546,7 +1546,7 @@ export default function FillInBlanks({
                         placeholder="....."
                         aria-label="Eksik Arapça kelimeyi yazın"
                         style={{ width: `${inputWidthRem}rem` }}
-                        className={`inline-block align-middle mx-1.5 px-2 py-0.5 h-9 sm:h-10 text-center font-arabic arabic text-xl rounded-xl border-2 font-bold focus:outline-none transition-all ${
+                        className={`inline-block align-middle max-w-[85vw] mx-1.5 px-2 py-0.5 h-9 sm:h-10 text-center font-arabic arabic text-xl rounded-xl border-2 font-bold focus:outline-none transition-all ${
                           feedback === "wrong"
                             ? "bg-rose-50 border-rose-500 text-rose-800"
                             : "bg-white dark:bg-[var(--background)] border-[#6741D9] text-[#065F46] dark:text-emerald-400 focus:ring-4 focus:ring-[#6741D9]/20"

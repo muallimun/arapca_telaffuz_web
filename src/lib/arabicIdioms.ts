@@ -103,7 +103,7 @@ export const ARABIC_IDIOMS_LIBRARY: ArabicIdiom[] = [
     meaningTr: "İyiyim, Allah'a şükür",
     literalTr: "İyilik içindeyim ve hamd Allah'adır",
     usageNote: "«Nasılsın?» sorusuna verilen en yaygın ve kibar cevaptır.",
-    variants: ["بخير والحمد لله", "أنا بخير", "بخير شكرا"],
+    variants: ["بخير والحمد لله", "أَنَا بِخَيْرٍ", "بخير شكرا"],
   },
   {
     id: "idm_011",

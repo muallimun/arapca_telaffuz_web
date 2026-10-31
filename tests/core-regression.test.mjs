@@ -345,3 +345,36 @@ test("7. 60 Diyalog Pedagojik Metadata, CEFR Sıralaması ve Akıllı Çeldirici
     );
   }
 });
+
+// ============================================================================
+// 8. evaluateSentenceWords Boş STT Koruması, İskelet Mahreç (بَتُولُ -> بطل), Ulama Tavanı (<=78) ve İşbâ Statüsü
+// ============================================================================
+test("8. evaluateSentenceWords Boş STT Koruması, بَتُولُ -> بطل Mahreç, Ulama <= 78 ve لَكِ -> لكي (close/79)", () => {
+  const emptySentenceRes = arabicNlp.evaluateSentenceWords("كَيْفَ حَالُكَ؟", "");
+  assert.equal(emptySentenceRes.score, null);
+  assert.equal(emptySentenceRes.overallScore, 0);
+  assert.equal(emptySentenceRes.isEvaluated, false);
+  assert.equal(emptySentenceRes.isTextRecognized, false);
+  assert.equal(emptySentenceRes.words.length, 0);
+
+  const batulRes = arabicNlp.evaluateSingleWord("بَتُولُ", "بطل");
+  assert.ok(
+    batulRes.makhrajTip?.pair?.includes("ت") &&
+      batulRes.makhrajTip?.pair?.includes("ط"),
+    `بَتُولُ -> بطل okumada ت ↔ ط mahreç uyarısı üretilmeli (Alınan: ${batulRes.makhrajTip?.pair})`
+  );
+
+  const liaisonRes = arabicNlp.evaluateSentenceWords(
+    "أَنَا بِخَيْرٍ وَالْحَمْدُ لِلَّهِ",
+    "نبخر والحمد لله"
+  );
+  assert.ok(
+    liaisonRes.overallScore <= 78,
+    `Kelime ulaması tespit edildiğinde cümle puanı <= 78 olmalı (Alınan: ${liaisonRes.overallScore})`
+  );
+
+  const ishbaRes = arabicNlp.evaluateSingleWord("لَكِ", "لكي");
+  assert.equal(ishbaRes.score, 79);
+  assert.equal(ishbaRes.status, "close");
+});
+

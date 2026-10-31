@@ -4,9 +4,24 @@
 
 import { pipeline, env } from "@huggingface/transformers";
 
-const isMobile = /Android|iPhone|iPad|iPod/i.test(
-  typeof self !== "undefined" ? self.navigator?.userAgent || "" : ""
-);
+const workerNav = typeof self !== "undefined" ? self.navigator : undefined;
+const isIPadOS =
+  typeof workerNav !== "undefined" &&
+  workerNav.platform === "MacIntel" &&
+  workerNav.maxTouchPoints > 1;
+const isMobileUa =
+  typeof workerNav !== "undefined" &&
+  (/Android|iPhone|iPad|iPod/i.test(workerNav.userAgent || "") || isIPadOS);
+const devMem =
+  typeof workerNav !== "undefined"
+    ? (workerNav as { deviceMemory?: number }).deviceMemory
+    : undefined;
+const hw =
+  typeof workerNav !== "undefined" ? workerNav.hardwareConcurrency : undefined;
+const isLowMemOrCpu =
+  (devMem !== undefined && devMem <= 4) ||
+  (devMem === undefined && typeof hw === "number" && hw > 0 && hw <= 4);
+const isMobile = isMobileUa || isLowMemOrCpu;
 
 env.allowLocalModels = false;
 env.useBrowserCache = true;
@@ -279,10 +294,11 @@ function findSilenceValleyIndex(
   const step = Math.max(80, Math.round(sampleRate * 0.025)); // 25ms adım
 
   if (maxIdx - minIdx <= windowSize) {
-    return Math.floor(n / 2);
+    return -1;
   }
 
-  let bestStart = Math.floor(n / 2);
+  const windowRmsList: number[] = [];
+  let bestStart = -1;
   let lowestEnergy = Number.POSITIVE_INFINITY;
 
   for (let start = minIdx; start + windowSize <= maxIdx; start += step) {
@@ -292,10 +308,27 @@ function findSilenceValleyIndex(
       sumSq += v * v;
     }
     const rms = Math.sqrt(sumSq / windowSize);
+    windowRmsList.push(rms);
     if (rms < lowestEnergy) {
       lowestEnergy = rms;
       bestStart = start + Math.floor(windowSize / 2);
     }
+  }
+
+  if (windowRmsList.length === 0 || bestStart < 0) {
+    return -1;
+  }
+
+  const sortedRms = [...windowRmsList].sort((a, b) => a - b);
+  const mid = Math.floor(sortedRms.length / 2);
+  const medianRms =
+    sortedRms.length % 2 === 0
+      ? (sortedRms[mid - 1] + sortedRms[mid]) / 2
+      : sortedRms[mid];
+
+  // Eğer en düşük enerjili pencere gerçekten sessiz bir nefes durağı değilse (medyan enerjinin %25'inden yüksekse) kelimenin ortasından BÖLME!
+  if (medianRms <= 0 || lowestEnergy > medianRms * 0.25) {
+    return -1;
   }
 
   return bestStart;
@@ -540,23 +573,44 @@ async function handleSingleRequest(req: WhisperWorkerRequest) {
 
       const runSplitValleyInference = async (): Promise<string> => {
         const valleyIdx = findSilenceValleyIndex(raw16k, 16000);
+        if (valleyIdx < 0) {
+          return "";
+        }
         const part1 = normalizeChunkPeak088(raw16k.slice(0, valleyIdx), 0.88);
         const part2 = normalizeChunkPeak088(raw16k.slice(valleyIdx), 0.88);
-        const text1 =
-          part1.length >= 2400 && !isRequestStaleOrAborted(requestId)
-            ? await runSafeInference(part1)
-            : "";
-        const text2 =
-          part2.length >= 2400 && !isRequestStaleOrAborted(requestId)
-            ? await runSafeInference(part2)
-            : "";
-        return `${text1} ${text2}`.trim();
+        if (part1.length < 2400 || part2.length < 2400) {
+          return "";
+        }
+        const text1 = !isRequestStaleOrAborted(requestId)
+          ? (await runSafeInference(part1)).trim()
+          : "";
+        const text2 = !isRequestStaleOrAborted(requestId)
+          ? (await runSafeInference(part2)).trim()
+          : "";
+
+        // Parçalardan biri boş dönerse veya toplam kelime sayısı çok azsa tam ses üzerinde tek parça çözümlemeye düşmesi için boş döndür
+        if (
+          !text1 ||
+          !text2 ||
+          !/[\u0600-\u06FF]/.test(text1) ||
+          !/[\u0600-\u06FF]/.test(text2)
+        ) {
+          return "";
+        }
+        const joined = `${text1} ${text2}`.trim();
+        const wordCount = joined
+          .split(/\s+/)
+          .filter((w) => /[\u0600-\u06FF]/.test(w)).length;
+        if (wordCount < 2) {
+          return "";
+        }
+        return joined;
       };
 
       let recognizedText = "";
       const isLongAudio = raw16k.length > Math.round(16000 * 2.8);
 
-      // Mobilde veya WASM modunda > 2.8 saniye olan uzun cümleleri nefes durağından (Silence-Valley) 2 parçaya bölerek çözümle
+      // Mobilde veya WASM modunda > 2.8 saniye olan uzun cümleleri gerçek nefes durağı varsa 2 parçaya bölerek çözümle
       if ((isMobile || activeDevice === "wasm") && isLongAudio) {
         recognizedText = await runSplitValleyInference();
         if (

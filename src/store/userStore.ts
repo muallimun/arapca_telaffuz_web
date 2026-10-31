@@ -907,11 +907,11 @@ export const useUserStore = create<UserState>()(
 
       importProgress: (jsonData: string, mode: "merge" | "overwrite" = "merge") => {
         try {
-          // 1. Boyut sınırı: > 2 MB dosyaları reddet
+          // 1. UTF-8 Bayt boyut sınırı: > 2 MB dosyaları reddet
           if (
             !jsonData ||
             typeof jsonData !== "string" ||
-            jsonData.length > 2 * 1024 * 1024
+            new TextEncoder().encode(jsonData).byteLength > 2 * 1024 * 1024
           ) {
             return false;
           }
@@ -964,15 +964,26 @@ export const useUserStore = create<UserState>()(
             return false;
           }
 
-          // "overwrite" (Üzerine Yaz) modunda tek alanlı kısmi JSON'un tüm ilerlemeyi sıfırlamasını önle:
-          // Temel ilerleme alanlarının (completedDialogues, learnedWords, srsRecords) mevcut olması zorunludur.
+          // "overwrite" (Üzerine Yaz) modunda kısmi veya bozuk tipli JSON'un mevcut ilerlemeyi sıfırlamasını önle:
+          // Temel ilerleme alanlarının (completedDialogues, learnedWords, srsRecords) mevcut ve doğru tipte olması zorunludur.
           if (mode === "overwrite") {
-            const requiredCoreKeys = [
-              "completedDialogues",
-              "learnedWords",
-              "srsRecords",
-            ];
-            if (!requiredCoreKeys.every((k) => k in data)) {
+            const isPlainObject = (
+              val: unknown
+            ): val is Record<string, unknown> =>
+              typeof val === "object" &&
+              val !== null &&
+              !Array.isArray(val) &&
+              Object.prototype.toString.call(val) === "[object Object]";
+
+            const validCompleted =
+              Array.isArray(data.completedDialogues) &&
+              data.completedDialogues.every((x) => typeof x === "string");
+            const validLearned =
+              Array.isArray(data.learnedWords) &&
+              data.learnedWords.every((x) => typeof x === "string");
+            const validSrs = isPlainObject(data.srsRecords);
+
+            if (!validCompleted || !validLearned || !validSrs) {
               return false;
             }
           }

@@ -41,9 +41,6 @@ export const metadata: Metadata = {
   creator: "Muallimun",
   publisher: "Muallimun",
   manifest: "/manifest.webmanifest",
-  alternates: {
-    canonical: "https://app.muallimun.net",
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

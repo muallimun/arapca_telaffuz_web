@@ -84,10 +84,25 @@ export function detectIsMobileOrLowMem(): boolean {
   if (typeof window === "undefined" || typeof navigator === "undefined") {
     return false;
   }
-  const isMobileUa = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const devMem = (navigator as { deviceMemory?: number }).deviceMemory;
-  const isLowMem = devMem !== undefined && devMem <= 4;
-  return isMobileUa || isLowMem;
+  const isIPadOS =
+    typeof navigator !== "undefined" &&
+    navigator.platform === "MacIntel" &&
+    navigator.maxTouchPoints > 1;
+  const isMobileUa =
+    typeof navigator !== "undefined" &&
+    (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || isIPadOS);
+  const devMem =
+    typeof navigator !== "undefined"
+      ? (navigator as { deviceMemory?: number }).deviceMemory
+      : undefined;
+  const hw =
+    typeof navigator !== "undefined"
+      ? navigator.hardwareConcurrency
+      : undefined;
+  const isLowMemOrCpu =
+    (devMem !== undefined && devMem <= 4) ||
+    (devMem === undefined && typeof hw === "number" && hw > 0 && hw <= 4);
+  return isMobileUa || isLowMemOrCpu;
 }
 
 export const useSettings = create<SettingsState>()(
